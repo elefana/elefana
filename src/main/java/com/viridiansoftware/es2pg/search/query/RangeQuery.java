@@ -17,7 +17,7 @@ package com.viridiansoftware.es2pg.search.query;
 
 import java.io.IOException;
 
-public class RangeQuery extends QueryContext {
+public class RangeQuery extends QuerySpec {
 	private static final String KEY_FROM = "from";
 	private static final String KEY_TO = "to";
 	private static final String KEY_INCLUDE_LOWER = "include_lower";

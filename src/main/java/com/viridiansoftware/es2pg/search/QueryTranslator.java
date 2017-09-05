@@ -32,7 +32,7 @@ import com.viridiansoftware.es2pg.search.query.MatchPhraseQuery;
 import com.viridiansoftware.es2pg.search.query.MatchQuery;
 import com.viridiansoftware.es2pg.search.query.MultiMatchQuery;
 import com.viridiansoftware.es2pg.search.query.PrefixQuery;
-import com.viridiansoftware.es2pg.search.query.QueryContext;
+import com.viridiansoftware.es2pg.search.query.QuerySpec;
 import com.viridiansoftware.es2pg.search.query.QueryType;
 import com.viridiansoftware.es2pg.search.query.RangeQuery;
 import com.viridiansoftware.es2pg.search.query.RegexpQuery;
@@ -40,31 +40,31 @@ import com.viridiansoftware.es2pg.search.query.TermQuery;
 import com.viridiansoftware.es2pg.search.query.TypeQuery;
 import com.viridiansoftware.es2pg.search.query.WildcardQuery;
 
-public class QueryTranslator extends QueryContext {
-	protected QueryContext queryContext = null;
+public class QueryTranslator extends QuerySpec {
+	protected QuerySpec querySpec = null;
 	
 	@Override
 	public String toSqlWhereClause() {
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return "";
 		}
-		return queryContext.toSqlWhereClause();
+		return querySpec.toSqlWhereClause();
 	}
 
 	@Override
 	public void close() throws IOException {
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return;
 		}
-		queryContext.close();
+		querySpec.close();
 	}
 
 	@Override
 	public void flush() throws IOException {
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return;
 		}
-		queryContext.flush();
+		querySpec.flush();
 	}
 
 	@Override
@@ -86,255 +86,255 @@ public class QueryTranslator extends QueryContext {
 	@Override
 	public void writeStartObject() throws IOException {
 		super.writeStartObject();
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return;
 		}
-		queryContext.writeStartObject();
+		querySpec.writeStartObject();
 	}
 
 	@Override
 	public void writeEndObject() throws IOException {
 		super.writeEndObject();
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return;
 		}
-		queryContext.writeEndObject();
+		querySpec.writeEndObject();
 	}
 
 	@Override
 	public void writeStartArray() throws IOException {
 		super.writeStartArray();
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return;
 		}
-		queryContext.writeStartArray();
+		querySpec.writeStartArray();
 	}
 
 	@Override
 	public void writeEndArray() throws IOException {
 		super.writeEndArray();
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return;
 		}
-		queryContext.writeEndArray();
+		querySpec.writeEndArray();
 	}
 
 	@Override
 	public void writeFieldName(String name) throws IOException {
-		if(queryContext == null) {
+		if(querySpec == null) {
 			//Start of query context
-			queryContext = createQueryContext(name);
+			querySpec = createQueryContext(name);
 		} else {
-			queryContext.writeFieldName(name);
+			querySpec.writeFieldName(name);
 		}
 	}
 
 	@Override
 	public void writeNull() throws IOException {
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return;
 		}
-		queryContext.writeNull();
+		querySpec.writeNull();
 	}
 
 	@Override
 	public void writeNullField(String name) throws IOException {
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return;
 		}
-		queryContext.writeNullField(name);
+		querySpec.writeNullField(name);
 	}
 
 	@Override
 	public void writeBooleanField(String name, boolean value) throws IOException {
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return;
 		}
-		queryContext.writeBooleanField(name, value);
+		querySpec.writeBooleanField(name, value);
 	}
 
 	@Override
 	public void writeBoolean(boolean value) throws IOException {
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return;
 		}
-		queryContext.writeBoolean(value);
+		querySpec.writeBoolean(value);
 	}
 
 	@Override
 	public void writeNumberField(String name, double value) throws IOException {
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return;
 		}
-		queryContext.writeNumberField(name, value);
+		querySpec.writeNumberField(name, value);
 	}
 
 	@Override
 	public void writeNumber(double value) throws IOException {
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return;
 		}
-		queryContext.writeNumber(value);
+		querySpec.writeNumber(value);
 	}
 
 	@Override
 	public void writeNumberField(String name, float value) throws IOException {
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return;
 		}
-		queryContext.writeNumberField(name, value);
+		querySpec.writeNumberField(name, value);
 	}
 
 	@Override
 	public void writeNumber(float value) throws IOException {
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return;
 		}
-		queryContext.writeNumber(value);
+		querySpec.writeNumber(value);
 	}
 
 	@Override
 	public void writeNumberField(String name, int value) throws IOException {
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return;
 		}
-		queryContext.writeNumberField(name, value);
+		querySpec.writeNumberField(name, value);
 	}
 
 	@Override
 	public void writeNumber(int value) throws IOException {
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return;
 		}
-		queryContext.writeNumber(value);
+		querySpec.writeNumber(value);
 	}
 
 	@Override
 	public void writeNumberField(String name, long value) throws IOException {
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return;
 		}
-		queryContext.writeNumberField(name, value);
+		querySpec.writeNumberField(name, value);
 	}
 
 	@Override
 	public void writeNumber(long value) throws IOException {
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return;
 		}
-		queryContext.writeNumber(value);
+		querySpec.writeNumber(value);
 	}
 
 	@Override
 	public void writeNumber(short value) throws IOException {
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return;
 		}
-		queryContext.writeNumber(value);
+		querySpec.writeNumber(value);
 	}
 
 	@Override
 	public void writeStringField(String name, String value) throws IOException {
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return;
 		}
-		queryContext.writeStringField(name, value);
+		querySpec.writeStringField(name, value);
 	}
 
 	@Override
 	public void writeString(String value) throws IOException {
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return;
 		}
-		queryContext.writeString(value);
+		querySpec.writeString(value);
 	}
 
 	@Override
 	public void writeString(char[] text, int offset, int len) throws IOException {
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return;
 		}
-		queryContext.writeString(text, offset, len);
+		querySpec.writeString(text, offset, len);
 	}
 
 	@Override
 	public void writeUTF8String(byte[] value, int offset, int length) throws IOException {
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return;
 		}
-		queryContext.writeUTF8String(value, offset, length);
+		querySpec.writeUTF8String(value, offset, length);
 	}
 
 	@Override
 	public void writeBinaryField(String name, byte[] value) throws IOException {
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return;
 		}
-		queryContext.writeBinaryField(name, value);
+		querySpec.writeBinaryField(name, value);
 	}
 
 	@Override
 	public void writeBinary(byte[] value) throws IOException {
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return;
 		}
-		queryContext.writeBinary(value);
+		querySpec.writeBinary(value);
 	}
 
 	@Override
 	public void writeBinary(byte[] value, int offset, int length) throws IOException {
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return;
 		}
-		queryContext.writeBinary(value, offset, length);
+		querySpec.writeBinary(value, offset, length);
 	}
 
 	@Override
 	public void writeRawField(String name, InputStream value) throws IOException {
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return;
 		}
-		queryContext.writeRawField(name, value);
+		querySpec.writeRawField(name, value);
 	}
 
 	@Override
 	public void writeRawField(String name, InputStream value, XContentType xContentType) throws IOException {
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return;
 		}
-		queryContext.writeRawField(name, value, xContentType);
+		querySpec.writeRawField(name, value, xContentType);
 	}
 
 	@Override
 	public void writeRawField(String name, BytesReference value) throws IOException {
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return;
 		}
-		queryContext.writeRawField(name, value);
+		querySpec.writeRawField(name, value);
 	}
 
 	@Override
 	public void writeRawField(String name, BytesReference value, XContentType xContentType) throws IOException {
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return;
 		}
-		queryContext.writeRawField(name, value, xContentType);
+		querySpec.writeRawField(name, value, xContentType);
 	}
 
 	@Override
 	public void writeRawValue(BytesReference value) throws IOException {
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return;
 		}
-		queryContext.writeRawValue(value);
+		querySpec.writeRawValue(value);
 	}
 
 	@Override
 	public void writeRawValue(BytesReference value, XContentType xContentType) throws IOException {
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return;
 		}
-		queryContext.writeRawValue(value, xContentType);
+		querySpec.writeRawValue(value, xContentType);
 	}
 
 	@Override
@@ -343,13 +343,13 @@ public class QueryTranslator extends QueryContext {
 
 	@Override
 	public boolean isClosed() {
-		if(queryContext == null) {
+		if(querySpec == null) {
 			return false;
 		}
-		return queryContext.isClosed();
+		return querySpec.isClosed();
 	}
 
-	private QueryContext createQueryContext(String name) {
+	private QuerySpec createQueryContext(String name) {
 		switch(QueryType.parse(name)) {
 		case BOOL:
 			return new BoolQuery();

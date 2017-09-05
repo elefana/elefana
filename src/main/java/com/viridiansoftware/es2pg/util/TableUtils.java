@@ -17,7 +17,10 @@ package com.viridiansoftware.es2pg.util;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
 
@@ -43,6 +46,36 @@ public class TableUtils {
 	public void postConstruct() {
 		usingCitus = environment.getProperty("es2pg.citus", Boolean.class, false);
 	}
+	
+	public List<String> listTables() throws SQLException {
+		Connection connection = jdbcTemplate.getDataSource().getConnection();
+		ResultSet resultSet = connection.getMetaData().getTables(null, null, "%", null);
+		
+		List<String> results = new ArrayList<String>(1);
+		while (resultSet.next()) {
+			results.add(resultSet.getString(3));			  
+		}
+		connection.close();
+		return results;
+	}
+	
+	public List<String> listTables(String pattern) throws SQLException {
+		pattern = pattern.replace("*", "(.*)");
+		pattern = "^" + pattern + "$";
+		
+		List<String> results = listTables();
+		for(int i = results.size() - 1; i >= 0; i--) {
+			if(results.get(i).matches(pattern)) {
+				continue;
+			}
+			results.remove(i);
+		}
+		return results;
+	}
+	
+	public void deleteTable(final String tableName) {
+		jdbcTemplate.update("DROP TABLE IF EXISTS" + tableName + " CASCADE;");
+	}
 
 	public void ensureTableExists(final String tableName) throws SQLException {
 		if (knownTables.contains(tableName)) {
@@ -52,18 +85,26 @@ public class TableUtils {
 
 		Connection connection = jdbcTemplate.getDataSource().getConnection();
 		PreparedStatement preparedStatement = connection.prepareStatement(
-				"CREATE TABLE IF NOT EXISTS " + tableName + " (id VARCHAR(255) PRIMARY KEY, type VARCHAR(255), timestamp BIGINT, data jsonb)");
+				"CREATE TABLE IF NOT EXISTS " + tableName + " (_index VARCHAR(255), _type VARCHAR(255), _id VARCHAR(255) PRIMARY KEY, _timestamp BIGINT, _source jsonb)");
 		preparedStatement.execute();
 
 		preparedStatement = connection
-				.prepareStatement("CREATE INDEX IF NOT EXISTS " + ginIndexName + " ON " + tableName + " USING GIN (data jsonb_ops);");
+				.prepareStatement("CREATE INDEX IF NOT EXISTS " + ginIndexName + " ON " + tableName + " USING GIN (_source jsonb_ops);");
 		preparedStatement.execute();
 
 		if (usingCitus) {
-			preparedStatement = connection.prepareStatement("SELECT create_distributed_table('" + tableName + "', 'id');");
+			preparedStatement = connection.prepareStatement("SELECT create_distributed_table('" + tableName + "', '_id');");
 			preparedStatement.execute();
 		}
 		connection.close();
 		knownTables.add(tableName);
+	}
+	
+	public String destringifyJson(String json) {
+		if(json.startsWith("\"")) {
+			json = json.substring(1, json.length() -1);
+			json = json.replace("\\", "");
+		}
+		return json;
 	}
 }

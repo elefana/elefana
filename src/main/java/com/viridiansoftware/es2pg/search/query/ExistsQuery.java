@@ -17,7 +17,7 @@ package com.viridiansoftware.es2pg.search.query;
 
 import java.io.IOException;
 
-public class ExistsQuery extends QueryContext {
+public class ExistsQuery extends QuerySpec {
 	private static final String KEY_FIELD = "field";
 	private static final String KEY_BOOST = "boost";
 	

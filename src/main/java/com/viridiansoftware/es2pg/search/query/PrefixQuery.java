@@ -17,7 +17,7 @@ package com.viridiansoftware.es2pg.search.query;
 
 import java.io.IOException;
 
-public class PrefixQuery extends QueryContext {
+public class PrefixQuery extends QuerySpec {
 	private static final String KEY_VALUE = "value";
 	private static final String KEY_BOOST = "boost";
 	

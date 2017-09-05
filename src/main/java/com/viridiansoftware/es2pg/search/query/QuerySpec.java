@@ -15,11 +15,9 @@
  */
 package com.viridiansoftware.es2pg.search.query;
 
-public class MatchAllQuery extends QuerySpec {
+import com.viridiansoftware.es2pg.search.EsSearchParseContext;
 
-	@Override
-	public String toSqlWhereClause() {
-		return "";
-	}
-
+public abstract class QuerySpec extends EsSearchParseContext {
+	
+	public abstract String toSqlWhereClause();
 }

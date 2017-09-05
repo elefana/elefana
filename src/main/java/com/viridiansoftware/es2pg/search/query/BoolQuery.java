@@ -31,10 +31,10 @@ public class BoolQuery extends QueryTranslator {
 	private static final String KEY_MINIMUM_SHOULD_MATCH = "minimum_should_match";
 	private static final String KEY_BOOST = "boost";
 	
-	private final List<QueryContext> mustClauses = new ArrayList<QueryContext>();
-	private final List<QueryContext> mustNotClauses = new ArrayList<QueryContext>();
-	private final List<QueryContext> filterClauses = new ArrayList<QueryContext>();
-	private final List<QueryContext> shouldClauses = new ArrayList<QueryContext>();
+	private final List<QuerySpec> mustClauses = new ArrayList<QuerySpec>();
+	private final List<QuerySpec> mustNotClauses = new ArrayList<QuerySpec>();
+	private final List<QuerySpec> filterClauses = new ArrayList<QuerySpec>();
+	private final List<QuerySpec> shouldClauses = new ArrayList<QuerySpec>();
 
 	private String minimumShouldMatch = "1";
 	private double boost = 1.0;
@@ -134,23 +134,23 @@ public class BoolQuery extends QueryTranslator {
 		if(startArrayCount == endArrayCount) {
 			switch(state) {
 			case FILTER:
-				filterClauses.add(queryContext);
+				filterClauses.add(querySpec);
 				break;
 			case MUST:
-				mustClauses.add(queryContext);
+				mustClauses.add(querySpec);
 				break;
 			case MUST_NOT:
-				mustNotClauses.add(queryContext);
+				mustNotClauses.add(querySpec);
 				break;
 			case SHOULD:
-				shouldClauses.add(queryContext);
+				shouldClauses.add(querySpec);
 				break;
 			case ROOT:
 			default:
 				break;
 			}
 			state = BoolQueryState.ROOT;
-			queryContext = null;
+			querySpec = null;
 		}
 	}
 

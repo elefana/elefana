@@ -32,22 +32,30 @@ public class DocumentApiController {
 	private DocumentService documentService;
 	@Autowired
 	private SearchService searchService;
-
-	@RequestMapping(path = "/{index}/{type}", method = RequestMethod.POST)
-	public IndexApiResponse index(@PathVariable String index, @PathVariable String type, HttpEntity<String> request) throws Exception {
-		if(type.toLowerCase().equals("_search")) {
-			
+	
+	@RequestMapping(path = "/{indexPattern}", method = RequestMethod.POST)
+	public Object index(@PathVariable String indexPattern, HttpEntity<String> request) throws Exception {
+		if(indexPattern.toLowerCase().equals("_search")) {
+			return searchService.search(request.getBody());
 		}
-		return index(index, type, UUID.randomUUID().toString(), request);
+		return null;
 	}
 
-	@RequestMapping(path = "/{index}/{type}/{id}", method = RequestMethod.POST)
-	public IndexApiResponse index(@PathVariable String index, @PathVariable String type, @PathVariable String id,
+	@RequestMapping(path = "/{indexPattern}/{types}", method = RequestMethod.POST)
+	public Object index(@PathVariable String indexPattern, @PathVariable String types, HttpEntity<String> request) throws Exception {
+		if(types.toLowerCase().equals("_search")) {
+			return searchService.search(indexPattern, request.getBody());
+		}
+		return index(indexPattern, types, UUID.randomUUID().toString(), request);
+	}
+
+	@RequestMapping(path = "/{indexPattern}/{types}/{id}", method = RequestMethod.POST)
+	public Object index(@PathVariable String indexPattern, @PathVariable String types, @PathVariable String id,
 			HttpEntity<String> request) throws Exception {
 		if(id.toLowerCase().equals("_search")) {
-			
+			return searchService.search(indexPattern, types, request.getBody());
 		}
 		String document = request.getBody();
-		return documentService.index(index, type, id, document);
+		return documentService.index(indexPattern, types, id, document);
 	}
 }

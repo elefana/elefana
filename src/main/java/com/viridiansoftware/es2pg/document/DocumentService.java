@@ -45,11 +45,12 @@ public class DocumentService {
 
 		Connection connection = jdbcTemplate.getDataSource().getConnection();
 		PreparedStatement preparedStatement = connection
-				.prepareStatement("INSERT INTO " + index + " (id, type, timestamp, data) VALUES (?, ?, ?, ?);");
-		preparedStatement.setString(1, id);
+				.prepareStatement("INSERT INTO " + index + " (_index, _type, _id, _timestamp, _source) VALUES (?, ?, ?, ?);");
+		preparedStatement.setString(1, index);
 		preparedStatement.setString(2, type);
-		preparedStatement.setLong(3, System.currentTimeMillis());
-		preparedStatement.setObject(4, jsonObject);
+		preparedStatement.setString(3, id);
+		preparedStatement.setLong(4, System.currentTimeMillis());
+		preparedStatement.setObject(5, jsonObject);
 		int rows = preparedStatement.executeUpdate();
 
 		if (rows > 0) {

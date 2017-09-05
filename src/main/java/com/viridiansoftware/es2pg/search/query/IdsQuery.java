@@ -19,7 +19,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class IdsQuery extends QueryContext {
+public class IdsQuery extends QuerySpec {
 	private static final String KEY_TYPE = "type";
 	private static final String KEY_VALUES = "values";
 	private static final String KEY_BOOST = "boost";

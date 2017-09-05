@@ -17,7 +17,7 @@ package com.viridiansoftware.es2pg.search.query;
 
 import java.io.IOException;
 
-public class MatchPhraseQuery extends QueryContext {
+public class MatchPhraseQuery extends QuerySpec {
 	private static final String KEY_QUERY = "query";
 	private static final String KEY_SLOP = "slop";
 	private static final String KEY_BOOST = "boost";

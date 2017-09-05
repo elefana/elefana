@@ -21,7 +21,7 @@ public class RequestBodySearchTest {
 
 	@Test
 	public void testSearchQueryParsing() throws Exception {
-		final String query = "{\"query\": {\"bool\" : {\"must\" : {\"term\" : { \"user\" : \"kimchy\" }},\"filter\": {\"term\" : { \"tag\" : \"tech\" }},\"must_not\" : {\"range\" : {\"age\" : { \"gte\" : 10, \"lte\" : 20 }}},\"should\" : [{ \"term\" : { \"tag\" : \"wow\" } },{ \"term\" : { \"tag\" : \"elasticsearch\" }}],\"minimum_should_match\" : 1,\"boost\" : 1.0}}}";
+		//final String query = "{\"query\": {\"bool\" : {\"must\" : {\"term\" : { \"user\" : \"kimchy\" }},\"filter\": {\"term\" : { \"tag\" : \"tech\" }},\"must_not\" : {\"range\" : {\"age\" : { \"gte\" : 10, \"lte\" : 20 }}},\"should\" : [{ \"term\" : { \"tag\" : \"wow\" } },{ \"term\" : { \"tag\" : \"elasticsearch\" }}],\"minimum_should_match\" : 1,\"boost\" : 1.0}}}";
 		//final String query = "{\"query\": {\"match\" : {\"message\" : \"this is a test\"}}}";
 		//final String query = "{\"query\": {\"match_phrase\" : {\"message\" : \"this is a test\"}}}";
 		//final String query = "{\"query\": {\"match_phrase_prefix\" : {\"message\" : \"this is a test\"}}}";
@@ -34,7 +34,8 @@ public class RequestBodySearchTest {
 		//final String query = "{ \"query\": { \"prefix\" : { \"user\" : \"ki\" }}}";
 		//final String query = "{\"query\": {\"type\" : {\"value\" : \"my_type\"}}}";
 		//final String query = "{\"query\": {\"ids\" : {\"type\" : \"my_type\",\"values\" : [\"1\", \"4\", \"100\"]}}}";
+		final String query = "{\"query\": {\"match_all\": {}},\"aggs\" : {\"price_ranges\" : {\"range\" : {\"field\" : \"price\",\"ranges\" : [{ \"to\" : 50 },{ \"from\" : 50, \"to\" : 100 },{ \"from\" : 100 }]},\"aggs\" : {\"price_stats\" : {\"avg\" : { \"field\" : \"price\" }}}}}}";
 		RequestBodySearch requestBodySearch = new RequestBodySearch(query, true);
-		System.out.println(requestBodySearch.getSqlWhereClause());
+		System.out.println(requestBodySearch.getQuerySqlWhereClause());
 	}
 }
