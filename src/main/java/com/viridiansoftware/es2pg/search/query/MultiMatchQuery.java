@@ -47,14 +47,14 @@ public class MultiMatchQuery extends MatchQuery {
 				String fieldName = fields.get(j);
 				switch(type) {
 				case "phrase":
-					stringBuilder.append("data->>'" + fieldName + "' LIKE '" + terms[i] + "'");
+					stringBuilder.append("_source->>'" + fieldName + "' LIKE '" + terms[i] + "'");
 					break;
 				case "phrase_prefix":
-					stringBuilder.append("data->>'" + fieldName + "' LIKE '" + terms[i] + "%'");
+					stringBuilder.append("_source->>'" + fieldName + "' LIKE '" + terms[i] + "%'");
 					break;
 				default:
 				case "best_fields":
-					stringBuilder.append("data->>'" + fieldName + "' LIKE '%" + terms[i] + "%'");
+					stringBuilder.append("_source->>'" + fieldName + "' LIKE '%" + terms[i] + "%'");
 					break;
 				}
 			}

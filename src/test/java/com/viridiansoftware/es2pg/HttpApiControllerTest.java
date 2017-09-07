@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.viridiansoftware.es2pg.document;
+package com.viridiansoftware.es2pg;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -35,7 +35,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment=WebEnvironment.DEFINED_PORT)
-public class DocumentApiControllerTest {
+public class HttpApiControllerTest {
 	private RestClient restClient;
 
 	@Before

@@ -16,6 +16,10 @@
 package com.viridiansoftware.es2pg.search.query;
 
 public class MatchAllQuery extends QuerySpec {
+	
+	public boolean isMatchAllQuery() {
+		return true;
+	}
 
 	@Override
 	public String toSqlWhereClause() {

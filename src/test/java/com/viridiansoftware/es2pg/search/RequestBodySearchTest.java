@@ -15,9 +15,18 @@
  */
 package com.viridiansoftware.es2pg.search;
 
+import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
+import org.springframework.test.context.junit4.SpringRunner;
 
+@RunWith(SpringRunner.class)
+@SpringBootTest(webEnvironment=WebEnvironment.DEFINED_PORT)
 public class RequestBodySearchTest {
+	
+	@Before
 
 	@Test
 	public void testSearchQueryParsing() throws Exception {
@@ -37,5 +46,10 @@ public class RequestBodySearchTest {
 		final String query = "{\"query\": {\"match_all\": {}},\"aggs\" : {\"price_ranges\" : {\"range\" : {\"field\" : \"price\",\"ranges\" : [{ \"to\" : 50 },{ \"from\" : 50, \"to\" : 100 },{ \"from\" : 100 }]},\"aggs\" : {\"price_stats\" : {\"avg\" : { \"field\" : \"price\" }}}}}}";
 		RequestBodySearch requestBodySearch = new RequestBodySearch(query, true);
 		System.out.println(requestBodySearch.getQuerySqlWhereClause());
+	}
+	
+	@Test
+	public void testRangeAvgAggregation() {
+		
 	}
 }

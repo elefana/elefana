@@ -37,14 +37,14 @@ public class RangeQuery extends QuerySpec {
 	public String toSqlWhereClause() {
 		StringBuilder result = new StringBuilder();
 		if (longFrom != null || doubleFrom != null) {
-			result.append("data->>'" + fieldName + "' " + (includeLower ? ">=" : ">") + " "
+			result.append("_source->>'" + fieldName + "' " + (includeLower ? ">=" : ">") + " "
 					+ (longFrom != null ? longFrom : doubleFrom));
 		}
 		if (longTo != null || doubleTo != null) {
 			if (longFrom != null || doubleFrom != null) {
 				result.append(" AND ");
 			}
-			result.append("data->>'" + fieldName + "' " + (includeUpper ? "<=" : "<") + " "
+			result.append("_source->>'" + fieldName + "' " + (includeUpper ? "<=" : "<") + " "
 					+ (longTo != null ? longTo : doubleTo));
 		}
 		return result.toString();

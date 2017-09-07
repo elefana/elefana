@@ -29,7 +29,7 @@ public class TermQuery extends QuerySpec {
 
 	@Override
 	public String toSqlWhereClause() {
-		return "data->>'" + fieldName + "' = '" + value + "'";
+		return "_source->>'" + fieldName + "' = '" + value + "'";
 	}
 
 	@Override

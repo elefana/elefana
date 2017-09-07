@@ -36,7 +36,7 @@ public class TableGarbageCollector implements Runnable {
 	
 	@PostConstruct
 	public void postConstruct() {
-		deletionFrequency = environment.getProperty("es2pg.gc.frequency", Long.class, 1000L);
+		deletionFrequency = environment.getRequiredProperty("es2pg.gc.frequency", Long.class);
 		taskScheduler.scheduleWithFixedDelay(this, deletionFrequency);
 	}
 	
@@ -68,7 +68,6 @@ public class TableGarbageCollector implements Runnable {
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
 		}
-		taskScheduler.scheduleWithFixedDelay(this, deletionFrequency);
 	}
 
 	private void deleteNextTable() {
@@ -77,5 +76,6 @@ public class TableGarbageCollector implements Runnable {
 			return;
 		}
 		tableUtils.deleteTable(nextTable);
+		LOGGER.info("[GC] Removed " + nextTable);
 	}
 }

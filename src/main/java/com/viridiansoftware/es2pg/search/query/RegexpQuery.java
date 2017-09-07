@@ -27,7 +27,7 @@ public class RegexpQuery extends QuerySpec {
 
 	@Override
 	public String toSqlWhereClause() {
-		return "data->>'" + fieldName + "' SIMILAR TO '" + value + "'";
+		return "_source->>'" + fieldName + "' SIMILAR TO '" + value + "'";
 	}
 
 	@Override

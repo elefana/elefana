@@ -20,6 +20,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.postgresql.util.PSQLException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
@@ -31,7 +34,9 @@ import com.viridiansoftware.es2pg.util.TableUtils;
 
 @Service
 public class SearchService {
-	private static final String SEARCH_TABLE_PREFIX = "search_";
+	private static final Logger LOGGER = LoggerFactory.getLogger(SearchService.class);
+	
+	private static final String SEARCH_TABLE_PREFIX = "es2pgsql_search_";
 	private static final String[] EMPTY_TYPES_LIST = new String[0];
 
 	@Autowired
@@ -40,7 +45,7 @@ public class SearchService {
 	private TableUtils tableUtils;
 	@Autowired
 	private TableGarbageCollector garbageCollector;
-	
+
 	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	public Map<String, Object> search(String transmittedRequestBody) throws Exception {
@@ -67,8 +72,34 @@ public class SearchService {
 		}
 		return searchWithAggregation(indices, types, requestBodySearch, startTime);
 	}
-	
+
 	private Map<String, Object> searchWithAggregation(List<String> indices, String[] types,
+			RequestBodySearch requestBodySearch, long startTime) throws Exception {
+		if (indices.size() == 1 && requestBodySearch.getQuery().isMatchAllQuery()) {
+			if (requestBodySearch.getFrom() > 0) {
+				return searchWithAggregationUsingCachedTables(indices, types, requestBodySearch, startTime);
+			} else if (requestBodySearch.getSize() > 0) {
+				return searchWithAggregationUsingCachedTables(indices, types, requestBodySearch, startTime);
+			}
+			return searchWithAggregationUsingOriginalTable(indices, types, requestBodySearch, startTime);
+		}
+		return searchWithAggregationUsingCachedTables(indices, types, requestBodySearch, startTime);
+	}
+
+	private Map<String, Object> searchWithAggregationUsingOriginalTable(List<String> indices, String[] types,
+			RequestBodySearch requestBodySearch, long startTime) throws Exception {
+		final List<String> temporaryTablesCreated = new ArrayList<String>(1);
+		final Map<String, Object> result = executeQuery("SELECT * FROM " + indices.get(0), startTime,
+				requestBodySearch.getSize());
+		final Map<String, Object> aggregationsResult = new HashMap<String, Object>();
+		requestBodySearch.getAggregation().executeSqlQuery(jdbcTemplate, aggregationsResult, temporaryTablesCreated,
+				indices.get(0), requestBodySearch);
+		result.put("aggregations", aggregationsResult);
+		garbageCollector.scheduleTablesForDeletion(temporaryTablesCreated);
+		return result;
+	}
+
+	private Map<String, Object> searchWithAggregationUsingCachedTables(List<String> indices, String[] types,
 			RequestBodySearch requestBodySearch, long startTime) throws Exception {
 		final List<String> temporaryTablesCreated = new ArrayList<String>(1);
 		final String queryDataTableName = SEARCH_TABLE_PREFIX + requestBodySearch.hashCode() + "_"
@@ -80,10 +111,27 @@ public class SearchService {
 			if (i > 0) {
 				tempTableBuilderQuery.append(" UNION ALL ");
 			}
-			tempTableBuilderQuery.append("SELECT * FROM ");
+			tempTableBuilderQuery.append("SELECT * ");
+			
+			if (i == indices.size() - 1) {
+				tempTableBuilderQuery.append(" INTO ");
+				tempTableBuilderQuery.append(queryDataTableName);
+			}
+			
+			tempTableBuilderQuery.append(" FROM ");
 			tempTableBuilderQuery.append(indices.get(i));
-			tempTableBuilderQuery.append(" WHERE ");
-			tempTableBuilderQuery.append(requestBodySearch.getQuerySqlWhereClause());
+			if (!requestBodySearch.getQuery().isMatchAllQuery()) {
+				tempTableBuilderQuery.append(" WHERE ");
+				tempTableBuilderQuery.append(requestBodySearch.getQuerySqlWhereClause());
+			}
+			if (requestBodySearch.getSize() > 0) {
+				tempTableBuilderQuery.append(" LIMIT ");
+				tempTableBuilderQuery.append(requestBodySearch.getSize());
+			}
+			if (requestBodySearch.getFrom() > 0) {
+				tempTableBuilderQuery.append(" OFFSET ");
+				tempTableBuilderQuery.append(requestBodySearch.getFrom());
+			}
 
 			if (types.length <= 0) {
 				tempTableBuilderQuery.append(" AND (");
@@ -102,13 +150,18 @@ public class SearchService {
 			}
 
 		}
-		tempTableBuilderQuery.append(" INTO ");
-		tempTableBuilderQuery.append(queryDataTableName);
 
-		jdbcTemplate.execute(tempTableBuilderQuery.toString());
+		LOGGER.info(tempTableBuilderQuery.toString());
+		jdbcTemplate.update(tempTableBuilderQuery.toString());
+
+		final Map<String, Object> result = executeQuery("SELECT * FROM " + queryDataTableName, startTime,
+				requestBodySearch.getSize());
+		final Map<String, Object> aggregationsResult = new HashMap<String, Object>();
 		
-		final String aggregationQuery = requestBodySearch.getAggregation().toSqlQuery(temporaryTablesCreated, queryDataTableName);
-		final Map<String, Object> result = executeQuery(aggregationQuery, startTime);
+		
+		requestBodySearch.getAggregation().executeSqlQuery(jdbcTemplate, aggregationsResult, temporaryTablesCreated,
+				queryDataTableName, requestBodySearch);
+		result.put("aggregations", aggregationsResult);
 		garbageCollector.scheduleTablesForDeletion(temporaryTablesCreated);
 		return result;
 	}
@@ -120,31 +173,79 @@ public class SearchService {
 			if (i > 0) {
 				tempTableBuilderQuery.append(" UNION ALL ");
 			}
-			tempTableBuilderQuery.append("SELECT * FROM ");
+			if (requestBodySearch.getSize() == 0) {
+				tempTableBuilderQuery.append("SELECT COUNT(*) FROM ");
+			} else {
+				tempTableBuilderQuery.append("SELECT * FROM ");
+			}
 			tempTableBuilderQuery.append(indices.get(i));
-			tempTableBuilderQuery.append(" WHERE ");
-			tempTableBuilderQuery.append(requestBodySearch.getQuerySqlWhereClause());
+			if (!requestBodySearch.getQuery().isMatchAllQuery()) {
+				tempTableBuilderQuery.append(" WHERE ");
+				tempTableBuilderQuery.append(requestBodySearch.getQuerySqlWhereClause());
+			}
+			if (requestBodySearch.getSize() > 0) {
+				tempTableBuilderQuery.append(" LIMIT ");
+				tempTableBuilderQuery.append(requestBodySearch.getSize());
+			}
+			if (requestBodySearch.getFrom() > 0) {
+				tempTableBuilderQuery.append(" OFFSET ");
+				tempTableBuilderQuery.append(requestBodySearch.getFrom());
+			}
 		}
-		return executeQuery(tempTableBuilderQuery.toString(), startTime);
+		return executeQuery(tempTableBuilderQuery.toString(), startTime, requestBodySearch.getSize());
 	}
-	
-	private Map<String, Object> executeQuery(String query, long startTime) throws Exception {
+
+	private Map<String, Object> executeQuery(String query, long startTime, int size) throws Exception {
+		SqlRowSet sqlRowSet = null;
+		try {
+			sqlRowSet = jdbcTemplate.queryForRowSet(query);
+			return convertSqlQueryResultToSearchResult(sqlRowSet, startTime, size);
+		} catch (Exception e) {
+			if(e.getMessage().contains("No results")) {
+				return convertSqlQueryResultToSearchResult(null, startTime, size);
+			}
+			throw e;
+		}
+	}
+
+	private Map<String, Object> convertSqlQueryResultToSearchResult(SqlRowSet rowSet, long startTime, int size)
+			throws Exception {
 		final Map<String, Object> result = new HashMap<String, Object>();
 		final List<Map<String, Object>> hitsList = new ArrayList<Map<String, Object>>(1);
-		
-		SqlRowSet rowSet = jdbcTemplate.queryForRowSet(query);
-		while (rowSet.next()) {
-			Map<String, Object> hit = new HashMap<String, Object>();
-			hit.put("_index", rowSet.getString("_index"));
-			hit.put("_type", rowSet.getString("_type"));
-			hit.put("_id", rowSet.getString("_id"));
-			hit.put("_score", 1.0);
-			hit.put("_source", objectMapper.readValue(tableUtils.destringifyJson(rowSet.getString("_source")), Map.class));
-			hitsList.add(hit);
-		}
 
-		Map<String, Object> hits = new HashMap<String, Object>();
-		hits.put("total", hitsList.size());
+		final Map<String, Object> hits = new HashMap<String, Object>();
+		
+		if (rowSet == null) {
+			hits.put("total", 0);
+		} else if (size > 0) {
+			while (rowSet.next()) {
+				Map<String, Object> hit = new HashMap<String, Object>();
+				hit.put("_index", rowSet.getString("_index"));
+				hit.put("_type", rowSet.getString("_type"));
+				hit.put("_id", rowSet.getString("_id"));
+				hit.put("_score", 1.0);
+				hit.put("_source",
+						objectMapper.readValue(tableUtils.destringifyJson(rowSet.getString("_source")), Map.class));
+				hitsList.add(hit);
+			}
+			hits.put("total", hitsList.size());
+		} else {
+			int totalHits = 0;
+			boolean hasCountColumn = true;
+			while (rowSet.next()) {
+				if (hasCountColumn) {
+					try {
+						totalHits += rowSet.getInt("count");
+					} catch (Exception e) {
+						hasCountColumn = false;
+					}
+				}
+				if (!hasCountColumn) {
+					totalHits++;
+				}
+			}
+			hits.put("total", totalHits);
+		}
 		hits.put("max_score", 1.0);
 		hits.put("hits", hitsList);
 

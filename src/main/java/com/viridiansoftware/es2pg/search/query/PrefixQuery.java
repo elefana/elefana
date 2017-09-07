@@ -29,7 +29,7 @@ public class PrefixQuery extends QuerySpec {
 
 	@Override
 	public String toSqlWhereClause() {
-		return "data->>'" + fieldName + "' LIKE '" + value + "%'";
+		return "_source->>'" + fieldName + "' LIKE '" + value + "%'";
 	}
 
 	@Override

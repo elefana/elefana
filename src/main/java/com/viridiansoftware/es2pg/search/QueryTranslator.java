@@ -44,6 +44,14 @@ public class QueryTranslator extends QuerySpec {
 	protected QuerySpec querySpec = null;
 	
 	@Override
+	public boolean isMatchAllQuery() {
+		if(querySpec == null) {
+			return super.isMatchAllQuery();
+		}
+		return querySpec.isMatchAllQuery();
+	}
+	
+	@Override
 	public String toSqlWhereClause() {
 		if(querySpec == null) {
 			return "";

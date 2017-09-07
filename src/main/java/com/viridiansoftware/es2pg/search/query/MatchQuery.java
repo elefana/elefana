@@ -47,7 +47,7 @@ public class MatchQuery extends QuerySpec {
 			if(i > 0) {
 				stringBuilder.append(" " + operator + " ");
 			}
-			stringBuilder.append("data->>'" + fieldName + "' LIKE '%" + terms[i] + "%'");
+			stringBuilder.append("_source->>'" + fieldName + "' LIKE '%" + terms[i] + "%'");
 		}
 		stringBuilder.append(')');
 		return stringBuilder.toString();

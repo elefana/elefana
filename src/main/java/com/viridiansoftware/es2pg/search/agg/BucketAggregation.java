@@ -15,7 +15,7 @@ import com.viridiansoftware.es2pg.exception.UnsupportedAggregationTypeException;
 import com.viridiansoftware.es2pg.search.AggregationType;
 
 public class BucketAggregation extends Aggregation {
-	private final List<Aggregation> subaggregations = new ArrayList<Aggregation>(1);
+	protected final List<Aggregation> subaggregations = new ArrayList<Aggregation>(1);
 
 	public BucketAggregation(String aggregationName) {
 		super(aggregationName);
@@ -32,7 +32,7 @@ public class BucketAggregation extends Aggregation {
 			if(name.equals(KEY_AGGS)) {
 				return;
 			}
-			subaggregations.add(new Aggregation(name));
+			subaggregations.add(new BucketAggregation(name));
 		} else {
 			subaggregations.get(subaggregations.size() - 1).writeFieldName(name);
 		}

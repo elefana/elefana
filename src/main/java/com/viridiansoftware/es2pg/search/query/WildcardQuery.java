@@ -27,7 +27,7 @@ public class WildcardQuery extends QuerySpec {
 
 	@Override
 	public String toSqlWhereClause() {
-		return "data->>'" + fieldName + "' = '" + value.replace("*", "%").replace("?", "_") + "'";
+		return "_source->>'" + fieldName + "' = '" + value.replace("*", "%").replace("?", "_") + "'";
 	}
 
 	@Override

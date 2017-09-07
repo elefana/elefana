@@ -36,6 +36,10 @@ public class RequestBodySearch {
 	private final String originalQuery;
 	private final String querySqlWhereClause;
 	private final AggregationTranslator aggregationTranslator = new AggregationTranslator();
+	private final QueryTranslator queryTranslator = new QueryTranslator();
+	
+	private final int from;
+	private final int size;
 
 	public RequestBodySearch(String originalQuery) throws Exception {
 		this(originalQuery, false);
@@ -46,18 +50,26 @@ public class RequestBodySearch {
 		this.originalQuery = originalQuery;
 
 		try {
-			final QueryTranslator queryTranslator = new QueryTranslator();
 			XContentParser xContentParser = queryTranslator.createParser(new NamedXContentRegistry(searchModule.getNamedXContents()), originalQuery);
 			QueryParseContext queryParseContext = new QueryParseContext(xContentParser);
 			searchSourceBuilder.parseXContent(queryParseContext);
 			
 			if(debug) {
+				System.out.println(searchSourceBuilder.from());
+				System.out.println(searchSourceBuilder.size());
 				System.out.println(searchSourceBuilder.query().toString());
 				System.out.println(searchSourceBuilder.aggregations().toString());
 			}
 			
-			searchSourceBuilder.query().toXContent(new XContentBuilder(queryTranslator, null), ToXContent.EMPTY_PARAMS);
-			searchSourceBuilder.aggregations().toXContent(new XContentBuilder(aggregationTranslator, null), ToXContent.EMPTY_PARAMS);
+			from = searchSourceBuilder.from() < 0 ? 0 : searchSourceBuilder.from();
+			size = searchSourceBuilder.size() < 0 ? 10 : searchSourceBuilder.size();
+			
+			if(searchSourceBuilder.query() != null) {
+				searchSourceBuilder.query().toXContent(new XContentBuilder(queryTranslator, null), ToXContent.EMPTY_PARAMS);
+			}
+			if(searchSourceBuilder.aggregations() != null) {
+				searchSourceBuilder.aggregations().toXContent(new XContentBuilder(aggregationTranslator, null), ToXContent.EMPTY_PARAMS);
+			}
 			querySqlWhereClause = queryTranslator.toSqlWhereClause();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -66,6 +78,9 @@ public class RequestBodySearch {
 	}
 	
 	public boolean hasAggregations() {
+		if(searchSourceBuilder.aggregations() == null) {
+			return false;
+		}
 		return searchSourceBuilder.aggregations().count() > 0;
 	}
 
@@ -81,7 +96,44 @@ public class RequestBodySearch {
 		return querySqlWhereClause;
 	}
 	
+	public QueryTranslator getQuery() {
+		return queryTranslator;
+	}
+	
 	public AggregationTranslator getAggregation() {
 		return aggregationTranslator;
+	}
+
+	public int getFrom() {
+		return from;
+	}
+
+	public int getSize() {
+		return size;
+	}
+	
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((originalQuery == null) ? 0 : originalQuery.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		RequestBodySearch other = (RequestBodySearch) obj;
+		if (originalQuery == null) {
+			if (other.originalQuery != null)
+				return false;
+		} else if (!originalQuery.equals(other.originalQuery))
+			return false;
+		return true;
 	}
 }

@@ -1,7 +1,7 @@
 /**
  * Copyright 2017 Viridian Software Ltd.
  */
-package com.viridiansoftware.es2pg.search;
+package com.viridiansoftware.es2pg.util;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -17,7 +17,7 @@ import org.elasticsearch.common.xcontent.XContentGenerator;
 import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.common.xcontent.XContentType;
 
-public abstract class EsSearchParseContext implements XContentGenerator, XContent {
+public abstract class EsXContext implements XContentGenerator, XContent {
 	protected boolean closed = false;
 	protected int startObjectCount = 0;
 	protected int endObjectCount = 0;

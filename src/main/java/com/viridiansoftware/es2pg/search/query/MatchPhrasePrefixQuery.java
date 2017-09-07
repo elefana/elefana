@@ -24,7 +24,7 @@ public class MatchPhrasePrefixQuery extends MatchPhraseQuery {
 	
 	@Override
 	public String toSqlWhereClause() {
-		return "data->>'" + fieldName + "' LIKE '" + query + "%'";
+		return "_source->>'" + fieldName + "' LIKE '" + query + "%'";
 	}
 	
 	@Override

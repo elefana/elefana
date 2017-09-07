@@ -16,6 +16,7 @@
 package com.viridiansoftware.es2pg.util;
 
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -49,11 +50,16 @@ public class TableUtils {
 	
 	public List<String> listTables() throws SQLException {
 		Connection connection = jdbcTemplate.getDataSource().getConnection();
-		ResultSet resultSet = connection.getMetaData().getTables(null, null, "%", null);
+		DatabaseMetaData databaseMetaData = connection.getMetaData();
+		ResultSet resultSet = databaseMetaData.getTables(null, null, "%", new String[] {"TABLE"});
 		
 		List<String> results = new ArrayList<String>(1);
 		while (resultSet.next()) {
-			results.add(resultSet.getString(3));			  
+			String tableName = resultSet.getString(3);
+			if(tableName.startsWith("es2pgsql_")) {
+				continue;
+			}
+			results.add(tableName);			  
 		}
 		connection.close();
 		return results;
@@ -74,7 +80,7 @@ public class TableUtils {
 	}
 	
 	public void deleteTable(final String tableName) {
-		jdbcTemplate.update("DROP TABLE IF EXISTS" + tableName + " CASCADE;");
+		jdbcTemplate.update("DROP TABLE IF EXISTS " + tableName + " CASCADE;");
 	}
 
 	public void ensureTableExists(final String tableName) throws SQLException {
