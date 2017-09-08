@@ -14,11 +14,20 @@ import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.xcontent.XContentType;
 
 public class MapXContentBuilder extends EsXContext {
-	private final Map<String, Object> result = new HashMap<String, Object>();
+	private final Map<String, Object> result;
 
 	private String currentFieldName;
 	private List<Object> currentValueArray;
 	private MapXContentBuilder currentObject;
+	
+	public MapXContentBuilder() {
+		this(new HashMap<String, Object>());
+	}
+	
+	public MapXContentBuilder(Map<String, Object> backingMap) {
+		super();
+		this.result = backingMap;
+	}
 
 	@Override
 	public void writeStartObject() throws IOException {
@@ -27,6 +36,7 @@ public class MapXContentBuilder extends EsXContext {
 			currentObject.writeStartObject();
 		} else if(currentFieldName != null) {
 			currentObject = new MapXContentBuilder();
+			currentObject.writeStartObject();
 		}
 	}
 

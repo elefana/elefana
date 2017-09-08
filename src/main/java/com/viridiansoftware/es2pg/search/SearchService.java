@@ -89,7 +89,7 @@ public class SearchService {
 	private Map<String, Object> searchWithAggregationUsingOriginalTable(List<String> indices, String[] types,
 			RequestBodySearch requestBodySearch, long startTime) throws Exception {
 		final List<String> temporaryTablesCreated = new ArrayList<String>(1);
-		final Map<String, Object> result = executeQuery("SELECT * FROM " + indices.get(0), startTime,
+		final Map<String, Object> result = executeQuery("SELECT * FROM " + tableUtils.sanitizeTableName(indices.get(0)), startTime,
 				requestBodySearch.getSize());
 		final Map<String, Object> aggregationsResult = new HashMap<String, Object>();
 		requestBodySearch.getAggregation().executeSqlQuery(jdbcTemplate, aggregationsResult, temporaryTablesCreated,
@@ -119,7 +119,7 @@ public class SearchService {
 			}
 			
 			tempTableBuilderQuery.append(" FROM ");
-			tempTableBuilderQuery.append(indices.get(i));
+			tempTableBuilderQuery.append(tableUtils.sanitizeTableName(indices.get(i)));
 			if (!requestBodySearch.getQuery().isMatchAllQuery()) {
 				tempTableBuilderQuery.append(" WHERE ");
 				tempTableBuilderQuery.append(requestBodySearch.getQuerySqlWhereClause());
@@ -178,7 +178,7 @@ public class SearchService {
 			} else {
 				tempTableBuilderQuery.append("SELECT * FROM ");
 			}
-			tempTableBuilderQuery.append(indices.get(i));
+			tempTableBuilderQuery.append(tableUtils.sanitizeTableName(indices.get(i)));
 			if (!requestBodySearch.getQuery().isMatchAllQuery()) {
 				tempTableBuilderQuery.append(" WHERE ");
 				tempTableBuilderQuery.append(requestBodySearch.getQuerySqlWhereClause());

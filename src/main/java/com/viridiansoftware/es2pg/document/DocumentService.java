@@ -27,6 +27,7 @@ import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.viridiansoftware.es2pg.exception.DocumentAlreadyExistsException;
 import com.viridiansoftware.es2pg.exception.NoSuchDocumentException;
 import com.viridiansoftware.es2pg.util.TableUtils;
 
@@ -38,12 +39,14 @@ public class DocumentService {
 	private TableUtils tableUtils;
 
 	private final ObjectMapper objectMapper = new ObjectMapper();
-	
+
 	public Map<String, Object> get(String index, String type, String id) throws Exception {
 		Connection connection = jdbcTemplate.getDataSource().getConnection();
 		Map<String, Object> result = null;
 		try {
-			result = jdbcTemplate.queryForMap("SELECT * FROM " + index + " WHERE _type = '?' AND _id = '?'", type, id);
+			result = jdbcTemplate.queryForMap(
+					"SELECT * FROM " + tableUtils.sanitizeTableName(index) + " WHERE _type = '?' AND _id = '?'", type,
+					id);
 		} catch (Exception e) {
 			connection.close();
 			throw new NoSuchDocumentException();
@@ -51,18 +54,19 @@ public class DocumentService {
 		connection.close();
 		return result;
 	}
-	
+
 	public MultiGetResponse multiGet() throws Exception {
 		Connection connection = jdbcTemplate.getDataSource().getConnection();
 		MultiGetResponse result = new MultiGetResponse();
 		try {
-			for(String tableName : tableUtils.listTables()) {
-				SqlRowSet resultSet = jdbcTemplate.queryForRowSet("SELECT * FROM " + tableName + " LIMIT 10");
-				while(resultSet.next()) {
+			for (String tableName : tableUtils.listTables()) {
+				SqlRowSet resultSet = jdbcTemplate
+						.queryForRowSet("SELECT * FROM " + tableUtils.sanitizeTableName(tableName) + " LIMIT 10");
+				while (resultSet.next()) {
 					GetResponse getResponse = new GetResponse();
-					getResponse.set_index(resultSet.getString("_index")); 
-					getResponse.set_type(resultSet.getString("_type")); 
-					getResponse.set_id(resultSet.getString("_id")); 
+					getResponse.set_index(resultSet.getString("_index"));
+					getResponse.set_type(resultSet.getString("_type"));
+					getResponse.set_id(resultSet.getString("_id"));
 					getResponse.set_source(objectMapper.readValue(resultSet.getString("_source"), Map.class));
 					result.getDocs().add(getResponse);
 				}
@@ -75,20 +79,21 @@ public class DocumentService {
 		connection.close();
 		return result;
 	}
-	
+
 	public MultiGetResponse multiGet(String indexPattern) throws Exception {
 		Connection connection = jdbcTemplate.getDataSource().getConnection();
 		MultiGetResponse result = new MultiGetResponse();
 		try {
-			String [] indices = indexPattern.split(",");
-			for(int i = 0; i < indices.length; i++) {
-				for(String tableName : tableUtils.listTables(indices[i])) {
-					SqlRowSet resultSet = jdbcTemplate.queryForRowSet("SELECT * FROM " + tableName);
-					while(resultSet.next()) {
+			String[] indices = indexPattern.split(",");
+			for (int i = 0; i < indices.length; i++) {
+				for (String tableName : tableUtils.listTables(indices[i])) {
+					SqlRowSet resultSet = jdbcTemplate
+							.queryForRowSet("SELECT * FROM " + tableUtils.sanitizeTableName(tableName));
+					while (resultSet.next()) {
 						GetResponse getResponse = new GetResponse();
-						getResponse.set_index(resultSet.getString("_index")); 
-						getResponse.set_type(resultSet.getString("_type")); 
-						getResponse.set_id(resultSet.getString("_id")); 
+						getResponse.set_index(resultSet.getString("_index"));
+						getResponse.set_type(resultSet.getString("_type"));
+						getResponse.set_id(resultSet.getString("_id"));
 						getResponse.set_source(objectMapper.readValue(resultSet.getString("_source"), Map.class));
 						result.getDocs().add(getResponse);
 					}
@@ -101,17 +106,18 @@ public class DocumentService {
 		connection.close();
 		return result;
 	}
-	
+
 	public MultiGetResponse multiGet(String index, String type) throws Exception {
 		Connection connection = jdbcTemplate.getDataSource().getConnection();
 		MultiGetResponse result = new MultiGetResponse();
 		try {
-			SqlRowSet resultSet = jdbcTemplate.queryForRowSet("SELECT * FROM " + index + " WHERE _type = '?''", type);
-			while(resultSet.next()) {
+			SqlRowSet resultSet = jdbcTemplate.queryForRowSet(
+					"SELECT * FROM " + tableUtils.sanitizeTableName(index) + " WHERE _type = '?''", type);
+			while (resultSet.next()) {
 				GetResponse getResponse = new GetResponse();
-				getResponse.set_index(resultSet.getString("_index")); 
-				getResponse.set_type(resultSet.getString("_type")); 
-				getResponse.set_id(resultSet.getString("_id")); 
+				getResponse.set_index(resultSet.getString("_index"));
+				getResponse.set_type(resultSet.getString("_type"));
+				getResponse.set_id(resultSet.getString("_id"));
 				getResponse.set_source(objectMapper.readValue(resultSet.getString("_source"), Map.class));
 				result.getDocs().add(getResponse);
 			}
@@ -123,16 +129,25 @@ public class DocumentService {
 		return result;
 	}
 
-	public IndexApiResponse index(String index, String type, String id, String document) throws Exception {
+	public IndexApiResponse index(String index, String type, String id, String document, boolean createMode)
+			throws Exception {
 		tableUtils.ensureTableExists(index);
 
 		PGobject jsonObject = new PGobject();
 		jsonObject.setType("json");
 		jsonObject.setValue(document);
 
+		StringBuilder queryBuilder = new StringBuilder();
+		queryBuilder.append("INSERT INTO ");
+		queryBuilder.append(tableUtils.sanitizeTableName(index));
+		queryBuilder.append(" (_index, _type, _id, _timestamp, _source) VALUES (?, ?, ?, ?, ?)");
+		if (createMode) {
+			queryBuilder.append(" ON CONFLICT DO NOTHING");
+		}
+		queryBuilder.append(";");
+
 		Connection connection = jdbcTemplate.getDataSource().getConnection();
-		PreparedStatement preparedStatement = connection
-				.prepareStatement("INSERT INTO " + index + " (_index, _type, _id, _timestamp, _source) VALUES (?, ?, ?, ?, ?);");
+		PreparedStatement preparedStatement = connection.prepareStatement(queryBuilder.toString());
 		preparedStatement.setString(1, index);
 		preparedStatement.setString(2, type);
 		preparedStatement.setString(3, id);
@@ -140,7 +155,7 @@ public class DocumentService {
 		preparedStatement.setObject(5, jsonObject);
 		int rows = preparedStatement.executeUpdate();
 		connection.close();
-		
+
 		if (rows > 0) {
 			IndexApiResponse result = new IndexApiResponse();
 			result._index = index;
@@ -150,6 +165,9 @@ public class DocumentService {
 			result.created = true;
 			return result;
 		} else {
+			if(createMode) {
+				throw new DocumentAlreadyExistsException();
+			}
 			throw new RuntimeException("");
 		}
 	}

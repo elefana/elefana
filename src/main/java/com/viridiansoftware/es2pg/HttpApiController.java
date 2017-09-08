@@ -17,6 +17,8 @@ package com.viridiansoftware.es2pg;
 
 import java.util.UUID;
 
+import javax.servlet.http.HttpServletResponse;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -93,14 +95,21 @@ public class HttpApiController {
 			}
 			break;
 		case "_nodes":
-			return nodesService.getNodesInfo(typePattern.split(","));
+			switch(typePatternLowercase) {
+			case "_all":
+				return nodesService.getNodesInfo();
+			case "_local":
+				return nodesService.getLocalNodeInfo();
+			default:
+				return nodesService.getNodesInfo(typePattern.split(","));
+			}
 		}
 		return null;
 	}
 
 	@RequestMapping(path = "/{indexPattern}/{typePattern}", method = RequestMethod.POST)
 	public Object indexOrSearch(@PathVariable String indexPattern, @PathVariable String typePattern,
-			HttpEntity<String> request) throws Exception {
+			HttpEntity<String> request, HttpServletResponse response) throws Exception {
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		final String typePatternLowercase = typePattern.toLowerCase();
 		
@@ -110,7 +119,7 @@ public class HttpApiController {
 		case "_mget":
 			return documentService.multiGet(indexPattern);
 		}
-		return indexOrSearch(indexPattern, typePattern, UUID.randomUUID().toString(), request);
+		return indexOrSearch(indexPattern, typePattern, UUID.randomUUID().toString(), request, response);
 	}
 
 	@RequestMapping(path = "/{indexPattern}/{typePattern}/{idPattern}", method = RequestMethod.GET)
@@ -133,11 +142,37 @@ public class HttpApiController {
 
 	@RequestMapping(path = "/{indexPattern}/{typePattern}/{idPattern}", method = RequestMethod.POST)
 	public Object indexOrSearch(@PathVariable String indexPattern, @PathVariable String typePattern,
-			@PathVariable String idPattern, HttpEntity<String> request) throws Exception {
+			@PathVariable String idPattern, HttpEntity<String> request, HttpServletResponse response) throws Exception {
+		final String indexPatternLowercase = indexPattern.toLowerCase();
+		final String typePatternLowercase = typePattern.toLowerCase();
+		final String idPatternLowercase = idPattern.toLowerCase();
 		if (idPattern.toLowerCase().equals("_search")) {
 			return searchService.search(indexPattern, typePattern, request.getBody());
 		}
 		String document = request.getBody();
-		return documentService.index(indexPattern, typePattern, idPattern, document);
+		Object result = documentService.index(indexPattern, typePattern, idPattern, document, false);
+		if(result != null) {
+			response.setStatus(HttpServletResponse.SC_CREATED);
+		}
+		return result;
+	}
+	
+	@RequestMapping(path = "/{indexPattern}/{typePattern}/{idPattern}/{opPattern}", method = RequestMethod.POST)
+	public Object indexOrSearch(@PathVariable String indexPattern, @PathVariable String typePattern,
+			@PathVariable String idPattern, @PathVariable String opPattern, HttpEntity<String> request, HttpServletResponse response) throws Exception {
+		if (idPattern.toLowerCase().equals("_search")) {
+			return searchService.search(indexPattern, typePattern, request.getBody());
+		}
+		Object result = null;
+		switch(opPattern) {
+		case "_create":
+			String document = request.getBody();
+			result = documentService.index(indexPattern, typePattern, idPattern, document, true);
+			if(result != null) {
+				response.setStatus(HttpServletResponse.SC_CREATED);
+			}
+			break;
+		}
+		return result;
 	}
 }

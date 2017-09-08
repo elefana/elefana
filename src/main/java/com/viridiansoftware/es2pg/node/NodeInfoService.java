@@ -9,7 +9,6 @@ import java.util.Map;
 
 import javax.annotation.PostConstruct;
 
-import org.apache.commons.codec.digest.DigestUtils;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
@@ -24,7 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
-import com.viridiansoftware.es2pg.search.SearchService;
+import com.viridiansoftware.es2pg.util.EmptyJsonObject;
 import com.viridiansoftware.es2pg.util.MapXContentBuilder;
 
 @Service
@@ -39,27 +38,44 @@ public class NodeInfoService {
 	
 	@Autowired
 	Environment environment;
+	@Autowired
+	private NodeSettingsService nodeSettingsService;
+	@Autowired
+	private VersionInfoService versionInfoService;
 
-	private String nodeId;
-	private String nodeName;
 	private OsService osService;
 	private ProcessService processService;
 	private JvmService jvmService;
 	// private final FsService fsService;
 	
+	private final Map<String, Object> nodeAttributes = new HashMap<String, Object>();
+	private final Map<String, Object> httpAttributes = new HashMap<String, Object>();
+	private final Map<String, Object> transportAttributes = new HashMap<String, Object>();
+	
+	private boolean dataNode;
+	
 	@PostConstruct
 	public void postConstruct() {
 		LOGGER.info(System.getProperty("java.io.tmpdir"));
 		
-		nodeName = environment.getRequiredProperty("es2pgsql.node.name");
-		nodeId = DigestUtils.sha1Hex(nodeName);
-		
-		final Settings settings = Settings.builder().put("node.name", nodeName).build();
+		final Settings settings = Settings.builder().put("node.name", nodeSettingsService.getNodeName()).build();
 		final ThreadPool threadPool = new ThreadPool(settings, new ExecutorBuilder[0]);
 
 		osService = new OsService(settings);
 		processService = new ProcessService(settings);
 		jvmService = new JvmService(settings);
+		
+		dataNode = checkIfDataNode();
+		nodeAttributes.put("data", dataNode);
+		nodeAttributes.put("master", false);
+		
+		httpAttributes.put("bound_address", new String [] { nodeSettingsService.getHostIp() });
+		httpAttributes.put("publish_address", nodeSettingsService.getHttpAddress());
+		httpAttributes.put("profiles", EmptyJsonObject.INSTANCE);
+		
+		transportAttributes.put("bound_address", new String [] { nodeSettingsService.getHostIp() });
+		transportAttributes.put("publish_address", nodeSettingsService.getTransportAddress());
+		transportAttributes.put("profiles", EmptyJsonObject.INSTANCE);
 	}
 
 	public Map<String, Object> getNodeInfo() throws IOException {
@@ -68,7 +84,26 @@ public class NodeInfoService {
 
 	public Map<String, Object> getNodeInfo(String... infoFields) throws IOException {
 		Map<String, Object> result = new HashMap<String, Object>();
-
+		result.put("name", nodeSettingsService.getNodeName());
+		result.put("transport_address", nodeSettingsService.getTransportAddress());
+		result.put("host", nodeSettingsService.getHostIp());
+		result.put("ip", nodeSettingsService.getIp());
+		result.put("version", versionInfoService.getVersionNumber());
+		result.put("build", versionInfoService.getBuildHash());
+		
+		switch(nodeSettingsService.getApiVersion()) {
+		case V_2_4_3:
+			result.put("http_address", nodeSettingsService.getHttpAddress());
+			result.put("attributes", nodeAttributes);
+			break;
+		case V_5_5_2:
+		default:
+			result.put("http", httpAttributes);
+			result.put("transport", transportAttributes);
+			result.put("roles", new String [] { (dataNode ? "data" : "") });
+			break;
+		}
+		
 		for (int i = 0; i < infoFields.length; i++) {
 			if(infoFields[i] == null) {
 				continue;
@@ -76,7 +111,7 @@ public class NodeInfoService {
 			if(infoFields[i].isEmpty()) {
 				continue;
 			}
-			MapXContentBuilder xContentBuilder = new MapXContentBuilder();
+			MapXContentBuilder xContentBuilder = new MapXContentBuilder(result);
 
 			switch (infoFields[i]) {
 			case KEY_OS:
@@ -91,18 +126,30 @@ public class NodeInfoService {
 			default:
 				continue;
 			}
-			
-			result.put(infoFields[i], xContentBuilder.getResult());
 		}
 
 		return result;
 	}
 
 	public String getNodeId() {
-		return nodeId;
+		return nodeSettingsService.getNodeId();
 	}
 
 	public String getNodeName() {
-		return nodeName;
+		return nodeSettingsService.getNodeName();
+	}
+	
+	private boolean checkIfDataNode() {
+		String jdbcUrl = environment.getRequiredProperty("spring.datasource.url");
+		if(jdbcUrl.contains("localhost")) {
+			return true;
+		}
+		if(jdbcUrl.contains("127.0.0.1")) {
+			return true;
+		}
+		if(jdbcUrl.contains(nodeSettingsService.getHostIp())) {
+			return true;
+		}
+		return false;
 	}
 }

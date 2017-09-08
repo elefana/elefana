@@ -45,70 +45,84 @@ public class TableUtils {
 
 	@PostConstruct
 	public void postConstruct() {
-		usingCitus = environment.getProperty("es2pg.citus", Boolean.class, false);
+		usingCitus = environment.getRequiredProperty("es2pg.citus", Boolean.class);
+		
+		jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS es2pgsql_index_mapping_tracking (table_name VARCHAR(255) PRIMARY KEY, remaining_time BIGINT, last_check_time BIGINT);");
+		if (usingCitus) {
+			jdbcTemplate.execute("SELECT create_distributed_table('es2pgsql_index_mapping_tracking', 'table_name');");
+		}
 	}
-	
+
+	public String sanitizeTableName(String tableName) {
+		tableName = tableName.replace(".", "__");
+		return tableName;
+	}
+
 	public List<String> listTables() throws SQLException {
 		Connection connection = jdbcTemplate.getDataSource().getConnection();
 		DatabaseMetaData databaseMetaData = connection.getMetaData();
-		ResultSet resultSet = databaseMetaData.getTables(null, null, "%", new String[] {"TABLE"});
-		
+		ResultSet resultSet = databaseMetaData.getTables(null, null, "%", new String[] { "TABLE" });
+
 		List<String> results = new ArrayList<String>(1);
 		while (resultSet.next()) {
 			String tableName = resultSet.getString(3);
-			if(tableName.startsWith("es2pgsql_")) {
+			if (tableName.startsWith("es2pgsql_")) {
 				continue;
 			}
-			results.add(tableName);			  
+			results.add(tableName);
 		}
 		connection.close();
 		return results;
 	}
-	
+
 	public List<String> listTables(String pattern) throws SQLException {
+		pattern = pattern.replace(".", "\\$");
 		pattern = pattern.replace("*", "(.*)");
 		pattern = "^" + pattern + "$";
-		
+
 		List<String> results = listTables();
-		for(int i = results.size() - 1; i >= 0; i--) {
-			if(results.get(i).matches(pattern)) {
+		for (int i = results.size() - 1; i >= 0; i--) {
+			if (results.get(i).matches(pattern)) {
 				continue;
 			}
 			results.remove(i);
 		}
 		return results;
 	}
-	
-	public void deleteTable(final String tableName) {
+
+	public void deleteTable(String tableName) {
+		tableName = sanitizeTableName(tableName);
 		jdbcTemplate.update("DROP TABLE IF EXISTS " + tableName + " CASCADE;");
 	}
 
-	public void ensureTableExists(final String tableName) throws SQLException {
+	public void ensureTableExists(String tableName) throws SQLException {
+		tableName = sanitizeTableName(tableName);
 		if (knownTables.contains(tableName)) {
 			return;
 		}
 		final String ginIndexName = "gin_index_" + tableName;
 
 		Connection connection = jdbcTemplate.getDataSource().getConnection();
-		PreparedStatement preparedStatement = connection.prepareStatement(
-				"CREATE TABLE IF NOT EXISTS " + tableName + " (_index VARCHAR(255), _type VARCHAR(255), _id VARCHAR(255) PRIMARY KEY, _timestamp BIGINT, _source jsonb)");
+		PreparedStatement preparedStatement = connection.prepareStatement("CREATE TABLE IF NOT EXISTS " + tableName
+				+ " (_index VARCHAR(255), _type VARCHAR(255), _id VARCHAR(255) PRIMARY KEY, _timestamp BIGINT, _source jsonb)");
 		preparedStatement.execute();
 
-		preparedStatement = connection
-				.prepareStatement("CREATE INDEX IF NOT EXISTS " + ginIndexName + " ON " + tableName + " USING GIN (_source jsonb_ops);");
+		preparedStatement = connection.prepareStatement(
+				"CREATE INDEX IF NOT EXISTS " + ginIndexName + " ON " + tableName + " USING GIN (_source jsonb_ops);");
 		preparedStatement.execute();
 
 		if (usingCitus) {
-			preparedStatement = connection.prepareStatement("SELECT create_distributed_table('" + tableName + "', '_id');");
+			preparedStatement = connection
+					.prepareStatement("SELECT create_distributed_table('" + tableName + "', '_id');");
 			preparedStatement.execute();
 		}
 		connection.close();
 		knownTables.add(tableName);
 	}
-	
+
 	public String destringifyJson(String json) {
-		if(json.startsWith("\"")) {
-			json = json.substring(1, json.length() -1);
+		if (json.startsWith("\"")) {
+			json = json.substring(1, json.length() - 1);
 			json = json.replace("\\", "");
 		}
 		return json;

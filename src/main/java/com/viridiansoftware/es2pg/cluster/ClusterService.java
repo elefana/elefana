@@ -3,18 +3,13 @@
  */
 package com.viridiansoftware.es2pg.cluster;
 
-import java.net.URL;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.jar.JarInputStream;
-import java.util.jar.Manifest;
 
 import javax.annotation.PostConstruct;
 
-import org.apache.commons.codec.digest.DigestUtils;
-import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,18 +17,21 @@ import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import com.viridiansoftware.es2pg.node.NodeSettingsService;
+import com.viridiansoftware.es2pg.node.VersionInfoService;
+
 @Service
 public class ClusterService {
 	private static final Logger LOGGER = LoggerFactory.getLogger(ClusterService.class);
-
-	private static final String FALLBACK_VERSION = "5.5.0";
-	private static final String FALLBACK_HASH = DigestUtils.sha1Hex(FALLBACK_VERSION);
-	private static final String FALLBACK_TIMESTAMP = new DateTime().toString();
 
 	@Autowired
 	private Environment environment;
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
+	@Autowired
+	private NodeSettingsService nodeSettingsService;
+	@Autowired
+	private VersionInfoService versionInfoService;
 
 	private final Map<String, Object> info = new HashMap<String, Object>();
 
@@ -43,29 +41,14 @@ public class ClusterService {
 		versionInfo.put("build_snapshot", false);
 		versionInfo.put("lucene_version", "N/A");
 		versionInfo.put("postgresql_version", getDatabaseVersion());
+		versionInfo.put("number", versionInfoService.getVersionNumber());
+		versionInfo.put("build_hash", versionInfoService.getBuildHash());
+		versionInfo.put("build_timestamp", versionInfoService.getBuildTimestamp());
 
-		final URL jarUrl = ClusterService.class.getProtectionDomain().getCodeSource().getLocation();
-		final String jarUrlPath = jarUrl.toString();
-		if (jarUrlPath.startsWith("file:/") && jarUrlPath.endsWith(".jar")) {
-			try (JarInputStream jar = new JarInputStream(jarUrl.openStream())) {
-				Manifest manifest = jar.getManifest();
-				versionInfo.put("number", manifest.getMainAttributes().getValue("Build-Release"));
-				versionInfo.put("build_hash", manifest.getMainAttributes().getValue("Build-Hash"));
-				versionInfo.put("build_timestamp", manifest.getMainAttributes().getValue("Build-Timestamp"));
-			} catch (Exception e) {
-			}
-		}
-		if (!versionInfo.containsKey("number") || !versionInfo.containsKey("build_hash")
-				|| !versionInfo.containsKey("build_timestamp")) {
-			versionInfo.put("number", FALLBACK_VERSION);
-			versionInfo.put("build_hash", FALLBACK_HASH);
-			versionInfo.put("build_timestamp", FALLBACK_TIMESTAMP);
-		}
-
-		info.put("name", environment.getRequiredProperty("es2pgsql.node.name"));
-		info.put("cluster_name", environment.getRequiredProperty("es2pgsql.cluster.name"));
-		info.put("cluster_uuid", environment.getRequiredProperty("es2pgsql.cluster.uuid"));
-		info.put("tagline", environment.getRequiredProperty("es2pgsql.tagline"));
+		info.put("name", nodeSettingsService.getNodeName());
+		info.put("cluster_name", nodeSettingsService.getClusterName());
+		info.put("cluster_uuid", nodeSettingsService.getClusterId());
+		info.put("tagline", "For search or something");
 		info.put("version", versionInfo);
 		LOGGER.info("{}", info);
 	}
