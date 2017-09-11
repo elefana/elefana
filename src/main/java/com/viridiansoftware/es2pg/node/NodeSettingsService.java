@@ -32,6 +32,12 @@ public class NodeSettingsService {
 	private String transportAddress;
 	private String httpAddress;
 	
+	private boolean usingCitus = false;
+	
+	private long mappingInterval;
+	private double mappingSampleSize;
+	private long garbageCollectionInterval;
+	
 	@PostConstruct
 	public void postConstruct() {
 		nodeName = environment.getRequiredProperty("es2pgsql.node.name");
@@ -46,6 +52,11 @@ public class NodeSettingsService {
 		ip = hostIp;
 		transportAddress = hostIp + ":9300";
 		httpAddress = hostIp + port;
+		
+		usingCitus = environment.getRequiredProperty("es2pgsql.citus", Boolean.class);
+		mappingInterval = environment.getRequiredProperty("es2pgsql.mappingInterval", Long.class);
+		mappingSampleSize = environment.getRequiredProperty("es2pgsql.mappingSampleSize", Double.class);
+		garbageCollectionInterval = environment.getRequiredProperty("es2pgsql.gcInterval", Long.class);
 	}
 
 	public Environment getEnvironment() {
@@ -90,5 +101,21 @@ public class NodeSettingsService {
 
 	public ApiVersion getApiVersion() {
 		return apiVersion;
+	}
+
+	public boolean isUsingCitus() {
+		return usingCitus;
+	}
+
+	public long getMappingInterval() {
+		return mappingInterval;
+	}
+
+	public double getMappingSampleSize() {
+		return mappingSampleSize;
+	}
+
+	public long getGarbageCollectionInterval() {
+		return garbageCollectionInterval;
 	}
 }

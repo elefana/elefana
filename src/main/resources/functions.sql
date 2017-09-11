@@ -1,16 +1,10 @@
-CREATE TABLE IF NOT EXISTS es2pgsql_index_mapping_tracking (
-	table_name VARCHAR(255) PRIMARY KEY,
-	remaining_time BIGINT,
-	last_check_time BIGINT
-);
-
-CREATE OR REPLACE FUNCTION generate_index_mapping() RETURNS trigger AS  
+CREATE OR REPLACE FUNCTION es2pgsql_schedule_index_mapping() RETURNS trigger AS  
 $$  
 BEGIN  
-         INSERT INTO emp_log(emp_id,salary,edittime)  
-         VALUES(NEW.employee_id,NEW.salary,current_date);  
+	INSERT INTO es2pgsql_index_mapping_tracking(_table_name, _last_insert_time, _last_mapping_time)  
+         VALUES (TG_TABLE_NAME, (extract(epoch from now()) * 1000), 0) ON CONFLICT (_table_name) DO UPDATE SET _last_insert_time = EXCLUDED._last_insert_time;  
    
-    RETURN NEW;  
+    RETURN NULL;
 END;
 $$  
 LANGUAGE 'plpgsql';  

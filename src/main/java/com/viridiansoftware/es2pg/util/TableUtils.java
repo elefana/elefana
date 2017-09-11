@@ -32,28 +32,18 @@ import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+import com.viridiansoftware.es2pg.node.NodeSettingsService;
+
 @Component
 public class TableUtils {
 	private final Set<String> knownTables = new ConcurrentSkipListSet<String>();
 
 	@Autowired
-	private Environment environment;
+	private NodeSettingsService nodeSettingsService;
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 
-	private boolean usingCitus = false;
-
-	@PostConstruct
-	public void postConstruct() {
-		usingCitus = environment.getRequiredProperty("es2pg.citus", Boolean.class);
-		
-		jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS es2pgsql_index_mapping_tracking (table_name VARCHAR(255) PRIMARY KEY, remaining_time BIGINT, last_check_time BIGINT);");
-		if (usingCitus) {
-			jdbcTemplate.execute("SELECT create_distributed_table('es2pgsql_index_mapping_tracking', 'table_name');");
-		}
-	}
-
-	public String sanitizeTableName(String tableName) {
+	public static String sanitizeTableName(String tableName) {
 		tableName = tableName.replace(".", "__");
 		return tableName;
 	}
@@ -111,16 +101,26 @@ public class TableUtils {
 				"CREATE INDEX IF NOT EXISTS " + ginIndexName + " ON " + tableName + " USING GIN (_source jsonb_ops);");
 		preparedStatement.execute();
 
-		if (usingCitus) {
+		if (nodeSettingsService.isUsingCitus()) {
 			preparedStatement = connection
 					.prepareStatement("SELECT create_distributed_table('" + tableName + "', '_id');");
 			preparedStatement.execute();
+		} else {
+			preparedStatement = connection
+					.prepareStatement("DROP TRIGGER es2pgsql_triggers_m_" + tableName + " ON " + tableName);
+			preparedStatement.execute();
+
+			preparedStatement = connection
+					.prepareStatement("CREATE TRIGGER es2pgsql_triggers_m_" + tableName + " AFTER INSERT ON "
+							+ tableName + " FOR EACH STATEMENT EXECUTE PROCEDURE es2pgsql_schedule_index_mapping();");
+			preparedStatement.execute();
 		}
+		preparedStatement.close();
 		connection.close();
 		knownTables.add(tableName);
 	}
 
-	public String destringifyJson(String json) {
+	public static String destringifyJson(String json) {
 		if (json.startsWith("\"")) {
 			json = json.substring(1, json.length() - 1);
 			json = json.replace("\\", "");

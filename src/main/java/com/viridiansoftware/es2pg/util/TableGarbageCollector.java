@@ -18,6 +18,8 @@ import org.springframework.core.env.Environment;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 
+import com.viridiansoftware.es2pg.node.NodeSettingsService;
+
 @Service
 public class TableGarbageCollector implements Runnable {
 	private static final Logger LOGGER = LoggerFactory.getLogger(TableGarbageCollector.class);
@@ -26,18 +28,15 @@ public class TableGarbageCollector implements Runnable {
 	private final AtomicBoolean shutdownInitiated = new AtomicBoolean(false);
 	
 	@Autowired
-	private Environment environment;
+	private NodeSettingsService nodeSettingsService;
 	@Autowired
 	private TaskScheduler taskScheduler;
 	@Autowired
 	private TableUtils tableUtils;
 	
-	private long deletionFrequency;
-	
 	@PostConstruct
 	public void postConstruct() {
-		deletionFrequency = environment.getRequiredProperty("es2pg.gc.frequency", Long.class);
-		taskScheduler.scheduleWithFixedDelay(this, deletionFrequency);
+		taskScheduler.scheduleWithFixedDelay(this, nodeSettingsService.getGarbageCollectionInterval());
 	}
 	
 	@PreDestroy

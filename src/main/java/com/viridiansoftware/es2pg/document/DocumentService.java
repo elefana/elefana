@@ -45,7 +45,7 @@ public class DocumentService {
 		Map<String, Object> result = null;
 		try {
 			result = jdbcTemplate.queryForMap(
-					"SELECT * FROM " + tableUtils.sanitizeTableName(index) + " WHERE _type = '?' AND _id = '?'", type,
+					"SELECT * FROM " + TableUtils.sanitizeTableName(index) + " WHERE _type = '?' AND _id = '?'", type,
 					id);
 		} catch (Exception e) {
 			connection.close();
@@ -61,7 +61,7 @@ public class DocumentService {
 		try {
 			for (String tableName : tableUtils.listTables()) {
 				SqlRowSet resultSet = jdbcTemplate
-						.queryForRowSet("SELECT * FROM " + tableUtils.sanitizeTableName(tableName) + " LIMIT 10");
+						.queryForRowSet("SELECT * FROM " + TableUtils.sanitizeTableName(tableName) + " LIMIT 10");
 				while (resultSet.next()) {
 					GetResponse getResponse = new GetResponse();
 					getResponse.set_index(resultSet.getString("_index"));
@@ -88,7 +88,7 @@ public class DocumentService {
 			for (int i = 0; i < indices.length; i++) {
 				for (String tableName : tableUtils.listTables(indices[i])) {
 					SqlRowSet resultSet = jdbcTemplate
-							.queryForRowSet("SELECT * FROM " + tableUtils.sanitizeTableName(tableName));
+							.queryForRowSet("SELECT * FROM " + TableUtils.sanitizeTableName(tableName));
 					while (resultSet.next()) {
 						GetResponse getResponse = new GetResponse();
 						getResponse.set_index(resultSet.getString("_index"));
@@ -112,7 +112,7 @@ public class DocumentService {
 		MultiGetResponse result = new MultiGetResponse();
 		try {
 			SqlRowSet resultSet = jdbcTemplate.queryForRowSet(
-					"SELECT * FROM " + tableUtils.sanitizeTableName(index) + " WHERE _type = '?''", type);
+					"SELECT * FROM " + TableUtils.sanitizeTableName(index) + " WHERE _type = '?''", type);
 			while (resultSet.next()) {
 				GetResponse getResponse = new GetResponse();
 				getResponse.set_index(resultSet.getString("_index"));
@@ -139,7 +139,7 @@ public class DocumentService {
 
 		StringBuilder queryBuilder = new StringBuilder();
 		queryBuilder.append("INSERT INTO ");
-		queryBuilder.append(tableUtils.sanitizeTableName(index));
+		queryBuilder.append(TableUtils.sanitizeTableName(index));
 		queryBuilder.append(" (_index, _type, _id, _timestamp, _source) VALUES (?, ?, ?, ?, ?)");
 		if (createMode) {
 			queryBuilder.append(" ON CONFLICT DO NOTHING");
