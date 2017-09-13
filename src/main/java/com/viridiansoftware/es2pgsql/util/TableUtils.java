@@ -107,7 +107,7 @@ public class TableUtils {
 			preparedStatement.execute();
 		} else {
 			preparedStatement = connection
-					.prepareStatement("DROP TRIGGER es2pgsql_triggers_m_" + tableName + " ON " + tableName);
+					.prepareStatement("DROP TRIGGER IF EXISTS es2pgsql_triggers_m_" + tableName + " ON " + tableName);
 			preparedStatement.execute();
 
 			preparedStatement = connection

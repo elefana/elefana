@@ -30,8 +30,8 @@ import com.viridiansoftware.es2pgsql.node.NodeSettingsService;
 import com.viridiansoftware.es2pgsql.util.TableUtils;
 
 @Service
-public class IndexDocumentMapping implements Runnable {
-	private static final Logger LOGGER = LoggerFactory.getLogger(IndexDocumentMapping.class);
+public class IndexFieldMapping implements Runnable {
+	private static final Logger LOGGER = LoggerFactory.getLogger(IndexFieldMapping.class);
 	private static final Map<String, Object> EMPTY_MAPPING = new HashMap<String, Object>();
 
 	private final SortedSet<String> mappingQueue = new ConcurrentSkipListSet<String>();
@@ -56,7 +56,7 @@ public class IndexDocumentMapping implements Runnable {
 		EMPTY_MAPPING.put("properties", new HashMap<String, Object>());
 		
 		try {
-			ResourceDatabasePopulator resourceDatabasePopulator = new ResourceDatabasePopulator(new ClassPathResource("/functions.sql", IndexDocumentMapping.class));
+			ResourceDatabasePopulator resourceDatabasePopulator = new ResourceDatabasePopulator(new ClassPathResource("/functions.sql", IndexFieldMapping.class));
 			resourceDatabasePopulator.setSeparator(ScriptUtils.EOF_STATEMENT_SEPARATOR);
 			resourceDatabasePopulator.execute(jdbcTemplate.getDataSource());
 		} catch (Exception e) {
@@ -67,12 +67,23 @@ public class IndexDocumentMapping implements Runnable {
 				"CREATE TABLE IF NOT EXISTS es2pgsql_index_mapping (_tracking_id VARCHAR(255) PRIMARY KEY, _table_name VARCHAR(255), _type VARCHAR(255), _mapping jsonb);");
 		jdbcTemplate.execute(
 				"CREATE TABLE IF NOT EXISTS es2pgsql_index_mapping_tracking (_table_name VARCHAR(255) PRIMARY KEY, _last_insert_time BIGINT, _last_mapping_time BIGINT);");
+		jdbcTemplate.execute(
+				"CREATE TABLE IF NOT EXISTS es2pgsql_index_field_capabilities (_table_name VARCHAR(255) PRIMARY KEY, _capabilities jsonb);");
 		if (nodeSettingsService.isUsingCitus()) {
 			jdbcTemplate.execute("SELECT create_distributed_table('es2pgsql_index_mapping', '_tracking_id');");
 			jdbcTemplate.execute("SELECT create_distributed_table('es2pgsql_index_mapping_tracking', '_table_name');");
+			jdbcTemplate.execute("SELECT create_distributed_table('es2pgsql_index_field_capabilities', '_table_name');");
 		}
 
 		taskScheduler.scheduleWithFixedDelay(this, nodeSettingsService.getMappingInterval());
+	}
+	
+	public Map<String, Object> getIndexMappings() throws Exception {
+		Map<String, Object> result = new HashMap<String, Object>();
+		for(String index : tableUtils.listTables()) {
+			result.put(index, result);
+		}
+		return result;
 	}
 	
 	public Map<String, Object> getIndexMapping(String index) {
@@ -87,6 +98,25 @@ public class IndexDocumentMapping implements Runnable {
 		
 		Map<String, Object> result = new HashMap<String, Object>();
 		result.put("mappings", mappings);
+		return result;
+	}
+	
+	public Map<String, Object> getFieldCapabilities(String indexPattern) throws Exception {
+		Map<String, Object> fields = new HashMap<String, Object>();
+		for(String index : tableUtils.listTables(indexPattern)) {
+			try {
+				SqlRowSet rowSet = jdbcTemplate.queryForRowSet(
+						"SELECT _capabilities FROM es2pgsql_index_field_capabilities WHERE _table_name = ? LIMIT 1", TableUtils.sanitizeTableName(index));
+				if (rowSet.next()) {
+					fields.putAll(objectMapper.readValue(rowSet.getString("_capabilities"), Map.class));
+				}
+			} catch (Exception e) {
+				LOGGER.error(e.getMessage(), e);
+			}
+		}
+		
+		Map<String, Object> result = new HashMap<String, Object>();
+		result.put("fields", fields);
 		return result;
 	}
 	
@@ -157,6 +187,8 @@ public class IndexDocumentMapping implements Runnable {
 						}
 					}
 				}
+				generateFieldCapabilitiesForIndex(nextTable, jdbcTemplate.queryForRowSet(
+					"SELECT _type, _mapping FROM es2pgsql_index_mapping WHERE _table_name = ?", nextTable));
 				
 				mappingQueue.remove(nextTable);
 			}
@@ -212,6 +244,41 @@ public class IndexDocumentMapping implements Runnable {
 		jdbcTemplate.update("INSERT INTO es2pgsql_index_mapping_tracking (_table_name, _last_mapping_time) VALUES (?, ?) ON CONFLICT (_table_name) DO UPDATE SET _last_mapping_time = EXCLUDED._last_mapping_time",
 				nextTable, System.currentTimeMillis());
 		return totalSamples;
+	}
+	
+	private void generateFieldCapabilitiesForIndex(String tableName, SqlRowSet indexMappingSet) throws Exception {
+		Map<String, Object> fields = new HashMap<String, Object>();
+		
+		while(indexMappingSet.next()) {
+			Map<String, Object> mappings = objectMapper.readValue(indexMappingSet.getString("_mapping"), Map.class);
+			Map<String, Object> properties = (Map) mappings.get("properties");
+			for(String propertyKey : properties.keySet()) {
+				if(fields.containsKey(propertyKey)) {
+					continue;
+				}
+				String mappingType = (String) (((Map) properties.get(propertyKey)).get("type"));
+				
+				Map<String, Object> field = new HashMap<String, Object>();
+				field.put(mappingType, generateFieldCapability(mappingType));
+				fields.put(propertyKey, field);
+			}
+		}
+		
+		PGobject jsonObject = new PGobject();
+		jsonObject.setType("json");
+		jsonObject.setValue(objectMapper.writeValueAsString(fields));
+		jdbcTemplate.update("INSERT INTO es2pgsql_index_field_capabilities (_table_name, _capabilities) VALUES (?, ?) ON CONFLICT (_table_name) DO UPDATE SET _capabilities = EXCLUDED._capabilities",
+				tableName, jsonObject);
+	}
+	
+	private Map<String, Object> generateFieldCapability(String mappingType) {
+		Map<String, Object> result = new HashMap<String, Object>();
+		result.put("searchable", true);
+		result.put("aggregatable", true);
+		result.put("indices", null);
+		result.put("non_searchable_indices", null);
+		result.put("non_aggregatable_indices", null);
+		return result;
 	}
 	
 	private void checkTablesForNewInserts() {

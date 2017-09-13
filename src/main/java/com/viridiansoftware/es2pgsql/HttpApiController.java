@@ -30,6 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.viridiansoftware.es2pgsql.cluster.ClusterService;
 import com.viridiansoftware.es2pgsql.document.DocumentService;
+import com.viridiansoftware.es2pgsql.document.IndexFieldMapping;
 import com.viridiansoftware.es2pgsql.node.NodesService;
 import com.viridiansoftware.es2pgsql.search.SearchService;
 
@@ -39,6 +40,8 @@ public class HttpApiController {
 
 	@Autowired
 	private DocumentService documentService;
+	@Autowired
+	private IndexFieldMapping indexFieldMapping;
 	@Autowired
 	private SearchService searchService;
 	@Autowired
@@ -56,14 +59,14 @@ public class HttpApiController {
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		if (indexPattern == null || indexPattern.isEmpty()) {
 			return clusterService.getNodeRootInfo();
-		} else if (indexPatternLowercase.equals("_nodes")) {
-
 		}
 		switch (indexPatternLowercase) {
 		case "_nodes":
 			return nodesService.getNodesInfo();
 		case "_mget":
 			return documentService.multiGet();
+		case "_mapping":
+			return indexFieldMapping.getIndexMappings();
 		}
 		return null;
 	}
@@ -103,6 +106,15 @@ public class HttpApiController {
 			default:
 				return nodesService.getNodesInfo(typePattern.split(","));
 			}
+		default:
+			break;
+		}
+		
+		switch(typePatternLowercase) {
+		case "_mapping":
+			return indexFieldMapping.getIndexMapping(indexPattern);
+		case "_field_caps":
+			return indexFieldMapping.getFieldCapabilities(indexPattern);
 		}
 		return null;
 	}
@@ -118,6 +130,8 @@ public class HttpApiController {
 			return searchService.search(indexPattern, request.getBody());
 		case "_mget":
 			return documentService.multiGet(indexPattern);
+		case "_field_caps":
+			return indexFieldMapping.getFieldCapabilities(indexPattern);
 		}
 		return indexOrSearch(indexPattern, typePattern, UUID.randomUUID().toString(), request, response);
 	}
@@ -127,6 +141,7 @@ public class HttpApiController {
 			@PathVariable String idPattern) throws Exception {
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		final String typePatternLowercase = typePattern.toLowerCase();
+		final String idPatternLowercase = idPattern.toLowerCase();
 		switch (indexPatternLowercase) {
 		case "_cluster":
 			switch (typePatternLowercase) {
@@ -137,6 +152,10 @@ public class HttpApiController {
 		case "_nodes":
 			return nodesService.getNodesInfo(typePattern.split(","));
 		}
+		switch(idPatternLowercase) {
+		case "_mapping":
+			return indexFieldMapping.getIndexMapping(indexPattern, typePattern);
+		}
 		return documentService.get(indexPattern, typePattern, idPattern);
 	}
 
@@ -146,9 +165,12 @@ public class HttpApiController {
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		final String typePatternLowercase = typePattern.toLowerCase();
 		final String idPatternLowercase = idPattern.toLowerCase();
-		if (idPattern.toLowerCase().equals("_search")) {
+		
+		switch(idPatternLowercase) {
+		case "_search":
 			return searchService.search(indexPattern, typePattern, request.getBody());
 		}
+		
 		String document = request.getBody();
 		Object result = documentService.index(indexPattern, typePattern, idPattern, document, false);
 		if(result != null) {
