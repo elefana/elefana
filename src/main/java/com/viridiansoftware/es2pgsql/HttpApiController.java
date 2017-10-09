@@ -28,9 +28,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.viridiansoftware.es2pgsql.cluster.AckResponse;
 import com.viridiansoftware.es2pgsql.cluster.ClusterService;
 import com.viridiansoftware.es2pgsql.document.DocumentService;
-import com.viridiansoftware.es2pgsql.document.IndexFieldMapping;
+import com.viridiansoftware.es2pgsql.document.IndexFieldMappingService;
+import com.viridiansoftware.es2pgsql.document.IndexOpType;
 import com.viridiansoftware.es2pgsql.node.NodesService;
 import com.viridiansoftware.es2pgsql.search.SearchService;
 
@@ -41,7 +43,7 @@ public class HttpApiController {
 	@Autowired
 	private DocumentService documentService;
 	@Autowired
-	private IndexFieldMapping indexFieldMapping;
+	private IndexFieldMappingService indexFieldMappingService;
 	@Autowired
 	private SearchService searchService;
 	@Autowired
@@ -54,7 +56,7 @@ public class HttpApiController {
 		return clusterService.getNodeRootInfo();
 	}
 
-	@RequestMapping(path = "/{indexPattern}", method = { RequestMethod.GET, RequestMethod.HEAD })
+	@RequestMapping(path = "/{indexPattern:.+}", method = { RequestMethod.GET, RequestMethod.HEAD })
 	public Object get(@PathVariable String indexPattern, HttpEntity<String> request) throws Exception {
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		if (indexPattern == null || indexPattern.isEmpty()) {
@@ -63,27 +65,29 @@ public class HttpApiController {
 		switch (indexPatternLowercase) {
 		case "_nodes":
 			return nodesService.getNodesInfo();
+		case "_mapping":
+			return indexFieldMappingService.getIndexMappings();
 		case "_mget":
 			return documentService.multiGet();
-		case "_mapping":
-			return indexFieldMapping.getIndexMappings();
 		}
 		return null;
 	}
 
-	@RequestMapping(path = "/{indexPattern}", method = RequestMethod.POST)
+	@RequestMapping(path = "/{indexPattern:.+}", method = RequestMethod.POST)
 	public Object indexOrSearch(@PathVariable String indexPattern, HttpEntity<String> request) throws Exception {
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		switch (indexPatternLowercase) {
 		case "_search":
 			return searchService.search(request.getBody());
 		case "_mget":
-			return documentService.multiGet();
+			return documentService.multiGetByRequestBody(request.getBody());
+		case "_msearch":
+			return searchService.multiSearch(null, null, request.getBody());
 		}
 		return null;
 	}
 
-	@RequestMapping(path = "/{indexPattern}/{typePattern}", method = RequestMethod.GET)
+	@RequestMapping(path = "/{indexPattern}/{typePattern:.+}", method = RequestMethod.GET)
 	public Object get(@PathVariable String indexPattern, @PathVariable String typePattern) throws Exception {
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		final String typePatternLowercase = typePattern.toLowerCase();
@@ -95,6 +99,8 @@ public class HttpApiController {
 			switch (typePatternLowercase) {
 			case "health":
 				return clusterService.getClusterHealth();
+			case "settings":
+				return clusterService.getClusterSettings();
 			}
 			break;
 		case "_nodes":
@@ -112,14 +118,14 @@ public class HttpApiController {
 		
 		switch(typePatternLowercase) {
 		case "_mapping":
-			return indexFieldMapping.getIndexMapping(indexPattern);
+			return indexFieldMappingService.getIndexMapping(indexPattern);
 		case "_field_caps":
-			return indexFieldMapping.getFieldCapabilities(indexPattern);
+			return indexFieldMappingService.getFieldCapabilities(indexPattern);
 		}
 		return null;
 	}
 
-	@RequestMapping(path = "/{indexPattern}/{typePattern}", method = RequestMethod.POST)
+	@RequestMapping(path = "/{indexPattern}/{typePattern:.+}", method = RequestMethod.POST)
 	public Object indexOrSearch(@PathVariable String indexPattern, @PathVariable String typePattern,
 			HttpEntity<String> request, HttpServletResponse response) throws Exception {
 		final String indexPatternLowercase = indexPattern.toLowerCase();
@@ -131,12 +137,14 @@ public class HttpApiController {
 		case "_mget":
 			return documentService.multiGet(indexPattern);
 		case "_field_caps":
-			return indexFieldMapping.getFieldCapabilities(indexPattern);
+			return indexFieldMappingService.getFieldCapabilities(indexPattern);
+		case "_msearch":
+			return searchService.multiSearch(indexPattern, null, request.getBody());
 		}
 		return indexOrSearch(indexPattern, typePattern, UUID.randomUUID().toString(), request, response);
 	}
 
-	@RequestMapping(path = "/{indexPattern}/{typePattern}/{idPattern}", method = RequestMethod.GET)
+	@RequestMapping(path = "/{indexPattern}/{typePattern}/{idPattern:.+}", method = RequestMethod.GET)
 	public Object get(@PathVariable String indexPattern, @PathVariable String typePattern,
 			@PathVariable String idPattern) throws Exception {
 		final String indexPatternLowercase = indexPattern.toLowerCase();
@@ -152,34 +160,61 @@ public class HttpApiController {
 		case "_nodes":
 			return nodesService.getNodesInfo(typePattern.split(","));
 		}
+		switch(typePatternLowercase) {
+		case "_mapping":
+			return indexFieldMappingService.getIndexMapping(indexPattern, idPattern);
+		}
 		switch(idPatternLowercase) {
 		case "_mapping":
-			return indexFieldMapping.getIndexMapping(indexPattern, typePattern);
+			return indexFieldMappingService.getIndexMapping(indexPattern, typePattern);
 		}
 		return documentService.get(indexPattern, typePattern, idPattern);
 	}
 
-	@RequestMapping(path = "/{indexPattern}/{typePattern}/{idPattern}", method = RequestMethod.POST)
+	@RequestMapping(path = "/{indexPattern}/{typePattern}/{idPattern:.+}", method = RequestMethod.POST)
 	public Object indexOrSearch(@PathVariable String indexPattern, @PathVariable String typePattern,
 			@PathVariable String idPattern, HttpEntity<String> request, HttpServletResponse response) throws Exception {
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		final String typePatternLowercase = typePattern.toLowerCase();
 		final String idPatternLowercase = idPattern.toLowerCase();
 		
+		switch(typePatternLowercase) {
+		case "_mapping":
+			LOGGER.info(indexPatternLowercase + " " + typePatternLowercase + " " + idPatternLowercase);
+			break;
+		}
+		
 		switch(idPatternLowercase) {
 		case "_search":
 			return searchService.search(indexPattern, typePattern, request.getBody());
+		case "_msearch":
+			return searchService.multiSearch(indexPattern, typePattern, request.getBody());
 		}
 		
 		String document = request.getBody();
-		Object result = documentService.index(indexPattern, typePattern, idPattern, document, false);
+		Object result = documentService.index(indexPattern, typePattern, idPattern, document, IndexOpType.OVERWRITE);
 		if(result != null) {
 			response.setStatus(HttpServletResponse.SC_CREATED);
 		}
 		return result;
 	}
 	
-	@RequestMapping(path = "/{indexPattern}/{typePattern}/{idPattern}/{opPattern}", method = RequestMethod.POST)
+	@RequestMapping(path = "/{indexPattern}/{typePattern}/{idPattern:.+}", method = RequestMethod.PUT)
+	public Object index(@PathVariable String indexPattern, @PathVariable String typePattern,
+			@PathVariable String idPattern, HttpEntity<String> request, HttpServletResponse response) throws Exception {
+		final String indexPatternLowercase = indexPattern.toLowerCase();
+		final String typePatternLowercase = typePattern.toLowerCase();
+		final String idPatternLowercase = idPattern.toLowerCase();
+		
+		switch(typePatternLowercase) {
+		case "_mapping":
+			indexFieldMappingService.putIndexMapping(indexPattern, idPattern, request.getBody());
+			return new AckResponse();
+		}
+		return null;
+	}
+	
+	@RequestMapping(path = "/{indexPattern}/{typePattern}/{idPattern}/{opPattern:.+}", method = RequestMethod.POST)
 	public Object indexOrSearch(@PathVariable String indexPattern, @PathVariable String typePattern,
 			@PathVariable String idPattern, @PathVariable String opPattern, HttpEntity<String> request, HttpServletResponse response) throws Exception {
 		if (idPattern.toLowerCase().equals("_search")) {
@@ -187,14 +222,44 @@ public class HttpApiController {
 		}
 		Object result = null;
 		switch(opPattern) {
-		case "_create":
+		case "_create": {
 			String document = request.getBody();
-			result = documentService.index(indexPattern, typePattern, idPattern, document, true);
+			result = documentService.index(indexPattern, typePattern, idPattern, document, IndexOpType.CREATE);
 			if(result != null) {
 				response.setStatus(HttpServletResponse.SC_CREATED);
 			}
 			break;
 		}
+		case "_update": {
+			String document = request.getBody();
+			result = documentService.index(indexPattern, typePattern, idPattern, document, IndexOpType.UPDATE);
+			if(result != null) {
+				response.setStatus(HttpServletResponse.SC_ACCEPTED);
+			}
+			break;
+		}
+		}
 		return result;
+	}
+	
+	@RequestMapping(path = "/{indexPattern}/{typePattern}/{idPattern}/{opPattern}/{fieldPattern:.+}", method = RequestMethod.GET)
+	public Object get(@PathVariable String indexPattern, @PathVariable String typePattern,
+			@PathVariable String idPattern, @PathVariable String opPattern, @PathVariable String fieldPattern) throws Exception {
+		final String indexPatternLowercase = indexPattern.toLowerCase();
+		final String typePatternLowercase = typePattern.toLowerCase();
+		final String idPatternLowercase = idPattern.toLowerCase();
+		final String opPatternLowercase = opPattern.toLowerCase();
+		final String fieldPatternLowercase = fieldPattern.toLowerCase();
+		
+		switch(typePatternLowercase) {
+		case "_mapping":
+			switch(opPatternLowercase) {
+			case "field":
+				return indexFieldMappingService.getIndexMapping(indexPattern, idPattern, fieldPattern);
+			}
+			break;
+		}
+		
+		return null;
 	}
 }

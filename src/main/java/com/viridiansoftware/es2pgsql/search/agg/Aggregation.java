@@ -15,6 +15,7 @@ import org.elasticsearch.common.xcontent.XContentType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 
+import com.viridiansoftware.es2pgsql.document.IndexFieldMappingService;
 import com.viridiansoftware.es2pgsql.exception.UnsupportedAggregationTypeException;
 import com.viridiansoftware.es2pgsql.search.AggregationType;
 import com.viridiansoftware.es2pgsql.search.RequestBodySearch;
@@ -34,22 +35,25 @@ public class Aggregation extends EsXContext {
 		super();
 		this.aggregationName = aggregationName;
 	}
-	
-	public void executeSqlQuery(final AggregationExec parentExec, final Map<String, Object> aggregationsResult, final String queryTable) {
+
+	public void executeSqlQuery(final AggregationExec parentExec, final Map<String, Object> aggregationsResult,
+			final String queryTable) {
 		if (aggregationSpec == null) {
 			return;
 		}
-		aggregationSpec.executeSqlQuery(new AggregationExec(parentExec.getJdbcTemplate(), aggregationsResult, parentExec.getTempTablesCreated(),
-				queryTable, parentExec.getRequestBodySearch(), this));
+		aggregationSpec.executeSqlQuery(new AggregationExec(parentExec.getIndices(), parentExec.getTypes(),
+				parentExec.getJdbcTemplate(), parentExec.getIndexFieldMappingService(), aggregationsResult,
+				parentExec.getTempTablesCreated(), queryTable, parentExec.getRequestBodySearch(), this));
 	}
 
-	public void executeSqlQuery(final JdbcTemplate jdbcTemplate, final Map<String, Object> aggregationsResult,
+	public void executeSqlQuery(final List<String> indices, final String[] types, final JdbcTemplate jdbcTemplate,
+			final IndexFieldMappingService indexFieldMappingService, final Map<String, Object> aggregationsResult,
 			final List<String> tempTablesCreated, final String queryTable, final RequestBodySearch requestBodySearch) {
 		if (aggregationSpec == null) {
 			return;
 		}
-		aggregationSpec.executeSqlQuery(new AggregationExec(jdbcTemplate, aggregationsResult, tempTablesCreated,
-				queryTable, requestBodySearch, this));
+		aggregationSpec.executeSqlQuery(new AggregationExec(indices, types, jdbcTemplate, indexFieldMappingService,
+				aggregationsResult, tempTablesCreated, queryTable, requestBodySearch, this));
 	}
 
 	@Override
@@ -75,7 +79,7 @@ public class Aggregation extends EsXContext {
 		case CHILDREN:
 			break;
 		case DATE_HISTOGRAM:
-			break;
+			return new DateHistogramAggregationSpec();
 		case DATE_RANGE:
 			break;
 		case DIVERSIFIED_SAMPLER:
@@ -101,9 +105,9 @@ public class Aggregation extends EsXContext {
 		case IP_RANGE:
 			break;
 		case MAX:
-			break;
+			return new MaxAggregationSpec();
 		case MIN:
-			break;
+			return new MinAggregationSpec();
 		case MISSING:
 			break;
 		case NESTED:
@@ -125,7 +129,7 @@ public class Aggregation extends EsXContext {
 		case STATS:
 			break;
 		case SUM:
-			break;
+			return new SumAggregationSpec();
 		case TERMS:
 			break;
 		case TOP_HITS:

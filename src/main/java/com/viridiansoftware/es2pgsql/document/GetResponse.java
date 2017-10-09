@@ -9,7 +9,8 @@ public class GetResponse {
 	private String _index;
 	private String _type;
 	private String _id;
-	private int version = 1;
+	private int _version = 1;
+	private boolean found = true;
 	private Map _source;
 
 	public String get_index() {
@@ -36,12 +37,12 @@ public class GetResponse {
 		this._id = _id;
 	}
 
-	public int getVersion() {
-		return version;
+	public int get_version() {
+		return _version;
 	}
 
-	public void setVersion(int version) {
-		this.version = version;
+	public void set_version(int _version) {
+		this._version = _version;
 	}
 
 	public Map get_source() {
@@ -50,5 +51,13 @@ public class GetResponse {
 
 	public void set_source(Map _source) {
 		this._source = _source;
+	}
+
+	public boolean isFound() {
+		return found;
+	}
+
+	public void setFound(boolean found) {
+		this.found = found;
 	}
 }

@@ -20,7 +20,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.postgresql.util.PSQLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,24 +28,62 @@ import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.viridiansoftware.es2pgsql.document.IndexFieldMappingService;
 import com.viridiansoftware.es2pgsql.util.TableGarbageCollector;
 import com.viridiansoftware.es2pgsql.util.TableUtils;
 
 @Service
 public class SearchService {
 	private static final Logger LOGGER = LoggerFactory.getLogger(SearchService.class);
-	
+
 	private static final String SEARCH_TABLE_PREFIX = "es2pgsql_search_";
 	private static final String[] EMPTY_TYPES_LIST = new String[0];
 
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 	@Autowired
+	private IndexFieldMappingService indexFieldMappingService;
+	@Autowired
 	private TableUtils tableUtils;
 	@Autowired
 	private TableGarbageCollector garbageCollector;
 
 	private final ObjectMapper objectMapper = new ObjectMapper();
+
+	public Map<String, Object> multiSearch(String fallbackIndex, String fallbackType, String transmittedRequestBody)
+			throws Exception {
+		LOGGER.info(transmittedRequestBody);
+		String[] lines = transmittedRequestBody.split("\n");
+
+		List<Map<String, Object>> responses = new ArrayList<Map<String, Object>>(1);
+
+		for (int i = 0; i < lines.length; i += 2) {
+			Map<String, Object> indexTypeInfo = objectMapper.readValue(lines[i], Map.class);
+			indexTypeInfo.putIfAbsent("index", fallbackIndex);
+			indexTypeInfo.putIfAbsent("type", fallbackType);
+
+			List<String> indices = null;
+			if (indexTypeInfo.get("index") instanceof List) {
+				indices = tableUtils.listTables((List) indexTypeInfo.get("index"));
+			} else {
+				indices = tableUtils.listTables((String) indexTypeInfo.get("index"));
+			}
+			String[] types = null;
+			if (indexTypeInfo.get("type") == null) {
+				types = EMPTY_TYPES_LIST;
+			} else if (indexTypeInfo.get("type") instanceof List) {
+				types = (String[]) ((List) indexTypeInfo.get("type")).toArray(new String[0]);
+			} else {
+				types = ((String) indexTypeInfo.get("type")).split(",");
+			}
+
+			responses.add(search(indices, types, lines[i + 1]));
+		}
+
+		Map<String, Object> result = new HashMap<String, Object>();
+		result.put("responses", responses);
+		return result;
+	}
 
 	public Map<String, Object> search(String transmittedRequestBody) throws Exception {
 		return search(null, transmittedRequestBody);
@@ -58,7 +95,8 @@ public class SearchService {
 
 	public Map<String, Object> search(String indexPattern, String typesPattern, String transmittedRequestBody)
 			throws Exception {
-		List<String> indices = indexPattern == null ? tableUtils.listTables() : tableUtils.listTables(indexPattern);
+		List<String> indices = indexPattern == null ? tableUtils.listTables()
+				: tableUtils.listTables(TableUtils.sanitizeTableName(indexPattern));
 		String[] types = typesPattern == null ? EMPTY_TYPES_LIST : typesPattern.split(",");
 		return search(indices, types, transmittedRequestBody);
 	}
@@ -89,11 +127,34 @@ public class SearchService {
 	private Map<String, Object> searchWithAggregationUsingOriginalTable(List<String> indices, String[] types,
 			RequestBodySearch requestBodySearch, long startTime) throws Exception {
 		final List<String> temporaryTablesCreated = new ArrayList<String>(1);
-		final Map<String, Object> result = executeQuery("SELECT * FROM " + tableUtils.sanitizeTableName(indices.get(0)), startTime,
+
+		StringBuilder queryBuilder = new StringBuilder();
+		queryBuilder.append("SELECT * FROM " + tableUtils.sanitizeTableName(indices.get(0)));
+		if (types.length <= 0) {
+			if (!requestBodySearch.getQuery().isMatchAllQuery()) {
+				queryBuilder.append(" AND (");
+			} else {
+				queryBuilder.append(" WHERE (");
+			}
+			for (int j = 0; j < types.length; j++) {
+				if (types[j].length() == 0) {
+					continue;
+				}
+				if (j > 0) {
+					queryBuilder.append(" OR ");
+				}
+				queryBuilder.append("_type = '");
+				queryBuilder.append(types[j]);
+				queryBuilder.append("'");
+			}
+			queryBuilder.append(")");
+		}
+
+		final Map<String, Object> result = executeQuery(queryBuilder.toString(), startTime,
 				requestBodySearch.getSize());
 		final Map<String, Object> aggregationsResult = new HashMap<String, Object>();
-		requestBodySearch.getAggregation().executeSqlQuery(jdbcTemplate, aggregationsResult, temporaryTablesCreated,
-				indices.get(0), requestBodySearch);
+		requestBodySearch.getAggregation().executeSqlQuery(indices, types, jdbcTemplate, indexFieldMappingService, aggregationsResult,
+				temporaryTablesCreated, indices.get(0), requestBodySearch);
 		result.put("aggregations", aggregationsResult);
 		garbageCollector.scheduleTablesForDeletion(temporaryTablesCreated);
 		return result;
@@ -112,17 +173,36 @@ public class SearchService {
 				tempTableBuilderQuery.append(" UNION ALL ");
 			}
 			tempTableBuilderQuery.append("SELECT * ");
-			
+
 			if (i == indices.size() - 1) {
 				tempTableBuilderQuery.append(" INTO ");
 				tempTableBuilderQuery.append(queryDataTableName);
 			}
-			
+
 			tempTableBuilderQuery.append(" FROM ");
 			tempTableBuilderQuery.append(tableUtils.sanitizeTableName(indices.get(i)));
 			if (!requestBodySearch.getQuery().isMatchAllQuery()) {
 				tempTableBuilderQuery.append(" WHERE ");
 				tempTableBuilderQuery.append(requestBodySearch.getQuerySqlWhereClause());
+			}
+			if (types.length > 0) {
+				if (!requestBodySearch.getQuery().isMatchAllQuery()) {
+					tempTableBuilderQuery.append(" AND (");
+				} else {
+					tempTableBuilderQuery.append(" WHERE (");
+				}
+				for (int j = 0; j < types.length; j++) {
+					if (types[j].length() == 0) {
+						continue;
+					}
+					if (j > 0) {
+						tempTableBuilderQuery.append(" OR ");
+					}
+					tempTableBuilderQuery.append("_type = '");
+					tempTableBuilderQuery.append(types[j]);
+					tempTableBuilderQuery.append("'");
+				}
+				tempTableBuilderQuery.append(")");
 			}
 			if (requestBodySearch.getSize() > 0) {
 				tempTableBuilderQuery.append(" LIMIT ");
@@ -132,23 +212,6 @@ public class SearchService {
 				tempTableBuilderQuery.append(" OFFSET ");
 				tempTableBuilderQuery.append(requestBodySearch.getFrom());
 			}
-
-			if (types.length <= 0) {
-				tempTableBuilderQuery.append(" AND (");
-				for (int j = 0; j < types.length; j++) {
-					if (types[j].length() == 0) {
-						continue;
-					}
-					if (j > 0) {
-						tempTableBuilderQuery.append(" OR ");
-					}
-					tempTableBuilderQuery.append("type = '");
-					tempTableBuilderQuery.append(types[j]);
-					tempTableBuilderQuery.append("'");
-				}
-				tempTableBuilderQuery.append(")");
-			}
-
 		}
 
 		LOGGER.info(tempTableBuilderQuery.toString());
@@ -157,10 +220,9 @@ public class SearchService {
 		final Map<String, Object> result = executeQuery("SELECT * FROM " + queryDataTableName, startTime,
 				requestBodySearch.getSize());
 		final Map<String, Object> aggregationsResult = new HashMap<String, Object>();
-		
-		
-		requestBodySearch.getAggregation().executeSqlQuery(jdbcTemplate, aggregationsResult, temporaryTablesCreated,
-				queryDataTableName, requestBodySearch);
+
+		requestBodySearch.getAggregation().executeSqlQuery(indices, types, jdbcTemplate, indexFieldMappingService, aggregationsResult,
+				temporaryTablesCreated, queryDataTableName, requestBodySearch);
 		result.put("aggregations", aggregationsResult);
 		garbageCollector.scheduleTablesForDeletion(temporaryTablesCreated);
 		return result;
@@ -183,6 +245,25 @@ public class SearchService {
 				tempTableBuilderQuery.append(" WHERE ");
 				tempTableBuilderQuery.append(requestBodySearch.getQuerySqlWhereClause());
 			}
+			if (types.length > 0) {
+				if (!requestBodySearch.getQuery().isMatchAllQuery()) {
+					tempTableBuilderQuery.append(" AND (");
+				} else {
+					tempTableBuilderQuery.append(" WHERE (");
+				}
+				for (int j = 0; j < types.length; j++) {
+					if (types[j].length() == 0) {
+						continue;
+					}
+					if (j > 0) {
+						tempTableBuilderQuery.append(" OR ");
+					}
+					tempTableBuilderQuery.append("_type = '");
+					tempTableBuilderQuery.append(types[j]);
+					tempTableBuilderQuery.append("'");
+				}
+				tempTableBuilderQuery.append(")");
+			}
 			if (requestBodySearch.getSize() > 0) {
 				tempTableBuilderQuery.append(" LIMIT ");
 				tempTableBuilderQuery.append(requestBodySearch.getSize());
@@ -201,7 +282,7 @@ public class SearchService {
 			sqlRowSet = jdbcTemplate.queryForRowSet(query);
 			return convertSqlQueryResultToSearchResult(sqlRowSet, startTime, size);
 		} catch (Exception e) {
-			if(e.getMessage().contains("No results")) {
+			if (e.getMessage().contains("No results")) {
 				return convertSqlQueryResultToSearchResult(null, startTime, size);
 			}
 			throw e;
@@ -213,8 +294,13 @@ public class SearchService {
 		final Map<String, Object> result = new HashMap<String, Object>();
 		final List<Map<String, Object>> hitsList = new ArrayList<Map<String, Object>>(1);
 
-		final Map<String, Object> hits = new HashMap<String, Object>();
+		final Map<String, Object> shards = new HashMap<String, Object>();
+		shards.put("total", 1);
+		shards.put("successful", 1);
+		shards.put("failed", 0);
 		
+		final Map<String, Object> hits = new HashMap<String, Object>();
+
 		if (rowSet == null) {
 			hits.put("total", 0);
 		} else if (size > 0) {
@@ -252,6 +338,7 @@ public class SearchService {
 		result.put("took", System.currentTimeMillis() - startTime);
 		result.put("timed_out", false);
 		result.put("hits", hits);
+		result.put("_shards", shards);
 		return result;
 	}
 }

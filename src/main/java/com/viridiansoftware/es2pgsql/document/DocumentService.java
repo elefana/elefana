@@ -17,10 +17,13 @@ package com.viridiansoftware.es2pgsql.document;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.postgresql.util.PGobject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
@@ -33,6 +36,8 @@ import com.viridiansoftware.es2pgsql.util.TableUtils;
 
 @Service
 public class DocumentService {
+	private static final Logger LOGGER = LoggerFactory.getLogger(DocumentService.class);
+
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 	@Autowired
@@ -42,12 +47,70 @@ public class DocumentService {
 
 	public Map<String, Object> get(String index, String type, String id) throws Exception {
 		Connection connection = jdbcTemplate.getDataSource().getConnection();
-		Map<String, Object> result = null;
+		Map<String, Object> result = new HashMap<String, Object>();
 		try {
-			result = jdbcTemplate.queryForMap(
-					"SELECT * FROM " + TableUtils.sanitizeTableName(index) + " WHERE _type = '?' AND _id = '?'", type,
-					id);
+			String query = "SELECT * FROM " + TableUtils.sanitizeTableName(index) + " WHERE _type = ? AND _id = ?";
+			SqlRowSet resultSet = jdbcTemplate.queryForRowSet(query, type, id);
+			if(resultSet.next()) {
+				result.put("_index", resultSet.getString("_index"));
+				result.put("_type", resultSet.getString("_type"));
+				result.put("_id", resultSet.getString("_id"));
+				result.put("_version", 1);
+				result.put("found", true);
+				result.put("_source", objectMapper.readValue(resultSet.getString("_source"), Map.class));
+			}
 		} catch (Exception e) {
+			e.printStackTrace();
+			connection.close();
+			throw new NoSuchDocumentException();
+		}
+		connection.close();
+		return result;
+	}
+
+	public MultiGetResponse multiGetByRequestBody(String requestBody) throws Exception {
+		Map<String, Object> request = objectMapper.readValue(requestBody, Map.class);
+		List<Object> requestItems = (List<Object>) request.get("docs");
+
+		Connection connection = jdbcTemplate.getDataSource().getConnection();
+		MultiGetResponse result = new MultiGetResponse();
+		try {
+			for (Object tmpRequestItem : requestItems) {
+				Map<String, Object> requestItem = (Map<String, Object>) tmpRequestItem;
+				StringBuilder queryBuilder = new StringBuilder();
+				queryBuilder.append("SELECT * FROM ");
+				queryBuilder.append(TableUtils.sanitizeTableName((String) requestItem.get("_index")));
+				if (requestItem.containsKey("_type") || requestItem.containsKey("_id")) {
+					queryBuilder.append(" WHERE ");
+				}
+
+				if (requestItem.containsKey("_type")) {
+					queryBuilder.append("_type = '");
+					queryBuilder.append(requestItem.get("_type"));
+					queryBuilder.append("'");
+
+					if (requestItem.containsKey("_id")) {
+						queryBuilder.append(" AND ");
+					}
+				}
+				if (requestItem.containsKey("_id")) {
+					queryBuilder.append("_id = '");
+					queryBuilder.append(requestItem.get("_id"));
+					queryBuilder.append("'");
+				}
+
+				SqlRowSet resultSet = jdbcTemplate.queryForRowSet(queryBuilder.toString());
+				while (resultSet.next()) {
+					GetResponse getResponse = new GetResponse();
+					getResponse.set_index(resultSet.getString("_index"));
+					getResponse.set_type(resultSet.getString("_type"));
+					getResponse.set_id(resultSet.getString("_id"));
+					getResponse.set_source(objectMapper.readValue(resultSet.getString("_source"), Map.class));
+					result.getDocs().add(getResponse);
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
 			connection.close();
 			throw new NoSuchDocumentException();
 		}
@@ -61,7 +124,7 @@ public class DocumentService {
 		try {
 			for (String tableName : tableUtils.listTables()) {
 				SqlRowSet resultSet = jdbcTemplate
-						.queryForRowSet("SELECT * FROM " + TableUtils.sanitizeTableName(tableName) + " LIMIT 10");
+						.queryForRowSet("SELECT * FROM " + TableUtils.sanitizeTableName(tableName));
 				while (resultSet.next()) {
 					GetResponse getResponse = new GetResponse();
 					getResponse.set_index(resultSet.getString("_index"));
@@ -72,7 +135,6 @@ public class DocumentService {
 				}
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
 			connection.close();
 			throw new NoSuchDocumentException();
 		}
@@ -129,8 +191,16 @@ public class DocumentService {
 		return result;
 	}
 
-	public IndexApiResponse index(String index, String type, String id, String document, boolean createMode)
+	public IndexApiResponse index(String index, String type, String id, String document, IndexOpType opType)
 			throws Exception {
+		if (type.equals("_mapping")) {
+			LOGGER.info(index + " " + type + " " + id);
+			try {
+				throw new RuntimeException();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
 		tableUtils.ensureTableExists(index);
 
 		PGobject jsonObject = new PGobject();
@@ -140,9 +210,23 @@ public class DocumentService {
 		StringBuilder queryBuilder = new StringBuilder();
 		queryBuilder.append("INSERT INTO ");
 		queryBuilder.append(TableUtils.sanitizeTableName(index));
+		queryBuilder.append(" AS i");
 		queryBuilder.append(" (_index, _type, _id, _timestamp, _source) VALUES (?, ?, ?, ?, ?)");
-		if (createMode) {
+
+		switch (opType) {
+		case CREATE:
 			queryBuilder.append(" ON CONFLICT DO NOTHING");
+			break;
+		case UPDATE:
+			queryBuilder.append(
+					" ON CONFLICT (_id) DO UPDATE SET _timestamp = EXCLUDED._timestamp, _source = EXCLUDED._source || i._source");
+			break;
+		case OVERWRITE:
+		default:
+			queryBuilder.append(
+					" ON CONFLICT (_id) DO UPDATE SET _timestamp = EXCLUDED._timestamp, _source = EXCLUDED._source");
+			break;
+
 		}
 		queryBuilder.append(";");
 
@@ -165,7 +249,7 @@ public class DocumentService {
 			result.created = true;
 			return result;
 		} else {
-			if(createMode) {
+			if (opType == IndexOpType.CREATE) {
 				throw new DocumentAlreadyExistsException();
 			}
 			throw new RuntimeException("");

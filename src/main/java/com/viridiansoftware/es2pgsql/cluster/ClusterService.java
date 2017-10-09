@@ -84,16 +84,51 @@ public class ClusterService {
 		result.put("active_shards_percent_as_number", 100.0);
 		return result;
 	}
+	
+	public Map<String, Object> getClusterSettings() {
+		Map<String, Object> result = new HashMap<String, Object>();
+		
+		Map<String, Object> defaults = new HashMap<String, Object>();
+		result.put("defaults", defaults);
+		
+		Map<String, Object> script = new HashMap<String, Object>();
+		defaults.put("script", script);
+		
+		Map<String, Object> engine = new HashMap<String, Object>();
+		script.put("engine", engine);
+		
+		Map<String, Object> painless = new HashMap<String, Object>();
+		painless.put("inline", false);
+		engine.put("painless", painless);
+		
+		Map<String, Object> expression = new HashMap<String, Object>();
+		expression.put("inline", false);
+		engine.put("expression", expression);
+		
+		Map<String, Object> groovy = new HashMap<String, Object>();
+		groovy.put("inline", false);
+		engine.put("groovy", groovy);
+		
+		Map<String, Object> mustache = new HashMap<String, Object>();
+		mustache.put("inline", false);
+		engine.put("mustache", mustache);
+		
+		return result;
+	}
 
 	private String getDatabaseVersion() {
 		String result = "Unknown";
+		Connection connection = null;
 		try {
-			Connection connection = jdbcTemplate.getDataSource().getConnection();
-			try {
-				result = connection.getMetaData().getDatabaseProductVersion();
-			} catch (Exception e) {
+			connection = jdbcTemplate.getDataSource().getConnection();
+			result = connection.getMetaData().getDatabaseProductVersion();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		try {
+			if(connection != null) {
+				connection.close();
 			}
-			connection.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}

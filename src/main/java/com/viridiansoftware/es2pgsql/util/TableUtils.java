@@ -21,14 +21,12 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
 
-import javax.annotation.PostConstruct;
-
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -64,15 +62,23 @@ public class TableUtils {
 		connection.close();
 		return results;
 	}
+	
+	public List<String> listTables(List<String> tablePatterns) throws SQLException {
+		Set<String> results = new HashSet<String>();
+		for(String tablePattern : tablePatterns) {
+			results.addAll(listTables(tablePattern));
+		}
+		return new ArrayList<String>(results);
+	}
 
-	public List<String> listTables(String pattern) throws SQLException {
-		pattern = pattern.replace(".", "\\$");
-		pattern = pattern.replace("*", "(.*)");
-		pattern = "^" + pattern + "$";
+	public List<String> listTables(String tablePattern) throws SQLException {
+		tablePattern = tablePattern.replace(".", "\\$");
+		tablePattern = tablePattern.replace("*", "(.*)");
+		tablePattern = "^" + tablePattern + "$";
 
 		List<String> results = listTables();
 		for (int i = results.size() - 1; i >= 0; i--) {
-			if (results.get(i).matches(pattern)) {
+			if (results.get(i).matches(tablePattern)) {
 				continue;
 			}
 			results.remove(i);

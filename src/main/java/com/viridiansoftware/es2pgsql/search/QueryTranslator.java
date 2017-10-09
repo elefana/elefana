@@ -46,7 +46,7 @@ public class QueryTranslator extends QuerySpec {
 	@Override
 	public boolean isMatchAllQuery() {
 		if(querySpec == null) {
-			return super.isMatchAllQuery();
+			return true;
 		}
 		return querySpec.isMatchAllQuery();
 	}
