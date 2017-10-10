@@ -43,6 +43,7 @@ public class TableUtils {
 
 	public static String sanitizeTableName(String tableName) {
 		tableName = tableName.replace(".", "__");
+		tableName = tableName.replace("-", "___");
 		return tableName;
 	}
 
