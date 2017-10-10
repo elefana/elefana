@@ -48,6 +48,7 @@ public class DateHistogramAggregationSpec extends AggregationSpec {
 		StringBuilder queryBuilder = new StringBuilder();
 		queryBuilder.append("SELECT ");
 
+		LOGGER.info(interval);
 		switch (interval) {
 		case "year":
 			queryBuilder.append("date_trunc('year',");
@@ -81,9 +82,9 @@ public class DateHistogramAggregationSpec extends AggregationSpec {
 
 		switch (fieldType) {
 		case "date":
-			queryBuilder.append("to_timestamp(_source->>'");
+			queryBuilder.append("cast(_source->>'");
 			queryBuilder.append(fieldName);
-			queryBuilder.append("', 'YYYY-MM-DDTHH:MI:SS')");
+			queryBuilder.append("' as TIMESTAMP)");
 			break;
 		case "long":
 			queryBuilder.append("to_timestamp(_source->>'");
@@ -94,53 +95,49 @@ public class DateHistogramAggregationSpec extends AggregationSpec {
 			break;
 		}
 		queryBuilder.append(") AS es2pgsql_agg_bucket");
-
-		if (aggregationExec.getAggregation().getSubAggregations().isEmpty()) {
-			queryBuilder.append(", COUNT(*) FROM ");
-		} else {
-			queryBuilder.append(", * INTO ");
-			queryBuilder.append(aggregationTableName);
-			queryBuilder.append(" FROM ");
-		}
+		queryBuilder.append(", * INTO ");
+		queryBuilder.append(aggregationTableName);
+		queryBuilder.append(" FROM ");
 		queryBuilder.append(aggregationExec.getQueryTable());
-		queryBuilder.append(" GROUP BY es2pgsql_agg_bucket");
 
 		LOGGER.info(queryBuilder.toString());
 
-		SqlRowSet resultSet = aggregationExec.getJdbcTemplate().queryForRowSet(queryBuilder.toString());
-		if (aggregationExec.getAggregation().getSubAggregations().isEmpty()) {
-			while (resultSet.next()) {
-				final Map<String, Object> bucket = new HashMap<String, Object>();
-				bucket.put("key", resultSet.getTimestamp("es2pgsql_agg_bucket").getTime());
-				bucket.put("doc_count", resultSet.getInt("count"));
-				buckets.add(bucket);
-			}
-		} else {
-			final Set<Timestamp> uniqueBuckets = new HashSet<Timestamp>();
-			while (resultSet.next()) {
-				uniqueBuckets.add(resultSet.getTimestamp("es2pgsql_agg_bucket"));
-			}
+		aggregationExec.getJdbcTemplate().execute(queryBuilder.toString());
 
-			for (Timestamp bucketTimestamp : uniqueBuckets) {
-				final Map<String, Object> bucket = new HashMap<String, Object>();
-				bucket.put("key", bucketTimestamp.getTime());
-				
-				final String bucketTableName = aggregationTableName + "_" + bucketTimestamp.getTime();
-				final String bucketQuery = "SELECT * FROM " + aggregationTableName + " INTO " + bucketTableName
-						+ " WHERE es2pgsql_agg_bucket = to_timestamp(" + bucketTimestamp.getTime() / 1000L + ")";
-				SqlRowSet rowSet = aggregationExec.getJdbcTemplate().queryForRowSet(bucketQuery, bucketTimestamp);
-				rowSet.last();
-				
-				Map<String, Object> aggResult = aggregationExec.getJdbcTemplate().queryForMap("SELECT COUNT(*) FROM " + bucketTableName);
-				bucket.put("doc_count", aggResult.get("count"));
-				
-				for(Aggregation aggregation : aggregationExec.getAggregation().getSubAggregations()) {
-					aggregation.executeSqlQuery(aggregationExec, bucket, bucketTableName);
-				}
+		final String distinctBucketsQuery = "SELECT DISTINCT es2pgsql_agg_bucket FROM " + aggregationTableName;
+		LOGGER.info(distinctBucketsQuery);
+		SqlRowSet resultSet = aggregationExec.getJdbcTemplate().queryForRowSet(distinctBucketsQuery);
+
+		final Set<Timestamp> uniqueBuckets = new HashSet<Timestamp>();
+		while (resultSet.next()) {
+			uniqueBuckets.add(resultSet.getTimestamp("es2pgsql_agg_bucket"));
+		}
+
+		for (Timestamp bucketTimestamp : uniqueBuckets) {
+			final Map<String, Object> bucket = new HashMap<String, Object>();
+			bucket.put("key", bucketTimestamp.getTime());
+
+			final String bucketTableName = aggregationTableName + "_" + bucketTimestamp.getTime();
+			final String bucketQuery = "SELECT * INTO " + bucketTableName + " FROM " + aggregationTableName
+					+ " WHERE es2pgsql_agg_bucket = to_timestamp(" + bucketTimestamp.getTime() / 1000L + ")";
+			LOGGER.info(bucketQuery);
+			aggregationExec.getJdbcTemplate().execute(bucketQuery);
+
+			final String bucketCountQuery = "SELECT COUNT(*) FROM " + bucketTableName;
+			LOGGER.info(bucketCountQuery);
+			Map<String, Object> aggResult = aggregationExec.getJdbcTemplate().queryForMap(bucketCountQuery);
+			bucket.put("doc_count", aggResult.get("count"));
+
+			for (Aggregation aggregation : aggregationExec.getAggregation().getSubAggregations()) {
+				aggregation.executeSqlQuery(aggregationExec, bucket, bucketTableName);
 			}
+			buckets.add(bucket);
+			aggregationExec.getTempTablesCreated().add(bucketTableName);
 		}
 		result.put("buckets", buckets);
 		aggregationExec.getAggregationsResult().put(aggregationExec.getAggregation().getAggregationName(), result);
+
+		aggregationExec.getTempTablesCreated().add(aggregationTableName);
 	}
 
 	@Override
