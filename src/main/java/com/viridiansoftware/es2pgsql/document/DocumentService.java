@@ -99,13 +99,22 @@ public class DocumentService {
 					queryBuilder.append("'");
 				}
 
-				SqlRowSet resultSet = jdbcTemplate.queryForRowSet(queryBuilder.toString());
-				while (resultSet.next()) {
+				try {
+					SqlRowSet resultSet = jdbcTemplate.queryForRowSet(queryBuilder.toString());
+					while (resultSet.next()) {
+						GetResponse getResponse = new GetResponse();
+						getResponse.set_index(resultSet.getString("_index"));
+						getResponse.set_type(resultSet.getString("_type"));
+						getResponse.set_id(resultSet.getString("_id"));
+						getResponse.set_source(objectMapper.readValue(resultSet.getString("_source"), Map.class));
+						result.getDocs().add(getResponse);
+					}
+				} catch (Exception e) {
 					GetResponse getResponse = new GetResponse();
-					getResponse.set_index(resultSet.getString("_index"));
-					getResponse.set_type(resultSet.getString("_type"));
-					getResponse.set_id(resultSet.getString("_id"));
-					getResponse.set_source(objectMapper.readValue(resultSet.getString("_source"), Map.class));
+					getResponse.set_index((String) requestItem.get("_index"));
+					getResponse.set_type((String) requestItem.get("_type"));
+					getResponse.set_id((String) requestItem.get("_id"));
+					getResponse.setFound(false);
 					result.getDocs().add(getResponse);
 				}
 			}
