@@ -30,6 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.viridiansoftware.es2pgsql.cluster.AckResponse;
 import com.viridiansoftware.es2pgsql.cluster.ClusterService;
+import com.viridiansoftware.es2pgsql.document.BulkService;
 import com.viridiansoftware.es2pgsql.document.DocumentService;
 import com.viridiansoftware.es2pgsql.document.IndexFieldMappingService;
 import com.viridiansoftware.es2pgsql.document.IndexOpType;
@@ -42,6 +43,8 @@ public class HttpApiController {
 
 	@Autowired
 	private DocumentService documentService;
+	@Autowired
+	private BulkService bulkService;
 	@Autowired
 	private IndexFieldMappingService indexFieldMappingService;
 	@Autowired
@@ -83,6 +86,8 @@ public class HttpApiController {
 			return documentService.multiGetByRequestBody(request.getBody());
 		case "_msearch":
 			return searchService.multiSearch(null, null, request.getBody());
+		case "_bulk":
+			return bulkService.bulkOperations(request.getBody());
 		}
 		return null;
 	}

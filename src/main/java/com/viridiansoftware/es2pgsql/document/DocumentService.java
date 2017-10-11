@@ -202,14 +202,6 @@ public class DocumentService {
 
 	public IndexApiResponse index(String index, String type, String id, String document, IndexOpType opType)
 			throws Exception {
-		if (type.equals("_mapping")) {
-			LOGGER.info(index + " " + type + " " + id);
-			try {
-				throw new RuntimeException();
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
 		tableUtils.ensureTableExists(index);
 
 		PGobject jsonObject = new PGobject();
