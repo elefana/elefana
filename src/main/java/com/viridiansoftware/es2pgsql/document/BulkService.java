@@ -44,7 +44,6 @@ public class BulkService {
 		final Map<String, List<BulkIndexOperation>> indexOperations = new HashMap<String, List<BulkIndexOperation>>();
 
 		for (int i = 0; i < lines.length; i += 2) {
-			System.out.println(lines[i]);
 			Map<String, Object> operation = objectMapper.readValue(lines[i], Map.class);
 			if (operation.containsKey("index")) {
 				Map<String, Object> indexOperationTarget = (Map) operation.get("index");
@@ -91,7 +90,7 @@ public class BulkService {
 
 			for (BulkIndexOperation indexOperation : indexOperations) {
 				final String row = indexOperation.getIndex() + "|" + indexOperation.getType() + "|"
-						+ indexOperation.getId() + "|" + System.currentTimeMillis() + "|"  + indexOperation.getSource();
+						+ indexOperation.getId() + "|" + System.currentTimeMillis() + "|"  + indexOperation.getSource() + "\n";
 				final byte [] rowBytes = row.getBytes();
 				copyIn.writeToCopy(rowBytes, 0, rowBytes.length);
 
@@ -100,10 +99,16 @@ public class BulkService {
 				responseEntry.put("result", "created");
 				responseEntry.put("created", true);
 				responseEntry.put("status", 201);
+				indexOperation.release();
 			}
 			copyIn.endCopy();
 			LOGGER.info("Indexed " + indexOperations.size() + " into index '" + index + "'");
 		} catch (Exception e) {
+			for (BulkIndexOperation indexOperation : indexOperations) {
+				if(e.getMessage().contains(indexOperation.getId())) {
+					LOGGER.info(indexOperation.getSource());
+				}
+			}
 			LOGGER.error(e.getMessage(), e);
 		}
 

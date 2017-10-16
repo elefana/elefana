@@ -26,14 +26,19 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+import com.viridiansoftware.es2pgsql.document.BulkService;
 import com.viridiansoftware.es2pgsql.node.NodeSettingsService;
 
 @Component
 public class TableUtils {
+	private static final Logger LOGGER = LoggerFactory.getLogger(TableUtils.class);
+
 	private final Set<String> knownTables = new ConcurrentSkipListSet<String>();
 
 	@Autowired
@@ -42,8 +47,9 @@ public class TableUtils {
 	private JdbcTemplate jdbcTemplate;
 
 	public static String sanitizeTableName(String tableName) {
-		tableName = tableName.replace(".", "__");
-		tableName = tableName.replace("-", "___");
+		tableName = tableName.replace(".", "_f_");
+		tableName = tableName.replace("-", "_m_");
+		tableName = tableName.replace(":", "_c_");
 		return tableName;
 	}
 
@@ -63,10 +69,10 @@ public class TableUtils {
 		connection.close();
 		return results;
 	}
-	
+
 	public List<String> listTables(List<String> tablePatterns) throws SQLException {
 		Set<String> results = new HashSet<String>();
-		for(String tablePattern : tablePatterns) {
+		for (String tablePattern : tablePatterns) {
 			results.addAll(listTables(tablePattern));
 		}
 		return new ArrayList<String>(results);
@@ -100,12 +106,17 @@ public class TableUtils {
 		final String ginIndexName = "gin_index_" + tableName;
 
 		Connection connection = jdbcTemplate.getDataSource().getConnection();
-		PreparedStatement preparedStatement = connection.prepareStatement("CREATE TABLE IF NOT EXISTS " + tableName
-				+ " (_index VARCHAR(255), _type VARCHAR(255), _id VARCHAR(255) PRIMARY KEY, _timestamp BIGINT, _source jsonb)");
+
+		final String createTableQuery = "CREATE TABLE IF NOT EXISTS " + tableName
+				+ " (_index VARCHAR(255), _type VARCHAR(255), _id VARCHAR(255) PRIMARY KEY, _timestamp BIGINT, _source jsonb)";
+		LOGGER.info(createTableQuery);
+		PreparedStatement preparedStatement = connection.prepareStatement(createTableQuery);
 		preparedStatement.execute();
 
-		preparedStatement = connection.prepareStatement(
-				"CREATE INDEX IF NOT EXISTS " + ginIndexName + " ON " + tableName + " USING GIN (_source jsonb_ops);");
+		final String createIndexQuery = "CREATE INDEX IF NOT EXISTS " + ginIndexName + " ON " + tableName
+				+ " USING GIN (_source jsonb_ops)";
+		LOGGER.info(createIndexQuery);
+		preparedStatement = connection.prepareStatement(createIndexQuery);
 		preparedStatement.execute();
 
 		if (nodeSettingsService.isUsingCitus()) {
