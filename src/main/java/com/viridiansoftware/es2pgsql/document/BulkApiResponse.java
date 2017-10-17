@@ -20,31 +20,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class BulkApiResponse {
+public class BulkApiResponse {	
 	private long took;
 	private boolean errors;
 	private final List<Map<String, Object>> items = new ArrayList<Map<String, Object>>();
-	
-	public Map<String, Object> appendEntry(String operation, String index, String type, String id) {
-		final Map<String, Object> entry = new HashMap<String, Object>();
-		final Map<String, Object> entryData = new HashMap<String, Object>();
-		
-		entryData.put("_index", index);
-		entryData.put("_type", type);
-		entryData.put("_id", id);
-		entryData.put("_version", 1);
-		
-		final Map<String, Object> shards = new HashMap<String, Object>();
-		shards.put("total", 1);
-		shards.put("successful", 1);
-		shards.put("failed", 0);
-		entryData.put("_shards", shards);
-		
-		entry.put(operation, entryData);
-		
-		items.add(entry);
-		return entryData;
-	}
 
 	public long getTook() {
 		return took;

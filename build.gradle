@@ -38,6 +38,7 @@ dependencies {
 	}
 	compile('org.springframework.boot:spring-boot-starter-web')
 	compile "org.elasticsearch:elasticsearch:$elasticsearchVersion"
+	compile "com.jsoniter:jsoniter:0.9.16"
 	compile "com.zaxxer:HikariCP:$hikariVersion"
 	compile('org.postgresql:postgresql')
 	testCompile('org.springframework.boot:spring-boot-starter-test')

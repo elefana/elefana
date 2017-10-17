@@ -15,6 +15,9 @@
  */
 package com.viridiansoftware.es2pgsql;
 
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
@@ -36,5 +39,10 @@ public class Es2PgsqlApplication {
 		mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
 		MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter(mapper);
 		return converter;
+	}
+	
+	@Bean
+	public ScheduledExecutorService scheduledExecutorService() {
+		return Executors.newScheduledThreadPool(Runtime.getRuntime().availableProcessors() * 2);
 	}
 }

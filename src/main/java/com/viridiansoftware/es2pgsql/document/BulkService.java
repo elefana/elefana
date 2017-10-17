@@ -3,56 +3,60 @@
  */
 package com.viridiansoftware.es2pgsql.document;
 
-import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
 
-import org.postgresql.copy.CopyIn;
-import org.postgresql.copy.CopyManager;
-import org.postgresql.jdbc.PgConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jsoniter.JsonIterator;
+import com.jsoniter.ValueType;
+import com.jsoniter.any.Any;
 import com.viridiansoftware.es2pgsql.util.TableUtils;
 
 @Service
 public class BulkService {
 	private static final Logger LOGGER = LoggerFactory.getLogger(BulkService.class);
 	
-	private final ObjectMapper objectMapper = new ObjectMapper();
+	private static final String OPERATION_INDEX = "index";
+	private static final String NEW_LINE = "\n";
+	private static final int BULK_PARALLELISATION = Runtime.getRuntime().availableProcessors() * 2;
 
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 	@Autowired
 	private TableUtils tableUtils;
+	@Autowired
+	private ScheduledExecutorService scheduledExecutorService;
 
 	public BulkApiResponse bulkOperations(String requestBody) throws Exception {
 		final long startTime = System.currentTimeMillis();
 		final BulkApiResponse bulkApiResponse = new BulkApiResponse();
 
-		final String[] lines = requestBody.split("\n");
+		final String[] lines = requestBody.split(NEW_LINE);
 
 		final Map<String, List<BulkIndexOperation>> indexOperations = new HashMap<String, List<BulkIndexOperation>>();
 
 		for (int i = 0; i < lines.length; i += 2) {
-			Map<String, Object> operation = objectMapper.readValue(lines[i], Map.class);
-			if (operation.containsKey("index")) {
-				Map<String, Object> indexOperationTarget = (Map) operation.get("index");
+			Any operation = JsonIterator.deserialize(lines[i]);
+			if (!operation.get(OPERATION_INDEX).valueType().equals(ValueType.INVALID)) {
+				Any indexOperationTarget = operation.get(OPERATION_INDEX);
 
 				BulkIndexOperation indexOperation = BulkIndexOperation.allocate();
-				indexOperation.setIndex((String) indexOperationTarget.get("_index"));
-				indexOperation.setType((String) indexOperationTarget.get("_type"));
-				if (indexOperationTarget.containsKey("_id")) {
-					indexOperation.setId((String) indexOperationTarget.get("_id"));
+				indexOperation.setIndex(indexOperationTarget.get(BulkTask.KEY_INDEX).toString());
+				indexOperation.setType(indexOperationTarget.get(BulkTask.KEY_TYPE).toString());
+				if (!indexOperationTarget.get(BulkTask.KEY_ID).equals(ValueType.INVALID)) {
+					indexOperation.setId(indexOperationTarget.get(BulkTask.KEY_ID).toString());
 				} else {
 					indexOperation.setId(UUID.randomUUID().toString());
 				}
@@ -75,48 +79,26 @@ public class BulkService {
 	}
 
 	private void bulkIndex(BulkApiResponse bulkApiResponse, String index,
-			Collection<BulkIndexOperation> indexOperations) throws SQLException {
+			List<BulkIndexOperation> indexOperations) throws SQLException {
 		tableUtils.ensureTableExists(index);
 		
-		Connection connection = null;
-
-		try {
-			connection = jdbcTemplate.getDataSource().getConnection();
-			final PgConnection pgConnection = connection.unwrap(PgConnection.class);
-			final CopyManager copyManager = new CopyManager(pgConnection);
-
-			CopyIn copyIn = copyManager
-					.copyIn("COPY " + TableUtils.sanitizeTableName(index) + " FROM STDIN WITH DELIMITER '|'");
-
-			for (BulkIndexOperation indexOperation : indexOperations) {
-				final String row = indexOperation.getIndex() + "|" + indexOperation.getType() + "|"
-						+ indexOperation.getId() + "|" + System.currentTimeMillis() + "|"  + indexOperation.getSource() + "\n";
-				final byte [] rowBytes = row.getBytes();
-				copyIn.writeToCopy(rowBytes, 0, rowBytes.length);
-
-				Map<String, Object> responseEntry = bulkApiResponse.appendEntry("index", indexOperation.getIndex(),
-						indexOperation.getType(), indexOperation.getId());
-				responseEntry.put("result", "created");
-				responseEntry.put("created", true);
-				responseEntry.put("status", 201);
-				indexOperation.release();
-			}
-			copyIn.endCopy();
-			LOGGER.info("Indexed " + indexOperations.size() + " into index '" + index + "'");
-		} catch (Exception e) {
-			for (BulkIndexOperation indexOperation : indexOperations) {
-				if(e.getMessage().contains(indexOperation.getId())) {
-					LOGGER.info(indexOperation.getSource());
-				}
-			}
-			LOGGER.error(e.getMessage(), e);
+		final int operationSize = Math.max(1000, indexOperations.size() / BULK_PARALLELISATION);
+		final List<Future<List<Map<String, Object>>>> results = new ArrayList<Future<List<Map<String, Object>>>>();
+		
+		long pgStartTime = System.currentTimeMillis();
+		for(int i = 0; i < indexOperations.size(); i += operationSize) {
+			results.add(scheduledExecutorService.submit(new BulkTask(jdbcTemplate, indexOperations, index, i, operationSize)));
 		}
-
-		if (connection != null) {
+		
+		for(int i = 0; i < results.size(); i++) {
 			try {
-				connection.close();
-			} catch (SQLException e) {
+				bulkApiResponse.getItems().addAll(results.get(i).get());
+			} catch (InterruptedException e) {
+				LOGGER.error(e.getMessage(), e);
+			} catch (ExecutionException e) {
+				LOGGER.error(e.getMessage(), e);
 			}
 		}
+		LOGGER.info("Indexed " + indexOperations.size() + " into index '" + index + "' in " + (System.currentTimeMillis() - pgStartTime) + "ms");
 	}
 }
