@@ -1,0 +1,4 @@
+include "core", "es2", "es5"
+
+rootProject.name = 'es2pgsql'
+rootProject.children.each { it.name = rootProject.name + "-" + it.name }
