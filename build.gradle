@@ -14,7 +14,6 @@ buildscript {
 subprojects {
 	apply plugin: 'java'
 	apply plugin: 'eclipse'
-	apply plugin: 'org.springframework.boot'
 	apply plugin: 'io.spring.dependency-management'
 
 	version = '1.0.0-SNAPSHOT'
@@ -23,7 +22,8 @@ subprojects {
 	targetCompatibility = 1.8
 
 	ext {
-		elasticsearchVersion = '5.5.2'
+		elasticsearch5Version = '5.5.2'
+		elasticsearch2Version = '2.4.4'
 		hikariVersion = '2.7.1'
 		jodaVersion = '2.9.9'
 		jsoniterVersion = '0.9.16'
@@ -55,20 +55,24 @@ project(":" + rootProject.name + "-core") {
 }
 
 project(":" + rootProject.name + "-es2") {
+	apply plugin: 'org.springframework.boot'
+	
 	dependencies {
 		compile project(":" + rootProject.name + "-core")
-		compile "org.elasticsearch:elasticsearch:$elasticsearchVersion"
+		compile "org.elasticsearch:elasticsearch:$elasticsearch2Version"
 
-		testCompile "org.elasticsearch.client:rest:$elasticsearchVersion"
+		testCompile "org.elasticsearch.client:rest:$elasticsearch5Version"
 	}
 }
 
 project(":" + rootProject.name + "-es5") {
+	apply plugin: 'org.springframework.boot'
+	
 	dependencies {
 		compile project(":" + rootProject.name + "-core")
-		compile "org.elasticsearch:elasticsearch:$elasticsearchVersion"
+		compile "org.elasticsearch:elasticsearch:$elasticsearch5Version"
 
-		testCompile "org.elasticsearch.client:rest:$elasticsearchVersion"
+		testCompile "org.elasticsearch.client:rest:$elasticsearch5Version"
 	}
 }
 

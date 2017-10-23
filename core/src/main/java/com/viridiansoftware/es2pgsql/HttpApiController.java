@@ -81,11 +81,11 @@ public class HttpApiController {
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		switch (indexPatternLowercase) {
 		case "_search":
-			return searchService.search(request.getBody());
+			return searchService.search(request);
 		case "_mget":
 			return documentService.multiGetByRequestBody(request.getBody());
 		case "_msearch":
-			return searchService.multiSearch(null, null, request.getBody());
+			return searchService.multiSearch(null, null, request);
 		case "_bulk":
 			return bulkService.bulkOperations(request.getBody());
 		}
@@ -138,13 +138,13 @@ public class HttpApiController {
 		
 		switch(typePatternLowercase) {
 		case "_search":
-			return searchService.search(indexPattern, request.getBody());
+			return searchService.search(indexPattern, request);
 		case "_mget":
 			return documentService.multiGet(indexPattern);
 		case "_field_caps":
 			return indexFieldMappingService.getFieldCapabilities(indexPattern);
 		case "_msearch":
-			return searchService.multiSearch(indexPattern, null, request.getBody());
+			return searchService.multiSearch(indexPattern, null, request);
 		}
 		return indexOrSearch(indexPattern, typePattern, UUID.randomUUID().toString(), request, response);
 	}
@@ -191,9 +191,9 @@ public class HttpApiController {
 		
 		switch(idPatternLowercase) {
 		case "_search":
-			return searchService.search(indexPattern, typePattern, request.getBody());
+			return searchService.search(indexPattern, typePattern, request);
 		case "_msearch":
-			return searchService.multiSearch(indexPattern, typePattern, request.getBody());
+			return searchService.multiSearch(indexPattern, typePattern, request);
 		}
 		
 		String document = request.getBody();
@@ -223,7 +223,7 @@ public class HttpApiController {
 	public Object indexOrSearch(@PathVariable String indexPattern, @PathVariable String typePattern,
 			@PathVariable String idPattern, @PathVariable String opPattern, HttpEntity<String> request, HttpServletResponse response) throws Exception {
 		if (idPattern.toLowerCase().equals("_search")) {
-			return searchService.search(indexPattern, typePattern, request.getBody());
+			return searchService.search(indexPattern, typePattern, request);
 		}
 		Object result = null;
 		switch(opPattern) {

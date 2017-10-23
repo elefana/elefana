@@ -14,15 +14,15 @@ import org.elasticsearch.common.xcontent.XContentType;
 import com.viridiansoftware.es2pgsql.search.agg.Aggregation;
 import com.viridiansoftware.es2pgsql.search.agg.BucketAggregation;
 
-public class Es5BucketAggregation extends Es5Aggregation implements BucketAggregation {
+public class Es5BucketAggregation extends Es5Aggregations implements BucketAggregation {
 	protected final List<Aggregation> subaggregations = new ArrayList<Aggregation>(1);
 
 	public Es5BucketAggregation(String aggregationName) {
 		super(aggregationName);
 	}
 	
-	protected Es5Aggregation getSubAggregation(int index) {
-		return (Es5Aggregation) getSubAggregation(subaggregations.size() - 1);
+	protected Es5Aggregations getSubAggregation(int index) {
+		return (Es5Aggregations) getSubAggregation(subaggregations.size() - 1);
 	}
 	
 	@Override

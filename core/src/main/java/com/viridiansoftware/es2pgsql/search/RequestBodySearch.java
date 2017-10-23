@@ -15,11 +15,13 @@
  */
 package com.viridiansoftware.es2pgsql.search;
 
+import com.viridiansoftware.es2pgsql.search.query.QuerySpec;
+
 public abstract class RequestBodySearch {
 	protected final String originalQuery;
 	
 	protected AggregationTranslator aggregationTranslator;
-	protected QueryTranslator queryTranslator;
+	protected QuerySpec queryTranslator;
 	
 	protected String querySqlWhereClause;
 	protected int from;
@@ -44,7 +46,7 @@ public abstract class RequestBodySearch {
 		return querySqlWhereClause;
 	}
 	
-	public QueryTranslator getQuery() {
+	public QuerySpec getQuery() {
 		return queryTranslator;
 	}
 	

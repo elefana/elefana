@@ -22,7 +22,7 @@ import com.viridiansoftware.es2pgsql.search.RequestBodySearch;
 import com.viridiansoftware.es2pgsql.search.agg.Aggregation;
 import com.viridiansoftware.es2pgsql.search.agg.AggregationExec;
 
-public class Es5Aggregation extends EsXContext implements Aggregation {
+public class Es5Aggregations extends EsXContext implements Aggregation {
 	private static final List<Aggregation> EMPTY_AGGREGATION_LIST = Collections
 			.unmodifiableList(new ArrayList<Aggregation>(1));
 
@@ -32,7 +32,7 @@ public class Es5Aggregation extends EsXContext implements Aggregation {
 
 	protected Es5AggregationSpec aggregationSpec;
 
-	public Es5Aggregation(String aggregationName) {
+	public Es5Aggregations(String aggregationName) {
 		super();
 		this.aggregationName = aggregationName;
 	}

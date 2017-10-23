@@ -23,6 +23,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.stereotype.Service;
@@ -52,10 +53,9 @@ public class SearchService {
 
 	private final ObjectMapper objectMapper = new ObjectMapper();
 
-	public Map<String, Object> multiSearch(String fallbackIndex, String fallbackType, String transmittedRequestBody)
+	public Map<String, Object> multiSearch(String fallbackIndex, String fallbackType, HttpEntity<String> httpRequest)
 			throws Exception {
-		LOGGER.info(transmittedRequestBody);
-		String[] lines = transmittedRequestBody.split("\n");
+		String[] lines = httpRequest.getBody().split("\n");
 
 		List<Map<String, Object>> responses = new ArrayList<Map<String, Object>>(1);
 
@@ -79,7 +79,7 @@ public class SearchService {
 				types = ((String) indexTypeInfo.get("type")).split(",");
 			}
 
-			responses.add(search(indices, types, lines[i + 1]));
+			responses.add(search(indices, types, new HttpEntity<>(lines[i + 1])));
 		}
 
 		Map<String, Object> result = new HashMap<String, Object>();
@@ -87,26 +87,26 @@ public class SearchService {
 		return result;
 	}
 
-	public Map<String, Object> search(String transmittedRequestBody) throws Exception {
-		return search(null, transmittedRequestBody);
+	public Map<String, Object> search(HttpEntity<String> httpRequest) throws Exception {
+		return search(null, httpRequest);
 	}
 
-	public Map<String, Object> search(String indexPattern, String transmittedRequestBody) throws Exception {
-		return search(indexPattern, "", transmittedRequestBody);
+	public Map<String, Object> search(String indexPattern, HttpEntity<String> httpRequest) throws Exception {
+		return search(indexPattern, "", httpRequest);
 	}
 
-	public Map<String, Object> search(String indexPattern, String typesPattern, String transmittedRequestBody)
+	public Map<String, Object> search(String indexPattern, String typesPattern, HttpEntity<String> httpRequest)
 			throws Exception {
 		List<String> indices = indexPattern == null ? tableUtils.listTables()
 				: tableUtils.listTables(TableUtils.sanitizeTableName(indexPattern));
 		String[] types = typesPattern == null ? EMPTY_TYPES_LIST : typesPattern.split(",");
-		return search(indices, types, transmittedRequestBody);
+		return search(indices, types, httpRequest);
 	}
 
-	private Map<String, Object> search(List<String> indices, String[] types, String transmittedRequestBody)
+	private Map<String, Object> search(List<String> indices, String[] types, HttpEntity<String> httpRequest)
 			throws Exception {
 		final long startTime = System.currentTimeMillis();
-		final RequestBodySearch requestBodySearch = requestBodySearchFactory.createRequestBodySearch(transmittedRequestBody);
+		final RequestBodySearch requestBodySearch = requestBodySearchFactory.createRequestBodySearch(httpRequest);
 		if (!requestBodySearch.hasAggregations()) {
 			return searchWithoutAggregation(indices, types, requestBodySearch, startTime);
 		}
