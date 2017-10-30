@@ -45,8 +45,6 @@ public class SearchService {
 	@Autowired
 	private IndexFieldMappingService indexFieldMappingService;
 	@Autowired
-	private RequestBodySearchFactory requestBodySearchFactory;
-	@Autowired
 	private TableUtils tableUtils;
 	@Autowired
 	private TableGarbageCollector garbageCollector;
@@ -106,7 +104,7 @@ public class SearchService {
 	private Map<String, Object> search(List<String> indices, String[] types, HttpEntity<String> httpRequest)
 			throws Exception {
 		final long startTime = System.currentTimeMillis();
-		final RequestBodySearch requestBodySearch = requestBodySearchFactory.createRequestBodySearch(httpRequest);
+		final RequestBodySearch requestBodySearch = new RequestBodySearch(httpRequest.getBody());
 		if (!requestBodySearch.hasAggregations()) {
 			return searchWithoutAggregation(indices, types, requestBodySearch, startTime);
 		}
@@ -117,13 +115,13 @@ public class SearchService {
 			RequestBodySearch requestBodySearch, long startTime) throws Exception {
 		if (indices.size() == 1 && requestBodySearch.getQuery().isMatchAllQuery()) {
 			if (requestBodySearch.getFrom() > 0) {
-				return searchWithAggregationUsingCachedTables(indices, types, requestBodySearch, startTime);
+				return searchWithAggregationUsingFilteredTables(indices, types, requestBodySearch, startTime);
 			} else if (requestBodySearch.getSize() > 0) {
-				return searchWithAggregationUsingCachedTables(indices, types, requestBodySearch, startTime);
+				return searchWithAggregationUsingFilteredTables(indices, types, requestBodySearch, startTime);
 			}
 			return searchWithAggregationUsingOriginalTable(indices, types, requestBodySearch, startTime);
 		}
-		return searchWithAggregationUsingCachedTables(indices, types, requestBodySearch, startTime);
+		return searchWithAggregationUsingFilteredTables(indices, types, requestBodySearch, startTime);
 	}
 
 	private Map<String, Object> searchWithAggregationUsingOriginalTable(List<String> indices, String[] types,
@@ -155,18 +153,17 @@ public class SearchService {
 		final Map<String, Object> result = executeQuery(queryBuilder.toString(), startTime,
 				requestBodySearch.getSize());
 		final Map<String, Object> aggregationsResult = new HashMap<String, Object>();
-		requestBodySearch.getAggregation().executeSqlQuery(indices, types, jdbcTemplate, indexFieldMappingService, aggregationsResult,
+		requestBodySearch.getAggregations().executeSqlQuery(indices, types, jdbcTemplate, indexFieldMappingService, aggregationsResult,
 				temporaryTablesCreated, indices.get(0), requestBodySearch);
 		result.put("aggregations", aggregationsResult);
 		garbageCollector.scheduleTablesForDeletion(temporaryTablesCreated);
 		return result;
 	}
 
-	private Map<String, Object> searchWithAggregationUsingCachedTables(List<String> indices, String[] types,
+	private Map<String, Object> searchWithAggregationUsingFilteredTables(List<String> indices, String[] types,
 			RequestBodySearch requestBodySearch, long startTime) throws Exception {
 		final List<String> temporaryTablesCreated = new ArrayList<String>(1);
-		final String queryDataTableName = SEARCH_TABLE_PREFIX + requestBodySearch.hashCode() + "_"
-				+ System.currentTimeMillis();
+		final String queryDataTableName = SEARCH_TABLE_PREFIX + requestBodySearch.hashCode();
 		temporaryTablesCreated.add(queryDataTableName);
 
 		StringBuilder tempTableBuilderQuery = new StringBuilder();
@@ -223,7 +220,7 @@ public class SearchService {
 				requestBodySearch.getSize());
 		final Map<String, Object> aggregationsResult = new HashMap<String, Object>();
 
-		requestBodySearch.getAggregation().executeSqlQuery(indices, types, jdbcTemplate, indexFieldMappingService, aggregationsResult,
+		requestBodySearch.getAggregations().executeSqlQuery(indices, types, jdbcTemplate, indexFieldMappingService, aggregationsResult,
 				temporaryTablesCreated, queryDataTableName, requestBodySearch);
 		result.put("aggregations", aggregationsResult);
 		garbageCollector.scheduleTablesForDeletion(temporaryTablesCreated);

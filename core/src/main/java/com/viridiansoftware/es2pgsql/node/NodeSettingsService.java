@@ -19,8 +19,6 @@ public class NodeSettingsService {
 	@Autowired
 	Environment environment;
 	
-	private ApiVersion apiVersion = ApiVersion.V_5_5_2;
-	
 	private String nodeId;
 	private String nodeName;
 	private String clusterId;
@@ -97,10 +95,6 @@ public class NodeSettingsService {
 
 	public String getHttpAddress() {
 		return httpAddress;
-	}
-
-	public ApiVersion getApiVersion() {
-		return apiVersion;
 	}
 
 	public boolean isUsingCitus() {

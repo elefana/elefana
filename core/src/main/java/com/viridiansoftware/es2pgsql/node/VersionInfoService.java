@@ -17,20 +17,23 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
+import com.viridiansoftware.es2pgsql.ApiVersion;
 import com.viridiansoftware.es2pgsql.cluster.ClusterService;
 
 @Component
 public class VersionInfoService {
 	private static final Logger LOGGER = LoggerFactory.getLogger(VersionInfoService.class);
 
-	private static final String FALLBACK_VERSION = "5.5.0";
-	private static final String FALLBACK_HASH = DigestUtils.sha1Hex(FALLBACK_VERSION);
 	private static final String FALLBACK_TIMESTAMP = new DateTime().toString();
-	
+
+	@Autowired
+	Environment environment;
+
+	private ApiVersion apiVersion = ApiVersion.V_5_5_2;
 	private String versionNumber;
 	private String buildHash;
 	private String buildTimestamp;
-	
+
 	@PostConstruct
 	public void postConstruct() {
 		final URL jarUrl = ClusterService.class.getProtectionDomain().getCodeSource().getLocation();
@@ -38,17 +41,31 @@ public class VersionInfoService {
 		if (jarUrlPath.startsWith("file:/") && jarUrlPath.endsWith(".jar")) {
 			try (JarInputStream jar = new JarInputStream(jarUrl.openStream())) {
 				Manifest manifest = jar.getManifest();
-				versionNumber = manifest.getMainAttributes().getValue("Build-Release");
 				buildHash = manifest.getMainAttributes().getValue("Build-Hash");
 				buildTimestamp = manifest.getMainAttributes().getValue("Build-Timestamp");
 			} catch (Exception e) {
 			}
 		}
-		if (versionNumber == null || buildHash == null || buildTimestamp == null) {
-			versionNumber = FALLBACK_VERSION;
-			buildHash = FALLBACK_HASH;
+		switch (Integer.parseInt(environment.getRequiredProperty("es2pgsql.esApiVersion").trim())) {
+		case 2:
+			apiVersion = ApiVersion.V_2_4_3;
+			break;
+		case 5:
+			apiVersion = ApiVersion.V_5_5_2;
+			break;
+		}
+
+		versionNumber = apiVersion.getVersionString();
+		if (buildHash == null) {
+			buildHash = DigestUtils.sha1Hex(versionNumber);
+		}
+		if (buildTimestamp == null) {
 			buildTimestamp = FALLBACK_TIMESTAMP;
 		}
+	}
+
+	public ApiVersion getApiVersion() {
+		return apiVersion;
 	}
 
 	public String getVersionNumber() {

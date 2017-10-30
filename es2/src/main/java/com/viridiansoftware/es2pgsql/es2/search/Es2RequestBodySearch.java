@@ -65,12 +65,17 @@ import org.elasticsearch.search.query.TerminateAfterParseElement;
 import org.elasticsearch.search.query.TimeoutParseElement;
 import org.elasticsearch.search.sort.SortParseElement;
 import org.elasticsearch.search.sort.TrackScoresParseElement;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
 
 import com.viridiansoftware.es2pgsql.es2.search.query.Es2QuerySpec;
+import com.viridiansoftware.es2pgsql.node.NodeInfoService;
 import com.viridiansoftware.es2pgsql.search.RequestBodySearch;
+import com.viridiansoftware.es2pgsql.search.agg.AggregationsParser;
 
 public class Es2RequestBodySearch extends RequestBodySearch {
+	private static final Logger LOGGER = LoggerFactory.getLogger(Es2RequestBodySearch.class);
 	private static final Map<String, ? extends SearchParseElement> PARSERS = createParseElements();
 	
 	private final Es2SearchContext searchContext = new Es2SearchContext();
@@ -81,6 +86,7 @@ public class Es2RequestBodySearch extends RequestBodySearch {
 	
 	public Es2RequestBodySearch(HttpEntity<String> httpRequest, boolean debug) throws Exception {
 		super(httpRequest.getBody(), debug);
+		LOGGER.info(httpRequest.getBody());
 		parseRequest(searchContext, httpRequest.getBody());
 		
 		try {
@@ -100,30 +106,16 @@ public class Es2RequestBodySearch extends RequestBodySearch {
 			} else {
 				queryTranslator = null;
 			}
-			if(hasAggregations()) {
-				aggregationTranslator = new Es2AggregationTranslator(searchContext.aggregations());
-			} else {
-				aggregationTranslator = null;
-			}
+			aggregations.setSubAggregations(AggregationsParser.parseAggregations(httpRequest.getBody()));
 			querySqlWhereClause = queryTranslator.toSqlWhereClause();
 		} catch (Exception e) {
 			e.printStackTrace();
 			throw e;
 		}
 	}
-
-	@Override
-	public boolean hasAggregations() {
-		if(searchContext.aggregations() == null) {
-			return false;
-		}
-		if(searchContext.aggregations().aggregators() == null) {
-			return false;
-		}
-		return searchContext.aggregations().aggregators().length > 0;
-	}
 	
 	private void parseRequest(Es2SearchContext searchContext, String requestBody) throws Exception {
+		
 		XContentParser parser = XContentFactory.xContent(requestBody).createParser(requestBody);
         XContentParser.Token token;
         token = parser.nextToken();
@@ -171,52 +163,6 @@ public class Es2RequestBodySearch extends RequestBodySearch {
 		result.put("timeout", new TimeoutParseElement());
 		result.put("terminate_after", new TerminateAfterParseElement());
 		result.put("profile", new ProfileParseElement());
-		result.putAll(createAggregationParseElements());
-		//result.putAll(suggestPhase.parseElements());
-		//result.putAll(rescorePhase.parseElements());
-		return result;
-	}
-	
-	private static Map<String, ? extends SearchParseElement> createAggregationParseElements() {
-		final Set<Aggregator.Parser> parsers = new HashSet<Aggregator.Parser>();
-		parsers.add(new CardinalityParser());
-		parsers.add(new ChildrenParser());
-		parsers.add(new DateHistogramParser());
-		parsers.add(new DateRangeParser());
-		parsers.add(new ExtendedStatsParser());
-		parsers.add(new FilterParser());
-		parsers.add(new FiltersParser());
-		parsers.add(new GeoBoundsParser());
-		parsers.add(new GeoCentroidParser());
-		parsers.add(new GeoDistanceParser());
-		parsers.add(new GeoHashGridParser());
-		parsers.add(new GlobalParser());
-		parsers.add(new HistogramParser());
-		parsers.add(new IpRangeParser());
-		parsers.add(new MissingParser());
-		parsers.add(new NestedParser());
-		parsers.add(new RangeParser());
-		parsers.add(new ReverseNestedParser());
-		parsers.add(new SamplerParser());
-		parsers.add(new ScriptedMetricParser());
-		//parsers.add(new SignificantTermsParser());
-		parsers.add(new TermsParser());
-		
-		parsers.add(new PercentileRanksParser());
-		parsers.add(new PercentilesParser());
-		
-		parsers.add(new AvgParser());
-		parsers.add(new MaxParser());
-		parsers.add(new MinParser());
-		parsers.add(new StatsParser());
-		parsers.add(new SumParser());
-		
-		final AggregatorParsers aggregatorParsers = new AggregatorParsers(parsers, new HashSet<PipelineAggregator.Parser>());
-		final AggregationParseElement aggregationParseElement = new AggregationParseElement(aggregatorParsers);
-		
-		final Map<String, SearchParseElement> result = new HashMap<String, SearchParseElement>();
-		result.put("aggregations", aggregationParseElement);
-        result.put("aggs", aggregationParseElement);
 		return result;
 	}
 }

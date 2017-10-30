@@ -15,6 +15,7 @@ subprojects {
 	apply plugin: 'java'
 	apply plugin: 'eclipse'
 	apply plugin: 'io.spring.dependency-management'
+	apply plugin: 'org.springframework.boot'
 
 	version = '1.0.0-SNAPSHOT'
 
@@ -27,6 +28,7 @@ subprojects {
 		hikariVersion = '2.7.1'
 		jodaVersion = '2.9.9'
 		jsoniterVersion = '0.9.16'
+		nativesLoaderVersion = '1.0.0'
 		codecVersion = '1.10'
 	}
 
@@ -38,12 +40,15 @@ subprojects {
 
 
 project(":" + rootProject.name + "-core") {
+	bootRepackage.enabled = false
+	
 	dependencies {
 		compile('org.springframework.boot:spring-boot-starter-cache')
 		compile('org.springframework.boot:spring-boot-starter-jdbc') {
 			exclude group: 'org.apache.tomcat', module: 'tomcat-jdbc' 
 		}
 		compile('org.springframework.boot:spring-boot-starter-web')
+		compile "org.mini2Dx:natives-loader:$nativesLoaderVersion"
 		compile "com.jsoniter:jsoniter:$jsoniterVersion"
 		compile "com.zaxxer:HikariCP:$hikariVersion"
 		compile "joda-time:joda-time:$jodaVersion"
@@ -51,27 +56,6 @@ project(":" + rootProject.name + "-core") {
 		compile('org.postgresql:postgresql')
 		
 		testCompile('org.springframework.boot:spring-boot-starter-test')
-	}
-}
-
-project(":" + rootProject.name + "-es2") {
-	apply plugin: 'org.springframework.boot'
-	
-	dependencies {
-		compile project(":" + rootProject.name + "-core")
-		compile "org.elasticsearch:elasticsearch:$elasticsearch2Version"
-
-		testCompile "org.elasticsearch.client:rest:$elasticsearch5Version"
-	}
-}
-
-project(":" + rootProject.name + "-es5") {
-	apply plugin: 'org.springframework.boot'
-	
-	dependencies {
-		compile project(":" + rootProject.name + "-core")
-		compile "org.elasticsearch:elasticsearch:$elasticsearch5Version"
-
 		testCompile "org.elasticsearch.client:rest:$elasticsearch5Version"
 	}
 }

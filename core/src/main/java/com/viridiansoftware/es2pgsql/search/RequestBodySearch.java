@@ -15,13 +15,17 @@
  */
 package com.viridiansoftware.es2pgsql.search;
 
-import com.viridiansoftware.es2pgsql.search.query.QuerySpec;
+import com.viridiansoftware.es2pgsql.search.agg.AggregationsParser;
+import com.viridiansoftware.es2pgsql.search.agg.RootAggregationContext;
+import com.viridiansoftware.es2pgsql.search.query.Query;
+import com.viridiansoftware.es2pgsql.search.query.QueryParser;
 
-public abstract class RequestBodySearch {
+public class RequestBodySearch {
 	protected final String originalQuery;
+	protected final long timestamp;
 	
-	protected AggregationTranslator aggregationTranslator;
-	protected QuerySpec queryTranslator;
+	protected final Query query;
+	protected final RootAggregationContext aggregations = new RootAggregationContext();
 	
 	protected String querySqlWhereClause;
 	protected int from;
@@ -34,9 +38,20 @@ public abstract class RequestBodySearch {
 	public RequestBodySearch(String originalQuery, boolean debug) throws Exception {
 		super();
 		this.originalQuery = originalQuery;
+		this.timestamp = System.currentTimeMillis();
+		
+		this.query = QueryParser.parseQuery(originalQuery);
+		this.querySqlWhereClause = query.toSqlWhereClause();
+		
+		this.aggregations.setSubAggregations(AggregationsParser.parseAggregations(originalQuery));
 	}
 	
-	public abstract boolean hasAggregations();
+	public boolean hasAggregations() {
+		if(aggregations.getSubAggregations() == null) {
+			return false;
+		}
+		return !aggregations.getSubAggregations().isEmpty();
+	}
 
 	public String getOriginalQuery() {
 		return originalQuery;
@@ -46,12 +61,12 @@ public abstract class RequestBodySearch {
 		return querySqlWhereClause;
 	}
 	
-	public QuerySpec getQuery() {
-		return queryTranslator;
+	public Query getQuery() {
+		return query;
 	}
 	
-	public AggregationTranslator getAggregation() {
-		return aggregationTranslator;
+	public RootAggregationContext getAggregations() {
+		return aggregations;
 	}
 
 	public int getFrom() {
@@ -67,6 +82,7 @@ public abstract class RequestBodySearch {
 		final int prime = 31;
 		int result = 1;
 		result = prime * result + ((originalQuery == null) ? 0 : originalQuery.hashCode());
+		result = prime * result + (int) (timestamp ^ (timestamp >>> 32));
 		return result;
 	}
 
@@ -83,6 +99,8 @@ public abstract class RequestBodySearch {
 			if (other.originalQuery != null)
 				return false;
 		} else if (!originalQuery.equals(other.originalQuery))
+			return false;
+		if (timestamp != other.timestamp)
 			return false;
 		return true;
 	}

@@ -1,0 +1,144 @@
+/**
+ * Copyright 2017 Viridian Software Ltd.
+ */
+package com.viridiansoftware.es2pgsql.search.query;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.jsoniter.ValueType;
+import com.jsoniter.any.Any;
+
+public class BoolQuery extends Query {
+	private static final String KEY_MUST = "must";
+	private static final String KEY_MUST_NOT = "must_not";
+	private static final String KEY_FILTER = "filter";
+	private static final String KEY_SHOULD = "should";
+	private static final String KEY_DISABLE_COORD = "disable_coord";
+	private static final String KEY_ADJUST_PURE_NEGATIVE = "adjust_pure_negative";
+	private static final String KEY_MINIMUM_SHOULD_MATCH = "minimum_should_match";
+	private static final String KEY_BOOST = "boost";
+
+	private final List<Query> mustClauses = new ArrayList<Query>();
+	private final List<Query> mustNotClauses = new ArrayList<Query>();
+	private final List<Query> filterClauses = new ArrayList<Query>();
+	private final List<Query> shouldClauses = new ArrayList<Query>();
+	
+	private String minimumShouldMatch = "1";
+	private double boost = 1.0;
+	private boolean disabledCoord = false;
+	private boolean adjustPureNegative = true;
+
+	public BoolQuery(Any queryContext) {
+		super();
+
+		if (queryContext.get(KEY_MUST).valueType().equals(ValueType.OBJECT)) {
+			mustClauses.add(QueryParser.parseQuery(queryContext.get(KEY_MUST)));
+		}
+		if (queryContext.get(KEY_MUST_NOT).valueType().equals(ValueType.OBJECT)) {
+			mustNotClauses.add(QueryParser.parseQuery(queryContext.get(KEY_MUST_NOT)));
+		}
+		if (queryContext.get(KEY_FILTER).valueType().equals(ValueType.OBJECT)) {
+			filterClauses.add(QueryParser.parseQuery(queryContext.get(KEY_FILTER)));
+		}
+		if (queryContext.get(KEY_SHOULD).valueType().equals(ValueType.ARRAY)) {
+			for(Any shouldContext : queryContext.get(KEY_SHOULD).asList()) {
+				shouldClauses.add(QueryParser.parseQuery(shouldContext));
+			}
+		}
+		
+		if (queryContext.get(KEY_MINIMUM_SHOULD_MATCH).valueType().equals(ValueType.STRING)) {
+			this.minimumShouldMatch = queryContext.get(KEY_MINIMUM_SHOULD_MATCH).toString();
+		}
+		if (queryContext.get(KEY_BOOST).valueType().equals(ValueType.NUMBER)) {
+			this.boost = queryContext.get(KEY_BOOST).toDouble();
+		}
+		if (queryContext.get(KEY_DISABLE_COORD).valueType().equals(ValueType.BOOLEAN)) {
+			this.disabledCoord = queryContext.get(KEY_DISABLE_COORD).toBoolean();
+		}
+		if (queryContext.get(KEY_ADJUST_PURE_NEGATIVE).valueType().equals(ValueType.BOOLEAN)) {
+			this.adjustPureNegative = queryContext.get(KEY_ADJUST_PURE_NEGATIVE).toBoolean();
+		}
+	}
+
+	@Override
+	public String toSqlWhereClause() {
+		StringBuilder result = new StringBuilder();
+		result.append('(');
+		
+		if(!mustClauses.isEmpty()) {
+			result.append('(');
+			for(int i = 0; i < mustClauses.size(); i++) {
+				if(i > 0) {
+					result.append(" AND ");
+				}
+				result.append(mustClauses.get(i).toSqlWhereClause());
+			}
+			result.append(')');
+			
+			if(!mustNotClauses.isEmpty() || !filterClauses.isEmpty() || !shouldClauses.isEmpty()) {
+				result.append(" AND ");
+			}
+		}
+		if(!filterClauses.isEmpty()) {
+			result.append('(');
+			for(int i = 0; i < filterClauses.size(); i++) {
+				if(i > 0) {
+					result.append(" AND ");
+				}
+				result.append(filterClauses.get(i).toSqlWhereClause());
+			}
+			result.append(')');
+			
+			if(!mustNotClauses.isEmpty() || !shouldClauses.isEmpty()) {
+				result.append(" AND ");
+			}
+		}
+		if(!mustNotClauses.isEmpty()) {
+			result.append("NOT (");
+			for(int i = 0; i < mustNotClauses.size(); i++) {
+				if(i > 0) {
+					result.append(" AND ");
+				}
+				result.append(mustNotClauses.get(i).toSqlWhereClause());
+			}
+			result.append(')');
+			
+			if(!shouldClauses.isEmpty()) {
+				result.append(" AND ");
+			}
+		}
+		if(!shouldClauses.isEmpty()) {
+			result.append('(');
+			
+			int minimumShouldMatch = 1;
+			if(this.minimumShouldMatch.contains("%")) {
+				float percentage = Float.parseFloat(this.minimumShouldMatch.replace("%", ""));
+				if(percentage < 0f) {
+					percentage = 100f + percentage;
+				}
+				minimumShouldMatch = Math.round((percentage / 100f) * shouldClauses.size());
+			} else {
+				minimumShouldMatch = Integer.parseInt(this.minimumShouldMatch);
+			}
+			
+			switch(minimumShouldMatch) {
+			case 1:
+				for(int i = 0; i < shouldClauses.size(); i++) {
+					if(i > 0) {
+						result.append(" OR ");
+					}
+					result.append(shouldClauses.get(i).toSqlWhereClause());
+				}
+				break;
+			default:
+				//TODO: Handle large sizes
+				break;
+			}
+			result.append(')');
+		}
+		result.append(')');
+		return result.toString();
+	}
+
+}

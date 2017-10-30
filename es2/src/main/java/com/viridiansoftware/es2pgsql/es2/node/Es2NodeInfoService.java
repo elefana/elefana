@@ -17,10 +17,12 @@ import org.elasticsearch.monitor.process.ProcessProbe;
 import org.elasticsearch.monitor.process.ProcessService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
 
 import com.viridiansoftware.es2pgsql.es2.util.MapXContentBuilder;
 import com.viridiansoftware.es2pgsql.node.NodeInfoService;
 
+@Service
 public class Es2NodeInfoService extends NodeInfoService {
 	private static final Logger LOGGER = LoggerFactory.getLogger(NodeInfoService.class);
 	

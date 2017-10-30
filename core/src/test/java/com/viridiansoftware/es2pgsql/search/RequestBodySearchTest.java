@@ -17,7 +17,7 @@ package com.viridiansoftware.es2pgsql.search;
 
 import org.junit.Test;
 
-public class Es5RequestBodySearchTest {
+public class RequestBodySearchTest {
 
 	@Test
 	public void testSearchQueryParsing() throws Exception {

@@ -3,9 +3,14 @@
  */
 package com.viridiansoftware.es2pgsql.search.agg;
 
+import java.util.ArrayList;
 import java.util.List;
 
-public interface BucketAggregation extends Aggregation {
+public abstract class BucketAggregation extends Aggregation {
+	protected final List<Aggregation> subaggregations = new ArrayList<Aggregation>();
 	
-	public List<Aggregation> getSubAggregations();
+	@Override
+	public List<Aggregation> getSubAggregations() {
+		return subaggregations;
+	}
 }

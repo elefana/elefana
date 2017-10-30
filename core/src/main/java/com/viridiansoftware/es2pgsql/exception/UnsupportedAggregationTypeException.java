@@ -10,4 +10,11 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 public class UnsupportedAggregationTypeException extends RuntimeException {
 	private static final long serialVersionUID = 4035166893370142375L;
 
+	public UnsupportedAggregationTypeException() {
+		super();
+	}
+	
+	public UnsupportedAggregationTypeException(String aggregationName) {
+		super("Unsupported aggregation type used in aggregation '" + aggregationName + "'");
+	}
 }

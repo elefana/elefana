@@ -33,8 +33,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.test.context.junit4.SpringRunner;
 
-import com.viridiansoftware.es2pgsql.es5.Es2PgsqlApplication;
-
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment=WebEnvironment.DEFINED_PORT, classes={Es2PgsqlApplication.class})
 public class HttpApiControllerTest {

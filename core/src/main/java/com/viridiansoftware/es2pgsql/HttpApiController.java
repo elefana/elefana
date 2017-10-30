@@ -183,12 +183,6 @@ public class HttpApiController {
 		final String typePatternLowercase = typePattern.toLowerCase();
 		final String idPatternLowercase = idPattern.toLowerCase();
 		
-		switch(typePatternLowercase) {
-		case "_mapping":
-			LOGGER.info(indexPatternLowercase + " " + typePatternLowercase + " " + idPatternLowercase);
-			break;
-		}
-		
 		switch(idPatternLowercase) {
 		case "_search":
 			return searchService.search(indexPattern, typePattern, request);
@@ -215,6 +209,26 @@ public class HttpApiController {
 		case "_mapping":
 			indexFieldMappingService.putIndexMapping(indexPattern, idPattern, request.getBody());
 			return new AckResponse();
+		}
+		return null;
+	}
+	
+	@RequestMapping(path = "/{indexPattern}/{typePattern}/{idPattern}/{opPattern:.+}", method = RequestMethod.GET)
+	public Object get(@PathVariable String indexPattern, @PathVariable String typePattern,
+			@PathVariable String idPattern, @PathVariable String opPattern, HttpEntity<String> request) throws Exception {
+		final String indexPatternLowercase = indexPattern.toLowerCase();
+		final String typePatternLowercase = typePattern.toLowerCase();
+		final String idPatternLowercase = idPattern.toLowerCase();
+		final String opPatternLowercase = opPattern.toLowerCase();
+		
+		switch(typePatternLowercase) {
+		case "_mapping":
+			return indexFieldMappingService.getIndexMapping(indexPattern);
+		}
+		
+		switch(idPatternLowercase) {
+		case "_mapping":
+			return indexFieldMappingService.getIndexMapping(indexPattern, typePattern);
 		}
 		return null;
 	}

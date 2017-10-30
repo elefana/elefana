@@ -567,7 +567,6 @@ public class Es2SearchContext extends SearchContext {
 
 	@Override
 	public MappedFieldType smartNameFieldType(String name) {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
