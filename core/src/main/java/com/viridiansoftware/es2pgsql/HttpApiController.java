@@ -32,8 +32,8 @@ import com.viridiansoftware.es2pgsql.cluster.AckResponse;
 import com.viridiansoftware.es2pgsql.cluster.ClusterService;
 import com.viridiansoftware.es2pgsql.document.BulkService;
 import com.viridiansoftware.es2pgsql.document.DocumentService;
-import com.viridiansoftware.es2pgsql.document.IndexFieldMappingService;
 import com.viridiansoftware.es2pgsql.document.IndexOpType;
+import com.viridiansoftware.es2pgsql.indices.IndexFieldMappingService;
 import com.viridiansoftware.es2pgsql.node.NodesService;
 import com.viridiansoftware.es2pgsql.search.SearchService;
 
@@ -69,7 +69,7 @@ public class HttpApiController {
 		case "_nodes":
 			return nodesService.getNodesInfo();
 		case "_mapping":
-			return indexFieldMappingService.getIndexMappings();
+			return indexFieldMappingService.getMappings();
 		case "_mget":
 			return documentService.multiGet();
 		}
@@ -90,6 +90,12 @@ public class HttpApiController {
 			return bulkService.bulkOperations(request.getBody());
 		}
 		return null;
+	}
+	
+	@RequestMapping(path = "/{indexPattern:.+}", method = RequestMethod.PUT)
+	public Object put(@PathVariable String indexPattern, HttpEntity<String> request) throws Exception {
+		indexFieldMappingService.putMapping(indexPattern, request.getBody());
+		return new AckResponse();
 	}
 
 	@RequestMapping(path = "/{indexPattern}/{typePattern:.+}", method = RequestMethod.GET)
@@ -123,7 +129,7 @@ public class HttpApiController {
 		
 		switch(typePatternLowercase) {
 		case "_mapping":
-			return indexFieldMappingService.getIndexMapping(indexPattern);
+			return indexFieldMappingService.getMapping(indexPattern);
 		case "_field_caps":
 			return indexFieldMappingService.getFieldCapabilities(indexPattern);
 		}
@@ -167,11 +173,11 @@ public class HttpApiController {
 		}
 		switch(typePatternLowercase) {
 		case "_mapping":
-			return indexFieldMappingService.getIndexMapping(indexPattern, idPattern);
+			return indexFieldMappingService.getMapping(indexPattern, idPattern);
 		}
 		switch(idPatternLowercase) {
 		case "_mapping":
-			return indexFieldMappingService.getIndexMapping(indexPattern, typePattern);
+			return indexFieldMappingService.getMapping(indexPattern, typePattern);
 		}
 		return documentService.get(indexPattern, typePattern, idPattern);
 	}
@@ -207,7 +213,7 @@ public class HttpApiController {
 		
 		switch(typePatternLowercase) {
 		case "_mapping":
-			indexFieldMappingService.putIndexMapping(indexPattern, idPattern, request.getBody());
+			indexFieldMappingService.putMapping(indexPattern, idPattern, request.getBody());
 			return new AckResponse();
 		}
 		return null;
@@ -223,12 +229,12 @@ public class HttpApiController {
 		
 		switch(typePatternLowercase) {
 		case "_mapping":
-			return indexFieldMappingService.getIndexMapping(indexPattern);
+			return indexFieldMappingService.getMapping(indexPattern);
 		}
 		
 		switch(idPatternLowercase) {
 		case "_mapping":
-			return indexFieldMappingService.getIndexMapping(indexPattern, typePattern);
+			return indexFieldMappingService.getMapping(indexPattern, typePattern);
 		}
 		return null;
 	}
@@ -274,7 +280,7 @@ public class HttpApiController {
 		case "_mapping":
 			switch(opPatternLowercase) {
 			case "field":
-				return indexFieldMappingService.getIndexMapping(indexPattern, idPattern, fieldPattern);
+				return indexFieldMappingService.getMapping(indexPattern, idPattern, fieldPattern);
 			}
 			break;
 		}

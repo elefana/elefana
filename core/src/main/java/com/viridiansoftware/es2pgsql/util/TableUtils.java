@@ -79,10 +79,11 @@ public class TableUtils {
 	}
 
 	public List<String> listTables(String tablePattern) throws SQLException {
-		tablePattern = tablePattern.replace(".", "\\$");
+		tablePattern = sanitizeTableName(tablePattern);
+		
 		tablePattern = tablePattern.replace("*", "(.*)");
 		tablePattern = "^" + tablePattern + "$";
-
+		
 		List<String> results = listTables();
 		for (int i = results.size() - 1; i >= 0; i--) {
 			if (results.get(i).matches(tablePattern)) {

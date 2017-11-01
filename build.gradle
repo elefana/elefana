@@ -5,9 +5,11 @@ buildscript {
 	repositories {
 		mavenLocal()
 		mavenCentral()
+		flatDir dirs: 'lib'
 	}
 	dependencies {
 		classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+		classpath ':proguard:'
 	}
 }
 
@@ -40,7 +42,6 @@ subprojects {
 
 
 project(":" + rootProject.name + "-core") {
-	bootRepackage.enabled = false
 	
 	dependencies {
 		compile('org.springframework.boot:spring-boot-starter-cache')
@@ -58,6 +59,22 @@ project(":" + rootProject.name + "-core") {
 		testCompile('org.springframework.boot:spring-boot-starter-test')
 		testCompile "org.elasticsearch.client:rest:$elasticsearch5Version"
 	}
+	
+	task copyJarToTempJar(type: Copy, dependsOn: jar) {
+		from "build/libs/es2pgsql-core-" + project.version + ".jar"
+		into "build/libs/"
+		rename { String fileName ->
+			fileName.replace(".jar", ".tmp.jar")
+		}
+	}
+	
+	task runProguard(type: proguard.gradle.ProGuardTask, dependsOn: copyJarToTempJar) {
+		configuration "../proguard.txt"
+		
+		injars "build/libs/es2pgsql-core-" + project.version + ".tmp.jar"
+		outjars "build/libs/es2pgsql-core-" + project.version + ".jar"
+	}
+	bootRepackage.dependsOn runProguard
 }
 
 task wrapper(type: Wrapper) {

@@ -15,6 +15,9 @@
  */
 package com.viridiansoftware.es2pgsql.search;
 
+import com.jsoniter.JsonIterator;
+import com.jsoniter.ValueType;
+import com.jsoniter.any.Any;
 import com.viridiansoftware.es2pgsql.search.agg.AggregationsParser;
 import com.viridiansoftware.es2pgsql.search.agg.RootAggregationContext;
 import com.viridiansoftware.es2pgsql.search.query.Query;
@@ -42,6 +45,18 @@ public class RequestBodySearch {
 		
 		this.query = QueryParser.parseQuery(originalQuery);
 		this.querySqlWhereClause = query.toSqlWhereClause();
+		
+		Any context = JsonIterator.deserialize(originalQuery);
+		if(context.get("size").valueType().equals(ValueType.NUMBER)) {
+			size = context.get("size").toInt();
+		} else {
+			size = 10;
+		}
+		if(context.get("from").valueType().equals(ValueType.NUMBER)) {
+			from = context.get("from").toInt();
+		} else {
+			from = 0;
+		}
 		
 		this.aggregations.setSubAggregations(AggregationsParser.parseAggregations(originalQuery));
 	}

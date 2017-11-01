@@ -29,7 +29,7 @@ import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.viridiansoftware.es2pgsql.document.IndexFieldMappingService;
+import com.viridiansoftware.es2pgsql.indices.IndexFieldMappingService;
 import com.viridiansoftware.es2pgsql.util.TableGarbageCollector;
 import com.viridiansoftware.es2pgsql.util.TableUtils;
 

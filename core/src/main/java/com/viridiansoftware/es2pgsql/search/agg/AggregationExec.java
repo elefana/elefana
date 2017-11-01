@@ -8,7 +8,7 @@ import java.util.Map;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import com.viridiansoftware.es2pgsql.document.IndexFieldMappingService;
+import com.viridiansoftware.es2pgsql.indices.IndexFieldMappingService;
 import com.viridiansoftware.es2pgsql.search.RequestBodySearch;
 
 public class AggregationExec {
