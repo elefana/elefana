@@ -17,6 +17,8 @@ package com.viridiansoftware.es2pgsql.search;
 
 import org.junit.Test;
 
+import com.viridiansoftware.elefana.search.RequestBodySearch;
+
 public class RequestBodySearchTest {
 
 	@Test

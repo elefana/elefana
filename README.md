@@ -1,2 +1,2 @@
-# es2pgsql
+# elefana
 Elasticsearch HTTP API to PostgreSQL

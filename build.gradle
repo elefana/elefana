@@ -25,23 +25,53 @@ subprojects {
 	targetCompatibility = 1.8
 
 	ext {
-		elasticsearch5Version = '5.5.2'
-		elasticsearch2Version = '2.4.4'
+		codecVersion = '1.10'
 		hikariVersion = '2.7.1'
 		jodaVersion = '2.9.9'
 		jsoniterVersion = '0.9.16'
 		nativesLoaderVersion = '1.0.0'
-		codecVersion = '1.10'
+		restAssuredVersion = '3.0.5'
 	}
 
 	repositories {
 		mavenLocal()
 		mavenCentral()
 	}
+
+	configurations {
+		compileOutput.extendsFrom (compile)
+		testOutput.extendsFrom (testCompile)
+	}
+	
+	task javadocJar(type: Jar) {
+		classifier = 'javadoc'
+		from javadoc
+	}
+
+	task sourcesJar(type: Jar) {
+		classifier = 'sources'
+		from sourceSets.main.allSource
+	}
+
+	task bootJar(type: Jar, dependsOn: classes) {
+		classifier = 'boot'
+		from sourceSets.main.output
+	}
+	
+	task testJar(type: Jar, dependsOn: testClasses) {
+		classifier = 'test'
+		from sourceSets.test.output
+		include '**/*UAT.class'
+	}
+
+	artifacts {
+		archives javadocJar, sourcesJar, testJar, bootJar
+		testOutput testJar
+	}
 }
 
-
 project(":" + rootProject.name + "-core") {
+	bootRepackage.withJarTask = bootJar
 	
 	dependencies {
 		compile('org.springframework.boot:spring-boot-starter-cache')
@@ -57,24 +87,43 @@ project(":" + rootProject.name + "-core") {
 		compile('org.postgresql:postgresql')
 		
 		testCompile('org.springframework.boot:spring-boot-starter-test')
-		testCompile "org.elasticsearch.client:rest:$elasticsearch5Version"
 	}
 	
-	task copyJarToTempJar(type: Copy, dependsOn: jar) {
-		from "build/libs/es2pgsql-core-" + project.version + ".jar"
-		into "build/libs/"
-		rename { String fileName ->
-			fileName.replace(".jar", ".tmp.jar")
-		}
-	}
+	// task copyJarToTempJar(type: Copy, dependsOn: jar) {
+	// 	from "build/libs/es2pgsql-core-" + project.version + ".jar"
+	// 	into "build/libs/"
+	// 	rename { String fileName ->
+	// 		fileName.replace(".jar", ".tmp.jar")
+	// 	}
+	// }
 	
-	task runProguard(type: proguard.gradle.ProGuardTask, dependsOn: copyJarToTempJar) {
-		configuration "../proguard.txt"
+	// task runProguard(type: proguard.gradle.ProGuardTask, dependsOn: copyJarToTempJar) {
+	// 	configuration "../proguard.txt"
 		
-		injars "build/libs/es2pgsql-core-" + project.version + ".tmp.jar"
-		outjars "build/libs/es2pgsql-core-" + project.version + ".jar"
+	// 	injars "build/libs/es2pgsql-core-" + project.version + ".tmp.jar"
+	// 	outjars "build/libs/es2pgsql-core-" + project.version + ".jar"
+	// }
+	// bootRepackage.dependsOn runProguard
+}
+
+project(":" + rootProject.name + "-uats-es2") {
+	bootRepackage.enabled = false
+
+	dependencies {
+		testCompile('org.springframework.boot:spring-boot-starter-test')
+		testCompile "io.rest-assured:rest-assured:$restAssuredVersion"
+		testCompile project(path: ":" + rootProject.name + "-core")
 	}
-	bootRepackage.dependsOn runProguard
+}
+
+project(":" + rootProject.name + "-uats-es5") {
+	bootRepackage.enabled = false
+
+	dependencies {
+		testCompile('org.springframework.boot:spring-boot-starter-test')
+		testCompile "io.rest-assured:rest-assured:$restAssuredVersion"
+		testCompile project(path: ":" + rootProject.name + "-core")
+	}
 }
 
 task wrapper(type: Wrapper) {
