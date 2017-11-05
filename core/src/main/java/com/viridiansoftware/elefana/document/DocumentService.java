@@ -135,13 +135,13 @@ public class DocumentService {
 		return result;
 	}
 
-	public MultiGetResponse multiGet() throws Exception {
+	public MultiGetResponse multiGet(String requestBody) throws Exception {
 		Connection connection = jdbcTemplate.getDataSource().getConnection();
 		MultiGetResponse result = new MultiGetResponse();
 		try {
 			for (String tableName : tableUtils.listTables()) {
 				SqlRowSet resultSet = jdbcTemplate
-						.queryForRowSet("SELECT * FROM " + TableUtils.sanitizeTableName(tableName));
+						.queryForRowSet("SELECT * FROM " + tableName);
 				while (resultSet.next()) {
 					GetResponse getResponse = new GetResponse();
 					getResponse.set_index(resultSet.getString("_index"));
@@ -152,6 +152,7 @@ public class DocumentService {
 				}
 			}
 		} catch (Exception e) {
+			e.printStackTrace();
 			connection.close();
 			throw new NoSuchDocumentException();
 		}
@@ -159,7 +160,7 @@ public class DocumentService {
 		return result;
 	}
 
-	public MultiGetResponse multiGet(String indexPattern) throws Exception {
+	public MultiGetResponse multiGet(String indexPattern, String requestBody) throws Exception {
 		Connection connection = jdbcTemplate.getDataSource().getConnection();
 		MultiGetResponse result = new MultiGetResponse();
 		try {
@@ -179,6 +180,7 @@ public class DocumentService {
 				}
 			}
 		} catch (Exception e) {
+			e.printStackTrace();
 			connection.close();
 			throw new NoSuchDocumentException();
 		}
@@ -186,7 +188,7 @@ public class DocumentService {
 		return result;
 	}
 
-	public MultiGetResponse multiGet(String index, String type) throws Exception {
+	public MultiGetResponse multiGet(String index, String type, String requestBody) throws Exception {
 		Connection connection = jdbcTemplate.getDataSource().getConnection();
 		MultiGetResponse result = new MultiGetResponse();
 		try {
@@ -201,6 +203,7 @@ public class DocumentService {
 				result.getDocs().add(getResponse);
 			}
 		} catch (Exception e) {
+			e.printStackTrace();
 			connection.close();
 			throw new NoSuchDocumentException();
 		}

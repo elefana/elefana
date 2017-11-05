@@ -121,7 +121,89 @@ public class DocumentApiTest {
 
 	@Test
 	public void testMultiGet() {
+		final String id1 = UUID.randomUUID().toString();
+		final String id2 = UUID.randomUUID().toString();
+		final String message1 = "This is message 1";
+		final String message2 = "This is message 2";
+		indexWithId(id1, message1);
+		indexWithId(id2, message2);
 		
+		given()
+			.request()
+			.body("{\"docs\" : [{\"_index\": \"" + INDEX + "\",\"_type\" : \"" + TYPE + "\",\"_id\" : \"" + id1 + "\"}," +
+					"{\"_index\": \"" + INDEX + "\",\"_type\" : \"" + TYPE + "\",\"_id\" : \"" + id2 + "\"}]}")
+		.when()
+			.get("/_mget")
+		.then()
+			.statusCode(200)
+			.body("docs[0]._index", equalTo(INDEX))
+			.body("docs[0]._type", equalTo(TYPE))
+			.body("docs[0]._id", equalTo(id1))
+			.body("docs[0]._version", equalTo(1))
+			.body("docs[0].found", equalTo(true))
+			.body("docs[1]._index", equalTo(INDEX))
+			.body("docs[1]._type", equalTo(TYPE))
+			.body("docs[1]._id", equalTo(id2))
+			.body("docs[1]._version", equalTo(1))
+			.body("docs[1].found", equalTo(true));
+	}
+	
+	@Test
+	public void testMultiGetWithIndex() {
+		final String id1 = UUID.randomUUID().toString();
+		final String id2 = UUID.randomUUID().toString();
+		final String message1 = "This is message 1";
+		final String message2 = "This is message 2";
+		indexWithId(id1, message1);
+		indexWithId(id2, message2);
+		
+		given()
+			.request()
+			.body("{\"docs\" : [{\"_type\" : \"" + TYPE + "\",\"_id\" : \"" + id1 + "\"}," +
+					"{\"_type\" : \"" + TYPE + "\",\"_id\" : \"" + id2 + "\"}]}")
+		.when()
+			.get("/" + INDEX + "/_mget")
+		.then()
+			.statusCode(200)
+			.body("docs[0]._index", equalTo(INDEX))
+			.body("docs[0]._type", equalTo(TYPE))
+			.body("docs[0]._id", equalTo(id1))
+			.body("docs[0]._version", equalTo(1))
+			.body("docs[0].found", equalTo(true))
+			.body("docs[1]._index", equalTo(INDEX))
+			.body("docs[1]._type", equalTo(TYPE))
+			.body("docs[1]._id", equalTo(id2))
+			.body("docs[1]._version", equalTo(1))
+			.body("docs[1].found", equalTo(true));
+	}
+	
+	@Test
+	public void testMultiGetWithIndexAndType() {
+		final String id1 = UUID.randomUUID().toString();
+		final String id2 = UUID.randomUUID().toString();
+		final String message1 = "This is message 1";
+		final String message2 = "This is message 2";
+		indexWithId(id1, message1);
+		indexWithId(id2, message2);
+		
+		given()
+			.request()
+			.body("{\"docs\" : [{\"_id\" : \"" + id1 + "\"}," +
+					"{\"_id\" : \"" + id2 + "\"}]}")
+		.when()
+			.get("/" + INDEX + "/" + TYPE + "/_mget")
+		.then()
+			.statusCode(200)
+			.body("docs[0]._index", equalTo(INDEX))
+			.body("docs[0]._type", equalTo(TYPE))
+			.body("docs[0]._id", equalTo(id1))
+			.body("docs[0]._version", equalTo(1))
+			.body("docs[0].found", equalTo(true))
+			.body("docs[1]._index", equalTo(INDEX))
+			.body("docs[1]._type", equalTo(TYPE))
+			.body("docs[1]._id", equalTo(id2))
+			.body("docs[1]._version", equalTo(1))
+			.body("docs[1].found", equalTo(true));
 	}
 
 	@Test

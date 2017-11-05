@@ -73,7 +73,7 @@ public class HttpApiController {
 		case "_mapping":
 			return indexFieldMappingService.getMappings();
 		case "_mget":
-			return documentService.multiGet();
+			return documentService.multiGetByRequestBody(request.getBody());
 		}
 		return null;
 	}
@@ -148,7 +148,7 @@ public class HttpApiController {
 		case "_search":
 			return searchService.search(indexPattern, request);
 		case "_mget":
-			return documentService.multiGet(indexPattern);
+			return documentService.multiGet(indexPattern, request.getBody());
 		case "_field_caps":
 			return indexFieldMappingService.getFieldCapabilities(indexPattern);
 		case "_msearch":
