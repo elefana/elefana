@@ -95,42 +95,45 @@ public class SearchService {
 
 	public Map<String, Object> search(String indexPattern, String typesPattern, HttpEntity<String> httpRequest)
 			throws Exception {
-		List<String> indices = indexPattern == null ? tableUtils.listTables()
-				: tableUtils.listTables(TableUtils.sanitizeTableName(indexPattern));
+		List<String> tableNames = indexPattern == null || indexPattern.isEmpty() ? tableUtils.listTables()
+				: tableUtils.listTables(indexPattern);
 		String[] types = typesPattern == null ? EMPTY_TYPES_LIST : typesPattern.split(",");
-		return search(indices, types, httpRequest);
+		return search(tableNames, types, httpRequest);
 	}
 
-	private Map<String, Object> search(List<String> indices, String[] types, HttpEntity<String> httpRequest)
+	private Map<String, Object> search(List<String> tableNames, String[] types, HttpEntity<String> httpRequest)
 			throws Exception {
 		final long startTime = System.currentTimeMillis();
 		final RequestBodySearch requestBodySearch = new RequestBodySearch(httpRequest.getBody());
 		if (!requestBodySearch.hasAggregations()) {
-			return searchWithoutAggregation(indices, types, requestBodySearch, startTime);
+			return searchWithoutAggregation(tableNames, types, requestBodySearch, startTime);
 		}
-		return searchWithAggregation(indices, types, requestBodySearch, startTime);
+		return searchWithAggregation(tableNames, types, requestBodySearch, startTime);
 	}
 
-	private Map<String, Object> searchWithAggregation(List<String> indices, String[] types,
+	private Map<String, Object> searchWithAggregation(List<String> tableNames, String[] types,
 			RequestBodySearch requestBodySearch, long startTime) throws Exception {
-		if (indices.size() == 1 && requestBodySearch.getQuery().isMatchAllQuery()) {
-			if (requestBodySearch.getFrom() > 0) {
-				return searchWithAggregationUsingFilteredTables(indices, types, requestBodySearch, startTime);
-			} else if (requestBodySearch.getSize() > 0) {
-				return searchWithAggregationUsingFilteredTables(indices, types, requestBodySearch, startTime);
-			}
-			return searchWithAggregationUsingOriginalTable(indices, types, requestBodySearch, startTime);
+		if(tableNames.isEmpty()) {
+			return getEmptySearchResult(startTime, 0);
 		}
-		return searchWithAggregationUsingFilteredTables(indices, types, requestBodySearch, startTime);
+		if (tableNames.size() == 1 && requestBodySearch.getQuery().isMatchAllQuery()) {
+			if (requestBodySearch.getFrom() > 0) {
+				return searchWithAggregationUsingFilteredTables(tableNames, types, requestBodySearch, startTime);
+			} else if (requestBodySearch.getSize() > 0) {
+				return searchWithAggregationUsingFilteredTables(tableNames, types, requestBodySearch, startTime);
+			}
+			return searchWithAggregationUsingOriginalTable(tableNames, types, requestBodySearch, startTime);
+		}
+		return searchWithAggregationUsingFilteredTables(tableNames, types, requestBodySearch, startTime);
 	}
 
-	private Map<String, Object> searchWithAggregationUsingOriginalTable(List<String> indices, String[] types,
+	private Map<String, Object> searchWithAggregationUsingOriginalTable(List<String> tableNames, String[] types,
 			RequestBodySearch requestBodySearch, long startTime) throws Exception {
 		final List<String> temporaryTablesCreated = new ArrayList<String>(1);
 
 		StringBuilder queryBuilder = new StringBuilder();
-		queryBuilder.append("SELECT * FROM " + tableUtils.sanitizeTableName(indices.get(0)));
-		if (types.length <= 0) {
+		queryBuilder.append("SELECT * FROM " + tableNames.get(0));
+		if (!isTypesEmpty(types)) {
 			if (!requestBodySearch.getQuery().isMatchAllQuery()) {
 				queryBuilder.append(" AND (");
 			} else {
@@ -149,42 +152,52 @@ public class SearchService {
 			}
 			queryBuilder.append(")");
 		}
+		if (requestBodySearch.getSize() > 0) {
+			queryBuilder.append(" LIMIT ");
+			queryBuilder.append(requestBodySearch.getSize());
+		}
+		if (requestBodySearch.getFrom() > 0) {
+			queryBuilder.append(" OFFSET ");
+			queryBuilder.append(requestBodySearch.getFrom());
+		}
 
 		final Map<String, Object> result = executeQuery(queryBuilder.toString(), startTime,
 				requestBodySearch.getSize());
 		final Map<String, Object> aggregationsResult = new HashMap<String, Object>();
-		requestBodySearch.getAggregations().executeSqlQuery(indices, types, jdbcTemplate, indexFieldMappingService, aggregationsResult,
-				temporaryTablesCreated, indices.get(0), requestBodySearch);
+		requestBodySearch.getAggregations().executeSqlQuery(tableNames, types, jdbcTemplate, indexFieldMappingService, aggregationsResult,
+				temporaryTablesCreated, tableNames.get(0), requestBodySearch);
 		result.put("aggregations", aggregationsResult);
 		garbageCollector.scheduleTablesForDeletion(temporaryTablesCreated);
 		return result;
 	}
 
-	private Map<String, Object> searchWithAggregationUsingFilteredTables(List<String> indices, String[] types,
+	private Map<String, Object> searchWithAggregationUsingFilteredTables(List<String> tableNames, String[] types,
 			RequestBodySearch requestBodySearch, long startTime) throws Exception {
 		final List<String> temporaryTablesCreated = new ArrayList<String>(1);
 		final String queryDataTableName = SEARCH_TABLE_PREFIX + requestBodySearch.hashCode();
 		temporaryTablesCreated.add(queryDataTableName);
 
 		StringBuilder tempTableBuilderQuery = new StringBuilder();
-		for (int i = 0; i < indices.size(); i++) {
+		for (int i = 0; i < tableNames.size(); i++) {
 			if (i > 0) {
 				tempTableBuilderQuery.append(" UNION ALL ");
 			}
-			tempTableBuilderQuery.append("SELECT * ");
+			tempTableBuilderQuery.append("(SELECT * ");
 
-			if (i == indices.size() - 1) {
+			if (i == tableNames.size() - 1) {
 				tempTableBuilderQuery.append(" INTO ");
 				tempTableBuilderQuery.append(queryDataTableName);
 			}
 
 			tempTableBuilderQuery.append(" FROM ");
-			tempTableBuilderQuery.append(tableUtils.sanitizeTableName(indices.get(i)));
+			tempTableBuilderQuery.append(tableNames.get(i));
+			
 			if (!requestBodySearch.getQuery().isMatchAllQuery()) {
 				tempTableBuilderQuery.append(" WHERE ");
 				tempTableBuilderQuery.append(requestBodySearch.getQuerySqlWhereClause());
 			}
-			if (types.length > 0) {
+			
+			if (!isTypesEmpty(types)) {
 				if (!requestBodySearch.getQuery().isMatchAllQuery()) {
 					tempTableBuilderQuery.append(" AND (");
 				} else {
@@ -211,6 +224,7 @@ public class SearchService {
 				tempTableBuilderQuery.append(" OFFSET ");
 				tempTableBuilderQuery.append(requestBodySearch.getFrom());
 			}
+			tempTableBuilderQuery.append(')');
 		}
 
 		LOGGER.info(tempTableBuilderQuery.toString());
@@ -220,38 +234,39 @@ public class SearchService {
 				requestBodySearch.getSize());
 		final Map<String, Object> aggregationsResult = new HashMap<String, Object>();
 
-		requestBodySearch.getAggregations().executeSqlQuery(indices, types, jdbcTemplate, indexFieldMappingService, aggregationsResult,
+		requestBodySearch.getAggregations().executeSqlQuery(tableNames, types, jdbcTemplate, indexFieldMappingService, aggregationsResult,
 				temporaryTablesCreated, queryDataTableName, requestBodySearch);
 		result.put("aggregations", aggregationsResult);
 		garbageCollector.scheduleTablesForDeletion(temporaryTablesCreated);
 		return result;
 	}
 
-	private Map<String, Object> searchWithoutAggregation(List<String> indices, String[] types,
+	private Map<String, Object> searchWithoutAggregation(List<String> tableNames, String[] types,
 			RequestBodySearch requestBodySearch, long startTime) throws Exception {
 		final StringBuilder tempTableBuilderQuery = new StringBuilder();
-		for (int i = 0; i < indices.size(); i++) {
+		for (int i = 0; i < tableNames.size(); i++) {
 			if (i > 0) {
 				tempTableBuilderQuery.append(" UNION ALL ");
 			}
 			if (requestBodySearch.getSize() == 0) {
-				tempTableBuilderQuery.append("SELECT COUNT(*) FROM ");
+				tempTableBuilderQuery.append("(SELECT COUNT(*) FROM ");
 			} else {
-				tempTableBuilderQuery.append("SELECT * FROM ");
+				tempTableBuilderQuery.append("(SELECT * FROM ");
 			}
-			tempTableBuilderQuery.append(tableUtils.sanitizeTableName(indices.get(i)));
+			tempTableBuilderQuery.append(tableNames.get(i));
+			
 			if (!requestBodySearch.getQuery().isMatchAllQuery()) {
 				tempTableBuilderQuery.append(" WHERE ");
 				tempTableBuilderQuery.append(requestBodySearch.getQuerySqlWhereClause());
 			}
-			if (types.length > 0) {
+			if (!isTypesEmpty(types)) {
 				if (!requestBodySearch.getQuery().isMatchAllQuery()) {
 					tempTableBuilderQuery.append(" AND (");
 				} else {
 					tempTableBuilderQuery.append(" WHERE (");
 				}
 				for (int j = 0; j < types.length; j++) {
-					if (types[j].length() == 0) {
+					if (types[j].isEmpty()) {
 						continue;
 					}
 					if (j > 0) {
@@ -271,6 +286,7 @@ public class SearchService {
 				tempTableBuilderQuery.append(" OFFSET ");
 				tempTableBuilderQuery.append(requestBodySearch.getFrom());
 			}
+			tempTableBuilderQuery.append(')');
 		}
 		return executeQuery(tempTableBuilderQuery.toString(), startTime, requestBodySearch.getSize());
 	}
@@ -281,6 +297,7 @@ public class SearchService {
 			sqlRowSet = jdbcTemplate.queryForRowSet(query);
 			return convertSqlQueryResultToSearchResult(sqlRowSet, startTime, size);
 		} catch (Exception e) {
+			e.printStackTrace();
 			if (e.getMessage().contains("No results")) {
 				return convertSqlQueryResultToSearchResult(null, startTime, size);
 			}
@@ -303,7 +320,8 @@ public class SearchService {
 		if (rowSet == null) {
 			hits.put("total", 0);
 		} else if (size > 0) {
-			while (rowSet.next()) {
+			int count = 0;
+			while (rowSet.next() && count < size) {
 				Map<String, Object> hit = new HashMap<String, Object>();
 				hit.put("_index", rowSet.getString("_index"));
 				hit.put("_type", rowSet.getString("_type"));
@@ -312,6 +330,7 @@ public class SearchService {
 				hit.put("_source",
 						objectMapper.readValue(tableUtils.destringifyJson(rowSet.getString("_source")), Map.class));
 				hitsList.add(hit);
+				count++;
 			}
 			hits.put("total", hitsList.size());
 		} else {
@@ -339,5 +358,28 @@ public class SearchService {
 		result.put("hits", hits);
 		result.put("_shards", shards);
 		return result;
+	}
+	
+	private Map<String, Object> getEmptySearchResult(long startTime, int size) throws Exception {
+		return convertSqlQueryResultToSearchResult(null, startTime, size);
+	}
+	
+	private boolean isTypesEmpty(String [] types) {
+		if(types == null) {
+			return true;
+		}
+		if(types.length == 0) {
+			return true;
+		}
+		for(int i = 0; i < types.length; i++) {
+			if(types[i] == null) {
+				continue;
+			}
+			if(types[i].isEmpty()) {
+				continue;
+			}
+			return false;
+		}
+		return true;
 	}
 }

@@ -267,6 +267,7 @@ public class DocumentService {
 		preparedStatement.setLong(4, System.currentTimeMillis());
 		preparedStatement.setObject(5, jsonObject);
 		int rows = preparedStatement.executeUpdate();
+		preparedStatement.close();
 		connection.close();
 
 		if (rows > 0) {

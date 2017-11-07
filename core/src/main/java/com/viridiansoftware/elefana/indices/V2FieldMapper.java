@@ -3,6 +3,7 @@
  */
 package com.viridiansoftware.elefana.indices;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -20,6 +21,11 @@ public class V2FieldMapper extends FieldMapper {
 	@Override
 	public Map<String, Object> getEmptyMapping() {
 		return new HashMap<String, Object>(EMPTY_MAPPING);
+	}
+	
+	@Override
+	public List<String> getFieldNames(Map<String, Object> mappings) {
+		return new ArrayList<String>(mappings.keySet());
 	}
 
 	@Override

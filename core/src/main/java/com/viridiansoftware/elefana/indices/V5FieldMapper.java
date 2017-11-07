@@ -3,6 +3,7 @@
  */
 package com.viridiansoftware.elefana.indices;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -20,6 +21,15 @@ public class V5FieldMapper extends FieldMapper {
 		
 		EMPTY_MAPPING.put("_all", allMapping);
 		EMPTY_MAPPING.put("properties", new HashMap<String, Object>());
+	}
+	
+	@Override
+	public List<String> getFieldNames(Map<String, Object> mappings) {
+		Map<String, Object> propertyMappings = (Map<String, Object>) mappings.get("properties");
+		if(propertyMappings == null) {
+			return new ArrayList<String>();
+		}
+		return new ArrayList<String>(propertyMappings.keySet());
 	}
 	
 	@Override

@@ -19,6 +19,8 @@ public class AggregationsParser {
 	private static final String AGGREGATION_MIN = "min";
 	private static final String AGGREGATION_MAX = "max";
 	private static final String AGGREGATION_SUM = "sum";
+	
+	private static final String AGGREGATION_DATE_HISTOGRAM = "date_histogram";
 	private static final String AGGREGATION_RANGE = "range";
 
 	public static List<Aggregation> parseAggregations(String content) {
@@ -37,7 +39,6 @@ public class AggregationsParser {
 		for(String aggregationName : context.keys()) {
 			Any aggregationContext = context.get(aggregationName);
 			Aggregation aggregation = parseAggregation(aggregationName, aggregationContext);
-			System.out.println(aggregationContext);
 			
 			if(!aggregationContext.get(FIELD_AGGS).valueType().equals(ValueType.INVALID)) {
 				aggregation.getSubAggregations().addAll(parseAggregations(aggregationContext.get(FIELD_AGGS)));
@@ -64,6 +65,9 @@ public class AggregationsParser {
 		}
 		if(!context.get(AGGREGATION_RANGE).valueType().equals(ValueType.INVALID)) {
 			return new RangeAggregation(aggregationName, context.get(AGGREGATION_RANGE));
+		}
+		if(!context.get(AGGREGATION_DATE_HISTOGRAM).valueType().equals(ValueType.INVALID)) {
+			return new DateHistogramAggregation(aggregationName, context.get(AGGREGATION_DATE_HISTOGRAM));
 		}
 		throw new UnsupportedAggregationTypeException(aggregationName);
 	}

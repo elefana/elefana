@@ -32,6 +32,7 @@ public class NodeSettingsService {
 	
 	private boolean usingCitus = false;
 	
+	private long fieldStatsInterval;
 	private long mappingInterval;
 	private double mappingSampleSize;
 	private long garbageCollectionInterval;
@@ -52,6 +53,7 @@ public class NodeSettingsService {
 		httpAddress = hostIp + port;
 		
 		usingCitus = environment.getRequiredProperty("es2pgsql.citus", Boolean.class);
+		fieldStatsInterval = environment.getRequiredProperty("es2pgsql.fieldStatsInterval", Long.class);
 		mappingInterval = environment.getRequiredProperty("es2pgsql.mappingInterval", Long.class);
 		mappingSampleSize = environment.getRequiredProperty("es2pgsql.mappingSampleSize", Double.class);
 		garbageCollectionInterval = environment.getRequiredProperty("es2pgsql.gcInterval", Long.class);
@@ -99,6 +101,10 @@ public class NodeSettingsService {
 
 	public boolean isUsingCitus() {
 		return usingCitus;
+	}
+
+	public long getFieldStatsInterval() {
+		return fieldStatsInterval;
 	}
 
 	public long getMappingInterval() {

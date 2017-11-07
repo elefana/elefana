@@ -34,13 +34,28 @@ public class BoolQuery extends Query {
 
 		if (queryContext.get(KEY_MUST).valueType().equals(ValueType.OBJECT)) {
 			mustClauses.add(QueryParser.parseQuery(queryContext.get(KEY_MUST)));
+		} else if (queryContext.get(KEY_MUST).valueType().equals(ValueType.ARRAY)) {
+			for(Any mustContext : queryContext.get(KEY_MUST).asList()) {
+				mustClauses.add(QueryParser.parseQuery(mustContext));
+			}
 		}
+		
 		if (queryContext.get(KEY_MUST_NOT).valueType().equals(ValueType.OBJECT)) {
 			mustNotClauses.add(QueryParser.parseQuery(queryContext.get(KEY_MUST_NOT)));
+		} else if (queryContext.get(KEY_MUST_NOT).valueType().equals(ValueType.ARRAY)) {
+			for(Any mustNotContext : queryContext.get(KEY_MUST_NOT).asList()) {
+				mustNotClauses.add(QueryParser.parseQuery(mustNotContext));
+			}
 		}
+		
 		if (queryContext.get(KEY_FILTER).valueType().equals(ValueType.OBJECT)) {
 			filterClauses.add(QueryParser.parseQuery(queryContext.get(KEY_FILTER)));
+		} else if (queryContext.get(KEY_FILTER).valueType().equals(ValueType.ARRAY)) {
+			for(Any filterContext : queryContext.get(KEY_FILTER).asList()) {
+				filterClauses.add(QueryParser.parseQuery(filterContext));
+			}
 		}
+		
 		if (queryContext.get(KEY_SHOULD).valueType().equals(ValueType.ARRAY)) {
 			for(Any shouldContext : queryContext.get(KEY_SHOULD).asList()) {
 				shouldClauses.add(QueryParser.parseQuery(shouldContext));

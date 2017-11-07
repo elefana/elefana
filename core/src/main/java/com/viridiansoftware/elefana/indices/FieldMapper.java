@@ -3,6 +3,7 @@
  */
 package com.viridiansoftware.elefana.indices;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -14,6 +15,8 @@ public abstract class FieldMapper {
             "strict_date_optional_time||epoch_millis", Locale.ROOT);
 
 	public abstract Map<String, Object> getEmptyMapping();
+	
+	public abstract List<String> getFieldNames(Map<String, Object> mappings);
 	
 	public abstract void generateMappings(Map<String, Object> existingMapping, Map<String, Object> document);
 	

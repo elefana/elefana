@@ -151,8 +151,12 @@ public class HttpApiController {
 			return documentService.multiGet(indexPattern, request.getBody());
 		case "_field_caps":
 			return indexFieldMappingService.getFieldCapabilities(indexPattern);
+		case "_field_stats":
+			return indexFieldMappingService.getFieldStats(indexPattern);
 		case "_msearch":
 			return searchService.multiSearch(indexPattern, null, request);
+		case "_refresh":
+			return null;
 		}
 		return indexOrSearch(indexPattern, typePattern, UUID.randomUUID().toString(), request, response);
 	}

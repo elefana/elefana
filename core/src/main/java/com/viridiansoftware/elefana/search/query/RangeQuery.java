@@ -14,8 +14,7 @@ public class RangeQuery extends Query {
 	private static final String KEY_BOOST = "boost";
 
 	protected String fieldName;
-	protected Long longFrom, longTo;
-	protected Double doubleFrom, doubleTo;
+	protected String from, to;
 	protected boolean includeLower = false;
 	protected boolean includeUpper = false;
 	protected double boost = 1.0;
@@ -27,7 +26,7 @@ public class RangeQuery extends Query {
 			this.fieldName = fieldName;
 
 			Any fieldContext = queryContext.get(fieldName);
-			
+
 			if (!fieldContext.get(KEY_GTE).valueType().equals(ValueType.INVALID)) {
 				includeLower = true;
 				setFrom(fieldContext.get(KEY_GTE));
@@ -35,7 +34,7 @@ public class RangeQuery extends Query {
 				includeLower = false;
 				setFrom(fieldContext.get(KEY_GT));
 			}
-			
+
 			if (!fieldContext.get(KEY_LTE).valueType().equals(ValueType.INVALID)) {
 				includeUpper = true;
 				setTo(fieldContext.get(KEY_LTE));
@@ -43,7 +42,7 @@ public class RangeQuery extends Query {
 				includeUpper = false;
 				setTo(fieldContext.get(KEY_LT));
 			}
-			
+
 			if (!fieldContext.get(KEY_BOOST).valueType().equals(ValueType.INVALID)) {
 				boost = fieldContext.get(KEY_BOOST).toDouble();
 			}
@@ -53,33 +52,23 @@ public class RangeQuery extends Query {
 	@Override
 	public String toSqlWhereClause() {
 		StringBuilder result = new StringBuilder();
-		if (longFrom != null || doubleFrom != null) {
-			result.append("_source->>'" + fieldName + "' " + (includeLower ? ">=" : ">") + " "
-					+ (longFrom != null ? longFrom : doubleFrom));
+		if (from != null) {
+			result.append("(_source->>'" + fieldName + "')::numeric " + (includeLower ? ">=" : ">") + " " + from);
 		}
-		if (longTo != null || doubleTo != null) {
-			if (longFrom != null || doubleFrom != null) {
+		if (to != null) {
+			if (from != null) {
 				result.append(" AND ");
 			}
-			result.append("_source->>'" + fieldName + "' " + (includeUpper ? "<=" : "<") + " "
-					+ (longTo != null ? longTo : doubleTo));
+			result.append("(_source->>'" + fieldName + "')::numeric " + (includeUpper ? "<=" : "<") + " " + to);
 		}
 		return result.toString();
 	}
 
 	private void setFrom(Any value) {
-		if(value.toString().indexOf('.') > 0) {
-			doubleFrom = value.toDouble();
-		} else {
-			longFrom = value.toLong();
-		}
+		from = value.toString();
 	}
-	
+
 	private void setTo(Any value) {
-		if(value.toString().indexOf('.') > 0) {
-			doubleTo = value.toDouble();
-		} else {
-			longTo = value.toLong();
-		}
+		to = value.toString();
 	}
 }

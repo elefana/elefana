@@ -4,17 +4,14 @@
 package com.viridiansoftware.elefana.indices;
 
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.SortedSet;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 import javax.annotation.PostConstruct;
 
-import org.joda.time.DateTime;
 import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,8 +28,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.viridiansoftware.elefana.ApiVersion;
 import com.viridiansoftware.elefana.node.NodeSettingsService;
 import com.viridiansoftware.elefana.node.VersionInfoService;
-import com.viridiansoftware.elefana.util.FormatDateTimeFormatter;
-import com.viridiansoftware.elefana.util.JodaUtils;
 import com.viridiansoftware.elefana.util.TableUtils;
 
 @Service
@@ -40,6 +35,9 @@ public class IndexFieldMappingService implements Runnable {
 	private static final Logger LOGGER = LoggerFactory.getLogger(IndexFieldMappingService.class);
 
 	private final SortedSet<String> mappingQueue = new ConcurrentSkipListSet<String>();
+	private final SortedSet<String> fieldStatsQueue = new ConcurrentSkipListSet<String>();
+	private long lastMapping = -1L;
+	private long lastFieldStats = -1L;
 
 	@Autowired
 	private NodeSettingsService nodeSettingsService;
@@ -83,14 +81,21 @@ public class IndexFieldMappingService implements Runnable {
 				"CREATE TABLE IF NOT EXISTS es2pgsql_index_mapping_tracking (_table_name VARCHAR(255) PRIMARY KEY, _last_insert_time BIGINT, _last_mapping_time BIGINT);");
 		jdbcTemplate.execute(
 				"CREATE TABLE IF NOT EXISTS es2pgsql_index_field_capabilities (_table_name VARCHAR(255) PRIMARY KEY, _capabilities jsonb);");
+		jdbcTemplate.execute(
+				"CREATE TABLE IF NOT EXISTS es2pgsql_index_field_stats (_table_name VARCHAR(255) PRIMARY KEY, _stats jsonb);");
 		if (nodeSettingsService.isUsingCitus()) {
 			jdbcTemplate.execute("SELECT create_distributed_table('es2pgsql_index_mapping', '_tracking_id');");
 			jdbcTemplate.execute("SELECT create_distributed_table('es2pgsql_index_mapping_tracking', '_table_name');");
 			jdbcTemplate
 					.execute("SELECT create_distributed_table('es2pgsql_index_field_capabilities', '_table_name');");
+			jdbcTemplate.execute("SELECT create_distributed_table('es2pgsql_index_field_stats', '_table_name');");
 		}
 
-		taskScheduler.scheduleWithFixedDelay(this, nodeSettingsService.getMappingInterval());
+		taskScheduler.scheduleWithFixedDelay(this, Math.min(nodeSettingsService.getFieldStatsInterval(), nodeSettingsService.getMappingInterval()));
+	}
+
+	public List<String> getFieldNames(String tableName, String type) {
+		return fieldMapper.getFieldNames(getIndexTypeMappingFromTable(tableName, type));
 	}
 
 	public List<String> getTypesForTableName(String tableName) {
@@ -168,9 +173,8 @@ public class IndexFieldMappingService implements Runnable {
 		if (newMappings.containsKey("properties")) {
 			newMappings = (Map<String, Object>) newMappings.get("properties");
 		}
-		int i = 0;
 		for (String propertyName : newMappings.keySet()) {
-			if(!existingMappings.containsKey(propertyName)) {
+			if (!existingMappings.containsKey(propertyName)) {
 				existingMappings.put(propertyName, fieldMapper.getEmptyMapping());
 			}
 			fieldMapper.mergeMapping((Map<String, Object>) existingMappings.get(propertyName), propertyName,
@@ -192,21 +196,21 @@ public class IndexFieldMappingService implements Runnable {
 		for (String type : getTypesForTableName(TableUtils.sanitizeTableName(index), typePattern)) {
 			Map<String, Object> typeMappings = getIndexTypeMappingFromTable(TableUtils.sanitizeTableName(index), type);
 
-			if(versionInfoService.getApiVersion().isNewerThan(ApiVersion.V_2_4_3)) {
+			if (versionInfoService.getApiVersion().isNewerThan(ApiVersion.V_2_4_3)) {
 				Map<String, Object> properties = (Map<String, Object>) typeMappings.get("properties");
-	
+
 				Map<String, Object> mapping = new HashMap<String, Object>();
 				if (properties.containsKey(field)) {
 					mapping.put(field, properties.get(field));
 				}
-	
+
 				Map<String, Object> fieldMapping = new HashMap<String, Object>();
 				fieldMapping.put("full_name", field);
 				fieldMapping.put("mapping", mapping);
-	
+
 				Map<String, Object> typeFieldMapping = new HashMap<String, Object>();
 				typeFieldMapping.put(field, fieldMapping);
-	
+
 				mappings.put(type, typeFieldMapping);
 			} else {
 				Map<String, Object> typeFieldMapping = new HashMap<String, Object>();
@@ -246,6 +250,36 @@ public class IndexFieldMappingService implements Runnable {
 			}
 		}
 		return null;
+	}
+
+	public Map<String, Object> getFieldStats(String indexPattern) throws Exception {
+		final Map<String, Object> shards = new HashMap<String, Object>();
+		shards.put("total", 1);
+		shards.put("successful", 1);
+		shards.put("failed", 0);
+		
+		final Map<String, Object> results = new HashMap<String, Object>();
+		results.put("_shards", shards);
+		
+		final Map<String, Object> indicesResults = new HashMap<String, Object>();
+		for (String tableName : tableUtils.listTables(indexPattern)) {
+			final Map<String, Object> indexResult = new HashMap<String, Object>();
+			
+			try {
+				SqlRowSet rowSet = jdbcTemplate.queryForRowSet(
+						"SELECT _stats FROM es2pgsql_index_field_stats WHERE _table_name = ? LIMIT 1",
+						tableName);
+				if (rowSet.next()) {
+					indexResult.put("fields", objectMapper.readValue(rowSet.getString("_stats"), Map.class));
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			
+			indicesResults.put(TableUtils.desanitizeTableName(tableName), indexResult);
+		}
+		results.put("indices", indicesResults);
+		return results;
 	}
 
 	public Map<String, Object> getFieldCapabilities(String indexPattern) throws Exception {
@@ -299,10 +333,14 @@ public class IndexFieldMappingService implements Runnable {
 	@Override
 	public void run() {
 		generateMappingsForQueuedTables();
+		generateFieldStatsForQueuedTables();
 		checkTablesForNewInserts();
 	}
 
 	private void generateMappingsForQueuedTables() {
+		if(System.currentTimeMillis() - lastMapping < nodeSettingsService.getMappingInterval()) {
+			return;
+		}
 		try {
 			while (!mappingQueue.isEmpty()) {
 				String nextTable = mappingQueue.first();
@@ -338,6 +376,7 @@ public class IndexFieldMappingService implements Runnable {
 
 				mappingQueue.remove(nextTable);
 			}
+			lastMapping = System.currentTimeMillis();
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
 		}
@@ -387,6 +426,57 @@ public class IndexFieldMappingService implements Runnable {
 
 		saveMappings(nextTable, type, typeMappings);
 		return totalSamples;
+	}
+	
+	private void generateFieldStatsForQueuedTables() {
+		if(System.currentTimeMillis() - lastFieldStats < nodeSettingsService.getFieldStatsInterval()) {
+			return;
+		}
+		try {
+			while (!fieldStatsQueue.isEmpty()) {
+				String nextTable = fieldStatsQueue.first();
+				generateFieldStatsForIndex(nextTable);
+				fieldStatsQueue.remove(nextTable);
+			}
+			lastFieldStats = System.currentTimeMillis();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	private void generateFieldStatsForIndex(String tableName) throws Exception {
+		final Map<String, V2FieldStats> fieldStats = new HashMap<String, V2FieldStats>();
+		final List<String> types = getTypesForTableName(tableName);
+		
+		long totalDocs = (long) jdbcTemplate.queryForList("SELECT COUNT(*) FROM " + tableName).get(0).get("count");
+		
+		for (String type : types) {
+			List<String> fieldNames = getFieldNames(tableName, type);
+			
+			for(String fieldName : fieldNames) {
+				if(fieldStats.containsKey(fieldName)) {
+					continue;
+				}
+				long totalDocsWithField = (long) jdbcTemplate.queryForList("SELECT COUNT(*) FROM " + tableName + " WHERE _source ? '" + fieldName + "'").get(0).get("count");
+				
+				V2FieldStats stats = versionInfoService.getApiVersion().isNewerThan(ApiVersion.V_2_4_3) ? new V5FieldStats() : new V2FieldStats();
+				stats.max_doc = totalDocs;
+				stats.doc_count = totalDocsWithField;
+				stats.density = (int) ((stats.doc_count / (stats.max_doc * 1.0)) * 100.0);
+				stats.sum_doc_freq = -1;
+				stats.sum_total_term_freq = -1;
+				
+				fieldStats.put(fieldName, stats);
+			}
+		}
+		
+		PGobject jsonObject = new PGobject();
+		jsonObject.setType("json");
+		jsonObject.setValue(objectMapper.writeValueAsString(fieldStats));
+		
+		jdbcTemplate.update(
+				"INSERT INTO es2pgsql_index_field_stats (_table_name, _stats) VALUES (?, ?) ON CONFLICT (_table_name) DO UPDATE SET _stats = EXCLUDED._stats",
+				tableName, jsonObject);
 	}
 
 	private void generateFieldCapabilitiesForIndex(String tableName) throws Exception {
@@ -440,11 +530,13 @@ public class IndexFieldMappingService implements Runnable {
 				// TODO: Use distributed trigger, see ->
 				// https://github.com/citusdata/citus/issues/906
 				mappingQueue.addAll(tableUtils.listTables());
+				fieldStatsQueue.addAll(tableUtils.listTables());
 			} else {
 				SqlRowSet rowSet = jdbcTemplate.queryForRowSet(
 						"SELECT _table_name FROM es2pgsql_index_mapping_tracking WHERE _last_insert_time > _last_mapping_time");
 				while (rowSet.next()) {
 					mappingQueue.add(rowSet.getString("_table_name"));
+					fieldStatsQueue.add(rowSet.getString("_table_name"));
 				}
 			}
 		} catch (Exception e) {
@@ -456,7 +548,7 @@ public class IndexFieldMappingService implements Runnable {
 		PGobject jsonObject = new PGobject();
 		jsonObject.setType("json");
 		jsonObject.setValue(objectMapper.writeValueAsString(mappings));
-		
+
 		jdbcTemplate.update(
 				"INSERT INTO es2pgsql_index_mapping (_tracking_id, _table_name, _type, _mapping) VALUES (?, ?, ?, ?) ON CONFLICT (_tracking_id) DO UPDATE SET _mapping = EXCLUDED._mapping",
 				tableName + "-" + type, tableName, type, jsonObject);

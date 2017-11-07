@@ -17,6 +17,6 @@ public class ExistsQuery extends Query {
 	
 	@Override
 	public String toSqlWhereClause() {
-		return "data ? '" + fieldName + "'";
+		return "_source ? '" + fieldName + "'";
 	}
 }

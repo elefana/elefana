@@ -98,7 +98,7 @@ public class RequestBodySearch {
 		int result = 1;
 		result = prime * result + ((originalQuery == null) ? 0 : originalQuery.hashCode());
 		result = prime * result + (int) (timestamp ^ (timestamp >>> 32));
-		return result;
+		return Math.abs(result);
 	}
 
 	@Override

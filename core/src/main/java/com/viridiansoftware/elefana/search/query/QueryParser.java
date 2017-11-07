@@ -3,19 +3,18 @@
  */
 package com.viridiansoftware.elefana.search.query;
 
-import java.util.List;
-
 import com.jsoniter.JsonIterator;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
 import com.viridiansoftware.elefana.exception.UnsupportedQueryTypeException;
-import com.viridiansoftware.elefana.search.agg.Aggregation;
 
 public class QueryParser {
 	public static final String FIELD_QUERY = "query";
 	
 	public static final String QUERY_BOOL = "bool";
+	public static final String QUERY_DIS_MAX = "dis_max";
 	public static final String QUERY_EXISTS = "exists";
+	public static final String QUERY_FILTERED = "filtered";
 	public static final String QUERY_IDS = "ids";
 	public static final String QUERY_MATCH_ALL = "match_all";
 	public static final String QUERY_MATCH_PHRASE_PREFIX = "match_phrase_prefix";
@@ -23,6 +22,7 @@ public class QueryParser {
 	public static final String QUERY_MATCH = "match";
 	public static final String QUERY_MULTI_MATCH = "multi_match";
 	public static final String QUERY_PREFIX = "prefix";
+	public static final String QUERY_QUERY_STRING = "query_string";
 	public static final String QUERY_RANGE = "range";
 	public static final String QUERY_REGEXP = "regexp";
 	public static final String QUERY_TERM = "term";
@@ -40,8 +40,12 @@ public class QueryParser {
 	public static Query parseQuery(Any queryContext) {
 		if(!queryContext.get(QUERY_BOOL).valueType().equals(ValueType.INVALID)) {
 			return new BoolQuery(queryContext.get(QUERY_BOOL));
-		} else if(!queryContext.get(QUERY_EXISTS).valueType().equals(ValueType.INVALID)) {
+		} else if(!queryContext.get(QUERY_DIS_MAX).valueType().equals(ValueType.INVALID)) {
+			return new DisMaxQuery(queryContext.get(QUERY_DIS_MAX));
+		}else if(!queryContext.get(QUERY_EXISTS).valueType().equals(ValueType.INVALID)) {
 			return new ExistsQuery(queryContext.get(QUERY_EXISTS));
+		} else if(!queryContext.get(QUERY_FILTERED).valueType().equals(ValueType.INVALID)) {
+			return new FilteredQuery(queryContext.get(QUERY_FILTERED));
 		} else if(!queryContext.get(QUERY_IDS).valueType().equals(ValueType.INVALID)) {
 			return new IdsQuery(queryContext.get(QUERY_IDS));
 		} else if(!queryContext.get(QUERY_MATCH_ALL).valueType().equals(ValueType.INVALID)) {
@@ -56,6 +60,8 @@ public class QueryParser {
 			
 		} else if(!queryContext.get(QUERY_PREFIX).valueType().equals(ValueType.INVALID)) {
 			return new PrefixQuery(queryContext.get(QUERY_PREFIX));
+		} else if(!queryContext.get(QUERY_QUERY_STRING).valueType().equals(ValueType.INVALID)) {
+			return new QueryStringQuery(queryContext.get(QUERY_QUERY_STRING));
 		} else if(!queryContext.get(QUERY_RANGE).valueType().equals(ValueType.INVALID)) {
 			return new RangeQuery(queryContext.get(QUERY_RANGE));
 		} else if(!queryContext.get(QUERY_REGEXP).valueType().equals(ValueType.INVALID)) {

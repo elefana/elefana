@@ -47,12 +47,23 @@ public class TableUtils {
 	private JdbcTemplate jdbcTemplate;
 
 	public static String sanitizeTableName(String tableName) {
-		if(!Character.isLetter(tableName.charAt(0))) {
-			tableName = "_" + tableName;
-		}
 		tableName = tableName.replace(".", "_f_");
 		tableName = tableName.replace("-", "_m_");
 		tableName = tableName.replace(":", "_c_");
+		
+		if(!Character.isLetter(tableName.charAt(0))) {
+			tableName = "_" + tableName;
+		}
+		return tableName;
+	}
+	
+	public static String desanitizeTableName(String tableName) {
+		tableName = tableName.replace("_f_", ".");
+		tableName = tableName.replace("_m_", "-");
+		tableName = tableName.replace("_c_", ":");
+		if(tableName.charAt(0) == '_') {
+			return tableName.substring(1);
+		}
 		return tableName;
 	}
 
