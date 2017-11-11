@@ -73,7 +73,7 @@ public class HttpApiController {
 		case "_mapping":
 			return indexFieldMappingService.getMappings();
 		case "_mget":
-			return documentService.multiGetByRequestBody(request.getBody());
+			return documentService.multiGet(request.getBody());
 		}
 		return null;
 	}
@@ -85,7 +85,7 @@ public class HttpApiController {
 		case "_search":
 			return searchService.search(request);
 		case "_mget":
-			return documentService.multiGetByRequestBody(request.getBody());
+			return documentService.multiGet(request.getBody());
 		case "_msearch":
 			return searchService.multiSearch(null, null, request);
 		case "_bulk":
@@ -101,7 +101,7 @@ public class HttpApiController {
 	}
 
 	@RequestMapping(path = "/{indexPattern}/{typePattern:.+}", method = RequestMethod.GET)
-	public Object get(@PathVariable String indexPattern, @PathVariable String typePattern) throws Exception {
+	public Object get(@PathVariable String indexPattern, @PathVariable String typePattern, HttpEntity<String> request) throws Exception {
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		final String typePatternLowercase = typePattern.toLowerCase();
 		if (indexPattern == null || indexPattern.isEmpty()) {
@@ -134,6 +134,8 @@ public class HttpApiController {
 			return indexFieldMappingService.getMapping(indexPattern);
 		case "_field_caps":
 			return indexFieldMappingService.getFieldCapabilities(indexPattern);
+		case "_mget":
+			return documentService.multiGet(indexPattern, request.getBody());
 		}
 		return null;
 	}
@@ -163,7 +165,7 @@ public class HttpApiController {
 
 	@RequestMapping(path = "/{indexPattern}/{typePattern}/{idPattern:.+}", method = RequestMethod.GET)
 	public Object get(@PathVariable String indexPattern, @PathVariable String typePattern,
-			@PathVariable String idPattern, HttpServletResponse response) throws Exception {
+			@PathVariable String idPattern, HttpServletResponse response, HttpEntity<String> request) throws Exception {
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		final String typePatternLowercase = typePattern.toLowerCase();
 		final String idPatternLowercase = idPattern.toLowerCase();
@@ -184,6 +186,8 @@ public class HttpApiController {
 		switch(idPatternLowercase) {
 		case "_mapping":
 			return indexFieldMappingService.getMapping(indexPattern, typePattern);
+		case "_mget":
+			return documentService.multiGet(indexPattern, typePattern, request.getBody());
 		}
 		
 		Map<String, Object> result = documentService.get(indexPattern, typePattern, idPattern);

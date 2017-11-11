@@ -1,7 +1,7 @@
 /**
  * Copyright 2017 Viridian Software Ltd.
  */
-package com.viridiansoftware.elefana.es2;
+package com.viridiansoftware.elefana.es2.search;
 
 import static io.restassured.RestAssured.given;
 

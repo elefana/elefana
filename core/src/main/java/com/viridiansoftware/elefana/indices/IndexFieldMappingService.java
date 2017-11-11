@@ -108,7 +108,7 @@ public class IndexFieldMappingService implements Runnable {
 
 		List<String> results = new ArrayList<String>(1);
 		List<String> sqlResults = getTypesForTableName(tableName);
-
+		
 		for (String type : sqlResults) {
 			for (String pattern : typePatterns) {
 				pattern = pattern.replace(".", "\\$");
@@ -221,16 +221,16 @@ public class IndexFieldMappingService implements Runnable {
 		return result;
 	}
 
-	public String getFirstFieldMapping(List<String> indices, String[] typePatterns, String field) {
-		for (String index : indices) {
-			if (typePatterns.length == 0) {
-				String result = getFirstFieldMapping(index, "*", field);
+	public String getFirstFieldMappingType(List<String> tableNames, String[] typePatterns, String field) {
+		for (String tableName : tableNames) {
+			if (TableUtils.isTypesEmpty(typePatterns)) {
+				String result = getFirstFieldMappingType(tableName, "*", field);
 				if (result != null) {
 					return result;
 				}
 			} else {
 				for (String typePattern : typePatterns) {
-					String result = getFirstFieldMapping(index, typePattern, field);
+					String result = getFirstFieldMappingType(tableName, typePattern, field);
 					if (result != null) {
 						return result;
 					}
@@ -240,13 +240,83 @@ public class IndexFieldMappingService implements Runnable {
 		return null;
 	}
 
-	public String getFirstFieldMapping(String index, String typePattern, String field) {
-		for (String type : getTypesForTableName(TableUtils.sanitizeTableName(index), typePattern)) {
-			Map<String, Object> typeMappings = getIndexTypeMappingFromTable(TableUtils.sanitizeTableName(index), type);
-			Map<String, Object> properties = (Map<String, Object>) typeMappings.get("properties");
-			if (properties.containsKey(field)) {
-				Map<String, Object> property = (Map) properties.get(field);
-				return (String) property.get("type");
+	public String getFirstFieldMappingType(String tableName, String typePattern, String field) {
+		for (String type : getTypesForTableName(tableName, typePattern)) {
+			Map<String, Object> typeMappings = getIndexTypeMappingFromTable(tableName, type);
+			
+			switch(versionInfoService.getApiVersion()) {
+			case V_2_4_3: {
+				if (!typeMappings.containsKey(field)) {
+					return null;
+				}
+				Map<String, Object> fieldMapping =  (Map<String, Object>) typeMappings.get(field);
+				Map<String, Object> mapping = (Map<String, Object>) fieldMapping.get("mapping");
+				Map<String, Object> mappingFieldMapping = (Map<String, Object>) mapping.get(field);
+				return (String) mappingFieldMapping.get("type");
+			}
+			case V_5_5_2:
+			default: {
+				Map<String, Object> properties = (Map<String, Object>) typeMappings.get("properties");
+				if (properties.containsKey(field)) {
+					Map<String, Object> property = (Map) properties.get(field);
+					return (String) property.get("type");
+				}
+				break;
+			}
+			}
+		}
+		return null;
+	}
+	
+	public String getFirstFieldMappingFormat(List<String> tableNames, String[] typePatterns, String field) {
+		for (String tableName : tableNames) {
+			if (TableUtils.isTypesEmpty(typePatterns)) {
+				String result = getFirstFieldMappingFormat(tableName, "*", field);
+				if (result != null) {
+					return result;
+				}
+			} else {
+				for (String typePattern : typePatterns) {
+					String result = getFirstFieldMappingFormat(tableName, typePattern, field);
+					if (result != null) {
+						return result;
+					}
+				}
+			}
+		}
+		return null;
+	}
+	
+	public String getFirstFieldMappingFormat(String tableName, String typePattern, String field) {
+		for (String type : getTypesForTableName(tableName, typePattern)) {
+			Map<String, Object> typeMappings = getIndexTypeMappingFromTable(tableName, type);
+			
+			switch(versionInfoService.getApiVersion()) {
+			case V_2_4_3: {
+				if (!typeMappings.containsKey(field)) {
+					return null;
+				}
+				Map<String, Object> fieldMapping =  (Map<String, Object>) typeMappings.get(field);
+				Map<String, Object> mapping = (Map<String, Object>) fieldMapping.get("mapping");
+				Map<String, Object> mappingFieldMapping = (Map<String, Object>) mapping.get(field);
+				LOGGER.info(mappingFieldMapping.toString());
+				if(mappingFieldMapping.containsKey("format")) {
+					return (String) mappingFieldMapping.get("format");
+				}
+				return (String) mappingFieldMapping.get("type");
+			}
+			case V_5_5_2:
+			default: {
+				Map<String, Object> properties = (Map<String, Object>) typeMappings.get("properties");
+				if (properties.containsKey(field)) {
+					Map<String, Object> property = (Map) properties.get(field);
+					if(property.containsKey("format")) {
+						return (String) property.get("format");
+					}
+					return (String) property.get("type");
+				}
+				break;
+			}
 			}
 		}
 		return null;

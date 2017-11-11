@@ -15,6 +15,9 @@
  */
 package com.viridiansoftware.elefana.search;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.jsoniter.JsonIterator;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
@@ -24,6 +27,8 @@ import com.viridiansoftware.elefana.search.query.Query;
 import com.viridiansoftware.elefana.search.query.QueryParser;
 
 public class RequestBodySearch {
+	private static final Logger LOGGER = LoggerFactory.getLogger(RequestBodySearch.class);
+	
 	protected final String originalQuery;
 	protected final long timestamp;
 	

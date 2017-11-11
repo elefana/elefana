@@ -93,14 +93,26 @@ public class TableUtils {
 	}
 
 	public List<String> listTables(String tablePattern) throws SQLException {
-		tablePattern = sanitizeTableName(tablePattern);
+		final List<String> results = listTables();
+		final String [] patterns = tablePattern.split(",");
 		
-		tablePattern = tablePattern.replace("*", "(.*)");
-		tablePattern = "^" + tablePattern + "$";
+		for(int i = 0; i < patterns.length; i++) {
+			patterns[i] = patterns[i].toLowerCase();
+			patterns[i] = sanitizeTableName(patterns[i]);
+			patterns[i] = patterns[i].replace("*", "(.*)");
+			patterns[i] = "^" + patterns[i] + "$";
+		}
 		
-		List<String> results = listTables();
 		for (int i = results.size() - 1; i >= 0; i--) {
-			if (results.get(i).matches(tablePattern)) {
+			boolean matchesPattern = false;
+			
+			for(int j = 0; j < patterns.length; j++) {
+				if (results.get(i).matches(patterns[j])) {
+					matchesPattern = true;
+					break;
+				}
+			}
+			if(matchesPattern) {
 				continue;
 			}
 			results.remove(i);
@@ -159,5 +171,24 @@ public class TableUtils {
 			json = json.replace("\\", "");
 		}
 		return json;
+	}
+	
+	public static boolean isTypesEmpty(String [] types) {
+		if(types == null) {
+			return true;
+		}
+		if(types.length == 0) {
+			return true;
+		}
+		for(int i = 0; i < types.length; i++) {
+			if(types[i] == null) {
+				continue;
+			}
+			if(types[i].isEmpty()) {
+				continue;
+			}
+			return false;
+		}
+		return true;
 	}
 }

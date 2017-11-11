@@ -186,6 +186,10 @@ public class DocumentApiTest {
 		indexWithId(id1, message1);
 		indexWithId(id2, message2);
 		
+		try {
+			Thread.sleep(1000L);
+		} catch (Exception e) {}
+		
 		given()
 			.request()
 			.body("{\"docs\" : [{\"_id\" : \"" + id1 + "\"}," +

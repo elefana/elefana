@@ -37,13 +37,13 @@ public class DateHistogramAggregation extends BucketAggregation {
 
 	@Override
 	public void executeSqlQuery(AggregationExec aggregationExec) {
-		LOGGER.info("HERE");
-		
 		final String fieldType = aggregationExec.getIndexFieldMappingService()
-				.getFirstFieldMapping(aggregationExec.getIndices(), aggregationExec.getTypes(), fieldName);
+				.getFirstFieldMappingType(aggregationExec.getTableNames(), aggregationExec.getTypes(), fieldName);
 		if (fieldType == null) {
 			throw new NoSuchMappingException(fieldName);
 		}
+		final String fieldFormat = aggregationExec.getIndexFieldMappingService()
+				.getFirstFieldMappingFormat(aggregationExec.getTableNames(), aggregationExec.getTypes(), fieldName);
 
 		final Map<String, Object> result = new HashMap<String, Object>();
 		final List<Map<String, Object>> buckets = new ArrayList<Map<String, Object>>();
@@ -54,7 +54,6 @@ public class DateHistogramAggregation extends BucketAggregation {
 		StringBuilder queryBuilder = new StringBuilder();
 		queryBuilder.append("SELECT ");
 
-		LOGGER.info(interval);
 		switch (interval) {
 		case "year":
 			queryBuilder.append("date_trunc('year',");
@@ -81,21 +80,44 @@ public class DateHistogramAggregation extends BucketAggregation {
 			queryBuilder.append("date_trunc('second',");
 			break;
 		default:
-			// TODO: Handle datemath intervals (e.g. 90m)
-			queryBuilder.append("date_trunc('second',");
+			if(interval.indexOf("micros") > 0) {
+				queryBuilder.append("date_trunc('microseconds',");
+			} else if(interval.indexOf("ms") > 0) {
+				queryBuilder.append("date_trunc('milliseconds',");
+			} else if(interval.indexOf('s') > 0) {
+				queryBuilder.append("date_trunc('second',");
+			} else if(interval.indexOf('m') > 0) {
+				queryBuilder.append("date_trunc('minute',");
+			} else if(interval.indexOf('h') > 0) {
+				queryBuilder.append("date_trunc('hour',");
+			} else if(interval.indexOf('d') > 0) {
+				queryBuilder.append("date_trunc('day',");
+			} else {
+				queryBuilder.append("date_trunc('second',");
+			}
 			break;
 		}
 
 		switch (fieldType) {
 		case "date":
-			queryBuilder.append("cast(_source->>'");
-			queryBuilder.append(fieldName);
-			queryBuilder.append("' as TIMESTAMP)");
+			LOGGER.info(fieldFormat);
+			switch(fieldFormat) {
+			case "epoch_millis":
+				queryBuilder.append("to_timestamp((_source->>'");
+				queryBuilder.append(fieldName);
+				queryBuilder.append("')::numeric / 1000)");
+				break;
+			default:
+				queryBuilder.append("cast(_source->>'");
+				queryBuilder.append(fieldName);
+				queryBuilder.append("' as TIMESTAMP)");
+				break;
+			}
 			break;
 		case "long":
-			queryBuilder.append("to_timestamp(_source->>'");
+			queryBuilder.append("to_timestamp((_source->>'");
 			queryBuilder.append(fieldName);
-			queryBuilder.append("' / 1000)");
+			queryBuilder.append("')::numeric / 1000)");
 			break;
 		default:
 			break;

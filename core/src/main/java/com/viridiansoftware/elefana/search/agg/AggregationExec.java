@@ -12,7 +12,7 @@ import com.viridiansoftware.elefana.indices.IndexFieldMappingService;
 import com.viridiansoftware.elefana.search.RequestBodySearch;
 
 public class AggregationExec {
-	private final List<String> indices;
+	private final List<String> tableNames;
 	private final String [] types;
 	private final JdbcTemplate jdbcTemplate;
 	private final IndexFieldMappingService indexFieldMappingService;
@@ -22,11 +22,11 @@ public class AggregationExec {
 	private final RequestBodySearch requestBodySearch;
 	private final Aggregation aggregation;
 
-	public AggregationExec(List<String> indices, String [] types, JdbcTemplate jdbcTemplate, IndexFieldMappingService indexFieldMappingService,
+	public AggregationExec(List<String> tableNames, String [] types, JdbcTemplate jdbcTemplate, IndexFieldMappingService indexFieldMappingService,
 			Map<String, Object> aggregationsResult, List<String> tempTablesCreated, String queryTable,
 			RequestBodySearch requestBodySearch, Aggregation aggregation) {
 		super();
-		this.indices = indices;
+		this.tableNames = tableNames;
 		this.types = types;
 		this.jdbcTemplate = jdbcTemplate;
 		this.indexFieldMappingService = indexFieldMappingService;
@@ -37,8 +37,8 @@ public class AggregationExec {
 		this.aggregation = aggregation;
 	}
 
-	public List<String> getIndices() {
-		return indices;
+	public List<String> getTableNames() {
+		return tableNames;
 	}
 
 	public String[] getTypes() {

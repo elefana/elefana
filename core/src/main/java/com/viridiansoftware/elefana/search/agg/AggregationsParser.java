@@ -6,12 +6,18 @@ package com.viridiansoftware.elefana.search.agg;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.jsoniter.JsonIterator;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
 import com.viridiansoftware.elefana.exception.UnsupportedAggregationTypeException;
+import com.viridiansoftware.elefana.search.SearchService;
 
 public class AggregationsParser {
+	private static final Logger LOGGER = LoggerFactory.getLogger(AggregationsParser.class);
+	
 	public static final String FIELD_AGGS = "aggs";
 	public static final String FIELD_AGGREGATIONS = "aggregations";
 	

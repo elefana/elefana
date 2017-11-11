@@ -133,7 +133,7 @@ public class SearchService {
 
 		StringBuilder queryBuilder = new StringBuilder();
 		queryBuilder.append("SELECT * FROM " + tableNames.get(0));
-		if (!isTypesEmpty(types)) {
+		if (!TableUtils.isTypesEmpty(types)) {
 			if (!requestBodySearch.getQuery().isMatchAllQuery()) {
 				queryBuilder.append(" AND (");
 			} else {
@@ -184,7 +184,7 @@ public class SearchService {
 			}
 			tempTableBuilderQuery.append("(SELECT * ");
 
-			if (i == tableNames.size() - 1) {
+			if (i == 0) {
 				tempTableBuilderQuery.append(" INTO ");
 				tempTableBuilderQuery.append(queryDataTableName);
 			}
@@ -197,7 +197,7 @@ public class SearchService {
 				tempTableBuilderQuery.append(requestBodySearch.getQuerySqlWhereClause());
 			}
 			
-			if (!isTypesEmpty(types)) {
+			if (!TableUtils.isTypesEmpty(types)) {
 				if (!requestBodySearch.getQuery().isMatchAllQuery()) {
 					tempTableBuilderQuery.append(" AND (");
 				} else {
@@ -259,7 +259,7 @@ public class SearchService {
 				tempTableBuilderQuery.append(" WHERE ");
 				tempTableBuilderQuery.append(requestBodySearch.getQuerySqlWhereClause());
 			}
-			if (!isTypesEmpty(types)) {
+			if (!TableUtils.isTypesEmpty(types)) {
 				if (!requestBodySearch.getQuery().isMatchAllQuery()) {
 					tempTableBuilderQuery.append(" AND (");
 				} else {
@@ -362,24 +362,5 @@ public class SearchService {
 	
 	private Map<String, Object> getEmptySearchResult(long startTime, int size) throws Exception {
 		return convertSqlQueryResultToSearchResult(null, startTime, size);
-	}
-	
-	private boolean isTypesEmpty(String [] types) {
-		if(types == null) {
-			return true;
-		}
-		if(types.length == 0) {
-			return true;
-		}
-		for(int i = 0; i < types.length; i++) {
-			if(types[i] == null) {
-				continue;
-			}
-			if(types[i].isEmpty()) {
-				continue;
-			}
-			return false;
-		}
-		return true;
 	}
 }

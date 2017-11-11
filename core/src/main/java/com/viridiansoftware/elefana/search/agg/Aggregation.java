@@ -21,15 +21,15 @@ public abstract class Aggregation {
 	public abstract void executeSqlQuery(final AggregationExec aggregationExec);
 
 	public void executeSqlQuery(AggregationExec parentExec, Map<String, Object> aggregationsResult, String queryTable) {
-		executeSqlQuery(new AggregationExec(parentExec.getIndices(), parentExec.getTypes(),
+		executeSqlQuery(new AggregationExec(parentExec.getTableNames(), parentExec.getTypes(),
 				parentExec.getJdbcTemplate(), parentExec.getIndexFieldMappingService(), aggregationsResult,
 				parentExec.getTempTablesCreated(), queryTable, parentExec.getRequestBodySearch(), this));
 	}
 
-	public void executeSqlQuery(List<String> indices, String[] types, JdbcTemplate jdbcTemplate,
+	public void executeSqlQuery(List<String> tableNames, String[] types, JdbcTemplate jdbcTemplate,
 			IndexFieldMappingService indexFieldMappingService, Map<String, Object> aggregationsResult,
 			List<String> tempTablesCreated, String queryTable, RequestBodySearch requestBodySearch) {
-		executeSqlQuery(new AggregationExec(indices, types, jdbcTemplate, indexFieldMappingService, aggregationsResult,
+		executeSqlQuery(new AggregationExec(tableNames, types, jdbcTemplate, indexFieldMappingService, aggregationsResult,
 				tempTablesCreated, queryTable, requestBodySearch, this));
 	}
 

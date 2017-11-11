@@ -13,6 +13,9 @@ import com.viridiansoftware.elefana.util.JodaUtils;
 public abstract class FieldMapper {
 	public static final FormatDateTimeFormatter DEFAULT_DATE_TIME_FORMATTER = JodaUtils.forPattern(
             "strict_date_optional_time||epoch_millis", Locale.ROOT);
+	
+	public static final FormatDateTimeFormatter EPOCH_DATE_TIME_FORMATTER = JodaUtils.forPattern(
+            "epoch_millis", Locale.ROOT);
 
 	public abstract Map<String, Object> getEmptyMapping();
 	

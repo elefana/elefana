@@ -3,12 +3,18 @@
  */
 package com.viridiansoftware.elefana.search.query;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.jsoniter.JsonIterator;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
 import com.viridiansoftware.elefana.exception.UnsupportedQueryTypeException;
+import com.viridiansoftware.elefana.search.agg.RangeAggregation;
 
 public class QueryParser {
+	private static final Logger LOGGER = LoggerFactory.getLogger(QueryParser.class);
+	
 	public static final String FIELD_QUERY = "query";
 	
 	public static final String QUERY_BOOL = "bool";
@@ -73,6 +79,13 @@ public class QueryParser {
 		} else if(!queryContext.get(QUERY_WILDCARD).valueType().equals(ValueType.INVALID)) {
 			return new WildcardQuery(queryContext.get(QUERY_WILDCARD));
 		}
+		
+		//Handle nested query contexts
+		if(!queryContext.get(FIELD_QUERY).valueType().equals(ValueType.INVALID)) {
+			return parseQuery(queryContext.get(FIELD_QUERY));
+		}
+		
+		LOGGER.error("Unsupported query type requested: " + queryContext.toString());
 		throw new UnsupportedQueryTypeException();
 	}
 }

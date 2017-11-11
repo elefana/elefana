@@ -40,7 +40,15 @@ public class V2FieldMapper extends FieldMapper {
 				
 				try {
 					if(DEFAULT_DATE_TIME_FORMATTER.parser().parseMillis(value) > 0L) {
-						existingMapping.put(propertyName, generateMappingType(propertyName, "date"));
+						try {
+							if(EPOCH_DATE_TIME_FORMATTER.parser().parseMillis(value) > 0L) {
+								existingMapping.put(propertyName, generateMappingType(propertyName, "date", "epoch_millis"));
+							} else {
+								existingMapping.put(propertyName, generateMappingType(propertyName, "date", "strict_date_optional_time"));
+							}
+						} catch (Exception e) {
+							existingMapping.put(propertyName, generateMappingType(propertyName, "date", "strict_date_optional_time"));
+						}
 					}
 					continue;
 				} catch (Exception e) {}
@@ -76,8 +84,12 @@ public class V2FieldMapper extends FieldMapper {
 	}
 	
 	private Map<String, Object> generateMappingType(String fieldName, String type) {
+		return generateMappingType(fieldName, type, null);
+	}
+	
+	private Map<String, Object> generateMappingType(String fieldName, String type, String format) {
 		Map<String, Object> mapping = new HashMap<String, Object>();
-		mapping.put(fieldName, generateMappingData(type));
+		mapping.put(fieldName, generateMappingData(type, format));
 		
 		Map<String, Object> result = new HashMap<String, Object>();
 		result.put("full_name", fieldName);
@@ -114,6 +126,8 @@ public class V2FieldMapper extends FieldMapper {
 		replaceIfPresent(fieldMapping, newMapping, "norms");
 		replaceIfPresent(fieldMapping, newMapping, "fielddata");
 		replaceIfPresent(fieldMapping, newMapping, "fields");
+		replaceIfPresent(fieldMapping, newMapping, "format");
+		replaceIfPresent(fieldMapping, newMapping, "numeric_resolution");
 	}
 	
 	private void replaceIfPresent(Map<String, Object> existingMapping, Map<String, Object> newMapping, String propertyName) {
@@ -124,6 +138,10 @@ public class V2FieldMapper extends FieldMapper {
 	}
 	
 	private Map<String, Object> generateMappingData(String type) {
+		return generateMappingData(type, null);
+	}
+	
+	private Map<String, Object> generateMappingData(String type, String format) {
 		Map<String, Object> norms = new HashMap<String, Object>();
 		norms.put("enabled", true);
 		
@@ -143,6 +161,10 @@ public class V2FieldMapper extends FieldMapper {
 		mappingData.put("ignore_above", -1);
 		mappingData.put("norms", norms);
 		mappingData.put("fielddata", new HashMap<String, Object>());
+		
+		if(format != null) {
+			mappingData.put("format", format);
+		}
 		return mappingData;
 	}
 }

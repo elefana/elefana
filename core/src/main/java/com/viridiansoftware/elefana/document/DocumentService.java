@@ -33,6 +33,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jsoniter.JsonIterator;
 import com.viridiansoftware.elefana.exception.DocumentAlreadyExistsException;
 import com.viridiansoftware.elefana.exception.NoSuchDocumentException;
+import com.viridiansoftware.elefana.indices.IndexFieldMappingService;
 import com.viridiansoftware.elefana.node.VersionInfoService;
 import com.viridiansoftware.elefana.util.TableUtils;
 
@@ -46,6 +47,8 @@ public class DocumentService {
 	private TableUtils tableUtils;
 	@Autowired
 	private VersionInfoService versionInfoService;
+	@Autowired
+	private IndexFieldMappingService indexFieldMappingService;
 
 	private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -76,7 +79,7 @@ public class DocumentService {
 		return result;
 	}
 
-	public MultiGetResponse multiGetByRequestBody(String requestBody) throws Exception {
+	public MultiGetResponse multiGet(String requestBody) throws Exception {
 		Map<String, Object> request = objectMapper.readValue(requestBody, Map.class);
 		List<Object> requestItems = (List<Object>) request.get("docs");
 
@@ -135,46 +138,54 @@ public class DocumentService {
 		return result;
 	}
 
-	public MultiGetResponse multiGet(String requestBody) throws Exception {
-		Connection connection = jdbcTemplate.getDataSource().getConnection();
-		MultiGetResponse result = new MultiGetResponse();
-		try {
-			for (String tableName : tableUtils.listTables()) {
-				SqlRowSet resultSet = jdbcTemplate
-						.queryForRowSet("SELECT * FROM " + tableName);
-				while (resultSet.next()) {
-					GetResponse getResponse = new GetResponse();
-					getResponse.set_index(resultSet.getString("_index"));
-					getResponse.set_type(resultSet.getString("_type"));
-					getResponse.set_id(resultSet.getString("_id"));
-					getResponse.set_source(objectMapper.readValue(resultSet.getString("_source"), Map.class));
-					result.getDocs().add(getResponse);
-				}
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-			connection.close();
-			throw new NoSuchDocumentException();
-		}
-		connection.close();
-		return result;
-	}
-
 	public MultiGetResponse multiGet(String indexPattern, String requestBody) throws Exception {
+		Map<String, Object> request = objectMapper.readValue(requestBody, Map.class);
+		List<Object> requestItems = (List<Object>) request.get("docs");
+
 		Connection connection = jdbcTemplate.getDataSource().getConnection();
 		MultiGetResponse result = new MultiGetResponse();
 		try {
-			String[] indices = indexPattern.split(",");
-			for (int i = 0; i < indices.length; i++) {
-				for (String tableName : tableUtils.listTables(indices[i])) {
-					SqlRowSet resultSet = jdbcTemplate
-							.queryForRowSet("SELECT * FROM " + TableUtils.sanitizeTableName(tableName));
-					while (resultSet.next()) {
+			for (String tableName : tableUtils.listTables(indexPattern)) {
+				for (Object tmpRequestItem : requestItems) {
+					Map<String, Object> requestItem = (Map<String, Object>) tmpRequestItem;
+					StringBuilder queryBuilder = new StringBuilder();
+					queryBuilder.append("SELECT * FROM ");
+					queryBuilder.append(tableName);
+					if (requestItem.containsKey("_type") || requestItem.containsKey("_id")) {
+						queryBuilder.append(" WHERE ");
+					}
+
+					if (requestItem.containsKey("_type")) {
+						queryBuilder.append("_type = '");
+						queryBuilder.append(requestItem.get("_type"));
+						queryBuilder.append("'");
+
+						if (requestItem.containsKey("_id")) {
+							queryBuilder.append(" AND ");
+						}
+					}
+					if (requestItem.containsKey("_id")) {
+						queryBuilder.append("_id = '");
+						queryBuilder.append(requestItem.get("_id"));
+						queryBuilder.append("'");
+					}
+
+					try {
+						SqlRowSet resultSet = jdbcTemplate.queryForRowSet(queryBuilder.toString());
+						while (resultSet.next()) {
+							GetResponse getResponse = new GetResponse();
+							getResponse.set_index(resultSet.getString("_index"));
+							getResponse.set_type(resultSet.getString("_type"));
+							getResponse.set_id(resultSet.getString("_id"));
+							getResponse.set_source(objectMapper.readValue(resultSet.getString("_source"), Map.class));
+							result.getDocs().add(getResponse);
+						}
+					} catch (Exception e) {
 						GetResponse getResponse = new GetResponse();
-						getResponse.set_index(resultSet.getString("_index"));
-						getResponse.set_type(resultSet.getString("_type"));
-						getResponse.set_id(resultSet.getString("_id"));
-						getResponse.set_source(objectMapper.readValue(resultSet.getString("_source"), Map.class));
+						getResponse.set_index((String) requestItem.get("_index"));
+						getResponse.set_type((String) requestItem.get("_type"));
+						getResponse.set_id((String) requestItem.get("_id"));
+						getResponse.setFound(false);
 						result.getDocs().add(getResponse);
 					}
 				}
@@ -188,19 +199,59 @@ public class DocumentService {
 		return result;
 	}
 
-	public MultiGetResponse multiGet(String index, String type, String requestBody) throws Exception {
+	public MultiGetResponse multiGet(String indexPattern, String typePattern, String requestBody) throws Exception {
+		Map<String, Object> request = objectMapper.readValue(requestBody, Map.class);
+		List<Object> requestItems = (List<Object>) request.get("docs");
+
 		Connection connection = jdbcTemplate.getDataSource().getConnection();
 		MultiGetResponse result = new MultiGetResponse();
 		try {
-			SqlRowSet resultSet = jdbcTemplate.queryForRowSet(
-					"SELECT * FROM " + TableUtils.sanitizeTableName(index) + " WHERE _type = '?''", type);
-			while (resultSet.next()) {
-				GetResponse getResponse = new GetResponse();
-				getResponse.set_index(resultSet.getString("_index"));
-				getResponse.set_type(resultSet.getString("_type"));
-				getResponse.set_id(resultSet.getString("_id"));
-				getResponse.set_source(objectMapper.readValue(resultSet.getString("_source"), Map.class));
-				result.getDocs().add(getResponse);
+			for (String tableName : tableUtils.listTables(indexPattern)) {
+				for(String type : indexFieldMappingService.getTypesForTableName(tableName, typePattern)) {
+					for (Object tmpRequestItem : requestItems) {
+						Map<String, Object> requestItem = (Map<String, Object>) tmpRequestItem;
+						StringBuilder queryBuilder = new StringBuilder();
+						queryBuilder.append("SELECT * FROM ");
+						queryBuilder.append(tableName);
+						if (!type.isEmpty() || requestItem.containsKey("_id")) {
+							queryBuilder.append(" WHERE ");
+						}
+
+						if (!type.isEmpty()) {
+							queryBuilder.append("_type = '");
+							queryBuilder.append(type);
+							queryBuilder.append("'");
+
+							if (requestItem.containsKey("_id")) {
+								queryBuilder.append(" AND ");
+							}
+						}
+						if (requestItem.containsKey("_id")) {
+							queryBuilder.append("_id = '");
+							queryBuilder.append(requestItem.get("_id"));
+							queryBuilder.append("'");
+						}
+
+						try {
+							SqlRowSet resultSet = jdbcTemplate.queryForRowSet(queryBuilder.toString());
+							while (resultSet.next()) {
+								GetResponse getResponse = new GetResponse();
+								getResponse.set_index(resultSet.getString("_index"));
+								getResponse.set_type(resultSet.getString("_type"));
+								getResponse.set_id(resultSet.getString("_id"));
+								getResponse.set_source(objectMapper.readValue(resultSet.getString("_source"), Map.class));
+								result.getDocs().add(getResponse);
+							}
+						} catch (Exception e) {
+							GetResponse getResponse = new GetResponse();
+							getResponse.set_index((String) requestItem.get("_index"));
+							getResponse.set_type((String) requestItem.get("_type"));
+							getResponse.set_id((String) requestItem.get("_id"));
+							getResponse.setFound(false);
+							result.getDocs().add(getResponse);
+						}
+					}
+				}
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
