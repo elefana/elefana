@@ -1,5 +1,7 @@
+-dontwarn
 -dontshrink
 -dontoptimize
+-keepdirectories
 
 # Include java runtime classes
 -libraryjars  <java.home>/lib/rt.jar
@@ -18,7 +20,9 @@
 
 # Disable certain proguard optimizations which remove stackframes (same as Android defaults)
 -optimizations !method/inlining/*
+-optimizations !class/marking/final
 
+-keepparameternames
 -keepnames public class com.viridiansoftware.*Controller
 
 -keepnames @org.springframework.stereotype.Component class *
@@ -33,8 +37,26 @@
 -keep @org.springframework.context.annotation.Configuration class *
 -keep @org.springframework.web.bind.annotation.RestController class *
 
--keep public class * {
+-keep public class com.viridiansoftware.elefana.util.* {
     public protected *;
+}
+-keep public class java.sql.**.* {
+	public protected *;
+}
+-keep public class org.postgresql.**.* {
+	public protected *;
+}
+-keep public class org.springframework.**.* {
+	public protected *;
+}
+-keep public class com.zaxxer.**.* {
+	public protected *;
+}
+-keep public class com.viridiansoftware.elefana.TaskSchedulerConfiguration {
+	public protected *;
+}
+-keep public class com.viridiansoftware.elefana.ElefanaApplication {
+	public protected *;
 }
 
 -keepclassmembers public class * {

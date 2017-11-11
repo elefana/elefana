@@ -89,21 +89,21 @@ project(":" + rootProject.name + "-core") {
 		testCompile('org.springframework.boot:spring-boot-starter-test')
 	}
 	
-	// task copyJarToTempJar(type: Copy, dependsOn: jar) {
-	// 	from "build/libs/es2pgsql-core-" + project.version + ".jar"
-	// 	into "build/libs/"
-	// 	rename { String fileName ->
-	// 		fileName.replace(".jar", ".tmp.jar")
-	// 	}
-	// }
+	task copyJarToTempJar(type: Copy, dependsOn: bootJar) {
+		from "build/libs/elefana-core-" + project.version + "-boot.jar"
+		into "build/libs/"
+		rename { String fileName ->
+			fileName.replace(".jar", ".tmp.jar")
+		}
+	}
 	
-	// task runProguard(type: proguard.gradle.ProGuardTask, dependsOn: copyJarToTempJar) {
-	// 	configuration "../proguard.txt"
+	task runProguard(type: proguard.gradle.ProGuardTask, dependsOn: copyJarToTempJar) {
+		configuration "../proguard.txt"
 		
-	// 	injars "build/libs/es2pgsql-core-" + project.version + ".tmp.jar"
-	// 	outjars "build/libs/es2pgsql-core-" + project.version + ".jar"
-	// }
-	// bootRepackage.dependsOn runProguard
+		injars "build/libs/elefana-core-" + project.version + "-boot.tmp.jar"
+		outjars "build/libs/elefana-core-" + project.version + "-boot.jar"
+	}
+	bootRepackage.dependsOn runProguard
 }
 
 project(":" + rootProject.name + "-uats-es2") {

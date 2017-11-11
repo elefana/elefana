@@ -19,3 +19,5 @@ gradle-app.setting
 .settings/
 
 .springBeans
+
+proguard.map
