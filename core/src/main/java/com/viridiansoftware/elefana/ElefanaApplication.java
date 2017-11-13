@@ -7,6 +7,8 @@ import java.io.File;
 import java.util.Properties;
 
 import org.mini2Dx.natives.OsInformation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.Banner.Mode;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
@@ -23,6 +25,8 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 @SpringBootApplication
 @ComponentScan(basePackages = { "com.viridiansoftware.elefana" })
 public class ElefanaApplication implements ApplicationListener<ContextRefreshedEvent> {
+	private static final Logger LOGGER = LoggerFactory.getLogger(ElefanaApplication.class);
+	
 	private static final String LINUX_CONFIGURATION_PATH = "/etc/elefana";
 	private static final String MAC_CONFIGURATION_PATH = "/etc/elefana";
 	private static final String WINDOWS_CONFIGURATION_PATH = "C:\\Program Files\\elefana";
@@ -87,6 +91,7 @@ public class ElefanaApplication implements ApplicationListener<ContextRefreshedE
 				break;
 			}
 		}
+		LOGGER.info(props.getProperty("spring.config.location"));
 		return props;
 	}
 }
