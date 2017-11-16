@@ -26,6 +26,8 @@ import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.viridiansoftware.elefana.ApiVersion;
+import com.viridiansoftware.elefana.exception.NoSuchTemplateException;
+import com.viridiansoftware.elefana.exception.ShardFailedException;
 import com.viridiansoftware.elefana.node.NodeSettingsService;
 import com.viridiansoftware.elefana.node.VersionInfoService;
 import com.viridiansoftware.elefana.util.TableUtils;
@@ -43,6 +45,8 @@ public class IndexFieldMappingService implements Runnable {
 	private NodeSettingsService nodeSettingsService;
 	@Autowired
 	private VersionInfoService versionInfoService;
+	@Autowired
+	private IndexTemplateService indexTemplateService;
 	@Autowired
 	private TaskScheduler taskScheduler;
 	@Autowired
@@ -86,8 +90,7 @@ public class IndexFieldMappingService implements Runnable {
 		if (nodeSettingsService.isUsingCitus()) {
 			jdbcTemplate.execute("SELECT create_distributed_table('es2pgsql_index_mapping', '_tracking_id');");
 			jdbcTemplate.execute("SELECT create_distributed_table('es2pgsql_index_mapping_tracking', '_table_name');");
-			jdbcTemplate
-					.execute("SELECT create_distributed_table('es2pgsql_index_field_capabilities', '_table_name');");
+			jdbcTemplate.execute("SELECT create_distributed_table('es2pgsql_index_field_capabilities', '_table_name');");
 			jdbcTemplate.execute("SELECT create_distributed_table('es2pgsql_index_field_stats', '_table_name');");
 		}
 
@@ -418,14 +421,17 @@ public class IndexFieldMappingService implements Runnable {
 				Map<String, Object> mapping = getIndexTypeMappingsForTable(nextTable);
 
 				if (mapping.isEmpty()) {
+					IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForTableName(nextTable);
+					LOGGER.info(nextTable + " " + (indexTemplate == null ? "null" : indexTemplate.toString()));
+					
 					SqlRowSet rowSet = jdbcTemplate
 							.queryForRowSet("SELECT _type, _source FROM " + nextTable + " TABLESAMPLE BERNOULLI("
 									+ String.format("%f", nodeSettingsService.getMappingSampleSize()) + ")");
 
-					int totalSamples = generateMappingsForAllTypes(mapping, nextTable, rowSet);
+					int totalSamples = generateMappingsForAllTypes(indexTemplate, mapping, nextTable, rowSet);
 					if (totalSamples == 0) {
 						rowSet = jdbcTemplate.queryForRowSet("SELECT _type, _source FROM " + nextTable + " LIMIT 100");
-						generateMappingsForAllTypes(mapping, nextTable, rowSet);
+						generateMappingsForAllTypes(indexTemplate, mapping, nextTable, rowSet);
 					}
 				} else {
 					for (String type : mapping.keySet()) {
@@ -452,7 +458,7 @@ public class IndexFieldMappingService implements Runnable {
 		}
 	}
 
-	private int generateMappingsForAllTypes(Map<String, Object> mapping, String nextTable, SqlRowSet rowSet)
+	private int generateMappingsForAllTypes(IndexTemplate indexTemplate, Map<String, Object> mapping, String nextTable, SqlRowSet rowSet)
 			throws Exception {
 		int totalSamples = 0;
 		while (rowSet.next()) {
@@ -460,7 +466,13 @@ public class IndexFieldMappingService implements Runnable {
 
 			Map<String, Object> typeMappings = (Map) mapping.get(type);
 			if (typeMappings == null) {
-				typeMappings = new HashMap<String, Object>();
+				if(indexTemplate != null) {
+					typeMappings = fieldMapper.convertIndexTemplateToMappings(indexTemplate, type);
+				}
+				if (typeMappings == null) {
+					typeMappings = new HashMap<String, Object>();
+				}
+				LOGGER.info(typeMappings.toString());
 				mapping.put(type, typeMappings);
 			}
 			Map<String, Object> document = objectMapper.readValue(rowSet.getString("_source"), Map.class);

@@ -27,14 +27,37 @@ public class V2FieldMapper extends FieldMapper {
 	public List<String> getFieldNames(Map<String, Object> mappings) {
 		return new ArrayList<String>(mappings.keySet());
 	}
+	
+	@Override
+	public Map<String, Object> convertIndexTemplateToMappings(IndexTemplate indexTemplate, String type) {
+		final Map<String, Object> result = new HashMap<String, Object>();
+		if(!indexTemplate.getMappings().containsKey(type)) {
+			return result;
+		}
+		
+		final Map<String, Object> typeMappings = (Map) indexTemplate.getMappings().get(type);
+		if(!typeMappings.containsKey("properties")) {
+			return result;
+		}
+		final Map<String, Object> propertyMappings = (Map) typeMappings.get("properties");
+		for(String propertyName : propertyMappings.keySet()) {
+			Map<String, Object> propertyValues = (Map) propertyMappings.get(propertyName);
+			String fieldType = (String) propertyValues.get("type");
+			String format = (String) propertyValues.get("format");
+			
+			if(fieldType == null) {
+				continue;
+			}
+			result.put(propertyName, generateMappingType(propertyName, fieldType, format));
+		}
+		return result;
+	}
 
 	@Override
 	public void generateMappings(Map<String, Object> existingMapping, Map<String, Object> document) {
+		final Map<String, Object> newMappings = new HashMap<String, Object>();
+		
 		for(String propertyName : document.keySet()) {
-			if(existingMapping.containsKey(propertyName)) {
-				continue;
-			}
-			
 			if(document.get(propertyName) instanceof String) {
 				String value = (String) document.get(propertyName);
 				
@@ -42,59 +65,51 @@ public class V2FieldMapper extends FieldMapper {
 					if(DEFAULT_DATE_TIME_FORMATTER.parser().parseMillis(value) > 0L) {
 						try {
 							if(EPOCH_DATE_TIME_FORMATTER.parser().parseMillis(value) > 0L) {
-								existingMapping.put(propertyName, generateMappingType(propertyName, "date", "epoch_millis"));
+								newMappings.put(propertyName, generateMappingType(propertyName, "date", "epoch_millis"));
 							} else {
-								existingMapping.put(propertyName, generateMappingType(propertyName, "date", "strict_date_optional_time"));
+								newMappings.put(propertyName, generateMappingType(propertyName, "date", "strict_date_optional_time"));
 							}
 						} catch (Exception e) {
-							existingMapping.put(propertyName, generateMappingType(propertyName, "date", "strict_date_optional_time"));
+							newMappings.put(propertyName, generateMappingType(propertyName, "date", "strict_date_optional_time"));
 						}
 					}
 					continue;
 				} catch (Exception e) {}
 				if(value.contains(" ")) {
-					existingMapping.put(propertyName, generateMappingType(propertyName, "text"));
+					newMappings.put(propertyName, generateMappingType(propertyName, "text"));
 				} else {
-					existingMapping.put(propertyName, generateMappingType(propertyName, "string"));
+					newMappings.put(propertyName, generateMappingType(propertyName, "string"));
 				}
 			} else if(document.get(propertyName) instanceof Boolean) {
-				existingMapping.put(propertyName, generateMappingType(propertyName, "boolean"));
+				newMappings.put(propertyName, generateMappingType(propertyName, "boolean"));
 			} else if(document.get(propertyName) instanceof Byte) {
-				existingMapping.put(propertyName, generateMappingType(propertyName, "long"));
+				newMappings.put(propertyName, generateMappingType(propertyName, "long"));
 			} else if(document.get(propertyName) instanceof Short) {
-				existingMapping.put(propertyName, generateMappingType(propertyName, "long"));
+				newMappings.put(propertyName, generateMappingType(propertyName, "long"));
 			} else if(document.get(propertyName) instanceof Integer) {
-				existingMapping.put(propertyName, generateMappingType(propertyName, "long"));
+				newMappings.put(propertyName, generateMappingType(propertyName, "long"));
 			} else if(document.get(propertyName) instanceof Long) {
-				existingMapping.put(propertyName, generateMappingType(propertyName, "long"));
+				newMappings.put(propertyName, generateMappingType(propertyName, "long"));
 			} else if(document.get(propertyName) instanceof Double) {
-				existingMapping.put(propertyName, generateMappingType(propertyName, "double"));
+				newMappings.put(propertyName, generateMappingType(propertyName, "double"));
 			} else if(document.get(propertyName) instanceof Float) {
-				existingMapping.put(propertyName, generateMappingType(propertyName, "double"));
+				newMappings.put(propertyName, generateMappingType(propertyName, "double"));
 			} else if(document.get(propertyName) instanceof Date) {
-				existingMapping.put(propertyName, generateMappingType(propertyName, "date"));
+				newMappings.put(propertyName, generateMappingType(propertyName, "date"));
 			} else if(document.get(propertyName) instanceof DateTime) {
-				existingMapping.put(propertyName, generateMappingType(propertyName, "date"));
+				newMappings.put(propertyName, generateMappingType(propertyName, "date"));
 			} else if(document.get(propertyName) instanceof List) {
-				existingMapping.put(propertyName, generateMappingType(propertyName, "nested"));
+				newMappings.put(propertyName, generateMappingType(propertyName, "nested"));
 			} else {
-				existingMapping.put(propertyName, generateMappingType(propertyName, "object"));
+				newMappings.put(propertyName, generateMappingType(propertyName, "object"));
 			}
 		}
-	}
-	
-	private Map<String, Object> generateMappingType(String fieldName, String type) {
-		return generateMappingType(fieldName, type, null);
-	}
-	
-	private Map<String, Object> generateMappingType(String fieldName, String type, String format) {
-		Map<String, Object> mapping = new HashMap<String, Object>();
-		mapping.put(fieldName, generateMappingData(type, format));
 		
-		Map<String, Object> result = new HashMap<String, Object>();
-		result.put("full_name", fieldName);
-		result.put("mapping", mapping);
-		return result;
+		for(String propertyName : document.keySet()) {
+			if(!existingMapping.containsKey(propertyName)) {
+				existingMapping.put(propertyName, newMappings.get(propertyName));
+			}
+		}
 	}
 
 	@Override
@@ -103,12 +118,12 @@ public class V2FieldMapper extends FieldMapper {
 			existingMapping.put("mapping", new HashMap<String, Object>());
 			existingMapping.put("full_name", fieldName);
 		}
-		Map<String, Object> mapping = (Map<String, Object>) existingMapping.get("mapping");
+		final Map<String, Object> mapping = (Map<String, Object>) existingMapping.get("mapping");
 		
 		if(!mapping.containsKey(fieldName)) {
 			mapping.put(fieldName, generateMappingData(null));
 		}
-		Map<String, Object> fieldMapping = (Map<String, Object>) mapping.get(fieldName);
+		final Map<String, Object> fieldMapping = (Map<String, Object>) mapping.get(fieldName);
 		
 		replaceIfPresent(fieldMapping, newMapping, "type");
 		replaceIfPresent(fieldMapping, newMapping, "boost");
@@ -135,6 +150,20 @@ public class V2FieldMapper extends FieldMapper {
 			return;
 		}
 		existingMapping.put(propertyName, newMapping.get(propertyName));
+	}
+	
+	private Map<String, Object> generateMappingType(String fieldName, String type) {
+		return generateMappingType(fieldName, type, null);
+	}
+	
+	private Map<String, Object> generateMappingType(String fieldName, String type, String format) {
+		Map<String, Object> mapping = new HashMap<String, Object>();
+		mapping.put(fieldName, generateMappingData(type, format));
+		
+		Map<String, Object> result = new HashMap<String, Object>();
+		result.put("full_name", fieldName);
+		result.put("mapping", mapping);
+		return result;
 	}
 	
 	private Map<String, Object> generateMappingData(String type) {

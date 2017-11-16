@@ -36,6 +36,7 @@ import com.viridiansoftware.elefana.document.DocumentService;
 import com.viridiansoftware.elefana.document.IndexApiResponse;
 import com.viridiansoftware.elefana.document.IndexOpType;
 import com.viridiansoftware.elefana.indices.IndexFieldMappingService;
+import com.viridiansoftware.elefana.indices.IndexTemplateService;
 import com.viridiansoftware.elefana.node.NodesService;
 import com.viridiansoftware.elefana.search.SearchService;
 
@@ -49,6 +50,8 @@ public class HttpApiController {
 	private BulkService bulkService;
 	@Autowired
 	private IndexFieldMappingService indexFieldMappingService;
+	@Autowired
+	private IndexTemplateService indexTemplateService;
 	@Autowired
 	private SearchService searchService;
 	@Autowired
@@ -79,7 +82,7 @@ public class HttpApiController {
 	}
 
 	@RequestMapping(path = "/{indexPattern:.+}", method = RequestMethod.POST)
-	public Object indexOrSearch(@PathVariable String indexPattern, HttpEntity<String> request) throws Exception {
+	public Object post(@PathVariable String indexPattern, HttpEntity<String> request) throws Exception {
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		switch (indexPatternLowercase) {
 		case "_search":
@@ -125,6 +128,8 @@ public class HttpApiController {
 			default:
 				return nodesService.getNodesInfo(typePattern.split(","));
 			}
+		case "_template":
+			return indexTemplateService.getIndexTemplate(typePattern);
 		default:
 			break;
 		}
@@ -141,7 +146,7 @@ public class HttpApiController {
 	}
 
 	@RequestMapping(path = "/{indexPattern}/{typePattern:.+}", method = RequestMethod.POST)
-	public Object indexOrSearch(@PathVariable String indexPattern, @PathVariable String typePattern,
+	public Object post(@PathVariable String indexPattern, @PathVariable String typePattern,
 			HttpEntity<String> request, HttpServletResponse response) throws Exception {
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		final String typePatternLowercase = typePattern.toLowerCase();
@@ -160,7 +165,20 @@ public class HttpApiController {
 		case "_refresh":
 			return null;
 		}
-		return indexOrSearch(indexPattern, typePattern, UUID.randomUUID().toString(), request, response);
+		return post(indexPattern, typePattern, UUID.randomUUID().toString(), request, response);
+	}
+	
+	@RequestMapping(path = "/{indexPattern}/{typePattern:.+}", method = RequestMethod.PUT)
+	public Object put(@PathVariable String indexPattern, @PathVariable String typePattern, HttpEntity<String> request) throws Exception {
+		final String indexPatternLowercase = indexPattern.toLowerCase();
+		final String typePatternLowercase = typePattern.toLowerCase();
+		
+		switch(indexPatternLowercase) {
+		case "_template":
+			indexTemplateService.putIndexTemplate(typePattern, request.getBody());
+			return new AckResponse();
+		}
+		return null;
 	}
 
 	@RequestMapping(path = "/{indexPattern}/{typePattern}/{idPattern:.+}", method = RequestMethod.GET)
@@ -198,7 +216,7 @@ public class HttpApiController {
 	}
 
 	@RequestMapping(path = "/{indexPattern}/{typePattern}/{idPattern:.+}", method = RequestMethod.POST)
-	public Object indexOrSearch(@PathVariable String indexPattern, @PathVariable String typePattern,
+	public Object post(@PathVariable String indexPattern, @PathVariable String typePattern,
 			@PathVariable String idPattern, HttpEntity<String> request, HttpServletResponse response) throws Exception {
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		final String typePatternLowercase = typePattern.toLowerCase();
@@ -220,7 +238,7 @@ public class HttpApiController {
 	}
 	
 	@RequestMapping(path = "/{indexPattern}/{typePattern}/{idPattern:.+}", method = RequestMethod.PUT)
-	public Object index(@PathVariable String indexPattern, @PathVariable String typePattern,
+	public Object put(@PathVariable String indexPattern, @PathVariable String typePattern,
 			@PathVariable String idPattern, HttpEntity<String> request, HttpServletResponse response) throws Exception {
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		final String typePatternLowercase = typePattern.toLowerCase();
@@ -255,7 +273,7 @@ public class HttpApiController {
 	}
 	
 	@RequestMapping(path = "/{indexPattern}/{typePattern}/{idPattern}/{opPattern:.+}", method = RequestMethod.POST)
-	public Object indexOrSearch(@PathVariable String indexPattern, @PathVariable String typePattern,
+	public Object post(@PathVariable String indexPattern, @PathVariable String typePattern,
 			@PathVariable String idPattern, @PathVariable String opPattern, HttpEntity<String> request, HttpServletResponse response) throws Exception {
 		if (idPattern.toLowerCase().equals("_search")) {
 			return searchService.search(indexPattern, typePattern, request);

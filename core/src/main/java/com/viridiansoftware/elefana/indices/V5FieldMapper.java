@@ -38,6 +38,15 @@ public class V5FieldMapper extends FieldMapper {
 	}
 	
 	@Override
+	public Map<String, Object> convertIndexTemplateToMappings(IndexTemplate indexTemplate, String type) {
+		final Map<String, Object> result = new HashMap<String, Object>();
+		if(!indexTemplate.getMappings().containsKey(type)) {
+			return result;
+		}
+		return (Map) indexTemplate.getMappings().get(type);
+	}
+	
+	@Override
 	public void generateMappings(Map<String, Object> existingMapping, Map<String, Object> document) {
 		Map<String, Object> propertyMappings = (Map<String, Object>) existingMapping.get("properties");
 		if(propertyMappings == null) {

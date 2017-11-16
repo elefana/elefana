@@ -21,6 +21,8 @@ public abstract class FieldMapper {
 	
 	public abstract List<String> getFieldNames(Map<String, Object> mappings);
 	
+	public abstract Map<String, Object> convertIndexTemplateToMappings(IndexTemplate indexTemplate, String type);
+	
 	public abstract void generateMappings(Map<String, Object> existingMapping, Map<String, Object> document);
 	
 	public abstract void mergeMapping(Map<String, Object> existingMappingForField, String fieldName, Map<String, Object> newMappingForField);
