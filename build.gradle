@@ -28,7 +28,7 @@ subprojects {
 		codecVersion = '1.10'
 		hikariVersion = '2.7.1'
 		jodaVersion = '2.9.9'
-		jsoniterVersion = '0.9.16'
+		jsoniterVersion = '0.9.18'
 		nativesLoaderVersion = '1.0.0'
 		restAssuredVersion = '3.0.5'
 	}

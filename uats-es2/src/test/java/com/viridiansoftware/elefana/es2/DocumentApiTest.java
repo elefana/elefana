@@ -14,6 +14,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 import com.viridiansoftware.elefana.ElefanaApplication;
 
 import io.restassured.RestAssured;
+import io.restassured.http.ContentType;
 
 import static io.restassured.RestAssured.*;
 import static io.restassured.matcher.RestAssuredMatchers.*;
@@ -38,6 +39,7 @@ public class DocumentApiTest {
 		final String message = "This is a test";
 		given()
 			.request()
+			.contentType(ContentType.JSON)
 			.body("{\"message\" : \"" + message + "\",\"date\" : \"2009-11-15T14:12:12\"}")
 		.when()
 			.post("/" + INDEX + "/" + TYPE)
