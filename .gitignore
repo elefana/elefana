@@ -21,3 +21,7 @@ gradle-app.setting
 .springBeans
 
 proguard.map
+
+Gemfile.lock
+*.deb
+*.rpm

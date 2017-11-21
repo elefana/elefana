@@ -1,0 +1,12 @@
+#
+# Elefana defaults
+#
+
+# Conf directory
+EF_CONF_DIR=/etc/elefana
+
+# Min JVM heap size
+EF_MIN_HEAP=512m
+
+# Max JVM heap size
+EF_MAX_HEAP=2048m

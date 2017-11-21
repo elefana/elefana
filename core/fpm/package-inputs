@@ -1,0 +1,4 @@
+build/release/
+fpm/deb/
+fpm/rpm/
+src/main/resources/

@@ -104,6 +104,40 @@ project(":" + rootProject.name + "-core") {
 		outjars "build/libs/elefana-core-" + project.version + "-boot.jar"
 	}
 	bootRepackage.dependsOn runProguard
+	
+	task copyToRelease(type: Copy, dependsOn: bootRepackage) {
+		from "build/libs/elefana-core-" + project.version + "-boot.jar"
+		into "build/release/"
+		rename { String fileName ->
+			fileName.replace("elefana-core-" + project.version + "-boot", "elefana")
+		}
+	}
+	
+	task installBundler(type: Exec, dependsOn: copyToRelease) {
+		commandLine = ["gem", "install", "bundler"]
+	}
+	
+	task bundleInstall(type: Exec, dependsOn: installBundler) {
+		commandLine = ["bundle", "install"]
+	}
+	
+	task packageDeb(type: Exec, dependsOn: bundleInstall) {
+		commandLine = ["fpm",
+					"-s", "dir",
+					"-t", "deb",
+					"--name", "elefana",
+					"--description", "Elastic HTTP API for PostgreSQL",
+					"--vendor", "Viridian Software Ltd.",
+					"--maintainer","Elefana Support<support@elefana.com>",
+					"--version", project.version,
+					"--url","elefana.com",
+					"--prefix", "usr/share/elefana/",
+					"--inputs", "fpm/package-inputs",
+					"-a", "all",
+					"--force",
+					"--before-install", "fpm/deb/scripts/before-install.sh",
+					"--after-install", "fpm/deb/scripts/after-install.sh" ]
+	}
 }
 
 project(":" + rootProject.name + "-uats-es2") {

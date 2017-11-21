@@ -1,0 +1,113 @@
+#!/bin/bash
+#
+# /etc/init.d/elefana
+#
+### BEGIN INIT INFO
+# Provides:          elefana
+# Required-Start:    $network $remote_fs $named
+# Required-Stop:     $network $remote_fs $named
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Starts elefana
+# Description:       Starts elefana using start-stop-daemon
+### END INIT INFO
+
+findJavaBin() {
+	if [ -x "$JAVA_HOME/bin/java" ]; then
+		PROGRAM="$JAVA_HOME/bin/java"
+	else
+		PROGRAM=`which java`
+	fi
+
+	if [ ! -x "$PROGRAM" ]; then
+		echo "Could not find any JRE/JDK. Please install java in your PATH or set JAVA_HOME"
+		exit 1
+	fi
+}
+
+EF_CONF_DIR=/etc/elefana
+EF_MIN_HEAP=512m
+EF_MAX_HEAP=2048m
+
+PATH=/bin:/usr/bin:/sbin:/usr/sbin
+NAME=elefana
+PIDFILE=/var/run/elefana.pid
+DEFAULTS=/etc/default/elefana
+USER=elefana
+GROUP=elefana
+CWD=/var/elefana
+
+if [ `id -u` -ne 0 ]; then
+	echo "You need root privileges to run this script"
+	exit 1
+fi
+
+. /lib/lsb/init-functions
+
+if [ -r /etc/default/rcS ]; then
+	. /etc/default/rcS
+fi
+
+if [ -f "$DEFAULTS" ]; then
+	. "$DEFAULTS"
+fi
+
+JVM_ARGS="-Xms$EF_MIN_HEAP -Xmx$EF_MAX_HEAP"
+APP_ARGS="--spring.config.location=$EF_CONF_DIR/"
+JAR_PATH=/usr/share/elefana/elefana.jar
+PROGRAM_ARGS="$JVM_ARGS -jar $JAR_PATH $APP_ARGS"
+
+case "$1" in
+  start)
+  	log_daemon_msg "Starting elefana"
+  	pid=`pidofproc -p $PIDFILE elefana`
+	if [ -n "$pid" ] ; then
+		log_begin_msg "elefana is already running."
+		log_end_msg 0
+		exit 0
+	fi
+	
+	findJavaBin
+  	
+  	start-stop-daemon --start --make-pidfile --pidfile $PIDFILE --chuid $USER --user $USER --group $GROUP --chdir $CWD --umask 0 --exec $PROGRAM --background -- $PROGRAM_ARGS || exit 2
+	return_code=$?
+	log_end_msg $return_code
+	exit $return_code
+	;;
+  stop)
+	log_daemon_msg "Stopping elefana"
+
+	if [ -f "$PIDFILE" ]; then
+		start-stop-daemon --stop --pidfile "$PIDFILE" \
+			--user elefana \
+			--quiet \
+			--retry forever/TERM/20 > /dev/null
+		if [ $? -eq 1 ]; then
+			log_progress_msg "elefana is not running but pid file exists, cleaning up"
+		elif [ $? -eq 3 ]; then
+			PID="`cat $PIDFILE`"
+			log_failure_msg "Failed to stop elefana (pid $PID)"
+			exit 1
+		fi
+		rm -f "$PIDFILE"
+	else
+		log_progress_msg " not running"
+	fi
+	log_end_msg 0
+	;;
+  status)
+	status_of_proc -p $PIDFILE elefana elefana && exit 0 || exit $?
+	;;
+  restart)
+	if [ -f "$PIDFILE" ]; then
+		$0 stop
+	fi
+	$0 start
+	;;
+  *)
+	log_success_msg "Usage: $0 {start|stop|restart|force-reload|status}"
+	exit 1
+	;;
+esac
+  
+exit 0
