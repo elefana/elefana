@@ -48,6 +48,9 @@ public class BulkService {
 		final Map<String, List<BulkIndexOperation>> indexOperations = new HashMap<String, List<BulkIndexOperation>>();
 
 		for (int i = 0; i < lines.length; i += 2) {
+			if(i + 1 >= lines.length) {
+				break;
+			}
 			Any operation = JsonIterator.deserialize(lines[i]);
 			if (!operation.get(OPERATION_INDEX).valueType().equals(ValueType.INVALID)) {
 				Any indexOperationTarget = operation.get(OPERATION_INDEX);
@@ -55,7 +58,7 @@ public class BulkService {
 				BulkIndexOperation indexOperation = BulkIndexOperation.allocate();
 				indexOperation.setIndex(indexOperationTarget.get(BulkTask.KEY_INDEX).toString());
 				indexOperation.setType(indexOperationTarget.get(BulkTask.KEY_TYPE).toString());
-				if (!indexOperationTarget.get(BulkTask.KEY_ID).equals(ValueType.INVALID)) {
+				if (!indexOperationTarget.get(BulkTask.KEY_ID).valueType().equals(ValueType.INVALID)) {
 					indexOperation.setId(indexOperationTarget.get(BulkTask.KEY_ID).toString());
 				} else {
 					indexOperation.setId(UUID.randomUUID().toString());
@@ -70,11 +73,11 @@ public class BulkService {
 			// TODO: Handle other operations
 		}
 
+		bulkApiResponse.setErrors(false);
 		for (String index : indexOperations.keySet()) {
 			bulkIndex(bulkApiResponse, index, indexOperations.get(index));
 		}
 		bulkApiResponse.setTook(System.currentTimeMillis() - startTime);
-		bulkApiResponse.setErrors(false);
 		return bulkApiResponse;
 	}
 
@@ -92,7 +95,12 @@ public class BulkService {
 		
 		for(int i = 0; i < results.size(); i++) {
 			try {
-				bulkApiResponse.getItems().addAll(results.get(i).get());
+				List<Map<String, Object>> nextResult = results.get(i).get();
+				if(nextResult.isEmpty()) {
+					bulkApiResponse.setErrors(true);
+				} else {
+					bulkApiResponse.getItems().addAll(nextResult);
+				}
 			} catch (InterruptedException e) {
 				LOGGER.error(e.getMessage(), e);
 			} catch (ExecutionException e) {
