@@ -51,19 +51,23 @@ public class RequestBodySearch {
 		this.query = QueryParser.parseQuery(originalQuery);
 		this.querySqlWhereClause = query.toSqlWhereClause();
 		
-		Any context = JsonIterator.deserialize(originalQuery);
-		if(context.get("size").valueType().equals(ValueType.NUMBER)) {
-			size = context.get("size").toInt();
+		if(originalQuery != null && !originalQuery.isEmpty()) {
+			Any context = JsonIterator.deserialize(originalQuery);
+			if(context.get("size").valueType().equals(ValueType.NUMBER)) {
+				size = context.get("size").toInt();
+			} else {
+				size = 10;
+			}
+			if(context.get("from").valueType().equals(ValueType.NUMBER)) {
+				from = context.get("from").toInt();
+			} else {
+				from = 0;
+			}
+			this.aggregations.setSubAggregations(AggregationsParser.parseAggregations(originalQuery));
 		} else {
 			size = 10;
-		}
-		if(context.get("from").valueType().equals(ValueType.NUMBER)) {
-			from = context.get("from").toInt();
-		} else {
 			from = 0;
 		}
-		
-		this.aggregations.setSubAggregations(AggregationsParser.parseAggregations(originalQuery));
 	}
 	
 	public boolean hasAggregations() {

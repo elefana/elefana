@@ -57,4 +57,9 @@ public class BulkIndexOperation {
 	public void setSource(String source) {
 		this.source = source;
 	}
+
+	@Override
+	public String toString() {
+		return "BulkIndexOperation [index=" + index + ", type=" + type + ", id=" + id + ", source=" + source + "]";
+	}
 }

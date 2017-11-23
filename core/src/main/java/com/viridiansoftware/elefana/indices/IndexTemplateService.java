@@ -89,7 +89,6 @@ public class IndexTemplateService {
 	
 	public IndexTemplate getIndexTemplateForTableName(String tableName) {
 		for(IndexTemplate indexTemplate : getIndexTemplates()) {
-			LOGGER.info(tableName + " " + indexTemplate.toString());
 			if(tableName.matches(indexTemplate.getTableTemplate())) {
 				return indexTemplate;
 			}

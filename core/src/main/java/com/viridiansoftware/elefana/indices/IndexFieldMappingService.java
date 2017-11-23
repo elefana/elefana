@@ -157,6 +157,9 @@ public class IndexFieldMappingService implements Runnable {
 	public void putMapping(String index, String mappingBody) throws Exception {
 		Map<String, Object> mappings = (Map<String, Object>) objectMapper.readValue(mappingBody, Map.class)
 				.get("mappings");
+		if(mappings == null) {
+			return;
+		}
 		for (String type : mappings.keySet()) {
 			putIndexMapping(index, type, (Map<String, Object>) mappings.get(type));
 		}
@@ -302,7 +305,6 @@ public class IndexFieldMappingService implements Runnable {
 				Map<String, Object> fieldMapping =  (Map<String, Object>) typeMappings.get(field);
 				Map<String, Object> mapping = (Map<String, Object>) fieldMapping.get("mapping");
 				Map<String, Object> mappingFieldMapping = (Map<String, Object>) mapping.get(field);
-				LOGGER.info(mappingFieldMapping.toString());
 				if(mappingFieldMapping.containsKey("format")) {
 					return (String) mappingFieldMapping.get("format");
 				}
@@ -422,8 +424,7 @@ public class IndexFieldMappingService implements Runnable {
 
 				if (mapping.isEmpty()) {
 					IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForTableName(nextTable);
-					LOGGER.info(nextTable + " " + (indexTemplate == null ? "null" : indexTemplate.toString()));
-					
+
 					SqlRowSet rowSet = jdbcTemplate
 							.queryForRowSet("SELECT _type, _source FROM " + nextTable + " TABLESAMPLE BERNOULLI("
 									+ String.format("%f", nodeSettingsService.getMappingSampleSize()) + ")");
@@ -472,7 +473,6 @@ public class IndexFieldMappingService implements Runnable {
 				if (typeMappings == null) {
 					typeMappings = new HashMap<String, Object>();
 				}
-				LOGGER.info(typeMappings.toString());
 				mapping.put(type, typeMappings);
 			}
 			Map<String, Object> document = objectMapper.readValue(rowSet.getString("_source"), Map.class);

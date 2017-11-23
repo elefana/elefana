@@ -23,6 +23,21 @@ import com.viridiansoftware.elefana.ElefanaApplication;
 public class MatchAllQueryTest extends AbstractQueryTest {
 
 	@Test
+	public void testDefaultToMatchAllQuery() {
+		final String index = UUID.randomUUID().toString();
+		final String type = "test";
+		
+		generateDocuments(DOCUMENT_QUANTITY, index, type);
+		
+		given().when()
+			.post("/_search")
+		.then()
+			.log().all()
+			.statusCode(200)
+			.body("hits.total", equalTo(10));
+	}
+	
+	@Test
 	public void testMatchAllQuery() {
 		final String index = UUID.randomUUID().toString();
 		final String type = "test";

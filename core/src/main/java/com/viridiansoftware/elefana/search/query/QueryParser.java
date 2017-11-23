@@ -36,6 +36,9 @@ public class QueryParser {
 	public static final String QUERY_WILDCARD = "wildcard";
 	
 	public static Query parseQuery(String content) {
+		if(content == null || content.isEmpty()) {
+			return new MatchAllQuery();
+		}
 		Any contentContext = JsonIterator.deserialize(content);
 		if(!contentContext.get(FIELD_QUERY).valueType().equals(ValueType.INVALID)) {
 			return parseQuery(contentContext.get(FIELD_QUERY));
