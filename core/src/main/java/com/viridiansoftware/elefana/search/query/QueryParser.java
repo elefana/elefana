@@ -76,7 +76,7 @@ public class QueryParser {
 		} else if(!queryContext.get(QUERY_REGEXP).valueType().equals(ValueType.INVALID)) {
 			return new RegexpQuery(queryContext.get(QUERY_REGEXP));
 		} else if(!queryContext.get(QUERY_TERM).valueType().equals(ValueType.INVALID)) {
-			return new TermQuery(queryContext);
+			return new TermQuery(queryContext.get(QUERY_TERM));
 		} else if(!queryContext.get(QUERY_TYPE).valueType().equals(ValueType.INVALID)) {
 			return new TypeQuery(queryContext.get(QUERY_TYPE));
 		} else if(!queryContext.get(QUERY_WILDCARD).valueType().equals(ValueType.INVALID)) {

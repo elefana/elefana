@@ -3,10 +3,15 @@
  */
 package com.viridiansoftware.elefana.search.query;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
 
 public class TermQuery extends Query {
+	private static final Logger LOGGER = LoggerFactory.getLogger(TermQuery.class);
+	
 	private static final String KEY_VALUE = "value";
 	private static final String KEY_BOOST = "boost";
 	

@@ -21,7 +21,7 @@ public class AbstractQueryTest {
 		for(int i = 0; i < quantity; i++) {
 			given()
 				.request()
-				.body("{\"message\" : \"This is message " + i + "\",\"date\" : \"2009-11-15T14:12:12\"}")
+				.body("{\"message\" : \"This is sample message " + i + "\",\"date\" : \"2009-11-15T14:12:12\"}")
 			.when()
 				.post("/" + index + "/" + type + "/")
 			.then()
