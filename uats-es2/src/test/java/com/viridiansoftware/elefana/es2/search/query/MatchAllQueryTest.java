@@ -27,10 +27,25 @@ public class MatchAllQueryTest extends AbstractQueryTest {
 		final String index = UUID.randomUUID().toString();
 		final String type = "test";
 		
-		generateDocuments(DOCUMENT_QUANTITY, index, type);
+		generateTermDocuments(DOCUMENT_QUANTITY, index, type);
 		
 		given().when()
 			.post("/_search")
+		.then()
+			.log().all()
+			.statusCode(200)
+			.body("hits.total", equalTo(10));
+	}
+	
+	@Test
+	public void testDefaultToMatchAllQueryWithGet() {
+		final String index = UUID.randomUUID().toString();
+		final String type = "test";
+		
+		generateTermDocuments(DOCUMENT_QUANTITY, index, type);
+		
+		given().when()
+			.get("/_search")
 		.then()
 			.log().all()
 			.statusCode(200)
@@ -42,7 +57,7 @@ public class MatchAllQueryTest extends AbstractQueryTest {
 		final String index = UUID.randomUUID().toString();
 		final String type = "test";
 		
-		generateDocuments(DOCUMENT_QUANTITY, index, type);
+		generateTermDocuments(DOCUMENT_QUANTITY, index, type);
 		
 		given()
 			.request()

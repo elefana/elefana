@@ -20,22 +20,31 @@ import com.viridiansoftware.elefana.ElefanaApplication;
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = WebEnvironment.DEFINED_PORT, classes = { ElefanaApplication.class })
 @TestPropertySource(locations = "classpath:es2.properties")
-public class MatchTermQueryTest extends AbstractQueryTest {
-
+public class MatchPhraseQueryTest extends AbstractQueryTest {
+	
 	@Test
-	public void testMatchTermQuery() {
+	public void testMatchPhraseQuery() {
 		final String index = UUID.randomUUID().toString();
 		final String type = "test";
 		
-		generateTermDocuments(DOCUMENT_QUANTITY, index, type);
+		generatePhraseDocuments(index, type);
 		
 		given()
 			.request()
-			.body("{\"query\":{\"term\":{\"message\":\"This is sample message 1\"}}}")
+			.body("{\"query\":{\"match_phrase\":{\"message\":\"quick brown\"}}}")
 		.when()
 			.post("/" + index + "/_search")
 		.then()
 			.statusCode(200)
-			.body("hits.total", equalTo(1));
+			.body("hits.total", equalTo(2));
+		
+		given()
+			.request()
+			.body("{\"query\":{\"match_phrase\":{\"message\":\"the lazy\"}}}")
+		.when()
+			.post("/" + index + "/_search")
+		.then()
+			.statusCode(200)
+			.body("hits.total", equalTo(3));
 	}
 }

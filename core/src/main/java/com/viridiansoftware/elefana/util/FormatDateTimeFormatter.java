@@ -9,13 +9,9 @@ import java.util.Objects;
 import org.joda.time.format.DateTimeFormatter;
 
 public class FormatDateTimeFormatter {
-
     private final String format;
-
     private final DateTimeFormatter parser;
-
     private final DateTimeFormatter printer;
-
     private final Locale locale;
 
     public FormatDateTimeFormatter(String format, DateTimeFormatter parser, Locale locale) {
