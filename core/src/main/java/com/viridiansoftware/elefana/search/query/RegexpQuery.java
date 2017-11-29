@@ -32,6 +32,8 @@ public class RegexpQuery extends Query {
 			}
 			break;
 		}
+		this.value = value.replace(".*", "%");
+		this.value = value.replace(".", "_");
 	}
 	
 	@Override

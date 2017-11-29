@@ -36,7 +36,7 @@ public class WildcardQuery extends Query {
 
 	@Override
 	public String toSqlWhereClause() {
-		return "_source->>'" + fieldName + "' = '" + value.replace("*", "%").replace("?", "_") + "'";
+		return "_source->>'" + fieldName + "' LIKE '" + value.replace("*", "%").replace("?", "_") + "'";
 	}
 
 }

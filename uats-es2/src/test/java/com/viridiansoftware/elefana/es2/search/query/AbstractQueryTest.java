@@ -17,6 +17,19 @@ public class AbstractQueryTest {
 		RestAssured.baseURI = "http://localhost:9201";
 	}
 	
+	protected void generateRangeDocuments(String index, String type) {
+		indexDocument(index, type, "{\"value\": 0}");
+		indexDocument(index, type, "{\"value\": 1}");
+		indexDocument(index, type, "{\"value\": 2}");
+		indexDocument(index, type, "{\"value\": 3}");
+		indexDocument(index, type, "{\"value\": 4}");
+		indexDocument(index, type, "{\"value\": 5}");
+		indexDocument(index, type, "{\"value\": 6}");
+		indexDocument(index, type, "{\"value\": 7}");
+		indexDocument(index, type, "{\"value\": 8}");
+		indexDocument(index, type, "{\"value\": 9}");
+	}
+	
 	protected void generatePhraseDocuments(String index, String type) {
 		indexDocument(index, type, "{\"message\": \"The quick brown fox jumps over the lazy dog\"}");
 		indexDocument(index, type, "{\"message\": \"The quick brown fox\"}");
