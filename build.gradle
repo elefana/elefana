@@ -26,6 +26,8 @@ subprojects {
 
 	ext {
 		codecVersion = '1.10'
+		esCompatVersion = '1.0.0-SNAPSHOT'
+		esQueryStringVersion = '1.0.0-SNAPSHOT'
 		hikariVersion = '2.7.1'
 		jodaVersion = '2.9.9'
 		jsoniterVersion = '0.9.18'
@@ -82,7 +84,8 @@ project(":" + rootProject.name + "-core") {
 		compile "org.mini2Dx:natives-loader:$nativesLoaderVersion"
 		compile "com.jsoniter:jsoniter:$jsoniterVersion"
 		compile "com.zaxxer:HikariCP:$hikariVersion"
-		compile "joda-time:joda-time:$jodaVersion"
+		compile "com.elefana:es-query-string-parser:$esQueryStringVersion"
+		compile "com.elefana:es-compat-utils:$esCompatVersion"
 		compile "commons-codec:commons-codec:$codecVersion"
 		compile('org.postgresql:postgresql')
 		
