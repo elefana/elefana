@@ -30,7 +30,7 @@ subprojects {
 	ext {
 		codecVersion = '1.10'
 		esCompatVersion = '1.0.0'
-		esQueryStringVersion = '1.0.0'
+		esQueryStringVersion = '1.0.1'
 		hikariVersion = '2.7.1'
 		jodaVersion = '2.9.9'
 		jsoniterVersion = '0.9.18'

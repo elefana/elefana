@@ -53,6 +53,10 @@ public class AbstractQueryTest {
 		indexDocument(index, type, "{\"message\": \"The underdog\"}");
 		indexDocument(index, type, "{\"message\": \"The two tailed fox\"}");
 		indexDocument(index, type, "{\"message\": \"The fast hedgehog\"}");
+		
+		indexDocument(index, type, "{\"status\": \"ok\"}");
+		indexDocument(index, type, "{\"status\": \"failing\"}");
+		indexDocument(index, type, "{\"status\": \"fueling\"}");
 	}
 	
 	protected void generateTermDocuments(int quantity, String index, String type) {
