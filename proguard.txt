@@ -23,7 +23,7 @@
 -optimizations !class/marking/final
 
 -keepparameternames
--keepnames public class com.viridiansoftware.*Controller
+-keepnames public class com.elefana.*Controller
 
 -keepnames @org.springframework.stereotype.Component class *
 -keepnames @org.springframework.stereotype.Service class *
@@ -37,7 +37,7 @@
 -keep @org.springframework.context.annotation.Configuration class *
 -keep @org.springframework.web.bind.annotation.RestController class *
 
--keep public class com.viridiansoftware.elefana.util.* {
+-keep public class com.elefana.util.* {
     public protected *;
 }
 -keep public class java.sql.**.* {
@@ -52,10 +52,10 @@
 -keep public class com.zaxxer.**.* {
 	public protected *;
 }
--keep public class com.viridiansoftware.elefana.TaskSchedulerConfiguration {
+-keep public class com.elefana.TaskSchedulerConfiguration {
 	public protected *;
 }
--keep public class com.viridiansoftware.elefana.ElefanaApplication {
+-keep public class com.elefana.ElefanaApplication {
 	public protected *;
 }
 
