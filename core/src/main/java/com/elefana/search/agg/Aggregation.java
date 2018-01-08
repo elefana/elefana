@@ -32,8 +32,21 @@ public abstract class Aggregation {
 
 	public abstract void executeSqlQuery(final AggregationExec aggregationExec);
 
+	protected void appendIndicesWhereClause(final AggregationExec aggregationExec, final StringBuilder queryBuilder) {
+		queryBuilder.append(" WHERE _index IN (");
+		for(int i = 0; i < aggregationExec.getIndices().size(); i++) {
+			if(i > 0) {
+				queryBuilder.append(',');
+			}
+			queryBuilder.append("'");
+			queryBuilder.append(aggregationExec.getIndices().get(i));
+			queryBuilder.append("'");
+		}
+		queryBuilder.append(")");
+	}
+
 	public void executeSqlQuery(AggregationExec parentExec, Map<String, Object> aggregationsResult, String queryTable) {
-		executeSqlQuery(new AggregationExec(parentExec.getTableNames(), parentExec.getTypes(),
+		executeSqlQuery(new AggregationExec(parentExec.getIndices(), parentExec.getTypes(),
 				parentExec.getJdbcTemplate(), parentExec.getIndexFieldMappingService(), aggregationsResult,
 				parentExec.getTempTablesCreated(), queryTable, parentExec.getRequestBodySearch(), this));
 	}
@@ -41,8 +54,8 @@ public abstract class Aggregation {
 	public void executeSqlQuery(List<String> tableNames, String[] types, JdbcTemplate jdbcTemplate,
 			IndexFieldMappingService indexFieldMappingService, Map<String, Object> aggregationsResult,
 			List<String> tempTablesCreated, String queryTable, RequestBodySearch requestBodySearch) {
-		executeSqlQuery(new AggregationExec(tableNames, types, jdbcTemplate, indexFieldMappingService, aggregationsResult,
-				tempTablesCreated, queryTable, requestBodySearch, this));
+		executeSqlQuery(new AggregationExec(tableNames, types, jdbcTemplate, indexFieldMappingService,
+				aggregationsResult, tempTablesCreated, queryTable, requestBodySearch, this));
 	}
 
 	public abstract String getAggregationName();

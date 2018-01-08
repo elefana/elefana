@@ -50,12 +50,12 @@ public class DateHistogramAggregation extends BucketAggregation {
 	@Override
 	public void executeSqlQuery(AggregationExec aggregationExec) {
 		final String fieldType = aggregationExec.getIndexFieldMappingService()
-				.getFirstFieldMappingType(aggregationExec.getTableNames(), aggregationExec.getTypes(), fieldName);
+				.getFirstFieldMappingType(aggregationExec.getIndices(), aggregationExec.getTypes(), fieldName);
 		if (fieldType == null) {
 			throw new NoSuchMappingException(fieldName);
 		}
 		final String fieldFormat = aggregationExec.getIndexFieldMappingService()
-				.getFirstFieldMappingFormat(aggregationExec.getTableNames(), aggregationExec.getTypes(), fieldName);
+				.getFirstFieldMappingFormat(aggregationExec.getIndices(), aggregationExec.getTypes(), fieldName);
 
 		final Map<String, Object> result = new HashMap<String, Object>();
 		final List<Map<String, Object>> buckets = new ArrayList<Map<String, Object>>();
@@ -63,7 +63,10 @@ public class DateHistogramAggregation extends BucketAggregation {
 		final String aggregationTableName = AGGREGATION_TABLE_PREFIX + aggregationExec.getRequestBodySearch().hashCode()
 				+ "_" + fieldName + "_" + interval;
 
-		StringBuilder queryBuilder = new StringBuilder();
+		final StringBuilder queryBuilder = new StringBuilder();
+		queryBuilder.append("CREATE TEMP TABLE ");
+		queryBuilder.append(aggregationTableName);
+		queryBuilder.append(" AS (");
 		queryBuilder.append("SELECT ");
 
 		switch (interval) {
@@ -134,23 +137,23 @@ public class DateHistogramAggregation extends BucketAggregation {
 		default:
 			break;
 		}
-		queryBuilder.append(") AS es2pgsql_agg_bucket");
-		queryBuilder.append(", * INTO ");
-		queryBuilder.append(aggregationTableName);
-		queryBuilder.append(" FROM ");
+		queryBuilder.append(") AS elefana_agg_bucket");
+		queryBuilder.append(", * FROM ");
 		queryBuilder.append(aggregationExec.getQueryTable());
+		appendIndicesWhereClause(aggregationExec, queryBuilder);
+		queryBuilder.append(")");
 
 		LOGGER.info(queryBuilder.toString());
 
 		aggregationExec.getJdbcTemplate().execute(queryBuilder.toString());
 
-		final String distinctBucketsQuery = "SELECT DISTINCT es2pgsql_agg_bucket FROM " + aggregationTableName;
+		final String distinctBucketsQuery = "SELECT DISTINCT elefana_agg_bucket FROM " + aggregationTableName;
 		LOGGER.info(distinctBucketsQuery);
 		SqlRowSet resultSet = aggregationExec.getJdbcTemplate().queryForRowSet(distinctBucketsQuery);
 
 		final Set<Timestamp> uniqueBuckets = new HashSet<Timestamp>();
 		while (resultSet.next()) {
-			uniqueBuckets.add(resultSet.getTimestamp("es2pgsql_agg_bucket"));
+			uniqueBuckets.add(resultSet.getTimestamp("elefana_agg_bucket"));
 		}
 
 		for (Timestamp bucketTimestamp : uniqueBuckets) {
@@ -159,7 +162,7 @@ public class DateHistogramAggregation extends BucketAggregation {
 
 			final String bucketTableName = aggregationTableName + "_" + bucketTimestamp.getTime();
 			final String bucketQuery = "SELECT * INTO " + bucketTableName + " FROM " + aggregationTableName
-					+ " WHERE es2pgsql_agg_bucket = to_timestamp(" + bucketTimestamp.getTime() / 1000L + ")";
+					+ " WHERE elefana_agg_bucket = to_timestamp(" + bucketTimestamp.getTime() / 1000L + ")";
 			LOGGER.info(bucketQuery);
 			aggregationExec.getJdbcTemplate().execute(bucketQuery);
 

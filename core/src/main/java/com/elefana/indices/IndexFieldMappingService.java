@@ -39,7 +39,7 @@ import org.springframework.stereotype.Service;
 import com.elefana.ApiVersion;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
-import com.elefana.util.TableUtils;
+import com.elefana.util.IndexUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
@@ -62,7 +62,7 @@ public class IndexFieldMappingService implements Runnable {
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 	@Autowired
-	private TableUtils tableUtils;
+	private IndexUtils indexUtils;
 
 	private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -80,47 +80,35 @@ public class IndexFieldMappingService implements Runnable {
 			break;
 		}
 
-		try {
-			ResourceDatabasePopulator resourceDatabasePopulator = new ResourceDatabasePopulator(
-					new ClassPathResource("/functions.sql", IndexFieldMappingService.class));
-			resourceDatabasePopulator.setSeparator(ScriptUtils.EOF_STATEMENT_SEPARATOR);
-			resourceDatabasePopulator.execute(jdbcTemplate.getDataSource());
-		} catch (Exception e) {
-			LOGGER.error(e.getMessage(), e);
-		}
-
 		jdbcTemplate.execute(
-				"CREATE TABLE IF NOT EXISTS es2pgsql_index_mapping (_tracking_id VARCHAR(255) PRIMARY KEY, _table_name VARCHAR(255), _type VARCHAR(255), _mapping jsonb);");
+				"CREATE TABLE IF NOT EXISTS elefana_index_mapping (_tracking_id VARCHAR(255) PRIMARY KEY, _index VARCHAR(255), _type VARCHAR(255), _mapping jsonb);");
 		jdbcTemplate.execute(
-				"CREATE TABLE IF NOT EXISTS es2pgsql_index_mapping_tracking (_table_name VARCHAR(255) PRIMARY KEY, _last_insert_time BIGINT, _last_mapping_time BIGINT);");
+				"CREATE TABLE IF NOT EXISTS elefana_index_field_capabilities (_index VARCHAR(255) PRIMARY KEY, _capabilities jsonb);");
 		jdbcTemplate.execute(
-				"CREATE TABLE IF NOT EXISTS es2pgsql_index_field_capabilities (_table_name VARCHAR(255) PRIMARY KEY, _capabilities jsonb);");
-		jdbcTemplate.execute(
-				"CREATE TABLE IF NOT EXISTS es2pgsql_index_field_stats (_table_name VARCHAR(255) PRIMARY KEY, _stats jsonb);");
+				"CREATE TABLE IF NOT EXISTS elefana_index_field_stats (_index VARCHAR(255) PRIMARY KEY, _stats jsonb);");
 		if (nodeSettingsService.isUsingCitus()) {
-			jdbcTemplate.execute("SELECT create_distributed_table('es2pgsql_index_mapping', '_tracking_id');");
-			jdbcTemplate.execute("SELECT create_distributed_table('es2pgsql_index_mapping_tracking', '_table_name');");
-			jdbcTemplate.execute("SELECT create_distributed_table('es2pgsql_index_field_capabilities', '_table_name');");
-			jdbcTemplate.execute("SELECT create_distributed_table('es2pgsql_index_field_stats', '_table_name');");
+			jdbcTemplate.execute("SELECT create_distributed_table('elefana_index_mapping', '_tracking_id');");
+			jdbcTemplate.execute("SELECT create_distributed_table('elefana_index_field_capabilities', '_index');");
+			jdbcTemplate.execute("SELECT create_distributed_table('elefana_index_field_stats', '_index');");
 		}
 
 		taskScheduler.scheduleWithFixedDelay(this, Math.min(nodeSettingsService.getFieldStatsInterval(), nodeSettingsService.getMappingInterval()));
 	}
 
-	public List<String> getFieldNames(String tableName, String type) {
-		return fieldMapper.getFieldNames(getIndexTypeMappingFromTable(tableName, type));
+	public List<String> getFieldNames(String index, String type) {
+		return fieldMapper.getFieldNames(getIndexTypeMapping(index, type));
 	}
 
-	public List<String> getTypesForTableName(String tableName) {
-		return jdbcTemplate.queryForList("SELECT _type FROM es2pgsql_index_mapping WHERE _table_name = ?", String.class,
-				tableName);
+	public List<String> getTypesForIndex(String index) {
+		return jdbcTemplate.queryForList("SELECT _type FROM elefana_index_mapping WHERE _index = ?", String.class,
+				index);
 	}
 
-	public List<String> getTypesForTableName(String tableName, String typePattern) {
+	public List<String> getTypesForIndex(String index, String typePattern) {
 		String[] typePatterns = typePattern.split(",");
 
 		List<String> results = new ArrayList<String>(1);
-		List<String> sqlResults = getTypesForTableName(tableName);
+		List<String> sqlResults = getTypesForIndex(index);
 		
 		for (String type : sqlResults) {
 			for (String pattern : typePatterns) {
@@ -143,9 +131,9 @@ public class IndexFieldMappingService implements Runnable {
 
 	public Map<String, Object> getMapping(String indexPattern) throws Exception {
 		Map<String, Object> result = new HashMap<String, Object>();
-		for (String index : tableUtils.listTables(indexPattern)) {
+		for (String index : indexUtils.listIndicesForIndexPattern(indexPattern)) {
 			Map<String, Object> mappings = new HashMap<String, Object>();
-			mappings.put("mappings", getIndexTypeMappingsForTable(TableUtils.sanitizeTableName(index)));
+			mappings.put("mappings", getIndexTypeMappings(index));
 
 			result.put(index, mappings);
 		}
@@ -154,7 +142,7 @@ public class IndexFieldMappingService implements Runnable {
 
 	public Map<String, Object> getMapping(String indexPattern, String type) {
 		Map<String, Object> mappings = new HashMap<String, Object>();
-		mappings.put(type, getIndexTypeMappingFromTable(TableUtils.sanitizeTableName(indexPattern), type));
+		mappings.put(type, getIndexTypeMapping(indexPattern, type));
 
 		Map<String, Object> indexTypeMappings = new HashMap<String, Object>();
 		indexTypeMappings.put("mappings", mappings);
@@ -180,8 +168,7 @@ public class IndexFieldMappingService implements Runnable {
 	}
 
 	private void putIndexMapping(String index, String type, Map<String, Object> newMappings) throws Exception {
-		String tableName = TableUtils.sanitizeTableName(index);
-		Map<String, Object> existingMappings = getIndexTypeMappingFromTable(tableName, type);
+		Map<String, Object> existingMappings = getIndexTypeMapping(index, type);
 
 		if (newMappings.containsKey(type)) {
 			newMappings = (Map<String, Object>) newMappings.get(type);
@@ -196,8 +183,9 @@ public class IndexFieldMappingService implements Runnable {
 			fieldMapper.mergeMapping((Map<String, Object>) existingMappings.get(propertyName), propertyName,
 					(Map<String, Object>) newMappings.get(propertyName));
 		}
-		saveMappings(tableName, type, existingMappings);
-		generateFieldCapabilitiesForIndex(tableName);
+		saveMappings(index, type, existingMappings);
+		generateFieldCapabilitiesForIndex(index);
+		scheduleIndexForStats(index);
 	}
 
 	public Map<String, Object> getMapping(String index, String typePattern, String field) {
@@ -209,8 +197,8 @@ public class IndexFieldMappingService implements Runnable {
 		Map<String, Object> result = new HashMap<String, Object>();
 		result.put(index, indexMapping);
 
-		for (String type : getTypesForTableName(TableUtils.sanitizeTableName(index), typePattern)) {
-			Map<String, Object> typeMappings = getIndexTypeMappingFromTable(TableUtils.sanitizeTableName(index), type);
+		for (String type : getTypesForIndex(index, typePattern)) {
+			Map<String, Object> typeMappings = getIndexTypeMapping(index, type);
 
 			if (versionInfoService.getApiVersion().isNewerThan(ApiVersion.V_2_4_3)) {
 				Map<String, Object> properties = (Map<String, Object>) typeMappings.get("properties");
@@ -237,16 +225,16 @@ public class IndexFieldMappingService implements Runnable {
 		return result;
 	}
 
-	public String getFirstFieldMappingType(List<String> tableNames, String[] typePatterns, String field) {
-		for (String tableName : tableNames) {
-			if (TableUtils.isTypesEmpty(typePatterns)) {
-				String result = getFirstFieldMappingType(tableName, "*", field);
+	public String getFirstFieldMappingType(List<String> indices, String[] typePatterns, String field) {
+		for (String index : indices) {
+			if (IndexUtils.isTypesEmpty(typePatterns)) {
+				String result = getFirstFieldMappingType(index, "*", field);
 				if (result != null) {
 					return result;
 				}
 			} else {
 				for (String typePattern : typePatterns) {
-					String result = getFirstFieldMappingType(tableName, typePattern, field);
+					String result = getFirstFieldMappingType(index, typePattern, field);
 					if (result != null) {
 						return result;
 					}
@@ -256,9 +244,9 @@ public class IndexFieldMappingService implements Runnable {
 		return null;
 	}
 
-	public String getFirstFieldMappingType(String tableName, String typePattern, String field) {
-		for (String type : getTypesForTableName(tableName, typePattern)) {
-			Map<String, Object> typeMappings = getIndexTypeMappingFromTable(tableName, type);
+	public String getFirstFieldMappingType(String index, String typePattern, String field) {
+		for (String type : getTypesForIndex(index, typePattern)) {
+			Map<String, Object> typeMappings = getIndexTypeMapping(index, type);
 			
 			switch(versionInfoService.getApiVersion()) {
 			case V_2_4_3: {
@@ -284,16 +272,16 @@ public class IndexFieldMappingService implements Runnable {
 		return null;
 	}
 	
-	public String getFirstFieldMappingFormat(List<String> tableNames, String[] typePatterns, String field) {
-		for (String tableName : tableNames) {
-			if (TableUtils.isTypesEmpty(typePatterns)) {
-				String result = getFirstFieldMappingFormat(tableName, "*", field);
+	public String getFirstFieldMappingFormat(List<String> indices, String[] typePatterns, String field) {
+		for (String index : indices) {
+			if (IndexUtils.isTypesEmpty(typePatterns)) {
+				String result = getFirstFieldMappingFormat(index, "*", field);
 				if (result != null) {
 					return result;
 				}
 			} else {
 				for (String typePattern : typePatterns) {
-					String result = getFirstFieldMappingFormat(tableName, typePattern, field);
+					String result = getFirstFieldMappingFormat(index, typePattern, field);
 					if (result != null) {
 						return result;
 					}
@@ -303,9 +291,9 @@ public class IndexFieldMappingService implements Runnable {
 		return null;
 	}
 	
-	public String getFirstFieldMappingFormat(String tableName, String typePattern, String field) {
-		for (String type : getTypesForTableName(tableName, typePattern)) {
-			Map<String, Object> typeMappings = getIndexTypeMappingFromTable(tableName, type);
+	public String getFirstFieldMappingFormat(String index, String typePattern, String field) {
+		for (String type : getTypesForIndex(index, typePattern)) {
+			Map<String, Object> typeMappings = getIndexTypeMapping(index, type);
 			
 			switch(versionInfoService.getApiVersion()) {
 			case V_2_4_3: {
@@ -347,13 +335,13 @@ public class IndexFieldMappingService implements Runnable {
 		results.put("_shards", shards);
 		
 		final Map<String, Object> indicesResults = new HashMap<String, Object>();
-		for (String tableName : tableUtils.listTables(indexPattern)) {
+		for (String index : indexUtils.listIndicesForIndexPattern(indexPattern)) {
 			final Map<String, Object> indexResult = new HashMap<String, Object>();
 			
 			try {
 				SqlRowSet rowSet = jdbcTemplate.queryForRowSet(
-						"SELECT _stats FROM es2pgsql_index_field_stats WHERE _table_name = ? LIMIT 1",
-						tableName);
+						"SELECT _stats FROM elefana_index_field_stats WHERE _index = ? LIMIT 1",
+						index);
 				if (rowSet.next()) {
 					indexResult.put("fields", objectMapper.readValue(rowSet.getString("_stats"), Map.class));
 				}
@@ -361,7 +349,7 @@ public class IndexFieldMappingService implements Runnable {
 				e.printStackTrace();
 			}
 			
-			indicesResults.put(TableUtils.desanitizeTableName(tableName), indexResult);
+			indicesResults.put(index, indexResult);
 		}
 		results.put("indices", indicesResults);
 		return results;
@@ -369,11 +357,11 @@ public class IndexFieldMappingService implements Runnable {
 
 	public Map<String, Object> getFieldCapabilities(String indexPattern) throws Exception {
 		Map<String, Object> fields = new HashMap<String, Object>();
-		for (String index : tableUtils.listTables(indexPattern)) {
+		for (String index : indexUtils.listIndicesForIndexPattern(indexPattern)) {
 			try {
 				SqlRowSet rowSet = jdbcTemplate.queryForRowSet(
-						"SELECT _capabilities FROM es2pgsql_index_field_capabilities WHERE _table_name = ? LIMIT 1",
-						TableUtils.sanitizeTableName(index));
+						"SELECT _capabilities FROM elefana_index_field_capabilities WHERE _index = ? LIMIT 1",
+						index);
 				if (rowSet.next()) {
 					fields.putAll(objectMapper.readValue(rowSet.getString("_capabilities"), Map.class));
 				}
@@ -387,11 +375,11 @@ public class IndexFieldMappingService implements Runnable {
 		return result;
 	}
 
-	private Map<String, Object> getIndexTypeMappingsForTable(String tableName) {
+	private Map<String, Object> getIndexTypeMappings(String index) {
 		Map<String, Object> results = new HashMap<String, Object>();
 		try {
 			SqlRowSet rowSet = jdbcTemplate.queryForRowSet(
-					"SELECT _type, _mapping FROM es2pgsql_index_mapping WHERE _table_name = ?", tableName);
+					"SELECT _type, _mapping FROM elefana_index_mapping WHERE _index = ?", index);
 			while (rowSet.next()) {
 				results.put(rowSet.getString("_type"), objectMapper.readValue(rowSet.getString("_mapping"), Map.class));
 			}
@@ -401,11 +389,11 @@ public class IndexFieldMappingService implements Runnable {
 		return results;
 	}
 
-	private Map<String, Object> getIndexTypeMappingFromTable(String tableName, String type) {
+	private Map<String, Object> getIndexTypeMapping(String index, String type) {
 		try {
 			SqlRowSet rowSet = jdbcTemplate.queryForRowSet(
-					"SELECT _mapping FROM es2pgsql_index_mapping WHERE _table_name = ? AND _type = ? LIMIT 1",
-					tableName, type);
+					"SELECT _mapping FROM elefana_index_mapping WHERE _index = ? AND _type = ? LIMIT 1",
+					index, type);
 			if (rowSet.next()) {
 				return objectMapper.readValue(rowSet.getString("_mapping"), Map.class);
 			}
@@ -419,7 +407,6 @@ public class IndexFieldMappingService implements Runnable {
 	public void run() {
 		generateMappingsForQueuedTables();
 		generateFieldStatsForQueuedTables();
-		checkTablesForNewInserts();
 	}
 
 	private void generateMappingsForQueuedTables() {
@@ -428,40 +415,40 @@ public class IndexFieldMappingService implements Runnable {
 		}
 		try {
 			while (!mappingQueue.isEmpty()) {
-				String nextTable = mappingQueue.first();
+				String nextIndex = mappingQueue.first();
 
-				Map<String, Object> mapping = getIndexTypeMappingsForTable(nextTable);
+				Map<String, Object> mapping = getIndexTypeMappings(nextIndex);
 
 				if (mapping.isEmpty()) {
-					IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForTableName(nextTable);
+					IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndex(nextIndex);
 
 					SqlRowSet rowSet = jdbcTemplate
-							.queryForRowSet("SELECT _type, _source FROM " + nextTable + " TABLESAMPLE BERNOULLI("
-									+ String.format("%f", nodeSettingsService.getMappingSampleSize()) + ")");
+							.queryForRowSet("SELECT _type, _source FROM " + IndexUtils.DATA_TABLE + " TABLESAMPLE BERNOULLI("
+									+ String.format("%f", nodeSettingsService.getMappingSampleSize()) + ") WHERE _index = ?", nextIndex);
 
-					int totalSamples = generateMappingsForAllTypes(indexTemplate, mapping, nextTable, rowSet);
+					int totalSamples = generateMappingsForAllTypes(indexTemplate, mapping, nextIndex, rowSet);
 					if (totalSamples == 0) {
-						rowSet = jdbcTemplate.queryForRowSet("SELECT _type, _source FROM " + nextTable + " LIMIT 100");
-						generateMappingsForAllTypes(indexTemplate, mapping, nextTable, rowSet);
+						rowSet = jdbcTemplate.queryForRowSet("SELECT _type, _source FROM " + IndexUtils.DATA_TABLE  + " WHERE _index = ? LIMIT 100", nextIndex);
+						generateMappingsForAllTypes(indexTemplate, mapping, nextIndex, rowSet);
 					}
 				} else {
 					for (String type : mapping.keySet()) {
 						Map<String, Object> typeMappings = (Map) mapping.get(type);
-						SqlRowSet rowSet = jdbcTemplate.queryForRowSet("SELECT _source FROM " + nextTable
+						SqlRowSet rowSet = jdbcTemplate.queryForRowSet("SELECT _source FROM " + IndexUtils.DATA_TABLE
 								+ " TABLESAMPLE BERNOULLI("
-								+ String.format("%f", nodeSettingsService.getMappingSampleSize()) + ") WHERE _type = ?",
-								type);
-						int totalSamples = generateMappingsForType(typeMappings, nextTable, type, rowSet);
+								+ String.format("%f", nodeSettingsService.getMappingSampleSize()) + ") WHERE _index = ? AND _type = ?",
+								nextIndex, type);
+						int totalSamples = generateMappingsForType(typeMappings, nextIndex, type, rowSet);
 						if (totalSamples == 0) {
 							rowSet = jdbcTemplate.queryForRowSet(
-									"SELECT _source FROM " + nextTable + " WHERE _type = ? LIMIT 100", type);
-							generateMappingsForType(typeMappings, nextTable, type, rowSet);
+									"SELECT _source FROM " + IndexUtils.DATA_TABLE + " WHERE _index = ? AND _type = ? LIMIT 100", nextIndex, type);
+							generateMappingsForType(typeMappings, nextIndex, type, rowSet);
 						}
 					}
 				}
-				generateFieldCapabilitiesForIndex(nextTable);
+				generateFieldCapabilitiesForIndex(nextIndex);
 
-				mappingQueue.remove(nextTable);
+				mappingQueue.remove(nextIndex);
 			}
 			lastMapping = System.currentTimeMillis();
 		} catch (Exception e) {
@@ -469,7 +456,7 @@ public class IndexFieldMappingService implements Runnable {
 		}
 	}
 
-	private int generateMappingsForAllTypes(IndexTemplate indexTemplate, Map<String, Object> mapping, String nextTable, SqlRowSet rowSet)
+	private int generateMappingsForAllTypes(IndexTemplate indexTemplate, Map<String, Object> mapping, String index, SqlRowSet rowSet)
 			throws Exception {
 		int totalSamples = 0;
 		while (rowSet.next()) {
@@ -493,11 +480,8 @@ public class IndexFieldMappingService implements Runnable {
 			jsonObject.setValue(objectMapper.writeValueAsString(typeMappings));
 
 			jdbcTemplate.update(
-					"INSERT INTO es2pgsql_index_mapping (_tracking_id, _table_name, _type, _mapping) VALUES (?, ?, ?, ?) ON CONFLICT (_tracking_id) DO UPDATE SET _mapping = EXCLUDED._mapping",
-					nextTable + "-" + type, nextTable, type, jsonObject);
-			jdbcTemplate.update(
-					"INSERT INTO es2pgsql_index_mapping_tracking (_table_name, _last_mapping_time) VALUES (?, ?) ON CONFLICT (_table_name) DO UPDATE SET _last_mapping_time = EXCLUDED._last_mapping_time",
-					nextTable, System.currentTimeMillis());
+					"INSERT INTO elefana_index_mapping (_tracking_id, _index, _type, _mapping) VALUES (?, ?, ?, ?) ON CONFLICT (_tracking_id) DO UPDATE SET _mapping = EXCLUDED._mapping",
+					index + "-" + type, index, type, jsonObject);
 			totalSamples++;
 		}
 		return totalSamples;
@@ -526,9 +510,9 @@ public class IndexFieldMappingService implements Runnable {
 		}
 		try {
 			while (!fieldStatsQueue.isEmpty()) {
-				String nextTable = fieldStatsQueue.first();
-				generateFieldStatsForIndex(nextTable);
-				fieldStatsQueue.remove(nextTable);
+				String nextIndex = fieldStatsQueue.first();
+				generateFieldStatsForIndex(nextIndex);
+				fieldStatsQueue.remove(nextIndex);
 			}
 			lastFieldStats = System.currentTimeMillis();
 		} catch (Exception e) {
@@ -536,20 +520,20 @@ public class IndexFieldMappingService implements Runnable {
 		}
 	}
 
-	private void generateFieldStatsForIndex(String tableName) throws Exception {
+	private void generateFieldStatsForIndex(String indexName) throws Exception {
 		final Map<String, V2FieldStats> fieldStats = new HashMap<String, V2FieldStats>();
-		final List<String> types = getTypesForTableName(tableName);
+		final List<String> types = getTypesForIndex(indexName);
 		
-		long totalDocs = (long) jdbcTemplate.queryForList("SELECT COUNT(*) FROM " + tableName).get(0).get("count");
+		long totalDocs = (long) jdbcTemplate.queryForList("SELECT COUNT(*) FROM " + IndexUtils.DATA_TABLE + " WHERE _index='" + indexName + "'").get(0).get("count");
 		
 		for (String type : types) {
-			List<String> fieldNames = getFieldNames(tableName, type);
+			List<String> fieldNames = getFieldNames(indexName, type);
 			
 			for(String fieldName : fieldNames) {
 				if(fieldStats.containsKey(fieldName)) {
 					continue;
 				}
-				long totalDocsWithField = (long) jdbcTemplate.queryForList("SELECT COUNT(*) FROM " + tableName + " WHERE _source ? '" + fieldName + "'").get(0).get("count");
+				long totalDocsWithField = (long) jdbcTemplate.queryForList("SELECT COUNT(*) FROM " + IndexUtils.DATA_TABLE + " WHERE _index='" + indexName + "' AND _source ? '" + fieldName + "'").get(0).get("count");
 				
 				V2FieldStats stats = versionInfoService.getApiVersion().isNewerThan(ApiVersion.V_2_4_3) ? new V5FieldStats() : new V2FieldStats();
 				stats.max_doc = totalDocs;
@@ -567,16 +551,16 @@ public class IndexFieldMappingService implements Runnable {
 		jsonObject.setValue(objectMapper.writeValueAsString(fieldStats));
 		
 		jdbcTemplate.update(
-				"INSERT INTO es2pgsql_index_field_stats (_table_name, _stats) VALUES (?, ?) ON CONFLICT (_table_name) DO UPDATE SET _stats = EXCLUDED._stats",
-				tableName, jsonObject);
+				"INSERT INTO elefana_index_field_stats (_index, _stats) VALUES (?, ?) ON CONFLICT (_index) DO UPDATE SET _stats = EXCLUDED._stats",
+				indexName, jsonObject);
 	}
 
-	private void generateFieldCapabilitiesForIndex(String tableName) throws Exception {
-		generateFieldCapabilitiesForIndex(tableName, jdbcTemplate
-				.queryForRowSet("SELECT _type, _mapping FROM es2pgsql_index_mapping WHERE _table_name = ?", tableName));
+	private void generateFieldCapabilitiesForIndex(String index) throws Exception {
+		generateFieldCapabilitiesForIndex(index, jdbcTemplate
+				.queryForRowSet("SELECT _type, _mapping FROM elefana_index_mapping WHERE _index = ?", index));
 	}
 
-	private void generateFieldCapabilitiesForIndex(String tableName, SqlRowSet indexMappingSet) throws Exception {
+	private void generateFieldCapabilitiesForIndex(String index, SqlRowSet indexMappingSet) throws Exception {
 		if (!versionInfoService.getApiVersion().isNewerThan(ApiVersion.V_2_4_3)) {
 			return;
 		}
@@ -602,8 +586,8 @@ public class IndexFieldMappingService implements Runnable {
 		jsonObject.setType("json");
 		jsonObject.setValue(objectMapper.writeValueAsString(fields));
 		jdbcTemplate.update(
-				"INSERT INTO es2pgsql_index_field_capabilities (_table_name, _capabilities) VALUES (?, ?) ON CONFLICT (_table_name) DO UPDATE SET _capabilities = EXCLUDED._capabilities",
-				tableName, jsonObject);
+				"INSERT INTO elefana_index_field_capabilities (_index, _capabilities) VALUES (?, ?) ON CONFLICT (_index) DO UPDATE SET _capabilities = EXCLUDED._capabilities",
+				index, jsonObject);
 	}
 
 	private Map<String, Object> generateFieldCapability(String mappingType) {
@@ -615,37 +599,27 @@ public class IndexFieldMappingService implements Runnable {
 		result.put("non_aggregatable_indices", null);
 		return result;
 	}
-
-	private void checkTablesForNewInserts() {
-		try {
-			if (nodeSettingsService.isUsingCitus()) {
-				// TODO: Use distributed trigger, see ->
-				// https://github.com/citusdata/citus/issues/906
-				mappingQueue.addAll(tableUtils.listTables());
-				fieldStatsQueue.addAll(tableUtils.listTables());
-			} else {
-				SqlRowSet rowSet = jdbcTemplate.queryForRowSet(
-						"SELECT _table_name FROM es2pgsql_index_mapping_tracking WHERE _last_insert_time > _last_mapping_time");
-				while (rowSet.next()) {
-					mappingQueue.add(rowSet.getString("_table_name"));
-					fieldStatsQueue.add(rowSet.getString("_table_name"));
-				}
-			}
-		} catch (Exception e) {
-			LOGGER.error(e.getMessage(), e);
-		}
+	
+	public void scheduleIndexForStats(String index) {
+		fieldStatsQueue.add(index);
+	}
+	
+	public void scheduleIndexForMapping(String index) {
+		mappingQueue.add(index);
+	}
+	
+	public void scheduleIndexForMappingAndStats(String index) {
+		mappingQueue.add(index);
+		fieldStatsQueue.add(index);
 	}
 
-	private void saveMappings(String tableName, String type, Map<String, Object> mappings) throws Exception {
+	private void saveMappings(String index, String type, Map<String, Object> mappings) throws Exception {
 		PGobject jsonObject = new PGobject();
 		jsonObject.setType("json");
 		jsonObject.setValue(objectMapper.writeValueAsString(mappings));
 
 		jdbcTemplate.update(
-				"INSERT INTO es2pgsql_index_mapping (_tracking_id, _table_name, _type, _mapping) VALUES (?, ?, ?, ?) ON CONFLICT (_tracking_id) DO UPDATE SET _mapping = EXCLUDED._mapping",
-				tableName + "-" + type, tableName, type, jsonObject);
-		jdbcTemplate.update(
-				"INSERT INTO es2pgsql_index_mapping_tracking (_table_name, _last_mapping_time) VALUES (?, ?) ON CONFLICT (_table_name) DO UPDATE SET _last_mapping_time = EXCLUDED._last_mapping_time",
-				tableName, System.currentTimeMillis());
+				"INSERT INTO elefana_index_mapping (_tracking_id, _index, _type, _mapping) VALUES (?, ?, ?, ?) ON CONFLICT (_tracking_id) DO UPDATE SET _mapping = EXCLUDED._mapping",
+				index + "-" + type, index, type, jsonObject);
 	}
 }

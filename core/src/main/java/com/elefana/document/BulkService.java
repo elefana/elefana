@@ -31,7 +31,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
-import com.elefana.util.TableUtils;
+import com.elefana.indices.IndexFieldMappingService;
+import com.elefana.util.IndexUtils;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
@@ -47,7 +48,9 @@ public class BulkService {
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 	@Autowired
-	private TableUtils tableUtils;
+	private IndexUtils indexUtils;
+	@Autowired
+	private IndexFieldMappingService indexFieldMappingService;
 	@Autowired
 	private ScheduledExecutorService scheduledExecutorService;
 
@@ -95,7 +98,7 @@ public class BulkService {
 
 	private void bulkIndex(BulkApiResponse bulkApiResponse, String index,
 			List<BulkIndexOperation> indexOperations) throws SQLException {
-		tableUtils.ensureTableExists(index);
+		indexUtils.ensureIndexExists(index);
 		
 		final int operationSize = Math.max(1000, indexOperations.size() / BULK_PARALLELISATION);
 		final List<Future<List<Map<String, Object>>>> results = new ArrayList<Future<List<Map<String, Object>>>>();
@@ -119,6 +122,7 @@ public class BulkService {
 				LOGGER.error(e.getMessage(), e);
 			}
 		}
+		indexFieldMappingService.scheduleIndexForMappingAndStats(index);
 		LOGGER.info("Indexed " + indexOperations.size() + " into index '" + index + "' in " + (System.currentTimeMillis() - pgStartTime) + "ms");
 	}
 }

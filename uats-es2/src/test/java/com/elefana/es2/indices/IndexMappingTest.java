@@ -13,13 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package com.elefana.es2.search.agg;
+package com.elefana.es2.indices;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
 
 import java.util.UUID;
 
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -29,59 +30,39 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 import com.elefana.ElefanaApplication;
 
+import io.restassured.RestAssured;
+
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = WebEnvironment.DEFINED_PORT, classes = { ElefanaApplication.class })
 @TestPropertySource(locations = "classpath:es2.properties")
-public class SumAggregationTest extends AbstractAggregationTest {
-	
-	@Test
-	public void testSumAggregation() {
-		int expectedSum = 0;
-		for(int i = 0; i < DOCUMENT_VALUES.length; i++) {
-			expectedSum += DOCUMENT_VALUES[i];
-		}
-		
-		final String index = UUID.randomUUID().toString();
-		final String type = "test";
-		
-		generateDocuments(index, type);
-		
-		given()
-			.request()
-			.body("{\"query\":{\"match_all\":{}}, \"size\":" + DOCUMENT_QUANTITY 
-					+ ", \"aggs\" : {\"aggs_result\" : { \"sum\" : { \"field\" : \"value\" }}}}")
-		.when()
-			.post("/" + index + "/_search")
-		.then()
-			.statusCode(200)
-			.body("hits.total", equalTo(100))
-			.body("aggregations.aggs_result.value", equalTo(expectedSum));
+public class IndexMappingTest {
+
+	@Before
+	public void setup() {
+		RestAssured.baseURI = "http://localhost:9201";
 	}
 	
 	@Test
-	public void testMultiIndexSumAggregation() {
-		int expectedSum = 0;
-		for(int i = 0; i < DOCUMENT_VALUES.length; i++) {
-			expectedSum += DOCUMENT_VALUES[i];
-		}
-		expectedSum *= 2;
-		
-		final String indexA = "msumaggtestA";
-		final String indexB = "msumaggtestB";
+	public void testMappingGeneration() {
+		final String index = UUID.randomUUID().toString();
 		final String type = "test";
 		
-		generateDocuments(indexA, type);
-		generateDocuments(indexB, type);
-		
 		given()
-		.request()
-		.body("{\"query\":{\"match_all\":{}}, \"size\":" + (DOCUMENT_QUANTITY * 2)
-				+ ", \"aggs\" : {\"aggs_result\" : { \"sum\" : { \"field\" : \"value\" }}}}")
+			.request()
+			.body("{\"docField\" : \"This is a test\"}")
 		.when()
-			.post("/" + indexA + "," + indexB + "/_search")
+			.post("/" + index + "/" + type)
+		.then()
+			.statusCode(201);
+		
+		try {
+			Thread.sleep(1000L);
+		} catch (Exception e) {}
+		
+		given().when().get("/" + index + "/_mapping/" + type)
 		.then()
 			.statusCode(200)
-			.body("hits.total", equalTo(200))
-			.body("aggregations.aggs_result.value", equalTo(expectedSum));
+			.log().all()
+			.body(index + ".mappings." + type + ".docField.mapping.docField.type", equalTo("text"));
 	}
 }

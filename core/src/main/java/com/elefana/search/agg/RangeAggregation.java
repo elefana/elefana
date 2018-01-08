@@ -82,16 +82,19 @@ public class RangeAggregation extends BucketAggregation {
 			final String rangeTableName = AGGREGATION_TABLE_PREFIX + aggregationExec.getRequestBodySearch().hashCode() + "_" + fieldName + "_" + range.toString();
 			final Map<String, Object> bucket = new HashMap<String, Object>();
 			
-			StringBuilder queryBuilder = new StringBuilder();
+			final StringBuilder queryBuilder = new StringBuilder();
 			if(aggregationExec.getAggregation().getSubAggregations().isEmpty()) {
 				queryBuilder.append("SELECT COUNT(*) FROM ");
 			} else {
-				queryBuilder.append("SELECT * INTO ");
+				queryBuilder.append("CREATE TEMP TABLE ");
 				queryBuilder.append(rangeTableName);
-				queryBuilder.append(" FROM ");
+				queryBuilder.append(" AS (");
+				queryBuilder.append("SELECT * FROM ");
 			}
 			queryBuilder.append(aggregationExec.getQueryTable());
-			queryBuilder.append(" WHERE ");
+			appendIndicesWhereClause(aggregationExec, queryBuilder);
+			queryBuilder.append(" AND ");
+			
 			if(range.doubleFrom != null) {
 				bucket.put("from", range.doubleFrom);
 				
@@ -134,6 +137,11 @@ public class RangeAggregation extends BucketAggregation {
 				queryBuilder.append(range.longTo);
 				queryBuilder.append("'");
 			}
+			
+			if(!aggregationExec.getAggregation().getSubAggregations().isEmpty()) {
+				queryBuilder.append(")");
+			}
+			
 			LOGGER.info(queryBuilder.toString());
 			
 			if(!aggregationExec.getAggregation().getSubAggregations().isEmpty()) {

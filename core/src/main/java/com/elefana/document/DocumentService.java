@@ -17,6 +17,7 @@ package com.elefana.document;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +34,7 @@ import com.elefana.exception.DocumentAlreadyExistsException;
 import com.elefana.exception.NoSuchDocumentException;
 import com.elefana.indices.IndexFieldMappingService;
 import com.elefana.node.VersionInfoService;
-import com.elefana.util.TableUtils;
+import com.elefana.util.IndexUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jsoniter.JsonIterator;
 
@@ -44,7 +45,7 @@ public class DocumentService {
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 	@Autowired
-	private TableUtils tableUtils;
+	private IndexUtils tableUtils;
 	@Autowired
 	private VersionInfoService versionInfoService;
 	@Autowired
@@ -56,8 +57,8 @@ public class DocumentService {
 		Connection connection = jdbcTemplate.getDataSource().getConnection();
 		Map<String, Object> result = new HashMap<String, Object>();
 		try {
-			String query = "SELECT * FROM " + TableUtils.sanitizeTableName(index) + " WHERE _type = ? AND _id = ?";
-			SqlRowSet resultSet = jdbcTemplate.queryForRowSet(query, type, id);
+			String query = "SELECT * FROM " + IndexUtils.DATA_TABLE + " WHERE _index = ? AND _type = ? AND _id = ?";
+			SqlRowSet resultSet = jdbcTemplate.queryForRowSet(query, index, type, id);
 			
 			result.put("_index", index);
 			result.put("_type", type);
@@ -90,9 +91,17 @@ public class DocumentService {
 				Map<String, Object> requestItem = (Map<String, Object>) tmpRequestItem;
 				StringBuilder queryBuilder = new StringBuilder();
 				queryBuilder.append("SELECT * FROM ");
-				queryBuilder.append(TableUtils.sanitizeTableName((String) requestItem.get("_index")));
-				if (requestItem.containsKey("_type") || requestItem.containsKey("_id")) {
-					queryBuilder.append(" WHERE ");
+				queryBuilder.append(IndexUtils.DATA_TABLE);
+				queryBuilder.append(" WHERE ");
+				
+				if (requestItem.containsKey("_index")) {
+					queryBuilder.append("_index = '");
+					queryBuilder.append(requestItem.get("_index"));
+					queryBuilder.append("'");
+
+					if (requestItem.containsKey("_type") || requestItem.containsKey("_id")) {
+						queryBuilder.append(" AND ");
+					}
 				}
 
 				if (requestItem.containsKey("_type")) {
@@ -145,14 +154,19 @@ public class DocumentService {
 		Connection connection = jdbcTemplate.getDataSource().getConnection();
 		MultiGetResponse result = new MultiGetResponse();
 		try {
-			for (String tableName : tableUtils.listTables(indexPattern)) {
+			for (String index : tableUtils.listIndicesForIndexPattern(indexPattern)) {
 				for (Object tmpRequestItem : requestItems) {
 					Map<String, Object> requestItem = (Map<String, Object>) tmpRequestItem;
 					StringBuilder queryBuilder = new StringBuilder();
 					queryBuilder.append("SELECT * FROM ");
-					queryBuilder.append(tableName);
+					queryBuilder.append(IndexUtils.DATA_TABLE);
+					queryBuilder.append(" WHERE ");
+					queryBuilder.append("_index='");
+					queryBuilder.append(index);
+					queryBuilder.append("'");
+					
 					if (requestItem.containsKey("_type") || requestItem.containsKey("_id")) {
-						queryBuilder.append(" WHERE ");
+						queryBuilder.append(" AND ");
 					}
 
 					if (requestItem.containsKey("_type")) {
@@ -206,15 +220,20 @@ public class DocumentService {
 		Connection connection = jdbcTemplate.getDataSource().getConnection();
 		MultiGetResponse result = new MultiGetResponse();
 		try {
-			for (String tableName : tableUtils.listTables(indexPattern)) {
-				for(String type : indexFieldMappingService.getTypesForTableName(tableName, typePattern)) {
+			for (String index : tableUtils.listIndicesForIndexPattern(indexPattern)) {
+				for(String type : indexFieldMappingService.getTypesForIndex(index, typePattern)) {
 					for (Object tmpRequestItem : requestItems) {
 						Map<String, Object> requestItem = (Map<String, Object>) tmpRequestItem;
 						StringBuilder queryBuilder = new StringBuilder();
 						queryBuilder.append("SELECT * FROM ");
-						queryBuilder.append(tableName);
+						queryBuilder.append(IndexUtils.DATA_TABLE);
+						queryBuilder.append(" WHERE ");
+						queryBuilder.append("_index = '");
+						queryBuilder.append(index);
+						queryBuilder.append("'");
+						
 						if (!type.isEmpty() || requestItem.containsKey("_id")) {
-							queryBuilder.append(" WHERE ");
+							queryBuilder.append(" AND ");
 						}
 
 						if (!type.isEmpty()) {
@@ -264,7 +283,7 @@ public class DocumentService {
 
 	public IndexApiResponse index(String index, String type, String id, String document, IndexOpType opType)
 			throws Exception {
-		tableUtils.ensureTableExists(index);
+		tableUtils.ensureIndexExists(index);
 		
 		switch(versionInfoService.getApiVersion()) {
 		case V_2_4_3:
@@ -288,27 +307,20 @@ public class DocumentService {
 		jsonObject.setValue(document);
 
 		StringBuilder queryBuilder = new StringBuilder();
-		queryBuilder.append("INSERT INTO ");
-		queryBuilder.append(TableUtils.sanitizeTableName(index));
-		queryBuilder.append(" AS i");
-		queryBuilder.append(" (_index, _type, _id, _timestamp, _source) VALUES (?, ?, ?, ?, ?)");
-
+		queryBuilder.append("SELECT ");
 		switch (opType) {
 		case CREATE:
-			queryBuilder.append(" ON CONFLICT DO NOTHING");
+			queryBuilder.append("elefana_create");
 			break;
 		case UPDATE:
-			queryBuilder.append(
-					" ON CONFLICT (_id) DO UPDATE SET _timestamp = EXCLUDED._timestamp, _source = i._source || EXCLUDED._source");
+			queryBuilder.append("elefana_update");
 			break;
 		case OVERWRITE:
 		default:
-			queryBuilder.append(
-					" ON CONFLICT (_id) DO UPDATE SET _timestamp = EXCLUDED._timestamp, _source = EXCLUDED._source");
+			queryBuilder.append("elefana_overwrite");
 			break;
-
 		}
-		queryBuilder.append(";");
+		queryBuilder.append("(?, ?, ?, ?, ?);");
 
 		Connection connection = jdbcTemplate.getDataSource().getConnection();
 		PreparedStatement preparedStatement = connection.prepareStatement(queryBuilder.toString());
@@ -317,7 +329,12 @@ public class DocumentService {
 		preparedStatement.setString(3, id);
 		preparedStatement.setLong(4, System.currentTimeMillis());
 		preparedStatement.setObject(5, jsonObject);
-		int rows = preparedStatement.executeUpdate();
+		
+		ResultSet resultSet = preparedStatement.executeQuery();
+		if (!resultSet.next()) {
+			throw new RuntimeException("");
+		}
+		int rows = resultSet.getInt(1);
 		preparedStatement.close();
 		connection.close();
 
@@ -328,6 +345,8 @@ public class DocumentService {
 			result._id = id;
 			result._version = 1;
 			result.created = true;
+			
+			indexFieldMappingService.scheduleIndexForMappingAndStats(index);
 			return result;
 		} else {
 			if (opType == IndexOpType.CREATE) {

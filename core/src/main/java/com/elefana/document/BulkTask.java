@@ -30,7 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import com.elefana.util.TableUtils;
+import com.elefana.util.IndexUtils;
 
 public class BulkTask implements Callable<List<Map<String, Object>>> {
 	private static final Logger LOGGER = LoggerFactory.getLogger(BulkTask.class);
@@ -85,7 +85,7 @@ public class BulkTask implements Callable<List<Map<String, Object>>> {
 			final CopyManager copyManager = new CopyManager(pgConnection);
 
 			CopyIn copyIn = copyManager
-					.copyIn("COPY " + TableUtils.sanitizeTableName(index) + " FROM STDIN WITH DELIMITER '" + DELIMITER + "'");
+					.copyIn("COPY " + IndexUtils.DATA_TABLE + " FROM STDIN WITH DELIMITER '" + DELIMITER + "'");
 
 			for (int i = from; i < from + size && i < indexOperations.size(); i++) {
 				BulkIndexOperation indexOperation = indexOperations.get(i);

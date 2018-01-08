@@ -34,7 +34,7 @@ import com.elefana.exception.NoSuchTemplateException;
 import com.elefana.exception.ShardFailedException;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
-import com.elefana.util.TableUtils;
+import com.elefana.util.IndexUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.ValueType;
@@ -51,28 +51,27 @@ public class IndexTemplateService {
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 	@Autowired
-	private TableUtils tableUtils;
+	private IndexUtils indexUtils;
 	
 	private final ObjectMapper objectMapper = new ObjectMapper();
 	
 	@PostConstruct
 	public void postConstruct() {
 		jdbcTemplate.execute(
-				"CREATE TABLE IF NOT EXISTS es2pgsql_index_template (_template_id VARCHAR(255) PRIMARY KEY, _index_pattern VARCHAR(255), _table_pattern VARCHAR(255), _mappings jsonb);");
+				"CREATE TABLE IF NOT EXISTS elefana_index_template (_template_id VARCHAR(255) PRIMARY KEY, _index_pattern VARCHAR(255), _mappings jsonb);");
 		
 		if (nodeSettingsService.isUsingCitus()) {
-			jdbcTemplate.execute("SELECT create_distributed_table('es2pgsql_index_template', '_template_id');");
+			jdbcTemplate.execute("SELECT create_distributed_table('elefana_index_template', '_template_id');");
 		}
 	}
 	
 	public List<IndexTemplate> getIndexTemplates() {
 		final List<IndexTemplate> results = new ArrayList<IndexTemplate>();
 		try {
-			SqlRowSet rowSet = jdbcTemplate.queryForRowSet("SELECT * FROM es2pgsql_index_template");
+			SqlRowSet rowSet = jdbcTemplate.queryForRowSet("SELECT * FROM elefana_index_template");
 			while (rowSet.next()) {
 				IndexTemplate indexTemplate = new IndexTemplate();
 				indexTemplate.setTemplate(rowSet.getString("_index_pattern"));
-				indexTemplate.setTableTemplate(rowSet.getString("_table_pattern"));
 				indexTemplate.setMappings(objectMapper.readValue(rowSet.getString("_mappings"), Map.class));
 				results.add(indexTemplate);
 			}
@@ -83,14 +82,13 @@ public class IndexTemplateService {
 	}
 	
 	public IndexTemplate getIndexTemplate(String templateId) {
-		SqlRowSet rowSet = jdbcTemplate.queryForRowSet("SELECT * FROM es2pgsql_index_template WHERE _template_id = ?", templateId);
+		SqlRowSet rowSet = jdbcTemplate.queryForRowSet("SELECT * FROM elefana_index_template WHERE _template_id = ?", templateId);
 		if(!rowSet.next()) {
 			throw new NoSuchTemplateException();
 		}
 		try {
 			IndexTemplate result = new IndexTemplate();
 			result.setTemplate(rowSet.getString("_index_pattern"));
-			result.setTableTemplate(rowSet.getString("_table_pattern"));
 			result.setMappings(objectMapper.readValue(rowSet.getString("_mappings"), Map.class));
 			return result;
 		} catch (Exception e) {
@@ -99,9 +97,11 @@ public class IndexTemplateService {
 		throw new ShardFailedException();
 	}
 	
-	public IndexTemplate getIndexTemplateForTableName(String tableName) {
+	public IndexTemplate getIndexTemplateForIndex(String index) {
 		for(IndexTemplate indexTemplate : getIndexTemplates()) {
-			if(tableName.matches(indexTemplate.getTableTemplate())) {
+			String indexRegex = indexTemplate.getTemplate().replace("*", "(.*)");
+			indexRegex = "^" + indexRegex + "$";
+			if(index.matches(indexRegex)) {
 				return indexTemplate;
 			}
 		}
@@ -119,17 +119,14 @@ public class IndexTemplateService {
 		
 		try {
 			String indexPattern = templateData.get("template").toString();
-			String tablePattern = TableUtils.sanitizeTableName(indexPattern).toLowerCase();
-			tablePattern = tablePattern.replace("*", "(.*)");
-			tablePattern = "^" + tablePattern + "$";
 			
 			PGobject jsonObject = new PGobject();
 			jsonObject.setType("json");
 			jsonObject.setValue(templateData.get("mappings").toString());
 
 			jdbcTemplate.update(
-					"INSERT INTO es2pgsql_index_template (_template_id, _index_pattern, _table_pattern, _mappings) VALUES (?, ?, ?, ?) ON CONFLICT (_template_id) DO UPDATE SET _mappings = EXCLUDED._mappings, _index_pattern = EXCLUDED._index_pattern, _table_pattern = EXCLUDED._table_pattern",
-					templateId, indexPattern, tablePattern, jsonObject);
+					"INSERT INTO elefana_index_template (_template_id, _index_pattern, _mappings) VALUES (?, ?, ?) ON CONFLICT (_template_id) DO UPDATE SET _mappings = EXCLUDED._mappings, _index_pattern = EXCLUDED._index_pattern",
+					templateId, indexPattern, jsonObject);
 			return;
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);

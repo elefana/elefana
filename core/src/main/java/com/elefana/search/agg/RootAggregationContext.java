@@ -43,11 +43,11 @@ public class RootAggregationContext extends BucketAggregation {
 	}
 	
 	@Override
-	public void executeSqlQuery(List<String> tableNames, String[] types, JdbcTemplate jdbcTemplate,
+	public void executeSqlQuery(List<String> indices, String[] types, JdbcTemplate jdbcTemplate,
 			IndexFieldMappingService indexFieldMappingService, Map<String, Object> aggregationsResult,
 			List<String> tempTablesCreated, String queryTable, RequestBodySearch requestBodySearch) {
 		for (Aggregation aggregation : subaggregations) {
-			aggregation.executeSqlQuery(tableNames, types, jdbcTemplate, indexFieldMappingService, aggregationsResult,
+			aggregation.executeSqlQuery(indices, types, jdbcTemplate, indexFieldMappingService, aggregationsResult,
 					tempTablesCreated, queryTable, requestBodySearch);
 		}
 	}

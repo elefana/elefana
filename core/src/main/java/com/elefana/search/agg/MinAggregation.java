@@ -35,10 +35,15 @@ public class MinAggregation extends Aggregation {
 
 	@Override
 	public void executeSqlQuery(AggregationExec aggregationExec) {
+		final StringBuilder queryBuilder = new StringBuilder();
+		queryBuilder.append("SELECT min((_source->>'" + fieldName + "')::numeric) AS ");
+		queryBuilder.append(aggregationExec.getAggregation().getAggregationName());
+		queryBuilder.append(" FROM ");
+		queryBuilder.append(aggregationExec.getQueryTable());
+		appendIndicesWhereClause(aggregationExec, queryBuilder);
+		
 		List<Map<String, Object>> resultSet = aggregationExec.getJdbcTemplate()
-				.queryForList("SELECT min((_source->>'" + fieldName + "')::numeric) AS "
-						+ aggregationExec.getAggregation().getAggregationName() + " FROM "
-						+ aggregationExec.getQueryTable());
+				.queryForList(queryBuilder.toString());
 
 		Map<String, Object> result = new HashMap<String, Object>();
 		result.put("value", resultSet.get(0).get(aggregationExec.getAggregation().getAggregationName()));

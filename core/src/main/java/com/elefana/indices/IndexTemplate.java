@@ -22,7 +22,6 @@ public class IndexTemplate {
 	private final Map<String, Object> settings = new HashMap<String, Object>();
 	
 	private String template;
-	private String tableTemplate;
 	private Map<String, Object> mappings;
 
 	public IndexTemplate() {
@@ -36,14 +35,6 @@ public class IndexTemplate {
 
 	public void setTemplate(String template) {
 		this.template = template;
-	}
-
-	public String getTableTemplate() {
-		return tableTemplate;
-	}
-
-	public void setTableTemplate(String tableTemplate) {
-		this.tableTemplate = tableTemplate;
 	}
 
 	public Map<String, Object> getSettings() {
@@ -60,7 +51,6 @@ public class IndexTemplate {
 
 	@Override
 	public String toString() {
-		return "IndexTemplate [settings=" + settings + ", template=" + template + ", tableTemplate=" + tableTemplate
-				+ ", mappings=" + mappings + "]";
+		return "IndexTemplate [settings=" + settings + ", template=" + template + ", mappings=" + mappings + "]";
 	}
 }
