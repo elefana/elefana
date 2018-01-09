@@ -15,15 +15,6 @@
  ******************************************************************************/
 package com.elefana.es2;
 
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.notNullValue;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -33,11 +24,15 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import com.elefana.ElefanaApplication;
-import com.elefana.document.GetResponse;
 
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
-import io.restassured.response.ValidatableResponse;
+
+import static io.restassured.RestAssured.*;
+import static io.restassured.matcher.RestAssuredMatchers.*;
+import static org.hamcrest.Matchers.*;
+
+import java.util.UUID;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = WebEnvironment.DEFINED_PORT, classes = { ElefanaApplication.class })
@@ -147,36 +142,24 @@ public class DocumentApiTest {
 		indexWithId(id1, message1);
 		indexWithId(id2, message2);
 		
-		ValidatableResponse response = given()
+		given()
 			.request()
 			.body("{\"docs\" : [{\"_index\": \"" + INDEX + "\",\"_type\" : \"" + TYPE + "\",\"_id\" : \"" + id1 + "\"}," +
 					"{\"_index\": \"" + INDEX + "\",\"_type\" : \"" + TYPE + "\",\"_id\" : \"" + id2 + "\"}]}")
 		.when()
 			.get("/_mget")
 		.then()
-			.statusCode(200);
-		
-		final List<GetResponse> responses = new ArrayList<GetResponse>();
-		for(int i = 0; i < 2; i++) {
-			GetResponse getResponse = new GetResponse();
-			getResponse.set_index(response.extract().path("docs[" + i + "]._index"));
-			getResponse.set_type(response.extract().path("docs[" + i + "]._type"));
-			getResponse.set_id(response.extract().path("docs[" + i + "]._id"));
-			getResponse.set_version(response.extract().path("docs[" + i + "]._version"));
-			getResponse.setFound(response.extract().path("docs[" + i + "].found"));
-			responses.add(getResponse);
-		}
-		for(GetResponse getResponse : responses) {
-			Assert.assertEquals(INDEX, getResponse.get_index());
-			Assert.assertEquals(TYPE, getResponse.get_type());
-			Assert.assertEquals(1, getResponse.get_version());
-			Assert.assertEquals(true, getResponse.isFound());
-			
-			if(getResponse.get_id().equals(id1) || getResponse.get_id().equals(id2)) {
-				continue;
-			}
-			Assert.fail("Mismatch id " + getResponse.get_id());
-		}
+			.statusCode(200)
+			.body("docs[0]._index", equalTo(INDEX))
+			.body("docs[0]._type", equalTo(TYPE))
+			.body("docs[0]._id", equalTo(id1))
+			.body("docs[0]._version", equalTo(1))
+			.body("docs[0].found", equalTo(true))
+			.body("docs[1]._index", equalTo(INDEX))
+			.body("docs[1]._type", equalTo(TYPE))
+			.body("docs[1]._id", equalTo(id2))
+			.body("docs[1]._version", equalTo(1))
+			.body("docs[1].found", equalTo(true));
 	}
 	
 	@Test
@@ -188,36 +171,24 @@ public class DocumentApiTest {
 		indexWithId(id1, message1);
 		indexWithId(id2, message2);
 		
-		ValidatableResponse response = given()
+		given()
 			.request()
 			.body("{\"docs\" : [{\"_type\" : \"" + TYPE + "\",\"_id\" : \"" + id1 + "\"}," +
 					"{\"_type\" : \"" + TYPE + "\",\"_id\" : \"" + id2 + "\"}]}")
 		.when()
 			.get("/" + INDEX + "/_mget")
 		.then()
-			.statusCode(200);
-		
-		final List<GetResponse> responses = new ArrayList<GetResponse>();
-		for(int i = 0; i < 2; i++) {
-			GetResponse getResponse = new GetResponse();
-			getResponse.set_index(response.extract().path("docs[" + i + "]._index"));
-			getResponse.set_type(response.extract().path("docs[" + i + "]._type"));
-			getResponse.set_id(response.extract().path("docs[" + i + "]._id"));
-			getResponse.set_version(response.extract().path("docs[" + i + "]._version"));
-			getResponse.setFound(response.extract().path("docs[" + i + "].found"));
-			responses.add(getResponse);
-		}
-		for(GetResponse getResponse : responses) {
-			Assert.assertEquals(INDEX, getResponse.get_index());
-			Assert.assertEquals(TYPE, getResponse.get_type());
-			Assert.assertEquals(1, getResponse.get_version());
-			Assert.assertEquals(true, getResponse.isFound());
-			
-			if(getResponse.get_id().equals(id1) || getResponse.get_id().equals(id2)) {
-				continue;
-			}
-			Assert.fail("Mismatch id " + getResponse.get_id());
-		}
+			.statusCode(200)
+			.body("docs[0]._index", equalTo(INDEX))
+			.body("docs[0]._type", equalTo(TYPE))
+			.body("docs[0]._id", equalTo(id1))
+			.body("docs[0]._version", equalTo(1))
+			.body("docs[0].found", equalTo(true))
+			.body("docs[1]._index", equalTo(INDEX))
+			.body("docs[1]._type", equalTo(TYPE))
+			.body("docs[1]._id", equalTo(id2))
+			.body("docs[1]._version", equalTo(1))
+			.body("docs[1].found", equalTo(true));
 	}
 	
 	@Test
@@ -233,36 +204,24 @@ public class DocumentApiTest {
 			Thread.sleep(1000L);
 		} catch (Exception e) {}
 		
-		ValidatableResponse response = given()
+		given()
 			.request()
 			.body("{\"docs\" : [{\"_id\" : \"" + id1 + "\"}," +
 					"{\"_id\" : \"" + id2 + "\"}]}")
 		.when()
 			.get("/" + INDEX + "/" + TYPE + "/_mget")
 		.then()
-			.statusCode(200);
-		
-		final List<GetResponse> responses = new ArrayList<GetResponse>();
-		for(int i = 0; i < 2; i++) {
-			GetResponse getResponse = new GetResponse();
-			getResponse.set_index(response.extract().path("docs[" + i + "]._index"));
-			getResponse.set_type(response.extract().path("docs[" + i + "]._type"));
-			getResponse.set_id(response.extract().path("docs[" + i + "]._id"));
-			getResponse.set_version(response.extract().path("docs[" + i + "]._version"));
-			getResponse.setFound(response.extract().path("docs[" + i + "].found"));
-			responses.add(getResponse);
-		}
-		for(GetResponse getResponse : responses) {
-			Assert.assertEquals(INDEX, getResponse.get_index());
-			Assert.assertEquals(TYPE, getResponse.get_type());
-			Assert.assertEquals(1, getResponse.get_version());
-			Assert.assertEquals(true, getResponse.isFound());
-			
-			if(getResponse.get_id().equals(id1) || getResponse.get_id().equals(id2)) {
-				continue;
-			}
-			Assert.fail("Mismatch id " + getResponse.get_id());
-		}
+			.statusCode(200)
+			.body("docs[0]._index", equalTo(INDEX))
+			.body("docs[0]._type", equalTo(TYPE))
+			.body("docs[0]._id", equalTo(id1))
+			.body("docs[0]._version", equalTo(1))
+			.body("docs[0].found", equalTo(true))
+			.body("docs[1]._index", equalTo(INDEX))
+			.body("docs[1]._type", equalTo(TYPE))
+			.body("docs[1]._id", equalTo(id2))
+			.body("docs[1]._version", equalTo(1))
+			.body("docs[1].found", equalTo(true));
 	}
 
 	@Test
