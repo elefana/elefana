@@ -33,7 +33,7 @@ subprojects {
 		codecVersion = '1.10'
 		esCompatVersion = '1.0.0'
 		esQueryStringVersion = '1.0.1'
-		hikariVersion = '2.7.1'
+		hikariVersion = '2.7.4'
 		jodaVersion = '2.9.9'
 		jsoniterVersion = '0.9.18'
 		nativesLoaderVersion = '1.0.0'
@@ -164,6 +164,7 @@ project(":" + rootProject.name + "-uats-es2") {
 	dependencies {
 		testCompile('org.springframework.boot:spring-boot-starter-test')
 		testCompile "io.rest-assured:rest-assured:$restAssuredVersion"
+		testCompile "com.zaxxer:HikariCP:$hikariVersion"
 		testCompile project(path: ":" + rootProject.name + "-core")
 	}
 	
@@ -183,6 +184,7 @@ project(":" + rootProject.name + "-uats-es2-citus") {
 	dependencies {
 		testCompile('org.springframework.boot:spring-boot-starter-test')
 		testCompile "io.rest-assured:rest-assured:$restAssuredVersion"
+		testCompile "com.zaxxer:HikariCP:$hikariVersion"
 		testCompile project(path: ":" + rootProject.name + "-core")
 	}
 	
@@ -216,6 +218,7 @@ project(":" + rootProject.name + "-uats-es5") {
 	dependencies {
 		testCompile('org.springframework.boot:spring-boot-starter-test')
 		testCompile "io.rest-assured:rest-assured:$restAssuredVersion"
+		testCompile "com.zaxxer:HikariCP:$hikariVersion"
 		testCompile project(path: ":" + rootProject.name + "-core")
 	}
 	
