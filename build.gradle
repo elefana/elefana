@@ -24,7 +24,7 @@ subprojects {
 	apply plugin: 'io.spring.dependency-management'
 	apply plugin: 'org.springframework.boot'
 
-	version = '1.0.0-beta1'
+	version = '1.0.0-SNAPSHOT'
 
 	sourceCompatibility = 1.8
 	targetCompatibility = 1.8
@@ -98,22 +98,6 @@ project(":" + rootProject.name + "-core") {
 		
 		testCompile('org.springframework.boot:spring-boot-starter-test')
 	}
-	
-	task copyJarToTempJar(type: Copy, dependsOn: bootJar) {
-		from "build/libs/elefana-core-" + project.version + "-boot.jar"
-		into "build/libs/"
-		rename { String fileName ->
-			fileName.replace(".jar", ".tmp.jar")
-		}
-	}
-	
-	task runProguard(type: proguard.gradle.ProGuardTask, dependsOn: copyJarToTempJar) {
-		configuration "../proguard.txt"
-		
-		injars "build/libs/elefana-core-" + project.version + "-boot.tmp.jar"
-		outjars "build/libs/elefana-core-" + project.version + "-boot.jar"
-	}
-	//bootRepackage.dependsOn runProguard
 	
 	task copyToRelease(type: Copy, dependsOn: bootRepackage) {
 		from "build/libs/elefana-core-" + project.version + "-boot.jar"
