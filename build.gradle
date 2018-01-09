@@ -1,6 +1,6 @@
 buildscript {
 	ext {
-		springBootVersion = '1.5.6.RELEASE'
+		springBootVersion = '1.5.9.RELEASE'
 		dockerComposeVersion = '0.6.9'
 		dockerRunVersion = '0.17.2'
 	}
