@@ -197,13 +197,6 @@ project(":" + rootProject.name + "-uats-es2-citus") {
 		into 'src/test/java'
 	}
 	
-	test {
-		testLogging {
-			events "failed"
-			exceptionFormat "short"
-		}
-	}
-	
 	clean.dependsOn cleanTests
 	compileTestJava.dependsOn copyTests
 	dockerCompose.isRequiredBy(test)
