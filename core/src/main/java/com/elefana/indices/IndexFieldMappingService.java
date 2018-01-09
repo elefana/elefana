@@ -21,8 +21,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.SortedSet;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.ScheduledFuture;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 
 import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
@@ -65,7 +67,8 @@ public class IndexFieldMappingService implements Runnable {
 	private IndexUtils indexUtils;
 
 	private final ObjectMapper objectMapper = new ObjectMapper();
-
+	private ScheduledFuture<?> scheduledTask;
+	
 	private FieldMapper fieldMapper;
 
 	@PostConstruct
@@ -92,8 +95,15 @@ public class IndexFieldMappingService implements Runnable {
 			jdbcTemplate.execute("SELECT create_distributed_table('elefana_index_field_stats', '_index');");
 		}
 
-		taskScheduler.scheduleWithFixedDelay(this,
+		scheduledTask = taskScheduler.scheduleWithFixedDelay(this,
 				Math.min(nodeSettingsService.getFieldStatsInterval(), nodeSettingsService.getMappingInterval()));
+	}
+	
+	@PreDestroy
+	public void preDestroy() {
+		if(scheduledTask != null) {
+			scheduledTask.cancel(false);
+		}
 	}
 
 	public List<String> getFieldNames(String index, String type) {
