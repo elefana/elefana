@@ -39,6 +39,8 @@ subprojects {
 		nativesLoaderVersion = '1.0.0'
 		restAssuredVersion = '3.0.6'
 	}
+	ext['postgresql.version'] = '42.1.4'
+	ext['tomcat.version'] = '8.5.24'
 
 	repositories {
 		mavenLocal()
@@ -227,5 +229,5 @@ project(":" + rootProject.name + "-uats-es5") {
 }
 
 task wrapper(type: Wrapper) {
-	gradleVersion = '4.1'
+	gradleVersion = '4.4.1'
 }
