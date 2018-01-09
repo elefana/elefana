@@ -54,7 +54,6 @@ public class DocumentService {
 	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	public Map<String, Object> get(String index, String type, String id) throws Exception {
-		Connection connection = jdbcTemplate.getDataSource().getConnection();
 		Map<String, Object> result = new HashMap<String, Object>();
 		try {
 			String query = "SELECT * FROM " + IndexUtils.DATA_TABLE + " WHERE _index = ? AND _type = ? AND _id = ?";
@@ -73,10 +72,8 @@ public class DocumentService {
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			connection.close();
 			throw new NoSuchDocumentException();
 		}
-		connection.close();
 		return result;
 	}
 
@@ -84,7 +81,6 @@ public class DocumentService {
 		Map<String, Object> request = objectMapper.readValue(requestBody, Map.class);
 		List<Object> requestItems = (List<Object>) request.get("docs");
 
-		Connection connection = jdbcTemplate.getDataSource().getConnection();
 		MultiGetResponse result = new MultiGetResponse();
 		try {
 			for (Object tmpRequestItem : requestItems) {
@@ -140,10 +136,8 @@ public class DocumentService {
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			connection.close();
 			throw new NoSuchDocumentException();
 		}
-		connection.close();
 		return result;
 	}
 
@@ -151,7 +145,6 @@ public class DocumentService {
 		Map<String, Object> request = objectMapper.readValue(requestBody, Map.class);
 		List<Object> requestItems = (List<Object>) request.get("docs");
 
-		Connection connection = jdbcTemplate.getDataSource().getConnection();
 		MultiGetResponse result = new MultiGetResponse();
 		try {
 			for (String index : tableUtils.listIndicesForIndexPattern(indexPattern)) {
@@ -206,10 +199,8 @@ public class DocumentService {
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			connection.close();
 			throw new NoSuchDocumentException();
 		}
-		connection.close();
 		return result;
 	}
 
@@ -217,7 +208,6 @@ public class DocumentService {
 		Map<String, Object> request = objectMapper.readValue(requestBody, Map.class);
 		List<Object> requestItems = (List<Object>) request.get("docs");
 
-		Connection connection = jdbcTemplate.getDataSource().getConnection();
 		MultiGetResponse result = new MultiGetResponse();
 		try {
 			for (String index : tableUtils.listIndicesForIndexPattern(indexPattern)) {
@@ -274,10 +264,8 @@ public class DocumentService {
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			connection.close();
 			throw new NoSuchDocumentException();
 		}
-		connection.close();
 		return result;
 	}
 
@@ -332,9 +320,13 @@ public class DocumentService {
 		
 		ResultSet resultSet = preparedStatement.executeQuery();
 		if (!resultSet.next()) {
+			preparedStatement.close();
+			connection.close();
 			throw new RuntimeException("");
 		}
 		int rows = resultSet.getInt(1);
+		
+		resultSet.close();
 		preparedStatement.close();
 		connection.close();
 
