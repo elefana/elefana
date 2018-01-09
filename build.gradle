@@ -1,6 +1,7 @@
 buildscript {
 	ext {
 		springBootVersion = '1.5.6.RELEASE'
+		dockerComposeVersion = '0.6.9'
 		dockerRunVersion = '0.17.2'
 	}
 	repositories {
@@ -12,6 +13,7 @@ buildscript {
 	dependencies {
 		classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
 		classpath("gradle.plugin.com.palantir.gradle.docker:gradle-docker:${dockerRunVersion}")
+		classpath("com.avast.gradle:gradle-docker-compose-plugin:${dockerComposeVersion}")
 		classpath ':proguard:'
 	}
 }
@@ -167,6 +169,35 @@ project(":" + rootProject.name + "-uats-es2") {
 	
 	test.dependsOn project.getTasks().findByPath("dockerRun")
 	test.finalizedBy project.getTasks().findByPath("dockerStop")
+}
+
+project(":" + rootProject.name + "-uats-es2-citus") {
+	apply plugin: 'docker-compose'
+	
+	bootRepackage.enabled = false
+
+	dockerCompose {
+		forceRecreate = true
+	}
+	
+	dependencies {
+		testCompile('org.springframework.boot:spring-boot-starter-test')
+		testCompile "io.rest-assured:rest-assured:$restAssuredVersion"
+		testCompile project(path: ":" + rootProject.name + "-core")
+	}
+	
+	task cleanTests(type: Delete) {
+		delete 'src/test/java'
+	}
+	
+	task copyTests(type: Copy) {
+		from '../uats-es2/src/test/java'
+		into 'src/test/java'
+	}
+	
+	clean.dependsOn cleanTests
+	compileTestJava.dependsOn copyTests
+	dockerCompose.isRequiredBy(test)
 }
 
 project(":" + rootProject.name + "-uats-es5") {

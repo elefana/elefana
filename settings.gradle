@@ -1,4 +1,4 @@
-include "core", "uats-es2", "uats-es5"
+include "core", "uats-es2", "uats-es2-citus", "uats-es5"
 
 rootProject.name = 'elefana'
 rootProject.children.each { it.name = rootProject.name + "-" + it.name }

@@ -45,6 +45,7 @@ public class NodeSettingsService {
 	private long fieldStatsInterval;
 	private long mappingInterval;
 	private double mappingSampleSize;
+	private int fallbackMappingSampleSize;
 	private long garbageCollectionInterval;
 	
 	@PostConstruct
@@ -66,6 +67,7 @@ public class NodeSettingsService {
 		fieldStatsInterval = environment.getRequiredProperty("elefana.fieldStatsInterval", Long.class);
 		mappingInterval = environment.getRequiredProperty("elefana.mappingInterval", Long.class);
 		mappingSampleSize = environment.getRequiredProperty("elefana.mappingSampleSize", Double.class);
+		fallbackMappingSampleSize = environment.getRequiredProperty("elefana.fallbackMappingSampleSize", Integer.class);
 		garbageCollectionInterval = environment.getRequiredProperty("elefana.gcInterval", Long.class);
 	}
 
@@ -123,6 +125,10 @@ public class NodeSettingsService {
 
 	public double getMappingSampleSize() {
 		return mappingSampleSize;
+	}
+
+	public int getFallbackMappingSampleSize() {
+		return fallbackMappingSampleSize;
 	}
 
 	public long getGarbageCollectionInterval() {

@@ -25,3 +25,5 @@ proguard.map
 Gemfile.lock
 *.deb
 *.rpm
+uats-es2-citus/src/test/java
+uats-es5-citus/src/test/java
