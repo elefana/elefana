@@ -24,7 +24,7 @@ subprojects {
 	apply plugin: 'io.spring.dependency-management'
 	apply plugin: 'org.springframework.boot'
 
-	version = '1.0.0-SNAPSHOT'
+	version = '1.0.0-beta1'
 
 	sourceCompatibility = 1.8
 	targetCompatibility = 1.8
@@ -113,7 +113,7 @@ project(":" + rootProject.name + "-core") {
 		injars "build/libs/elefana-core-" + project.version + "-boot.tmp.jar"
 		outjars "build/libs/elefana-core-" + project.version + "-boot.jar"
 	}
-	bootRepackage.dependsOn runProguard
+	//bootRepackage.dependsOn runProguard
 	
 	task copyToRelease(type: Copy, dependsOn: bootRepackage) {
 		from "build/libs/elefana-core-" + project.version + "-boot.jar"
