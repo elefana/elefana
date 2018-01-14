@@ -19,20 +19,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.jsoniter.any.Any;
 
-public class SumAggregation extends Aggregation {
-	private static final Logger LOGGER = LoggerFactory.getLogger(SumAggregation.class);
-	
+public class StatsAggregation extends Aggregation {
 	private static final String KEY_FIELD = "field";
 	
 	private final String aggregationName;
 	private final String fieldName;
 	
-	public SumAggregation(String aggregationName, Any context) {
+	public StatsAggregation(String aggregationName, Any context) {
 		super();
 		this.aggregationName = aggregationName;
 		this.fieldName = context.get(KEY_FIELD).toString();
@@ -41,22 +36,13 @@ public class SumAggregation extends Aggregation {
 	@Override
 	public void executeSqlQuery(AggregationExec aggregationExec) {
 		Map<String, Object> result = new HashMap<String, Object>();
-		result.put("value", getSum(aggregationExec, fieldName));
+		result.put("avg", AvgAggregation.getAvg(aggregationExec, fieldName));
+		result.put("min", MinAggregation.getMin(aggregationExec, fieldName));
+		result.put("max", MaxAggregation.getMax(aggregationExec, fieldName));
+		result.put("sum", SumAggregation.getSum(aggregationExec, fieldName));
+		result.put("count", ValueCountAggregation.getCount(aggregationExec, fieldName));
 
 		aggregationExec.getAggregationsResult().put(aggregationExec.getAggregation().getAggregationName(), result);
-	}
-	
-	public static Object getSum(AggregationExec aggregationExec, String fieldName) {
-		final StringBuilder queryBuilder = new StringBuilder();
-		queryBuilder.append("SELECT sum((_source->>'" + fieldName + "')::numeric) AS ");
-		queryBuilder.append(aggregationExec.getAggregation().getAggregationName());
-		queryBuilder.append(" FROM ");
-		queryBuilder.append(aggregationExec.getQueryTable());
-		appendIndicesWhereClause(aggregationExec, queryBuilder);
-		
-		List<Map<String, Object>> resultSet = aggregationExec.getJdbcTemplate()
-				.queryForList(queryBuilder.toString());
-		return resultSet.get(0).get(aggregationExec.getAggregation().getAggregationName());
 	}
 
 	@Override

@@ -35,6 +35,13 @@ public class AvgAggregation extends Aggregation {
 
 	@Override
 	public void executeSqlQuery(AggregationExec aggregationExec) {
+		Map<String, Object> result = new HashMap<String, Object>();
+		result.put("value", getAvg(aggregationExec, fieldName));
+
+		aggregationExec.getAggregationsResult().put(aggregationExec.getAggregation().getAggregationName(), result);
+	}
+	
+	public static Object getAvg(AggregationExec aggregationExec, String fieldName) {
 		final StringBuilder queryBuilder = new StringBuilder();
 		queryBuilder.append("SELECT avg((_source->>'" + fieldName + "')::numeric) AS ");
 		queryBuilder.append(aggregationExec.getAggregation().getAggregationName());
@@ -44,11 +51,7 @@ public class AvgAggregation extends Aggregation {
 		
 		List<Map<String, Object>> resultSet = aggregationExec.getJdbcTemplate()
 				.queryForList(queryBuilder.toString());
-
-		Map<String, Object> result = new HashMap<String, Object>();
-		result.put("value", resultSet.get(0).get(aggregationExec.getAggregation().getAggregationName()));
-
-		aggregationExec.getAggregationsResult().put(aggregationExec.getAggregation().getAggregationName(), result);
+		return resultSet.get(0).get(aggregationExec.getAggregation().getAggregationName());
 	}
 
 	@Override

@@ -32,7 +32,7 @@ public abstract class Aggregation {
 
 	public abstract void executeSqlQuery(final AggregationExec aggregationExec);
 
-	protected void appendIndicesWhereClause(final AggregationExec aggregationExec, final StringBuilder queryBuilder) {
+	protected static void appendIndicesWhereClause(final AggregationExec aggregationExec, final StringBuilder queryBuilder) {
 		queryBuilder.append(" WHERE _index IN (");
 		for(int i = 0; i < aggregationExec.getIndices().size(); i++) {
 			if(i > 0) {
