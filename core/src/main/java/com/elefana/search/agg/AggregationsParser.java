@@ -36,6 +36,7 @@ public class AggregationsParser {
 	private static final String AGGREGATION_CARDINALITY = "cardinality";
 	private static final String AGGREGATION_MIN = "min";
 	private static final String AGGREGATION_MAX = "max";
+	private static final String AGGREGATION_PERCENTILES = "percentiles";
 	private static final String AGGREGATION_STATS = "stats";
 	private static final String AGGREGATION_SUM = "sum";
 	private static final String AGGREGATION_VALUE_COUNT = "value_count";
@@ -82,6 +83,9 @@ public class AggregationsParser {
 		}
 		if(!context.get(AGGREGATION_MAX).valueType().equals(ValueType.INVALID)) {
 			return new MaxAggregation(aggregationName, context.get(AGGREGATION_MAX));
+		}
+		if(!context.get(AGGREGATION_PERCENTILES).valueType().equals(ValueType.INVALID)) {
+			return new PercentilesAggregation(aggregationName, context.get(AGGREGATION_PERCENTILES));
 		}
 		if(!context.get(AGGREGATION_STATS).valueType().equals(ValueType.INVALID)) {
 			return new StatsAggregation(aggregationName, context.get(AGGREGATION_STATS));

@@ -33,6 +33,7 @@ subprojects {
 
 	ext {
 		codecVersion = '1.10'
+		commonsMathVersion = '3.6.1'
 		esCompatVersion = '1.0.0'
 		esQueryStringVersion = '1.0.1'
 		hikariVersion = '2.7.4'
@@ -157,6 +158,7 @@ project(":" + rootProject.name + "-uats-es2") {
 		testCompile('org.springframework.restdocs:spring-restdocs-restassured')
 		testCompile "io.rest-assured:rest-assured:$restAssuredVersion"
 		testCompile "com.zaxxer:HikariCP:$hikariVersion"
+		testCompile "org.apache.commons:commons-math3:$commonsMathVersion"
 		testCompile project(path: ":" + rootProject.name + "-core")
 		
 		asciidoctor "org.springframework.restdocs:spring-restdocs-asciidoctor:${project.ext['spring-restdocs.version']}"
@@ -186,6 +188,7 @@ project(":" + rootProject.name + "-uats-es2-citus") {
 		testCompile('org.springframework.restdocs:spring-restdocs-restassured')
 		testCompile "io.rest-assured:rest-assured:$restAssuredVersion"
 		testCompile "com.zaxxer:HikariCP:$hikariVersion"
+		testCompile "org.apache.commons:commons-math3:$commonsMathVersion"
 		testCompile project(path: ":" + rootProject.name + "-core")
 		
 		asciidoctor "org.springframework.restdocs:spring-restdocs-asciidoctor:${project.ext['spring-restdocs.version']}"
@@ -229,6 +232,7 @@ project(":" + rootProject.name + "-uats-es5") {
 		testCompile('org.springframework.restdocs:spring-restdocs-restassured')
 		testCompile "io.rest-assured:rest-assured:$restAssuredVersion"
 		testCompile "com.zaxxer:HikariCP:$hikariVersion"
+		testCompile "org.apache.commons:commons-math3:$commonsMathVersion"
 		testCompile project(path: ":" + rootProject.name + "-core")
 		
 		asciidoctor "org.springframework.restdocs:spring-restdocs-asciidoctor:${project.ext['spring-restdocs.version']}"
