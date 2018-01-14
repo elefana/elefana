@@ -36,6 +36,7 @@ public class AggregationsParser {
 	private static final String AGGREGATION_MIN = "min";
 	private static final String AGGREGATION_MAX = "max";
 	private static final String AGGREGATION_SUM = "sum";
+	private static final String AGGREGATION_CARDINALITY = "cardinality";
 	
 	private static final String AGGREGATION_DATE_HISTOGRAM = "date_histogram";
 	private static final String AGGREGATION_RANGE = "range";
@@ -79,6 +80,9 @@ public class AggregationsParser {
 		}
 		if(!context.get(AGGREGATION_SUM).valueType().equals(ValueType.INVALID)) {
 			return new SumAggregation(aggregationName, context.get(AGGREGATION_SUM));
+		}
+		if(!context.get(AGGREGATION_CARDINALITY).valueType().equals(ValueType.INVALID)) {
+			return new CardinalityAggregation(aggregationName, context.get(AGGREGATION_CARDINALITY));
 		}
 		if(!context.get(AGGREGATION_RANGE).valueType().equals(ValueType.INVALID)) {
 			return new RangeAggregation(aggregationName, context.get(AGGREGATION_RANGE));
