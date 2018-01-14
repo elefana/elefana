@@ -58,7 +58,7 @@ public class MaxAggregationTest extends AbstractAggregationTest {
 			.post("/" + index + "/_search")
 		.then()
 			.statusCode(200)
-			.body("hits.total", equalTo(100))
+			.body("hits.total", equalTo(DOCUMENT_QUANTITY))
 			.body("aggregations.aggs_result.value", equalTo(max));
 	}
 }

@@ -32,15 +32,10 @@ import com.elefana.ElefanaApplication;
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = WebEnvironment.DEFINED_PORT, classes = { ElefanaApplication.class })
 @TestPropertySource(locations = "classpath:es2.properties")
-public class SumAggregationTest extends AbstractAggregationTest {
+public class ValueCountAggregationTest extends AbstractAggregationTest {
 	
 	@Test
-	public void testSumAggregation() {
-		int expectedSum = 0;
-		for(int i = 0; i < DOCUMENT_VALUES.length; i++) {
-			expectedSum += DOCUMENT_VALUES[i];
-		}
-		
+	public void testValueCountAggregation() {
 		final String index = UUID.randomUUID().toString();
 		final String type = "test";
 		
@@ -49,39 +44,12 @@ public class SumAggregationTest extends AbstractAggregationTest {
 		given()
 			.request()
 			.body("{\"query\":{\"match_all\":{}}, \"size\":" + DOCUMENT_QUANTITY 
-					+ ", \"aggs\" : {\"aggs_result\" : { \"sum\" : { \"field\" : \"value\" }}}}")
+					+ ", \"aggs\" : {\"aggs_result\" : { \"value_count\" : { \"field\" : \"value\" }}}}")
 		.when()
 			.post("/" + index + "/_search")
 		.then()
 			.statusCode(200)
 			.body("hits.total", equalTo(DOCUMENT_QUANTITY))
-			.body("aggregations.aggs_result.value", equalTo(expectedSum));
-	}
-	
-	@Test
-	public void testMultiIndexSumAggregation() {
-		int expectedSum = 0;
-		for(int i = 0; i < DOCUMENT_VALUES.length; i++) {
-			expectedSum += DOCUMENT_VALUES[i];
-		}
-		expectedSum *= 2;
-		
-		final String indexA = "msumaggtestA";
-		final String indexB = "msumaggtestB";
-		final String type = "test";
-		
-		generateDocuments(indexA, type);
-		generateDocuments(indexB, type);
-		
-		given()
-		.request()
-		.body("{\"query\":{\"match_all\":{}}, \"size\":" + (DOCUMENT_QUANTITY * 2)
-				+ ", \"aggs\" : {\"aggs_result\" : { \"sum\" : { \"field\" : \"value\" }}}}")
-		.when()
-			.post("/" + indexA + "," + indexB + "/_search")
-		.then()
-			.statusCode(200)
-			.body("hits.total", equalTo(200))
-			.body("aggregations.aggs_result.value", equalTo(expectedSum));
+			.body("aggregations.aggs_result.value", equalTo(DOCUMENT_VALUES.length));
 	}
 }

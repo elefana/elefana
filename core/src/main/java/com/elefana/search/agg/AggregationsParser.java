@@ -33,10 +33,11 @@ public class AggregationsParser {
 	public static final String FIELD_AGGREGATIONS = "aggregations";
 	
 	private static final String AGGREGATION_AVG = "avg";
+	private static final String AGGREGATION_CARDINALITY = "cardinality";
 	private static final String AGGREGATION_MIN = "min";
 	private static final String AGGREGATION_MAX = "max";
 	private static final String AGGREGATION_SUM = "sum";
-	private static final String AGGREGATION_CARDINALITY = "cardinality";
+	private static final String AGGREGATION_VALUE_COUNT = "value_count";
 	
 	private static final String AGGREGATION_DATE_HISTOGRAM = "date_histogram";
 	private static final String AGGREGATION_RANGE = "range";
@@ -72,6 +73,9 @@ public class AggregationsParser {
 		if(!context.get(AGGREGATION_AVG).valueType().equals(ValueType.INVALID)) {
 			return new AvgAggregation(aggregationName, context.get(AGGREGATION_AVG));
 		}
+		if(!context.get(AGGREGATION_CARDINALITY).valueType().equals(ValueType.INVALID)) {
+			return new CardinalityAggregation(aggregationName, context.get(AGGREGATION_CARDINALITY));
+		}
 		if(!context.get(AGGREGATION_MIN).valueType().equals(ValueType.INVALID)) {
 			return new MinAggregation(aggregationName, context.get(AGGREGATION_MIN));
 		}
@@ -81,9 +85,10 @@ public class AggregationsParser {
 		if(!context.get(AGGREGATION_SUM).valueType().equals(ValueType.INVALID)) {
 			return new SumAggregation(aggregationName, context.get(AGGREGATION_SUM));
 		}
-		if(!context.get(AGGREGATION_CARDINALITY).valueType().equals(ValueType.INVALID)) {
-			return new CardinalityAggregation(aggregationName, context.get(AGGREGATION_CARDINALITY));
+		if(!context.get(AGGREGATION_VALUE_COUNT).valueType().equals(ValueType.INVALID)) {
+			return new ValueCountAggregation(aggregationName, context.get(AGGREGATION_VALUE_COUNT));
 		}
+		
 		if(!context.get(AGGREGATION_RANGE).valueType().equals(ValueType.INVALID)) {
 			return new RangeAggregation(aggregationName, context.get(AGGREGATION_RANGE));
 		}

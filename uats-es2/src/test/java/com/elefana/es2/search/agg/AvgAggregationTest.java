@@ -17,10 +17,10 @@ package com.elefana.es2.search.agg;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.closeTo;
 
 import java.util.UUID;
 
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -30,6 +30,9 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 import com.elefana.ElefanaApplication;
 
+import io.restassured.response.ValidatableResponse;
+
+
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = WebEnvironment.DEFINED_PORT, classes = { ElefanaApplication.class })
 @TestPropertySource(locations = "classpath:es2.properties")
@@ -37,7 +40,7 @@ public class AvgAggregationTest extends AbstractAggregationTest {
 
 	@Test
 	public void testAvgAggregation() {
-		double average = 0.0;
+		float average = 0.0f;
 		for(int i = 0; i < DOCUMENT_VALUES.length; i++) {
 			average += DOCUMENT_VALUES[i];
 		}
@@ -48,7 +51,7 @@ public class AvgAggregationTest extends AbstractAggregationTest {
 		
 		generateDocuments(index, type);
 		
-		given()
+		ValidatableResponse response = given()
 			.request()
 			.body("{\"query\":{\"match_all\":{}}, \"size\":" + DOCUMENT_QUANTITY 
 					+ ", \"aggs\" : {\"aggs_result\" : { \"avg\" : { \"field\" : \"value\" }}}}")
@@ -56,7 +59,10 @@ public class AvgAggregationTest extends AbstractAggregationTest {
 			.post("/" + index + "/_search")
 		.then()
 			.statusCode(200)
-			.body("hits.total", equalTo(100))
-			.body("aggregations.aggs_result.value", closeTo(average, 0.01));
+			.body("hits.total", equalTo(DOCUMENT_QUANTITY));
+		
+		//Workaround for hamcrest matcher issue
+		float actual = response.extract().path("aggregations.aggs_result.value");
+		Assert.assertEquals(average, actual, 0.01f);
 	}
 }
