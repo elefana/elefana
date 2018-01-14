@@ -15,29 +15,39 @@
  ******************************************************************************/
 package com.elefana.es2;
 
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.notNullValue;
+
+import static org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessRequest;
+import static org.springframework.restdocs.restassured3.RestAssuredRestDocumentation.document;
+import static org.springframework.restdocs.restassured3.RestAssuredRestDocumentation.documentationConfiguration;
+import static org.springframework.restdocs.restassured3.operation.preprocess.RestAssuredPreprocessors.modifyUris;
+
+import java.util.UUID;
+
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
+import org.springframework.restdocs.JUnitRestDocumentation;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 
+import com.elefana.DocumentedTest;
 import com.elefana.ElefanaApplication;
 
 import io.restassured.RestAssured;
+import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.http.ContentType;
-
-import static io.restassured.RestAssured.*;
-import static io.restassured.matcher.RestAssuredMatchers.*;
-import static org.hamcrest.Matchers.*;
-
-import java.util.UUID;
+import io.restassured.specification.RequestSpecification;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = WebEnvironment.DEFINED_PORT, classes = { ElefanaApplication.class })
 @TestPropertySource(locations = "classpath:es2.properties")
-public class DocumentApiTest {
+public class DocumentApiTest extends DocumentedTest {
 	private static final String INDEX = UUID.randomUUID().toString();
 	private static final String TYPE = "test";
 	
@@ -49,10 +59,11 @@ public class DocumentApiTest {
 	@Test
 	public void testIndexWithoutId() {
 		final String message = "This is a test";
-		given()
+		given(documentationSpec)
 			.request()
 			.contentType(ContentType.JSON)
-			.body("{\"message\" : \"" + message + "\",\"date\" : \"2009-11-15T14:12:12\"}")
+			.body("{\"message\" : \"" + message + "\",\"date\" : \"2017-01-14T14:12:12\"}")
+			.filter(createDocumentationFilter("document"))
 		.when()
 			.post("/" + INDEX + "/" + TYPE)
 		.then()

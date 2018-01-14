@@ -3,6 +3,7 @@ buildscript {
 		springBootVersion = '1.5.9.RELEASE'
 		dockerComposeVersion = '0.6.9'
 		dockerRunVersion = '0.17.2'
+		asciiDoctorVersion = '1.5.7'
 	}
 	repositories {
 		mavenLocal()
@@ -14,6 +15,7 @@ buildscript {
 		classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
 		classpath("gradle.plugin.com.palantir.gradle.docker:gradle-docker:${dockerRunVersion}")
 		classpath("com.avast.gradle:gradle-docker-compose-plugin:${dockerComposeVersion}")
+		classpath("org.asciidoctor:asciidoctor-gradle-plugin:${asciiDoctorVersion}")
 		classpath ':proguard:'
 	}
 }
@@ -41,6 +43,7 @@ subprojects {
 	}
 	ext['postgresql.version'] = '42.1.4'
 	ext['tomcat.version'] = '8.5.24'
+	ext['spring-restdocs.version'] = '2.0.0.RELEASE'
 
 	repositories {
 		mavenLocal()
@@ -136,8 +139,10 @@ project(":" + rootProject.name + "-core") {
 
 project(":" + rootProject.name + "-uats-es2") {
 	apply plugin: "com.palantir.docker-run"
+	apply plugin: "org.asciidoctor.convert"
 	
 	bootRepackage.enabled = false
+	ext['snippetsDir'] = file('build/generated-snippets')
 	
 	dockerRun {
 		name rootProject.name + "-uats-es2"
@@ -149,19 +154,28 @@ project(":" + rootProject.name + "-uats-es2") {
 
 	dependencies {
 		testCompile('org.springframework.boot:spring-boot-starter-test')
+		testCompile('org.springframework.restdocs:spring-restdocs-restassured')
 		testCompile "io.rest-assured:rest-assured:$restAssuredVersion"
 		testCompile "com.zaxxer:HikariCP:$hikariVersion"
 		testCompile project(path: ":" + rootProject.name + "-core")
+		
+		asciidoctor "org.springframework.restdocs:spring-restdocs-asciidoctor:${project.ext['spring-restdocs.version']}"
 	}
 	
 	test.dependsOn project.getTasks().findByPath("dockerRun")
 	test.finalizedBy project.getTasks().findByPath("dockerStop")
+	
+	test {
+		outputs.dir snippetsDir
+	}
 }
 
 project(":" + rootProject.name + "-uats-es2-citus") {
 	apply plugin: 'docker-compose'
+	apply plugin: "org.asciidoctor.convert"
 	
 	bootRepackage.enabled = false
+	ext['snippetsDir'] = file('build/generated-snippets')
 
 	dockerCompose {
 		forceRecreate = true
@@ -169,9 +183,12 @@ project(":" + rootProject.name + "-uats-es2-citus") {
 	
 	dependencies {
 		testCompile('org.springframework.boot:spring-boot-starter-test')
+		testCompile('org.springframework.restdocs:spring-restdocs-restassured')
 		testCompile "io.rest-assured:rest-assured:$restAssuredVersion"
 		testCompile "com.zaxxer:HikariCP:$hikariVersion"
 		testCompile project(path: ":" + rootProject.name + "-core")
+		
+		asciidoctor "org.springframework.restdocs:spring-restdocs-asciidoctor:${project.ext['spring-restdocs.version']}"
 	}
 	
 	task cleanTests(type: Delete) {
@@ -186,12 +203,18 @@ project(":" + rootProject.name + "-uats-es2-citus") {
 	clean.dependsOn cleanTests
 	compileTestJava.dependsOn copyTests
 	dockerCompose.isRequiredBy(test)
+	
+	test {
+		outputs.dir snippetsDir
+	}
 }
 
 project(":" + rootProject.name + "-uats-es5") {
 	apply plugin: "com.palantir.docker-run"
+	apply plugin: "org.asciidoctor.convert"
 	
 	bootRepackage.enabled = false
+	ext['snippetsDir'] = file('build/generated-snippets')
 	
 	dockerRun {
 		name rootProject.name + "-uats-es2"
@@ -203,13 +226,43 @@ project(":" + rootProject.name + "-uats-es5") {
 
 	dependencies {
 		testCompile('org.springframework.boot:spring-boot-starter-test')
+		testCompile('org.springframework.restdocs:spring-restdocs-restassured')
 		testCompile "io.rest-assured:rest-assured:$restAssuredVersion"
 		testCompile "com.zaxxer:HikariCP:$hikariVersion"
 		testCompile project(path: ":" + rootProject.name + "-core")
+		
+		asciidoctor "org.springframework.restdocs:spring-restdocs-asciidoctor:${project.ext['spring-restdocs.version']}"
 	}
 	
 	test.dependsOn project.getTasks().findByPath("dockerRun")
 	test.finalizedBy project.getTasks().findByPath("dockerStop")
+	
+	test {
+		outputs.dir snippetsDir
+	}
+}
+
+project(":" + rootProject.name + "-docs") {
+	apply plugin: "org.asciidoctor.convert"
+	
+	bootRepackage.enabled = false
+	ext['snippetsDir'] = file('build/generated-snippets')
+	
+	asciidoctor {
+		inputs.dir snippetsDir
+		dependsOn test
+	}
+	
+	task copyGeneratedSnippets(type: Copy) {
+		from '../uats-es2/build/generated-snippets'
+		from '../uats-es5/build/generated-snippets'
+		into snippetsDir
+	}
+	
+	copyGeneratedSnippets.dependsOn project(":" + rootProject.name + "-uats-es2").tasks.test,
+		project(":" + rootProject.name + "-uats-es5").tasks.test
+	asciidoctor.dependsOn copyGeneratedSnippets	
+	build.dependsOn asciidoctor
 }
 
 task wrapper(type: Wrapper) {
