@@ -20,6 +20,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.annotation.PostConstruct;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +30,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.stereotype.Service;
 
+import com.codahale.metrics.Histogram;
+import com.codahale.metrics.MetricRegistry;
 import com.elefana.indices.IndexFieldMappingService;
 import com.elefana.util.IndexUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -45,8 +49,18 @@ public class SearchService {
 	private IndexFieldMappingService indexFieldMappingService;
 	@Autowired
 	private IndexUtils indexUtils;
+	@Autowired
+	private MetricRegistry metricRegistry;
 
 	private final ObjectMapper objectMapper = new ObjectMapper();
+	
+	private Histogram searchTime, searchHits;
+	
+	@PostConstruct
+	public void postConstruct() {
+		searchTime = metricRegistry.histogram(MetricRegistry.name("search", "time"));
+		searchHits = metricRegistry.histogram(MetricRegistry.name("search", "hits"));
+	}
 
 	public Map<String, Object> multiSearch(String fallbackIndex, String fallbackType, HttpEntity<String> httpRequest)
 			throws Exception {
@@ -229,7 +243,6 @@ public class SearchService {
 		}
 		queryBuilder.append(")");
 
-		LOGGER.info(queryBuilder.toString());
 		jdbcTemplate.update(queryBuilder.toString());
 
 		final Map<String, Object> result = executeQuery("SELECT * FROM " + queryDataTableName, startTime,
@@ -290,7 +303,6 @@ public class SearchService {
 			queryBuilder.append(" OFFSET ");
 			queryBuilder.append(requestBodySearch.getFrom());
 		}
-		LOGGER.info(queryBuilder.toString());
 		return executeQuery(queryBuilder.toString(), startTime, requestBodySearch.getSize());
 	}
 
@@ -356,10 +368,14 @@ public class SearchService {
 		hits.put("max_score", 1.0);
 		hits.put("hits", hitsList);
 
-		result.put("took", System.currentTimeMillis() - startTime);
+		final long took = System.currentTimeMillis() - startTime;
+		result.put("took", took);
 		result.put("timed_out", false);
 		result.put("hits", hits);
 		result.put("_shards", shards);
+		
+		searchHits.update((int) hits.get("total"));
+		searchTime.update(took);
 		return result;
 	}
 	

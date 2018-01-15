@@ -18,6 +18,7 @@ package com.elefana;
 import java.util.Map;
 import java.util.UUID;
 
+import javax.annotation.PostConstruct;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -30,6 +31,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
 import com.elefana.cluster.AckResponse;
 import com.elefana.cluster.ClusterService;
 import com.elefana.document.BulkService;
@@ -59,14 +62,26 @@ public class HttpApiController {
 	private NodesService nodesService;
 	@Autowired
 	private ClusterService clusterService;
+	@Autowired
+	private MetricRegistry metricRegistry;
+	
+	private Meter httpRequests;
+	
+	@PostConstruct
+	public void postConstruct() {
+		httpRequests = metricRegistry.meter(MetricRegistry.name("http", "requests"));
+	}
 
 	@RequestMapping(path = "/", method = { RequestMethod.GET, RequestMethod.HEAD })
 	public Object get() throws Exception {
+		httpRequests.mark();
 		return clusterService.getNodeRootInfo();
 	}
 
 	@RequestMapping(path = "/{indexPattern:.+}", method = { RequestMethod.GET, RequestMethod.HEAD })
 	public Object get(@PathVariable String indexPattern, HttpEntity<String> request) throws Exception {
+		httpRequests.mark();
+		
 		if (indexPattern == null || indexPattern.isEmpty()) {
 			return clusterService.getNodeRootInfo();
 		}
@@ -98,6 +113,8 @@ public class HttpApiController {
 			"!application/x-www-form-urlencoded" })
 	public Object post(@PathVariable String indexPattern, HttpEntity<String> request, HttpServletResponse response)
 			throws Exception {
+		httpRequests.mark();
+		
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		switch (indexPatternLowercase) {
 		case "_search":
@@ -126,6 +143,8 @@ public class HttpApiController {
 			"!application/x-www-form-urlencoded" })
 	public Object put(@PathVariable String indexPattern, HttpEntity<String> request, HttpServletResponse response)
 			throws Exception {
+		httpRequests.mark();
+		
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 
 		switch (indexPatternLowercase) {
@@ -140,6 +159,8 @@ public class HttpApiController {
 	@RequestMapping(path = "/{indexPattern}/{typePattern:.+}", method = RequestMethod.GET)
 	public Object get(@PathVariable String indexPattern, @PathVariable String typePattern, HttpEntity<String> request)
 			throws Exception {
+		httpRequests.mark();
+		
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		final String typePatternLowercase = typePattern.toLowerCase();
 		if (indexPattern == null || indexPattern.isEmpty()) {
@@ -196,6 +217,8 @@ public class HttpApiController {
 			"!application/x-www-form-urlencoded" })
 	public Object post(@PathVariable String indexPattern, @PathVariable String typePattern, HttpEntity<String> request,
 			HttpServletResponse response) throws Exception {
+		httpRequests.mark();
+		
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		final String typePatternLowercase = typePattern.toLowerCase();
 
@@ -236,6 +259,8 @@ public class HttpApiController {
 			"!application/x-www-form-urlencoded" })
 	public Object put(@PathVariable String indexPattern, @PathVariable String typePattern, HttpEntity<String> request)
 			throws Exception {
+		httpRequests.mark();
+		
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		final String typePatternLowercase = typePattern.toLowerCase();
 
@@ -250,6 +275,8 @@ public class HttpApiController {
 	@RequestMapping(path = "/{indexPattern}/{typePattern}/{idPattern:.+}", method = RequestMethod.GET)
 	public Object get(@PathVariable String indexPattern, @PathVariable String typePattern,
 			@PathVariable String idPattern, HttpServletResponse response, HttpEntity<String> request) throws Exception {
+		httpRequests.mark();
+		
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		final String typePatternLowercase = typePattern.toLowerCase();
 		final String idPatternLowercase = idPattern.toLowerCase();
@@ -296,6 +323,8 @@ public class HttpApiController {
 			"!application/x-www-form-urlencoded" })
 	public Object post(@PathVariable String indexPattern, @PathVariable String typePattern,
 			@PathVariable String idPattern, HttpEntity<String> request, HttpServletResponse response) throws Exception {
+		httpRequests.mark();
+		
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		final String typePatternLowercase = typePattern.toLowerCase();
 		final String idPatternLowercase = idPattern.toLowerCase();
@@ -330,6 +359,8 @@ public class HttpApiController {
 			"!application/x-www-form-urlencoded" })
 	public Object put(@PathVariable String indexPattern, @PathVariable String typePattern,
 			@PathVariable String idPattern, HttpEntity<String> request, HttpServletResponse response) throws Exception {
+		httpRequests.mark();
+		
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		final String typePatternLowercase = typePattern.toLowerCase();
 		final String idPatternLowercase = idPattern.toLowerCase();
@@ -346,6 +377,8 @@ public class HttpApiController {
 	public Object get(@PathVariable String indexPattern, @PathVariable String typePattern,
 			@PathVariable String idPattern, @PathVariable String opPattern, HttpEntity<String> request)
 			throws Exception {
+		httpRequests.mark();
+		
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		final String typePatternLowercase = typePattern.toLowerCase();
 		final String idPatternLowercase = idPattern.toLowerCase();
@@ -379,6 +412,8 @@ public class HttpApiController {
 	public Object post(@PathVariable String indexPattern, @PathVariable String typePattern,
 			@PathVariable String idPattern, @PathVariable String opPattern, HttpEntity<String> request,
 			HttpServletResponse response) throws Exception {
+		httpRequests.mark();
+		
 		if (idPattern.toLowerCase().equals("_search")) {
 			return searchService.search(indexPattern, typePattern, request);
 		}
@@ -409,6 +444,8 @@ public class HttpApiController {
 	public Object get(@PathVariable String indexPattern, @PathVariable String typePattern,
 			@PathVariable String idPattern, @PathVariable String opPattern, @PathVariable String fieldPattern)
 			throws Exception {
+		httpRequests.mark();
+		
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		final String typePatternLowercase = typePattern.toLowerCase();
 		final String idPatternLowercase = idPattern.toLowerCase();

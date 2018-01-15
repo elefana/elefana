@@ -39,6 +39,7 @@ subprojects {
 		hikariVersion = '2.7.4'
 		jodaVersion = '2.9.9'
 		jsoniterVersion = '0.9.18'
+		metricsVersion = '4.0.2'
 		nativesLoaderVersion = '1.0.0'
 		restAssuredVersion = '3.0.6'
 	}
@@ -98,6 +99,8 @@ project(":" + rootProject.name + "-core") {
 		compile "com.elefana:es-query-string-parser:$esQueryStringVersion"
 		compile "com.elefana:es-compat-utils:$esCompatVersion"
 		compile "commons-codec:commons-codec:$codecVersion"
+		compile "io.dropwizard.metrics:metrics-core:$metricsVersion"
+		compile "io.dropwizard.metrics:metrics-graphite:$metricsVersion"
 		compile('org.postgresql:postgresql')
 		
 		testCompile('org.springframework.boot:spring-boot-starter-test')

@@ -137,4 +137,16 @@ public class BulkTask implements Callable<List<Map<String, Object>>> {
 		results.add(entry);
 		return entryData;
 	}
+
+	public String getIndex() {
+		return index;
+	}
+
+	public int getFrom() {
+		return from;
+	}
+
+	public int getSize() {
+		return size;
+	}
 }

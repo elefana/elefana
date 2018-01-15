@@ -36,8 +36,10 @@ import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.springframework.stereotype.Component;
 
+import com.codahale.metrics.MetricRegistry;
 import com.elefana.indices.IndexFieldMappingService;
 import com.elefana.node.NodeSettingsService;
+import com.zaxxer.hikari.HikariDataSource;
 
 /**
  *
@@ -59,11 +61,18 @@ public class IndexUtils {
 	private NodeSettingsService nodeSettingsService;
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
+	@Autowired
+	private MetricRegistry metricRegistry;
 
 	@PostConstruct
 	public void postConstruct() throws SQLException {
 		createMasterTableIfNotExists();
 		createPartitionTrackingTableIfNotExists();
+		
+		if(jdbcTemplate.getDataSource() instanceof HikariDataSource) {
+	        ((HikariDataSource) jdbcTemplate.getDataSource()).setMetricRegistry(metricRegistry);
+	    }
+		
 		knownTables.addAll(listTables());
 	}
 

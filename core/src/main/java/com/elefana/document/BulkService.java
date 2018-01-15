@@ -25,12 +25,16 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 
+import javax.annotation.PostConstruct;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
 import com.elefana.indices.IndexFieldMappingService;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.util.IndexUtils;
@@ -55,6 +59,16 @@ public class BulkService {
 	private ScheduledExecutorService scheduledExecutorService;
 	@Autowired
 	private NodeSettingsService nodeSettingsService;
+	@Autowired
+	private MetricRegistry metricRegistry;
+	
+	private Meter bulkOperationsSuccess, bulkOperationsFailed;
+	
+	@PostConstruct
+	public void postConstruct() {
+		bulkOperationsSuccess = metricRegistry.meter(MetricRegistry.name("bulk", "operations", "success"));
+		bulkOperationsFailed = metricRegistry.meter(MetricRegistry.name("bulk", "operations", "failed"));
+	}
 
 	public BulkApiResponse bulkOperations(String requestBody) throws Exception {
 		final long startTime = System.currentTimeMillis();
@@ -103,19 +117,25 @@ public class BulkService {
 		indexUtils.ensureIndexExists(index);
 		
 		final int operationSize = Math.max(1000, indexOperations.size() / nodeSettingsService.getBulkParallelisation());
+		
+		final List<BulkTask> bulkTasks = new ArrayList<BulkTask>();
 		final List<Future<List<Map<String, Object>>>> results = new ArrayList<Future<List<Map<String, Object>>>>();
 		
 		long pgStartTime = System.currentTimeMillis();
 		for(int i = 0; i < indexOperations.size(); i += operationSize) {
-			results.add(scheduledExecutorService.submit(new BulkTask(jdbcTemplate, indexOperations, index, i, operationSize)));
+			BulkTask task = new BulkTask(jdbcTemplate, indexOperations, index, i, operationSize);
+			bulkTasks.add(task);
+			results.add(scheduledExecutorService.submit(task));
 		}
 		
 		for(int i = 0; i < results.size(); i++) {
 			try {
 				List<Map<String, Object>> nextResult = results.get(i).get();
 				if(nextResult.isEmpty()) {
+					bulkOperationsFailed.mark(bulkTasks.get(i).getSize());
 					bulkApiResponse.setErrors(true);
 				} else {
+					bulkOperationsSuccess.mark(bulkTasks.get(i).getSize());
 					bulkApiResponse.getItems().addAll(nextResult);
 				}
 			} catch (InterruptedException e) {
@@ -125,6 +145,5 @@ public class BulkService {
 			}
 		}
 		indexFieldMappingService.scheduleIndexForMappingAndStats(index);
-		LOGGER.info("Indexed " + indexOperations.size() + " into index '" + index + "' in " + (System.currentTimeMillis() - pgStartTime) + "ms");
 	}
 }
