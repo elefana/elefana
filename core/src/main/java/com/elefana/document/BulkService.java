@@ -32,6 +32,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import com.elefana.indices.IndexFieldMappingService;
+import com.elefana.node.NodeSettingsService;
 import com.elefana.util.IndexUtils;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.ValueType;
@@ -43,7 +44,6 @@ public class BulkService {
 	
 	private static final String OPERATION_INDEX = "index";
 	private static final String NEW_LINE = "\n";
-	private static final int BULK_PARALLELISATION = Runtime.getRuntime().availableProcessors() * 2;
 
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
@@ -53,6 +53,8 @@ public class BulkService {
 	private IndexFieldMappingService indexFieldMappingService;
 	@Autowired
 	private ScheduledExecutorService scheduledExecutorService;
+	@Autowired
+	private NodeSettingsService nodeSettingsService;
 
 	public BulkApiResponse bulkOperations(String requestBody) throws Exception {
 		final long startTime = System.currentTimeMillis();
@@ -100,7 +102,7 @@ public class BulkService {
 			List<BulkIndexOperation> indexOperations) throws SQLException {
 		indexUtils.ensureIndexExists(index);
 		
-		final int operationSize = Math.max(1000, indexOperations.size() / BULK_PARALLELISATION);
+		final int operationSize = Math.max(1000, indexOperations.size() / nodeSettingsService.getBulkParallelisation());
 		final List<Future<List<Map<String, Object>>>> results = new ArrayList<Future<List<Map<String, Object>>>>();
 		
 		long pgStartTime = System.currentTimeMillis();

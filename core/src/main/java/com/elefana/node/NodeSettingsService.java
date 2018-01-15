@@ -42,6 +42,7 @@ public class NodeSettingsService {
 	
 	private boolean usingCitus = false;
 	
+	private int bulkParallelisation;
 	private long fieldStatsInterval;
 	private long mappingInterval;
 	private double mappingSampleSize;
@@ -64,6 +65,8 @@ public class NodeSettingsService {
 		httpAddress = hostIp + port;
 		
 		usingCitus = environment.getRequiredProperty("elefana.citus", Boolean.class);
+		
+		bulkParallelisation = Math.max(1, environment.getRequiredProperty("elefana.bulkParallelisation", Integer.class));
 		fieldStatsInterval = environment.getRequiredProperty("elefana.fieldStatsInterval", Long.class);
 		mappingInterval = environment.getRequiredProperty("elefana.mappingInterval", Long.class);
 		mappingSampleSize = environment.getRequiredProperty("elefana.mappingSampleSize", Double.class);
@@ -113,6 +116,10 @@ public class NodeSettingsService {
 
 	public boolean isUsingCitus() {
 		return usingCitus;
+	}
+
+	public int getBulkParallelisation() {
+		return bulkParallelisation;
 	}
 
 	public long getFieldStatsInterval() {
