@@ -31,6 +31,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.elefana.cluster.AckResponse;
@@ -64,24 +65,30 @@ public class HttpApiController {
 	private ClusterService clusterService;
 	@Autowired
 	private MetricRegistry metricRegistry;
-	
+
 	private Meter httpRequests;
-	
+	private Histogram httpRequestSize;
+
 	@PostConstruct
 	public void postConstruct() {
 		httpRequests = metricRegistry.meter(MetricRegistry.name("http", "requests"));
+		httpRequestSize = metricRegistry.histogram(MetricRegistry.name("http", "requestSize"));
 	}
 
 	@RequestMapping(path = "/", method = { RequestMethod.GET, RequestMethod.HEAD })
-	public Object get() throws Exception {
+	public Object get(HttpServletRequest request) throws Exception {
 		httpRequests.mark();
+		httpRequestSize.update(request.getContentLength());
+
 		return clusterService.getNodeRootInfo();
 	}
 
 	@RequestMapping(path = "/{indexPattern:.+}", method = { RequestMethod.GET, RequestMethod.HEAD })
-	public Object get(@PathVariable String indexPattern, HttpEntity<String> request) throws Exception {
+	public Object get(@PathVariable String indexPattern, HttpServletRequest request, HttpEntity<String> requestBody)
+			throws Exception {
 		httpRequests.mark();
-		
+		httpRequestSize.update(request.getContentLength());
+
 		if (indexPattern == null || indexPattern.isEmpty()) {
 			return clusterService.getNodeRootInfo();
 		}
@@ -92,9 +99,9 @@ public class HttpApiController {
 		case "_mapping":
 			return indexFieldMappingService.getMappings();
 		case "_mget":
-			return documentService.multiGet(request.getBody());
+			return documentService.multiGet(requestBody.getBody());
 		case "_search":
-			return searchService.search(request);
+			return searchService.search(requestBody);
 		}
 		return null;
 	}
@@ -104,27 +111,28 @@ public class HttpApiController {
 	public Object postUrlEncoded(@PathVariable String indexPattern, HttpServletRequest request,
 			HttpEntity<String> requestBody, HttpServletResponse response) throws Exception {
 		for (String param : request.getParameterMap().keySet()) {
-			return post(indexPattern, new HttpEntity<String>(param), response);
+			return post(indexPattern, request, new HttpEntity<String>(param), response);
 		}
-		return post(indexPattern, requestBody, response);
+		return post(indexPattern, request, requestBody, response);
 	}
 
 	@RequestMapping(path = "/{indexPattern:.+}", method = RequestMethod.POST, consumes = {
 			"!application/x-www-form-urlencoded" })
-	public Object post(@PathVariable String indexPattern, HttpEntity<String> request, HttpServletResponse response)
-			throws Exception {
+	public Object post(@PathVariable String indexPattern, HttpServletRequest request, HttpEntity<String> requestBody,
+			HttpServletResponse response) throws Exception {
 		httpRequests.mark();
-		
+		httpRequestSize.update(request.getContentLength());
+
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		switch (indexPatternLowercase) {
 		case "_search":
-			return searchService.search(request);
+			return searchService.search(requestBody);
 		case "_mget":
-			return documentService.multiGet(request.getBody());
+			return documentService.multiGet(requestBody.getBody());
 		case "_msearch":
-			return searchService.multiSearch(null, null, request);
+			return searchService.multiSearch(null, null, requestBody);
 		case "_bulk":
-			return bulkService.bulkOperations(request.getBody());
+			return bulkService.bulkOperations(requestBody.getBody());
 		}
 		return null;
 	}
@@ -134,33 +142,35 @@ public class HttpApiController {
 	public Object putUrlEncoded(@PathVariable String indexPattern, HttpServletRequest request,
 			HttpEntity<String> requestBody, HttpServletResponse response) throws Exception {
 		for (String param : request.getParameterMap().keySet()) {
-			return put(indexPattern, new HttpEntity<String>(param), response);
+			return put(indexPattern, request, new HttpEntity<String>(param), response);
 		}
-		return put(indexPattern, requestBody, response);
+		return put(indexPattern, request, requestBody, response);
 	}
 
 	@RequestMapping(path = "/{indexPattern:.+}", method = RequestMethod.PUT, consumes = {
 			"!application/x-www-form-urlencoded" })
-	public Object put(@PathVariable String indexPattern, HttpEntity<String> request, HttpServletResponse response)
-			throws Exception {
+	public Object put(@PathVariable String indexPattern, HttpServletRequest request, HttpEntity<String> requestBody,
+			HttpServletResponse response) throws Exception {
 		httpRequests.mark();
-		
+		httpRequestSize.update(request.getContentLength());
+
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 
 		switch (indexPatternLowercase) {
 		case "_bulk":
-			return bulkService.bulkOperations(request.getBody());
+			return bulkService.bulkOperations(requestBody.getBody());
 		}
 
-		indexFieldMappingService.putMapping(indexPattern, request.getBody());
+		indexFieldMappingService.putMapping(indexPattern, requestBody.getBody());
 		return new AckResponse();
 	}
 
 	@RequestMapping(path = "/{indexPattern}/{typePattern:.+}", method = RequestMethod.GET)
-	public Object get(@PathVariable String indexPattern, @PathVariable String typePattern, HttpEntity<String> request)
-			throws Exception {
+	public Object get(@PathVariable String indexPattern, @PathVariable String typePattern, HttpServletRequest request,
+			HttpEntity<String> requestBody) throws Exception {
 		httpRequests.mark();
-		
+		httpRequestSize.update(request.getContentLength());
+
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		final String typePatternLowercase = typePattern.toLowerCase();
 		if (indexPattern == null || indexPattern.isEmpty()) {
@@ -196,9 +206,9 @@ public class HttpApiController {
 		case "_field_caps":
 			return indexFieldMappingService.getFieldCapabilities(indexPattern);
 		case "_mget":
-			return documentService.multiGet(indexPattern, request.getBody());
+			return documentService.multiGet(indexPattern, requestBody.getBody());
 		case "_search":
-			return searchService.search(indexPattern, request);
+			return searchService.search(indexPattern, requestBody);
 		}
 		return null;
 	}
@@ -208,41 +218,42 @@ public class HttpApiController {
 	public Object postUrlEncoded(@PathVariable String indexPattern, @PathVariable String typePattern,
 			HttpServletRequest request, HttpEntity<String> requestBody, HttpServletResponse response) throws Exception {
 		for (String param : request.getParameterMap().keySet()) {
-			return post(indexPattern, typePattern, new HttpEntity<String>(param), response);
+			return post(indexPattern, typePattern, request, new HttpEntity<String>(param), response);
 		}
-		return post(indexPattern, typePattern, requestBody, response);
+		return post(indexPattern, typePattern, request, requestBody, response);
 	}
 
 	@RequestMapping(path = "/{indexPattern}/{typePattern:.+}", method = RequestMethod.POST, consumes = {
 			"!application/x-www-form-urlencoded" })
-	public Object post(@PathVariable String indexPattern, @PathVariable String typePattern, HttpEntity<String> request,
-			HttpServletResponse response) throws Exception {
+	public Object post(@PathVariable String indexPattern, @PathVariable String typePattern, HttpServletRequest request,
+			HttpEntity<String> requestBody, HttpServletResponse response) throws Exception {
 		httpRequests.mark();
-		
+		httpRequestSize.update(request.getContentLength());
+
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		final String typePatternLowercase = typePattern.toLowerCase();
 
 		switch (indexPatternLowercase) {
 		case "_template":
-			indexTemplateService.putIndexTemplate(typePattern, request.getBody());
+			indexTemplateService.putIndexTemplate(typePattern, requestBody.getBody());
 			return new AckResponse();
 		}
 
 		switch (typePatternLowercase) {
 		case "_search":
-			return searchService.search(indexPattern, request);
+			return searchService.search(indexPattern, requestBody);
 		case "_mget":
-			return documentService.multiGet(indexPattern, request.getBody());
+			return documentService.multiGet(indexPattern, requestBody.getBody());
 		case "_field_caps":
 			return indexFieldMappingService.getFieldCapabilities(indexPattern);
 		case "_field_stats":
 			return indexFieldMappingService.getFieldStats(indexPattern);
 		case "_msearch":
-			return searchService.multiSearch(indexPattern, null, request);
+			return searchService.multiSearch(indexPattern, null, requestBody);
 		case "_refresh":
 			return null;
 		}
-		return post(indexPattern, typePattern, UUID.randomUUID().toString(), request, response);
+		return post(indexPattern, typePattern, UUID.randomUUID().toString(), request, requestBody, response);
 	}
 
 	@RequestMapping(path = "/{indexPattern}/{typePattern:.+}", method = RequestMethod.PUT, consumes = {
@@ -250,23 +261,24 @@ public class HttpApiController {
 	public Object putUrlEncoded(@PathVariable String indexPattern, @PathVariable String typePattern,
 			HttpServletRequest request, HttpEntity<String> requestBody, HttpServletResponse response) throws Exception {
 		for (String param : request.getParameterMap().keySet()) {
-			return put(indexPattern, typePattern, new HttpEntity<String>(param));
+			return put(indexPattern, typePattern, request, new HttpEntity<String>(param));
 		}
-		return put(indexPattern, typePattern, requestBody);
+		return put(indexPattern, typePattern, request, requestBody);
 	}
 
 	@RequestMapping(path = "/{indexPattern}/{typePattern:.+}", method = RequestMethod.PUT, consumes = {
 			"!application/x-www-form-urlencoded" })
-	public Object put(@PathVariable String indexPattern, @PathVariable String typePattern, HttpEntity<String> request)
-			throws Exception {
+	public Object put(@PathVariable String indexPattern, @PathVariable String typePattern, HttpServletRequest request,
+			HttpEntity<String> requestBody) throws Exception {
 		httpRequests.mark();
-		
+		httpRequestSize.update(request.getContentLength());
+
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		final String typePatternLowercase = typePattern.toLowerCase();
 
 		switch (indexPatternLowercase) {
 		case "_template":
-			indexTemplateService.putIndexTemplate(typePattern, request.getBody());
+			indexTemplateService.putIndexTemplate(typePattern, requestBody.getBody());
 			return new AckResponse();
 		}
 		return null;
@@ -274,9 +286,11 @@ public class HttpApiController {
 
 	@RequestMapping(path = "/{indexPattern}/{typePattern}/{idPattern:.+}", method = RequestMethod.GET)
 	public Object get(@PathVariable String indexPattern, @PathVariable String typePattern,
-			@PathVariable String idPattern, HttpServletResponse response, HttpEntity<String> request) throws Exception {
+			@PathVariable String idPattern, HttpServletResponse response, HttpServletRequest request,
+			HttpEntity<String> requestBody) throws Exception {
 		httpRequests.mark();
-		
+		httpRequestSize.update(request.getContentLength());
+
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		final String typePatternLowercase = typePattern.toLowerCase();
 		final String idPatternLowercase = idPattern.toLowerCase();
@@ -298,7 +312,7 @@ public class HttpApiController {
 		case "_mapping":
 			return indexFieldMappingService.getMapping(indexPattern, typePattern);
 		case "_mget":
-			return documentService.multiGet(indexPattern, typePattern, request.getBody());
+			return documentService.multiGet(indexPattern, typePattern, requestBody.getBody());
 		}
 
 		Map<String, Object> result = documentService.get(indexPattern, typePattern, idPattern);
@@ -314,29 +328,31 @@ public class HttpApiController {
 			@PathVariable String idPattern, HttpServletRequest request, HttpEntity<String> requestBody,
 			HttpServletResponse response) throws Exception {
 		for (String param : request.getParameterMap().keySet()) {
-			return post(indexPattern, typePattern, idPattern, new HttpEntity<String>(param), response);
+			return post(indexPattern, typePattern, idPattern, request, new HttpEntity<String>(param), response);
 		}
-		return post(indexPattern, typePattern, idPattern, requestBody, response);
+		return post(indexPattern, typePattern, idPattern, request, requestBody, response);
 	}
 
 	@RequestMapping(path = "/{indexPattern}/{typePattern}/{idPattern:.+}", method = RequestMethod.POST, consumes = {
 			"!application/x-www-form-urlencoded" })
 	public Object post(@PathVariable String indexPattern, @PathVariable String typePattern,
-			@PathVariable String idPattern, HttpEntity<String> request, HttpServletResponse response) throws Exception {
+			@PathVariable String idPattern, HttpServletRequest request, HttpEntity<String> requestBody,
+			HttpServletResponse response) throws Exception {
 		httpRequests.mark();
-		
+		httpRequestSize.update(request.getContentLength());
+
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		final String typePatternLowercase = typePattern.toLowerCase();
 		final String idPatternLowercase = idPattern.toLowerCase();
 
 		switch (idPatternLowercase) {
 		case "_search":
-			return searchService.search(indexPattern, typePattern, request);
+			return searchService.search(indexPattern, typePattern, requestBody);
 		case "_msearch":
-			return searchService.multiSearch(indexPattern, typePattern, request);
+			return searchService.multiSearch(indexPattern, typePattern, requestBody);
 		}
 
-		String document = request.getBody();
+		String document = requestBody.getBody();
 		Object result = documentService.index(indexPattern, typePattern, idPattern, document, IndexOpType.OVERWRITE);
 		if (result != null) {
 			response.setStatus(HttpServletResponse.SC_CREATED);
@@ -350,24 +366,26 @@ public class HttpApiController {
 			@PathVariable String idPattern, HttpServletRequest request, HttpEntity<String> requestBody,
 			HttpServletResponse response) throws Exception {
 		for (String param : request.getParameterMap().keySet()) {
-			return put(indexPattern, typePattern, idPattern, new HttpEntity<String>(param), response);
+			return put(indexPattern, typePattern, idPattern, request, new HttpEntity<String>(param), response);
 		}
-		return put(indexPattern, typePattern, idPattern, requestBody, response);
+		return put(indexPattern, typePattern, idPattern, request, requestBody, response);
 	}
 
 	@RequestMapping(path = "/{indexPattern}/{typePattern}/{idPattern:.+}", method = RequestMethod.PUT, consumes = {
 			"!application/x-www-form-urlencoded" })
 	public Object put(@PathVariable String indexPattern, @PathVariable String typePattern,
-			@PathVariable String idPattern, HttpEntity<String> request, HttpServletResponse response) throws Exception {
+			@PathVariable String idPattern, HttpServletRequest request, HttpEntity<String> requestBody,
+			HttpServletResponse response) throws Exception {
 		httpRequests.mark();
-		
+		httpRequestSize.update(request.getContentLength());
+
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		final String typePatternLowercase = typePattern.toLowerCase();
 		final String idPatternLowercase = idPattern.toLowerCase();
 
 		switch (typePatternLowercase) {
 		case "_mapping":
-			indexFieldMappingService.putMapping(indexPattern, idPattern, request.getBody());
+			indexFieldMappingService.putMapping(indexPattern, idPattern, requestBody.getBody());
 			return new AckResponse();
 		}
 		return null;
@@ -375,10 +393,11 @@ public class HttpApiController {
 
 	@RequestMapping(path = "/{indexPattern}/{typePattern}/{idPattern}/{opPattern:.+}", method = RequestMethod.GET)
 	public Object get(@PathVariable String indexPattern, @PathVariable String typePattern,
-			@PathVariable String idPattern, @PathVariable String opPattern, HttpEntity<String> request)
-			throws Exception {
+			@PathVariable String idPattern, @PathVariable String opPattern, HttpServletRequest request,
+			HttpEntity<String> requestBody) throws Exception {
 		httpRequests.mark();
-		
+		httpRequestSize.update(request.getContentLength());
+
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		final String typePatternLowercase = typePattern.toLowerCase();
 		final String idPatternLowercase = idPattern.toLowerCase();
@@ -402,25 +421,27 @@ public class HttpApiController {
 			@PathVariable String idPattern, @PathVariable String opPattern, HttpServletRequest request,
 			HttpEntity<String> requestBody, HttpServletResponse response) throws Exception {
 		for (String param : request.getParameterMap().keySet()) {
-			return post(indexPattern, typePattern, idPattern, opPattern, new HttpEntity<String>(param), response);
+			return post(indexPattern, typePattern, idPattern, opPattern, request, new HttpEntity<String>(param),
+					response);
 		}
-		return post(indexPattern, typePattern, idPattern, opPattern, requestBody, response);
+		return post(indexPattern, typePattern, idPattern, opPattern, request, requestBody, response);
 	}
 
 	@RequestMapping(path = "/{indexPattern}/{typePattern}/{idPattern}/{opPattern:.+}", method = RequestMethod.POST, consumes = {
 			"!application/x-www-form-urlencoded" })
 	public Object post(@PathVariable String indexPattern, @PathVariable String typePattern,
-			@PathVariable String idPattern, @PathVariable String opPattern, HttpEntity<String> request,
-			HttpServletResponse response) throws Exception {
+			@PathVariable String idPattern, @PathVariable String opPattern, HttpServletRequest request,
+			HttpEntity<String> requestBody, HttpServletResponse response) throws Exception {
 		httpRequests.mark();
-		
+		httpRequestSize.update(request.getContentLength());
+
 		if (idPattern.toLowerCase().equals("_search")) {
-			return searchService.search(indexPattern, typePattern, request);
+			return searchService.search(indexPattern, typePattern, requestBody);
 		}
 		IndexApiResponse result = null;
 		switch (opPattern) {
 		case "_create": {
-			String document = request.getBody();
+			String document = requestBody.getBody();
 			result = documentService.index(indexPattern, typePattern, idPattern, document, IndexOpType.CREATE);
 			if (result != null) {
 				response.setStatus(HttpServletResponse.SC_CREATED);
@@ -428,7 +449,7 @@ public class HttpApiController {
 			break;
 		}
 		case "_update": {
-			String document = request.getBody();
+			String document = requestBody.getBody();
 			result = documentService.index(indexPattern, typePattern, idPattern, document, IndexOpType.UPDATE);
 			if (result != null) {
 				result.created = false;
@@ -442,10 +463,11 @@ public class HttpApiController {
 
 	@RequestMapping(path = "/{indexPattern}/{typePattern}/{idPattern}/{opPattern}/{fieldPattern:.+}", method = RequestMethod.GET)
 	public Object get(@PathVariable String indexPattern, @PathVariable String typePattern,
-			@PathVariable String idPattern, @PathVariable String opPattern, @PathVariable String fieldPattern)
-			throws Exception {
+			@PathVariable String idPattern, @PathVariable String opPattern, @PathVariable String fieldPattern,
+			HttpServletRequest request) throws Exception {
 		httpRequests.mark();
-		
+		httpRequestSize.update(request.getContentLength());
+
 		final String indexPatternLowercase = indexPattern.toLowerCase();
 		final String typePatternLowercase = typePattern.toLowerCase();
 		final String idPatternLowercase = idPattern.toLowerCase();
