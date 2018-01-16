@@ -25,6 +25,7 @@ public class BulkIndexOperation {
 	private String type;
 	private String id;
 	private String source;
+	private long timestamp;
 	
 	public static BulkIndexOperation allocate() {
 		BulkIndexOperation result = POOL.poll();
@@ -68,6 +69,14 @@ public class BulkIndexOperation {
 
 	public void setSource(String source) {
 		this.source = source;
+	}
+
+	public long getTimestamp() {
+		return timestamp;
+	}
+
+	public void setTimestamp(long timestamp) {
+		this.timestamp = timestamp;
 	}
 
 	@Override

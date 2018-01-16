@@ -23,6 +23,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 import javax.annotation.PostConstruct;
@@ -37,6 +38,9 @@ import com.codahale.metrics.MetricRegistry;
 import com.elefana.indices.IndexTemplate;
 import com.elefana.indices.IndexTemplateService;
 import com.elefana.node.NodeSettingsService;
+import com.jsoniter.JsonIterator;
+import com.jsoniter.ValueType;
+import com.jsoniter.any.Any;
 import com.zaxxer.hikari.HikariDataSource;
 
 /**
@@ -54,6 +58,7 @@ public class IndexUtils {
 	public static final String PRIMARY_KEY_PREFIX = "elefana_pkey_";
 
 	private final Set<String> knownTables = new ConcurrentSkipListSet<String>();
+	private final Map<String, String []> jsonPathCache = new ConcurrentHashMap<String, String []>();
 
 	@Autowired
 	private NodeSettingsService nodeSettingsService;
@@ -128,13 +133,39 @@ public class IndexUtils {
 		}
 		return getPartitionTableForIndex(indexName);
 	}
+	
+	public long getTimestamp(String index, String document) {
+		final IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndex(index);
+		if(indexTemplate == null) {
+			return System.currentTimeMillis();
+		}
+		if(!indexTemplate.isTimeSeries()) {
+			return System.currentTimeMillis();
+		}
+		String [] path = jsonPathCache.get(indexTemplate.getTimestamp_path());
+		if(path == null) {
+			path = indexTemplate.getTimestamp_path().split("\\.");
+			jsonPathCache.put(indexTemplate.getTimestamp_path(), path);
+		}
+		Any json = JsonIterator.deserialize(document);
+		for(int i = 0; i < path.length; i++) {
+			if(json.valueType().equals(ValueType.INVALID)) {
+				return System.currentTimeMillis();
+			}
+			json = json.get(path[i]);
+		}
+		if(!json.valueType().equals(ValueType.NUMBER)) {
+			return System.currentTimeMillis();
+		}
+		return json.toLong();
+	}
 
 	public void ensureIndexExists(String indexName) throws SQLException {
 		final String tableName = convertIndexNameToTableName(indexName);
 		if (knownTables.contains(tableName)) {
 			return;
 		}
-		IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndex(indexName);
+		final IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndex(indexName);
 		boolean timeSeries = false;
 
 		if (indexTemplate != null && indexTemplate.isTimeSeries()) {

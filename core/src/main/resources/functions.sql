@@ -3,7 +3,7 @@ CREATE OR REPLACE FUNCTION elefana_create(_op_index VARCHAR, _op_type VARCHAR, _
 $$
 BEGIN
 	BEGIN
-		INSERT INTO elefana_data(_index, _type, _id, _timestamp, _created, _source) VALUES (_op_index, _op_type, _op_id, _op_timestamp, NOW(), _op_source);
+		INSERT INTO elefana_data(_index, _type, _id, _timestamp, _source) VALUES (_op_index, _op_type, _op_id, _op_timestamp, _op_source);
 		RETURN 1;
 	EXCEPTION WHEN unique_violation THEN
 		RETURN 0;
@@ -21,7 +21,7 @@ BEGIN
 		RETURN 1;
 	END IF;
 	BEGIN
-		INSERT INTO elefana_data(_index, _type, _id, _timestamp, _created, _source) VALUES (_op_index, _op_type, _op_id, _op_timestamp, NOW(), _op_source);
+		INSERT INTO elefana_data(_index, _type, _id, _timestamp, _source) VALUES (_op_index, _op_type, _op_id, _op_timestamp, _op_source);
 		RETURN 1;
 	EXCEPTION WHEN unique_violation THEN
 		RETURN 0;
@@ -42,7 +42,7 @@ BEGIN
 		RETURN 1;
 	END IF;
 	BEGIN
-		INSERT INTO elefana_data(_index, _type, _id, _timestamp, _created, _source) VALUES (_op_index, _op_type, _op_id, _op_timestamp, NOW(), _op_source);
+		INSERT INTO elefana_data(_index, _type, _id, _timestamp, _source) VALUES (_op_index, _op_type, _op_id, _op_timestamp, _op_source);
 		RETURN 1;
 	EXCEPTION WHEN unique_violation THEN
 		RETURN 0;

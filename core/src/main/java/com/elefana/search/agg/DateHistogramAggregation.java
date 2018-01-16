@@ -151,7 +151,7 @@ public class DateHistogramAggregation extends BucketAggregation {
 		LOGGER.info(distinctBucketsQuery);
 		SqlRowSet resultSet = aggregationExec.getJdbcTemplate().queryForRowSet(distinctBucketsQuery);
 
-		final Set<Timestamp> uniqueBuckets = new HashSet<Timestamp>();
+		final List<Timestamp> uniqueBuckets = new ArrayList<Timestamp>();
 		while (resultSet.next()) {
 			uniqueBuckets.add(resultSet.getTimestamp("elefana_agg_bucket"));
 		}

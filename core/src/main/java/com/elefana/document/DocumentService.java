@@ -50,6 +50,8 @@ public class DocumentService {
 	@Autowired
 	private IndexUtils indexUtils;
 	@Autowired
+	private IndexTemplateService indexTemplateService;
+	@Autowired
 	private NodeSettingsService nodeSettingsService;
 	@Autowired
 	private VersionInfoService versionInfoService;
@@ -61,8 +63,16 @@ public class DocumentService {
 	public Map<String, Object> get(String index, String type, String id) throws Exception {
 		Map<String, Object> result = new HashMap<String, Object>();
 		try {
-			String query = "SELECT * FROM " + IndexUtils.DATA_TABLE + " WHERE _index = ? AND _type = ? AND _id = ?";
-			SqlRowSet resultSet = jdbcTemplate.queryForRowSet(query, index, type, id);
+			final String queryTarget = indexUtils.getQueryTarget(index);
+			
+			SqlRowSet resultSet;
+			if(nodeSettingsService.isUsingCitus()) {
+				String query = "SELECT * FROM " + queryTarget + " WHERE _type = ? AND _id = ?";
+				resultSet = jdbcTemplate.queryForRowSet(query, type, id);
+			} else {
+				String query = "SELECT * FROM " + queryTarget + " WHERE _index = ? AND _type = ? AND _id = ?";
+				resultSet = jdbcTemplate.queryForRowSet(query, index, type, id);
+			}
 			
 			result.put("_index", index);
 			result.put("_type", type);
@@ -291,6 +301,7 @@ public class DocumentService {
 	public IndexApiResponse index(String index, String type, String id, String document, IndexOpType opType)
 			throws Exception {
 		indexUtils.ensureIndexExists(index);
+		final IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndex(index);
 		
 		switch(versionInfoService.getApiVersion()) {
 		case V_2_4_3:
@@ -308,44 +319,73 @@ public class DocumentService {
 		default:
 			break;
 		}
+		final long timestamp = indexUtils.getTimestamp(index, document);
 
 		PGobject jsonObject = new PGobject();
 		jsonObject.setType("json");
 		jsonObject.setValue(document);
 
-		StringBuilder queryBuilder = new StringBuilder();
-		queryBuilder.append("SELECT ");
-		switch (opType) {
-		case CREATE:
-			queryBuilder.append("elefana_create");
-			break;
-		case UPDATE:
-			queryBuilder.append("elefana_update");
-			break;
-		case OVERWRITE:
-		default:
-			queryBuilder.append("elefana_overwrite");
-			break;
+		final StringBuilder queryBuilder = new StringBuilder();
+		
+		if(nodeSettingsService.isUsingCitus()) {
+			queryBuilder.append("INSERT INTO ");
+			queryBuilder.append(indexUtils.getQueryTarget(index));
+			queryBuilder.append(" AS i");
+			queryBuilder.append(" (_index, _type, _id, _timestamp, _source) VALUES (?, ?, ?, ?, ?)");
+			
+			switch (opType) {
+	  		case CREATE:
+	  			queryBuilder.append(" ON CONFLICT DO NOTHING");
+	  			break;
+	  		case UPDATE:
+	  			queryBuilder.append(
+	  					" ON CONFLICT (_id) DO UPDATE SET _timestamp = EXCLUDED._timestamp, _source = i._source || EXCLUDED._source");
+	  			break;
+	  		case OVERWRITE:
+	  		default:
+	  			queryBuilder.append(
+	  					" ON CONFLICT (_id) DO UPDATE SET _timestamp = EXCLUDED._timestamp, _source = EXCLUDED._source");
+	  			break;
+	  		}
+		} else {
+			queryBuilder.append("SELECT ");
+			switch (opType) {
+			case CREATE:
+				queryBuilder.append("elefana_create");
+				break;
+			case UPDATE:
+				queryBuilder.append("elefana_update");
+				break;
+			case OVERWRITE:
+			default:
+				queryBuilder.append("elefana_overwrite");
+				break;
+			}
+			queryBuilder.append("(?, ?, ?, ?, ?);");
 		}
-		queryBuilder.append("(?, ?, ?, ?, ?);");
 
 		Connection connection = jdbcTemplate.getDataSource().getConnection();
 		PreparedStatement preparedStatement = connection.prepareStatement(queryBuilder.toString());
 		preparedStatement.setString(1, index);
 		preparedStatement.setString(2, type);
 		preparedStatement.setString(3, id);
-		preparedStatement.setLong(4, System.currentTimeMillis());
+		preparedStatement.setLong(4, timestamp);
 		preparedStatement.setObject(5, jsonObject);
 		
-		ResultSet resultSet = preparedStatement.executeQuery();
-		if (!resultSet.next()) {
-			preparedStatement.close();
-			connection.close();
-			throw new RuntimeException("");
+		int rows = 0;
+		if(nodeSettingsService.isUsingCitus()) {
+			rows = preparedStatement.executeUpdate();
+		} else {
+			ResultSet resultSet = preparedStatement.executeQuery();
+			if (!resultSet.next()) {
+				preparedStatement.close();
+				connection.close();
+				throw new RuntimeException("");
+			}
+			rows = resultSet.getInt(1);
+			resultSet.close();
 		}
-		int rows = resultSet.getInt(1);
 		
-		resultSet.close();
 		preparedStatement.close();
 		connection.close();
 

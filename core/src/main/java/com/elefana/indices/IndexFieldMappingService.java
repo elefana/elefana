@@ -68,7 +68,7 @@ public class IndexFieldMappingService implements Runnable {
 
 	private final ObjectMapper objectMapper = new ObjectMapper();
 	private ScheduledFuture<?> scheduledTask;
-	
+
 	private FieldMapper fieldMapper;
 
 	@PostConstruct
@@ -86,10 +86,10 @@ public class IndexFieldMappingService implements Runnable {
 		scheduledTask = taskScheduler.scheduleWithFixedDelay(this,
 				Math.min(nodeSettingsService.getFieldStatsInterval(), nodeSettingsService.getMappingInterval()));
 	}
-	
+
 	@PreDestroy
 	public void preDestroy() {
-		if(scheduledTask != null) {
+		if (scheduledTask != null) {
 			scheduledTask.cancel(false);
 		}
 	}
@@ -517,9 +517,11 @@ public class IndexFieldMappingService implements Runnable {
 		final Map<String, V2FieldStats> fieldStats = new HashMap<String, V2FieldStats>();
 		final List<String> types = getTypesForIndex(indexName);
 
-		long totalDocs = (long) jdbcTemplate
-				.queryForList("SELECT COUNT(*) FROM " + IndexUtils.DATA_TABLE + " WHERE _index='" + indexName + "'")
-				.get(0).get("count");
+		final String totalDocsQuery = nodeSettingsService.isUsingCitus()
+				? "SELECT COUNT(*) FROM " + indexUtils.getQueryTarget(indexName)
+				: "SELECT COUNT(*) FROM " + IndexUtils.DATA_TABLE + " WHERE _index='" + indexName + "'";
+
+		long totalDocs = (long) jdbcTemplate.queryForList(totalDocsQuery).get(0).get("count");
 
 		for (String type : types) {
 			List<String> fieldNames = getFieldNames(indexName, type);
@@ -528,9 +530,13 @@ public class IndexFieldMappingService implements Runnable {
 				if (fieldStats.containsKey(fieldName)) {
 					continue;
 				}
-				long totalDocsWithField = (long) jdbcTemplate.queryForList("SELECT COUNT(*) FROM "
-						+ IndexUtils.DATA_TABLE + " WHERE _index='" + indexName + "' AND _source ? '" + fieldName + "'")
-						.get(0).get("count");
+				final String totalDocsWithFieldQuery = nodeSettingsService.isUsingCitus()
+						? "SELECT COUNT(*) FROM " + indexUtils.getQueryTarget(indexName) + " WHERE _source ? '"
+								+ fieldName + "'"
+						: "SELECT COUNT(*) FROM " + IndexUtils.DATA_TABLE + " WHERE _index='" + indexName
+								+ "' AND _source ? '" + fieldName + "'";
+
+				long totalDocsWithField = (long) jdbcTemplate.queryForList(totalDocsWithFieldQuery).get(0).get("count");
 
 				V2FieldStats stats = versionInfoService.getApiVersion().isNewerThan(ApiVersion.V_2_4_3)
 						? new V5FieldStats() : new V2FieldStats();
@@ -600,8 +606,8 @@ public class IndexFieldMappingService implements Runnable {
 
 	private SqlRowSet getSampleDocuments(String index) {
 		if (nodeSettingsService.isUsingCitus()) {
-			return jdbcTemplate.queryForRowSet("SELECT _type, _source FROM " + IndexUtils.DATA_TABLE
-					+ " WHERE _index = ? LIMIT " + nodeSettingsService.getFallbackMappingSampleSize(), index);
+			return jdbcTemplate.queryForRowSet("SELECT _type, _source FROM " + indexUtils.getQueryTarget(index)
+					+ " LIMIT " + nodeSettingsService.getFallbackMappingSampleSize());
 		} else {
 			return jdbcTemplate.queryForRowSet(
 					"SELECT _type, _source FROM " + IndexUtils.DATA_TABLE + " TABLESAMPLE BERNOULLI("
@@ -612,9 +618,9 @@ public class IndexFieldMappingService implements Runnable {
 
 	private SqlRowSet getSampleDocuments(String index, String type) {
 		if (nodeSettingsService.isUsingCitus()) {
-			return jdbcTemplate.queryForRowSet("SELECT _source FROM " + IndexUtils.DATA_TABLE
-					+ " WHERE _index = ? AND _type = ? LIMIT " + nodeSettingsService.getFallbackMappingSampleSize(),
-					index, type);
+			return jdbcTemplate.queryForRowSet("SELECT _source FROM " + indexUtils.getQueryTarget(index)
+					+ " WHERE _type = ? LIMIT " + nodeSettingsService.getFallbackMappingSampleSize(),
+					type);
 		} else {
 			return jdbcTemplate.queryForRowSet("SELECT _source FROM " + IndexUtils.DATA_TABLE
 					+ " TABLESAMPLE BERNOULLI(" + String.format("%f", nodeSettingsService.getMappingSampleSize())

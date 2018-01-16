@@ -92,13 +92,14 @@ public class BulkTask implements Callable<List<Map<String, Object>>> {
 
 			Timer.Context timer = psqlTimer.time();
 			try {
-				CopyIn copyIn = copyManager.copyIn("COPY " + queryTarget + " FROM STDIN WITH DELIMITER '" + DELIMITER + "'");
+				CopyIn copyIn = copyManager
+						.copyIn("COPY " + queryTarget + " FROM STDIN WITH DELIMITER '" + DELIMITER + "'");
 
 				for (int i = from; i < from + size && i < indexOperations.size(); i++) {
 					BulkIndexOperation indexOperation = indexOperations.get(i);
 					final String row = indexOperation.getIndex() + DELIMITER + indexOperation.getType() + DELIMITER
 							+ indexOperation.getId() + DELIMITER + System.currentTimeMillis() + DELIMITER
-							+ System.currentTimeMillis() + DELIMITER + indexOperation.getSource() + NEW_LINE;
+							+ indexOperation.getSource() + NEW_LINE;
 					final byte[] rowBytes = row.getBytes();
 					copyIn.writeToCopy(rowBytes, 0, rowBytes.length);
 				}
