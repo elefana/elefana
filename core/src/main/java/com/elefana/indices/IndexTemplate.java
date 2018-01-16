@@ -22,6 +22,7 @@ public class IndexTemplate {
 	private final Map<String, Object> settings = new HashMap<String, Object>();
 	
 	private String template;
+	private String timestamp_path;
 	private Map<String, Object> mappings;
 
 	public IndexTemplate() {
@@ -35,6 +36,18 @@ public class IndexTemplate {
 
 	public void setTemplate(String template) {
 		this.template = template;
+	}
+
+	public String getTimestamp_path() {
+		return timestamp_path;
+	}
+
+	public void setTimestamp_path(String timestamp_path) {
+		this.timestamp_path = timestamp_path;
+	}
+
+	public boolean isTimeSeries() {
+		return timestamp_path != null;
 	}
 
 	public Map<String, Object> getSettings() {

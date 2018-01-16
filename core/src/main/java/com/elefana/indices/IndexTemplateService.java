@@ -55,16 +55,6 @@ public class IndexTemplateService {
 	
 	private final ObjectMapper objectMapper = new ObjectMapper();
 	
-	@PostConstruct
-	public void postConstruct() {
-		jdbcTemplate.execute(
-				"CREATE TABLE IF NOT EXISTS elefana_index_template (_template_id VARCHAR(255) PRIMARY KEY, _index_pattern VARCHAR(255), _mappings jsonb);");
-		
-		if (nodeSettingsService.isUsingCitus()) {
-			jdbcTemplate.execute("SELECT create_distributed_table('elefana_index_template', '_template_id');");
-		}
-	}
-	
 	public List<IndexTemplate> getIndexTemplates() {
 		final List<IndexTemplate> results = new ArrayList<IndexTemplate>();
 		try {
@@ -72,6 +62,7 @@ public class IndexTemplateService {
 			while (rowSet.next()) {
 				IndexTemplate indexTemplate = new IndexTemplate();
 				indexTemplate.setTemplate(rowSet.getString("_index_pattern"));
+				indexTemplate.setTimestamp_path(rowSet.getString("_timestamp_path"));
 				indexTemplate.setMappings(objectMapper.readValue(rowSet.getString("_mappings"), Map.class));
 				results.add(indexTemplate);
 			}
@@ -89,6 +80,7 @@ public class IndexTemplateService {
 		try {
 			IndexTemplate result = new IndexTemplate();
 			result.setTemplate(rowSet.getString("_index_pattern"));
+			result.setTimestamp_path(rowSet.getString("_timestamp_path"));
 			result.setMappings(objectMapper.readValue(rowSet.getString("_mappings"), Map.class));
 			return result;
 		} catch (Exception e) {
@@ -118,15 +110,21 @@ public class IndexTemplateService {
 		}
 		
 		try {
-			String indexPattern = templateData.get("template").toString();
+			final String indexPattern = templateData.get("template").toString();
+			
+			String timestampPath = null;
+			
+			if(templateData.get("timestamp_path").valueType().equals(ValueType.STRING)) {
+				timestampPath = templateData.get("timestamp_path").toString();
+			}
 			
 			PGobject jsonObject = new PGobject();
 			jsonObject.setType("json");
 			jsonObject.setValue(templateData.get("mappings").toString());
 
 			jdbcTemplate.update(
-					"INSERT INTO elefana_index_template (_template_id, _index_pattern, _mappings) VALUES (?, ?, ?) ON CONFLICT (_template_id) DO UPDATE SET _mappings = EXCLUDED._mappings, _index_pattern = EXCLUDED._index_pattern",
-					templateId, indexPattern, jsonObject);
+					"INSERT INTO elefana_index_template (_template_id, _index_pattern, _timestamp_path, _mappings) VALUES (?, ?, ?, ?) ON CONFLICT (_template_id) DO UPDATE SET _mappings = EXCLUDED._mappings, _index_pattern = EXCLUDED._index_pattern",
+					templateId, indexPattern, timestampPath, jsonObject);
 			return;
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);

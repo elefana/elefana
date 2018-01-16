@@ -30,99 +30,51 @@ import javax.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
-import org.springframework.jdbc.datasource.init.ScriptUtils;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
 import com.codahale.metrics.MetricRegistry;
-import com.elefana.indices.IndexFieldMappingService;
+import com.elefana.indices.IndexTemplate;
+import com.elefana.indices.IndexTemplateService;
 import com.elefana.node.NodeSettingsService;
 import com.zaxxer.hikari.HikariDataSource;
 
 /**
  *
  */
-@Component
+@Service
 public class IndexUtils {
 	private static final Logger LOGGER = LoggerFactory.getLogger(IndexUtils.class);
 
 	public static final String DATA_TABLE = "elefana_data";
 	public static final String PARTITION_TRACKING_TABLE = "elefana_partition_tracking";
-	
+
 	public static final String TRIGGERS_PREFIX = "elefana_triggers_";
 	public static final String GIN_INDEX_PREFIX = "elefana_gin_idx_";
 	public static final String PRIMARY_KEY_PREFIX = "elefana_pkey_";
-	
+
 	private final Set<String> knownTables = new ConcurrentSkipListSet<String>();
 
 	@Autowired
 	private NodeSettingsService nodeSettingsService;
 	@Autowired
+	private IndexTemplateService indexTemplateService;
+	@Autowired
 	private JdbcTemplate jdbcTemplate;
 	@Autowired
 	private MetricRegistry metricRegistry;
+	@Autowired
+	private DbInitializer dbInitializer;
 
 	@PostConstruct
 	public void postConstruct() throws SQLException {
-		createMasterTableIfNotExists();
-		createPartitionTrackingTableIfNotExists();
-		
-		if(jdbcTemplate.getDataSource() instanceof HikariDataSource) {
-	        ((HikariDataSource) jdbcTemplate.getDataSource()).setMetricRegistry(metricRegistry);
-	    }
-		
+		dbInitializer.initialiseDatabase();
+
+		if (jdbcTemplate.getDataSource() instanceof HikariDataSource) {
+			((HikariDataSource) jdbcTemplate.getDataSource()).setMetricRegistry(metricRegistry);
+		}
+
 		knownTables.addAll(listTables());
-	}
-
-	private void createMasterTableIfNotExists() throws SQLException {
-		try {
-			ResourceDatabasePopulator resourceDatabasePopulator = new ResourceDatabasePopulator(
-					new ClassPathResource("/functions.sql", IndexFieldMappingService.class));
-			resourceDatabasePopulator.setSeparator(ScriptUtils.EOF_STATEMENT_SEPARATOR);
-			resourceDatabasePopulator.execute(jdbcTemplate.getDataSource());
-		} catch (Exception e) {
-			LOGGER.error(e.getMessage(), e);
-		}
-		
-		Connection connection = jdbcTemplate.getDataSource().getConnection();
-
-		final String createMasterTableQuery = "CREATE TABLE IF NOT EXISTS " + DATA_TABLE
-				+ " (_index VARCHAR(255) NOT NULL, _type VARCHAR(255) NOT NULL, _id VARCHAR(255) NOT NULL, _timestamp BIGINT, _source jsonb) PARTITION BY LIST (_index);";
-		PreparedStatement preparedStatement = connection.prepareStatement(createMasterTableQuery);
-		preparedStatement.execute();
-		preparedStatement.close();
-		
-		final String triggerName = TRIGGERS_PREFIX + DATA_TABLE;
-
-		if (nodeSettingsService.isUsingCitus()) {
-			preparedStatement = connection
-					.prepareStatement("SELECT create_distributed_table('" + DATA_TABLE + "', '_id');");
-			preparedStatement.execute();
-			preparedStatement.close();
-		}
-
-		connection.close();
-	}
-
-	private void createPartitionTrackingTableIfNotExists() throws SQLException {
-		Connection connection = jdbcTemplate.getDataSource().getConnection();
-
-		final String createMasterTableQuery = "CREATE TABLE IF NOT EXISTS " + PARTITION_TRACKING_TABLE
-				+ " (_index VARCHAR(255) PRIMARY KEY, _partitionTable VARCHAR(255) NOT NULL);";
-		PreparedStatement preparedStatement = connection.prepareStatement(createMasterTableQuery);
-		preparedStatement.execute();
-		preparedStatement.close();
-
-		if (nodeSettingsService.isUsingCitus()) {
-			preparedStatement = connection
-					.prepareStatement("SELECT create_distributed_table('" + PARTITION_TRACKING_TABLE + "', '_index');");
-			preparedStatement.execute();
-			preparedStatement.close();
-		}
-
-		connection.close();
 	}
 
 	public List<String> listIndices() throws SQLException {
@@ -134,7 +86,7 @@ public class IndexUtils {
 		}
 		return results;
 	}
-	
+
 	public List<String> listIndicesForIndexPattern(List<String> indexPatterns) throws SQLException {
 		Set<String> results = new HashSet<String>();
 		for (String indexPattern : indexPatterns) {
@@ -170,22 +122,46 @@ public class IndexUtils {
 		return results;
 	}
 
+	public String getQueryTarget(String indexName) {
+		if(!nodeSettingsService.isUsingCitus()) {
+			return DATA_TABLE;
+		}
+		return getPartitionTableForIndex(indexName);
+	}
+
 	public void ensureIndexExists(String indexName) throws SQLException {
 		final String tableName = convertIndexNameToTableName(indexName);
 		if (knownTables.contains(tableName)) {
 			return;
 		}
+		IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndex(indexName);
+		boolean timeSeries = false;
+
+		if (indexTemplate != null && indexTemplate.isTimeSeries()) {
+			timeSeries = true;
+		}
+
 		final String ginIndexName = GIN_INDEX_PREFIX + tableName;
 		final String constraintName = PRIMARY_KEY_PREFIX + tableName;
 
 		Connection connection = jdbcTemplate.getDataSource().getConnection();
+		PreparedStatement preparedStatement;
 
-		final String createTableQuery = "CREATE TABLE IF NOT EXISTS " + tableName + " PARTITION OF " + DATA_TABLE
-				+ " FOR VALUES in ('" + indexName + "')";
-		LOGGER.info(createTableQuery);
-		PreparedStatement preparedStatement = connection.prepareStatement(createTableQuery);
-		preparedStatement.execute();
-		preparedStatement.close();
+		if (!nodeSettingsService.isUsingCitus()) {
+			final String createTableQuery = "CREATE TABLE IF NOT EXISTS " + tableName + " PARTITION OF " + DATA_TABLE
+					+ " FOR VALUES in ('" + indexName + "')";
+			LOGGER.info(createTableQuery);
+			preparedStatement = connection.prepareStatement(createTableQuery);
+			preparedStatement.execute();
+			preparedStatement.close();
+		} else {
+			final String createTableQuery = "CREATE TABLE IF NOT EXISTS " + tableName
+					+ " (_index VARCHAR(255) NOT NULL, _type VARCHAR(255) NOT NULL, _id VARCHAR(255) NOT NULL, _timestamp BIGINT, _source jsonb)";
+			LOGGER.info(createTableQuery);
+			preparedStatement = connection.prepareStatement(createTableQuery);
+			preparedStatement.execute();
+			preparedStatement.close();
+		}
 
 		final String createPrimaryKeyQuery = "ALTER TABLE " + tableName + " ADD CONSTRAINT " + constraintName
 				+ " PRIMARY KEY (_id);";
@@ -200,14 +176,29 @@ public class IndexUtils {
 		preparedStatement = connection.prepareStatement(createGinIndexQuery);
 		preparedStatement.execute();
 		preparedStatement.close();
-		
-		final String createPartitionTrackingEntry = "INSERT INTO " + PARTITION_TRACKING_TABLE + " (_index, _partitionTable) VALUES (?, ?) ON CONFLICT DO NOTHING";
+
+		final String createPartitionTrackingEntry = "INSERT INTO " + PARTITION_TRACKING_TABLE
+				+ " (_index, _partitionTable) VALUES (?, ?) ON CONFLICT DO NOTHING";
 		preparedStatement = connection.prepareStatement(createPartitionTrackingEntry);
 		preparedStatement.setString(1, indexName);
 		preparedStatement.setString(2, tableName);
 		preparedStatement.execute();
 		preparedStatement.close();
-		
+
+		if (nodeSettingsService.isUsingCitus()) {
+			if (timeSeries) {
+				preparedStatement = connection.prepareStatement(
+						"SELECT create_distributed_table('" + tableName + "', '_timestamp', 'append');");
+				preparedStatement.execute();
+				preparedStatement.close();
+			} else {
+				preparedStatement = connection
+						.prepareStatement("SELECT create_distributed_table('" + tableName + "', '_id');");
+				preparedStatement.execute();
+				preparedStatement.close();
+			}
+		}
+
 		connection.close();
 		knownTables.add(tableName);
 	}
@@ -219,7 +210,7 @@ public class IndexUtils {
 	private void deleteTable(String tableName) {
 		jdbcTemplate.update("DROP TABLE IF EXISTS " + tableName + " CASCADE;");
 	}
-	
+
 	private List<String> listTables() throws SQLException {
 		final String query = "SELECT _partitionTable FROM " + PARTITION_TRACKING_TABLE;
 		final List<String> results = new ArrayList<String>(1);
@@ -229,7 +220,7 @@ public class IndexUtils {
 		}
 		return results;
 	}
-	
+
 	public String getIndexForPartitionTable(String partitionTable) {
 		final String query = "SELECT _index FROM " + PARTITION_TRACKING_TABLE + " WHERE _partitionTable = ?";
 		for (Map<String, Object> row : jdbcTemplate.queryForList(query, partitionTable)) {
@@ -237,7 +228,7 @@ public class IndexUtils {
 		}
 		return null;
 	}
-	
+
 	public String getPartitionTableForIndex(String index) {
 		final String query = "SELECT _partitionTable FROM " + PARTITION_TRACKING_TABLE + " WHERE _index = ?";
 		for (Map<String, Object> row : jdbcTemplate.queryForList(query, index)) {

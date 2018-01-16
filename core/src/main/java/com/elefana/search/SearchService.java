@@ -33,6 +33,7 @@ import org.springframework.stereotype.Service;
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.MetricRegistry;
 import com.elefana.indices.IndexFieldMappingService;
+import com.elefana.node.NodeSettingsService;
 import com.elefana.util.IndexUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -45,6 +46,8 @@ public class SearchService {
 
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
+	@Autowired
+	private NodeSettingsService nodeSettingsService;
 	@Autowired
 	private IndexFieldMappingService indexFieldMappingService;
 	@Autowired
@@ -143,7 +146,8 @@ public class SearchService {
 		final List<String> temporaryTablesCreated = new ArrayList<String>(1);
 
 		final StringBuilder queryBuilder = new StringBuilder();
-		queryBuilder.append("SELECT * FROM " + IndexUtils.DATA_TABLE);
+		queryBuilder.append("SELECT * FROM ");
+		queryBuilder.append(IndexUtils.DATA_TABLE);
 		queryBuilder.append(" WHERE _index IN (");
 		for(int i = 0; i < indices.size(); i++) {
 			if(i > 0) {

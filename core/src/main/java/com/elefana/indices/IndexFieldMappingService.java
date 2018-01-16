@@ -83,18 +83,6 @@ public class IndexFieldMappingService implements Runnable {
 			break;
 		}
 
-		jdbcTemplate.execute(
-				"CREATE TABLE IF NOT EXISTS elefana_index_mapping (_tracking_id VARCHAR(255) PRIMARY KEY, _index VARCHAR(255), _type VARCHAR(255), _mapping jsonb);");
-		jdbcTemplate.execute(
-				"CREATE TABLE IF NOT EXISTS elefana_index_field_capabilities (_index VARCHAR(255) PRIMARY KEY, _capabilities jsonb);");
-		jdbcTemplate.execute(
-				"CREATE TABLE IF NOT EXISTS elefana_index_field_stats (_index VARCHAR(255) PRIMARY KEY, _stats jsonb);");
-		if (nodeSettingsService.isUsingCitus()) {
-			jdbcTemplate.execute("SELECT create_distributed_table('elefana_index_mapping', '_tracking_id');");
-			jdbcTemplate.execute("SELECT create_distributed_table('elefana_index_field_capabilities', '_index');");
-			jdbcTemplate.execute("SELECT create_distributed_table('elefana_index_field_stats', '_index');");
-		}
-
 		scheduledTask = taskScheduler.scheduleWithFixedDelay(this,
 				Math.min(nodeSettingsService.getFieldStatsInterval(), nodeSettingsService.getMappingInterval()));
 	}

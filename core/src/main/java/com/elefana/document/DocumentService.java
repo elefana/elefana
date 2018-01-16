@@ -33,6 +33,9 @@ import org.springframework.stereotype.Service;
 import com.elefana.exception.DocumentAlreadyExistsException;
 import com.elefana.exception.NoSuchDocumentException;
 import com.elefana.indices.IndexFieldMappingService;
+import com.elefana.indices.IndexTemplate;
+import com.elefana.indices.IndexTemplateService;
+import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
 import com.elefana.util.IndexUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -45,7 +48,9 @@ public class DocumentService {
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 	@Autowired
-	private IndexUtils tableUtils;
+	private IndexUtils indexUtils;
+	@Autowired
+	private NodeSettingsService nodeSettingsService;
 	@Autowired
 	private VersionInfoService versionInfoService;
 	@Autowired
@@ -85,14 +90,18 @@ public class DocumentService {
 		try {
 			for (Object tmpRequestItem : requestItems) {
 				Map<String, Object> requestItem = (Map<String, Object>) tmpRequestItem;
+				
+				final String index = (String) requestItem.get("_index");
+				final String queryTarget = indexUtils.getQueryTarget(index);
+				
 				StringBuilder queryBuilder = new StringBuilder();
 				queryBuilder.append("SELECT * FROM ");
-				queryBuilder.append(IndexUtils.DATA_TABLE);
+				queryBuilder.append(queryTarget);
 				queryBuilder.append(" WHERE ");
 				
-				if (requestItem.containsKey("_index")) {
+				if (!nodeSettingsService.isUsingCitus()) {
 					queryBuilder.append("_index = '");
-					queryBuilder.append(requestItem.get("_index"));
+					queryBuilder.append(index);
 					queryBuilder.append("'");
 
 					if (requestItem.containsKey("_type") || requestItem.containsKey("_id")) {
@@ -147,19 +156,24 @@ public class DocumentService {
 
 		MultiGetResponse result = new MultiGetResponse();
 		try {
-			for (String index : tableUtils.listIndicesForIndexPattern(indexPattern)) {
+			for (String index : indexUtils.listIndicesForIndexPattern(indexPattern)) {
+				final String queryTarget = indexUtils.getQueryTarget(index);
+				
 				for (Object tmpRequestItem : requestItems) {
 					Map<String, Object> requestItem = (Map<String, Object>) tmpRequestItem;
 					StringBuilder queryBuilder = new StringBuilder();
 					queryBuilder.append("SELECT * FROM ");
-					queryBuilder.append(IndexUtils.DATA_TABLE);
+					queryBuilder.append(queryTarget);
 					queryBuilder.append(" WHERE ");
-					queryBuilder.append("_index='");
-					queryBuilder.append(index);
-					queryBuilder.append("'");
 					
-					if (requestItem.containsKey("_type") || requestItem.containsKey("_id")) {
-						queryBuilder.append(" AND ");
+					if(!nodeSettingsService.isUsingCitus()) {
+						queryBuilder.append("_index='");
+						queryBuilder.append(index);
+						queryBuilder.append("'");
+						
+						if (requestItem.containsKey("_type") || requestItem.containsKey("_id")) {
+							queryBuilder.append(" AND ");
+						}
 					}
 
 					if (requestItem.containsKey("_type")) {
@@ -210,20 +224,25 @@ public class DocumentService {
 
 		MultiGetResponse result = new MultiGetResponse();
 		try {
-			for (String index : tableUtils.listIndicesForIndexPattern(indexPattern)) {
+			for (String index : indexUtils.listIndicesForIndexPattern(indexPattern)) {
+				final String queryTarget = indexUtils.getQueryTarget(index);
+				
 				for(String type : indexFieldMappingService.getTypesForIndex(index, typePattern)) {
 					for (Object tmpRequestItem : requestItems) {
 						Map<String, Object> requestItem = (Map<String, Object>) tmpRequestItem;
 						StringBuilder queryBuilder = new StringBuilder();
 						queryBuilder.append("SELECT * FROM ");
-						queryBuilder.append(IndexUtils.DATA_TABLE);
+						queryBuilder.append(queryTarget);
 						queryBuilder.append(" WHERE ");
-						queryBuilder.append("_index = '");
-						queryBuilder.append(index);
-						queryBuilder.append("'");
 						
-						if (!type.isEmpty() || requestItem.containsKey("_id")) {
-							queryBuilder.append(" AND ");
+						if(!nodeSettingsService.isUsingCitus()) {
+							queryBuilder.append("_index = '");
+							queryBuilder.append(index);
+							queryBuilder.append("'");
+							
+							if (!type.isEmpty() || requestItem.containsKey("_id")) {
+								queryBuilder.append(" AND ");
+							}
 						}
 
 						if (!type.isEmpty()) {
@@ -271,7 +290,7 @@ public class DocumentService {
 
 	public IndexApiResponse index(String index, String type, String id, String document, IndexOpType opType)
 			throws Exception {
-		tableUtils.ensureIndexExists(index);
+		indexUtils.ensureIndexExists(index);
 		
 		switch(versionInfoService.getApiVersion()) {
 		case V_2_4_3:

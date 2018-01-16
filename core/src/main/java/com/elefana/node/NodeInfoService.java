@@ -18,10 +18,12 @@ package com.elefana.node;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,10 +48,10 @@ public class NodeInfoService {
 
 	public static final String[] ALL_INFO = new String[] { KEY_OS, KEY_PROCESS, KEY_JVM };
 	
+	private final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
+	
 	@Autowired
 	protected Environment environment;
-	@Autowired
-	protected ScheduledExecutorService scheduledExecutorService;
 	@Autowired
 	protected NodeSettingsService nodeSettingsService;
 	@Autowired
@@ -96,6 +98,11 @@ public class NodeInfoService {
 		scheduledExecutorService.scheduleAtFixedRate(jvmStats, 0L, 1L, TimeUnit.SECONDS);
 		scheduledExecutorService.scheduleAtFixedRate(osStats, 0L, 1L, TimeUnit.SECONDS);
 		scheduledExecutorService.scheduleAtFixedRate(processStats, 0L, 1L, TimeUnit.SECONDS);
+	}
+	
+	@PreDestroy
+	public void preDestroy() {
+		scheduledExecutorService.shutdown();
 	}
 
 	public Map<String, Object> getNodeInfo(String... infoFields) throws IOException {

@@ -41,10 +41,5 @@ public class TaskSchedulerConfiguration implements SchedulingConfigurer {
     public TaskScheduler taskScheduler() {
         return new ThreadPoolTaskScheduler();
     }
-	
-	@Bean
-	public ScheduledExecutorService scheduledExecutorService() {
-		return Executors.newScheduledThreadPool(Runtime.getRuntime().availableProcessors() * 2);
-	}
 }
 
