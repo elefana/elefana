@@ -18,6 +18,7 @@ package com.elefana.indices;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.annotation.PostConstruct;
 
@@ -55,6 +56,9 @@ public class IndexTemplateService {
 	
 	private final ObjectMapper objectMapper = new ObjectMapper();
 	
+	private final Map<String, String> indexToIndexTemplateNullCache = new ConcurrentHashMap<String, String>();
+	private final Map<String, IndexTemplate> indexToIndexTemplateCache = new ConcurrentHashMap<String, IndexTemplate>();
+	
 	public List<IndexTemplate> getIndexTemplates() {
 		final List<IndexTemplate> results = new ArrayList<IndexTemplate>();
 		try {
@@ -90,6 +94,23 @@ public class IndexTemplateService {
 	}
 	
 	public IndexTemplate getIndexTemplateForIndex(String index) {
+		if(indexToIndexTemplateNullCache.containsKey(index)) {
+			return null;
+		}
+		if(indexToIndexTemplateCache.containsKey(index)) {
+			return indexToIndexTemplateCache.get(index);
+		}
+		
+		IndexTemplate result = internalGetIndexTemplateForIndex(index);
+		if(result != null) {
+			indexToIndexTemplateCache.put(index, result);
+		} else {
+			indexToIndexTemplateNullCache.put(index, index);
+		}
+		return result;
+	}
+	
+	private IndexTemplate internalGetIndexTemplateForIndex(String index) {
 		for(IndexTemplate indexTemplate : getIndexTemplates()) {
 			String indexRegex = indexTemplate.getTemplate().replace("*", "(.*)");
 			indexRegex = "^" + indexRegex + "$";
@@ -125,6 +146,9 @@ public class IndexTemplateService {
 			jdbcTemplate.update(
 					"INSERT INTO elefana_index_template (_template_id, _index_pattern, _timestamp_path, _mappings) VALUES (?, ?, ?, ?) ON CONFLICT (_template_id) DO UPDATE SET _mappings = EXCLUDED._mappings, _index_pattern = EXCLUDED._index_pattern",
 					templateId, indexPattern, timestampPath, jsonObject);
+			
+			indexToIndexTemplateNullCache.clear();
+			indexToIndexTemplateCache.clear();
 			return;
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);

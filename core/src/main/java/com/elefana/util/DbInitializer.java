@@ -53,6 +53,9 @@ public class DbInitializer {
 	}
 
 	public boolean isTableDistributed(String tableName) {
+		if(!nodeSettingsService.isUsingCitus()) {
+			return false;
+		}
 		List<Map<String, Object>> results = jdbcTemplate.queryForList(
 				"SELECT column_to_column_name(logicalrelid, partkey) AS dist_col_name FROM pg_dist_partition WHERE logicalrelid='"
 						+ tableName + "'::regclass;");

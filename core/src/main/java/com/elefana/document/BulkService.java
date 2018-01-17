@@ -113,7 +113,7 @@ public class BulkService {
 						indexOperation.setId(UUID.randomUUID().toString());
 					}
 					indexOperation.setSource(lines[i + 1]);
-					indexOperation.setTimestamp(indexUtils.getTimestamp(indexOperation.getIndex(), lines[i + 1]));
+					indexOperation.setTimestamp(indexUtils.getTimestamp(indexOperation.getIndex(), indexOperation.getSource()));
 					
 					if (!indexOperations.containsKey(indexOperation.getIndex())) {
 						indexOperations.put(indexOperation.getIndex(), new ArrayList<BulkIndexOperation>(1));

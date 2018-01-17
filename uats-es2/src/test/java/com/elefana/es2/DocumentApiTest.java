@@ -234,11 +234,6 @@ public class DocumentApiTest extends DocumentedTest {
 			.body("docs[1]._version", equalTo(1))
 			.body("docs[1].found", equalTo(true));
 	}
-
-	@Test
-	public void testBulk() {
-
-	}
 	
 	private void indexWithId(final String id, final String message) {
 		given()

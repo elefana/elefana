@@ -87,7 +87,9 @@ public class IndexUtils {
 		final List<String> results = new ArrayList<String>(1);
 
 		for (Map<String, Object> row : jdbcTemplate.queryForList(query)) {
-			results.add((String) row.get("_index"));
+			final String index = (String) row.get("_index");
+			LOGGER.info(index + " " + dbInitializer.isTableDistributed(getPartitionTableForIndex(index)));
+			results.add(index);
 		}
 		return results;
 	}
@@ -178,28 +180,37 @@ public class IndexUtils {
 		Connection connection = jdbcTemplate.getDataSource().getConnection();
 		PreparedStatement preparedStatement;
 
-		if (!nodeSettingsService.isUsingCitus()) {
-			final String createTableQuery = "CREATE TABLE IF NOT EXISTS " + tableName + " PARTITION OF " + DATA_TABLE
-					+ " FOR VALUES in ('" + indexName + "')";
-			LOGGER.info(createTableQuery);
-			preparedStatement = connection.prepareStatement(createTableQuery);
-			preparedStatement.execute();
-			preparedStatement.close();
-		} else {
+		if (nodeSettingsService.isUsingCitus()) {
 			final String createTableQuery = "CREATE TABLE IF NOT EXISTS " + tableName
 					+ " (_index VARCHAR(255) NOT NULL, _type VARCHAR(255) NOT NULL, _id VARCHAR(255) NOT NULL, _timestamp BIGINT, _source jsonb)";
 			LOGGER.info(createTableQuery);
 			preparedStatement = connection.prepareStatement(createTableQuery);
 			preparedStatement.execute();
 			preparedStatement.close();
+		} else {
+			final String createTableQuery = "CREATE TABLE IF NOT EXISTS " + tableName + " PARTITION OF " + DATA_TABLE
+					+ " FOR VALUES in ('" + indexName + "')";
+			LOGGER.info(createTableQuery);
+			preparedStatement = connection.prepareStatement(createTableQuery);
+			preparedStatement.execute();
+			preparedStatement.close();
 		}
-
-		final String createPrimaryKeyQuery = "ALTER TABLE " + tableName + " ADD CONSTRAINT " + constraintName
-				+ " PRIMARY KEY (_id);";
-		LOGGER.info(createPrimaryKeyQuery);
-		preparedStatement = connection.prepareStatement(createPrimaryKeyQuery);
-		preparedStatement.execute();
-		preparedStatement.close();
+		
+		if (nodeSettingsService.isUsingCitus() && timeSeries) {
+			final String createPrimaryKeyQuery = "ALTER TABLE " + tableName + " ADD CONSTRAINT " + constraintName
+					+ " PRIMARY KEY (_timestamp, _id);";
+			LOGGER.info(createPrimaryKeyQuery);
+			preparedStatement = connection.prepareStatement(createPrimaryKeyQuery);
+			preparedStatement.execute();
+			preparedStatement.close();
+		} else {
+			final String createPrimaryKeyQuery = "ALTER TABLE " + tableName + " ADD CONSTRAINT " + constraintName
+					+ " PRIMARY KEY (_id);";
+			LOGGER.info(createPrimaryKeyQuery);
+			preparedStatement = connection.prepareStatement(createPrimaryKeyQuery);
+			preparedStatement.execute();
+			preparedStatement.close();
+		}
 
 		final String createGinIndexQuery = "CREATE INDEX IF NOT EXISTS " + ginIndexName + " ON " + tableName
 				+ " USING GIN (_source jsonb_ops)";

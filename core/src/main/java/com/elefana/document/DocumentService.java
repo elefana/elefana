@@ -301,8 +301,7 @@ public class DocumentService {
 	public IndexApiResponse index(String index, String type, String id, String document, IndexOpType opType)
 			throws Exception {
 		indexUtils.ensureIndexExists(index);
-		final IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndex(index);
-		
+
 		switch(versionInfoService.getApiVersion()) {
 		case V_2_4_3:
 			switch (opType) {

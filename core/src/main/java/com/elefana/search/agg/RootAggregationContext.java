@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.elefana.indices.IndexFieldMappingService;
+import com.elefana.node.NodeSettingsService;
 import com.elefana.search.RequestBodySearch;
 
 public class RootAggregationContext extends BucketAggregation {
@@ -34,21 +35,22 @@ public class RootAggregationContext extends BucketAggregation {
 			aggregation.executeSqlQuery(aggregationExec);
 		}
 	}
-	
+
 	@Override
 	public void executeSqlQuery(AggregationExec parentExec, Map<String, Object> aggregationsResult, String queryTable) {
 		for (Aggregation aggregation : subaggregations) {
 			aggregation.executeSqlQuery(parentExec, aggregationsResult, queryTable);
 		}
 	}
-	
+
 	@Override
 	public void executeSqlQuery(List<String> indices, String[] types, JdbcTemplate jdbcTemplate,
-			IndexFieldMappingService indexFieldMappingService, Map<String, Object> aggregationsResult,
-			List<String> tempTablesCreated, String queryTable, RequestBodySearch requestBodySearch) {
+			NodeSettingsService nodeSettingsService, IndexFieldMappingService indexFieldMappingService,
+			Map<String, Object> aggregationsResult, List<String> tempTablesCreated, String queryTable,
+			RequestBodySearch requestBodySearch) {
 		for (Aggregation aggregation : subaggregations) {
-			aggregation.executeSqlQuery(indices, types, jdbcTemplate, indexFieldMappingService, aggregationsResult,
-					tempTablesCreated, queryTable, requestBodySearch);
+			aggregation.executeSqlQuery(indices, types, jdbcTemplate, nodeSettingsService, indexFieldMappingService,
+					aggregationsResult, tempTablesCreated, queryTable, requestBodySearch);
 		}
 	}
 
@@ -58,7 +60,7 @@ public class RootAggregationContext extends BucketAggregation {
 	}
 
 	public void setSubAggregations(List<Aggregation> subAggregations) {
-		if(subAggregations == null) {
+		if (subAggregations == null) {
 			return;
 		}
 		this.subaggregations.clear();

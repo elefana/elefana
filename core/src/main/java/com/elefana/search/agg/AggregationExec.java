@@ -21,12 +21,14 @@ import java.util.Map;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.elefana.indices.IndexFieldMappingService;
+import com.elefana.node.NodeSettingsService;
 import com.elefana.search.RequestBodySearch;
 
 public class AggregationExec {
 	private final List<String> indices;
-	private final String [] types;
+	private final String[] types;
 	private final JdbcTemplate jdbcTemplate;
+	private final NodeSettingsService nodeSettingsService;
 	private final IndexFieldMappingService indexFieldMappingService;
 	private final Map<String, Object> aggregationsResult;
 	private final List<String> tempTablesCreated;
@@ -34,13 +36,15 @@ public class AggregationExec {
 	private final RequestBodySearch requestBodySearch;
 	private final Aggregation aggregation;
 
-	public AggregationExec(List<String> indices, String [] types, JdbcTemplate jdbcTemplate, IndexFieldMappingService indexFieldMappingService,
+	public AggregationExec(List<String> indices, String[] types, JdbcTemplate jdbcTemplate,
+			NodeSettingsService nodeSettingsService, IndexFieldMappingService indexFieldMappingService,
 			Map<String, Object> aggregationsResult, List<String> tempTablesCreated, String queryTable,
 			RequestBodySearch requestBodySearch, Aggregation aggregation) {
 		super();
 		this.indices = indices;
 		this.types = types;
 		this.jdbcTemplate = jdbcTemplate;
+		this.nodeSettingsService = nodeSettingsService;
 		this.indexFieldMappingService = indexFieldMappingService;
 		this.aggregationsResult = aggregationsResult;
 		this.tempTablesCreated = tempTablesCreated;
@@ -59,6 +63,10 @@ public class AggregationExec {
 
 	public JdbcTemplate getJdbcTemplate() {
 		return jdbcTemplate;
+	}
+
+	public NodeSettingsService getNodeSettingsService() {
+		return nodeSettingsService;
 	}
 
 	public IndexFieldMappingService getIndexFieldMappingService() {

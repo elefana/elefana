@@ -81,6 +81,7 @@ public class SumAggregationTest extends AbstractAggregationTest {
 			.post("/" + indexA + "," + indexB + "/_search")
 		.then()
 			.statusCode(200)
+			.log().all()
 			.body("hits.total", equalTo(200))
 			.body("aggregations.aggs_result.value", equalTo(expectedSum));
 	}

@@ -130,29 +130,27 @@ public class SearchService {
 		}
 		return searchWithAggregation(indices, types, requestBodySearch, startTime);
 	}
-	
+
 	private Map<String, Object> searchWithAggregation(List<String> indices, String[] types,
 			RequestBodySearch requestBodySearch, long startTime) throws Exception {
-		final SearchQuery searchQuery = searchQueryBuilder.buildQuery(indices, types,
-				requestBodySearch);
+		final SearchQuery searchQuery = searchQueryBuilder.buildQuery(indices, types, requestBodySearch);
 		final List<String> temporaryTablesCreated = searchQuery.getTemporaryTables();
-		
-		final Map<String, Object> result = executeQuery(searchQuery.getQuery(), startTime,
-				requestBodySearch.getSize());
+
+		final Map<String, Object> result = executeQuery(searchQuery.getQuery(), startTime, requestBodySearch.getSize());
 		final Map<String, Object> aggregationsResult = new HashMap<String, Object>();
 
-		requestBodySearch.getAggregations().executeSqlQuery(indices, types, jdbcTemplate, indexFieldMappingService,
-				aggregationsResult, temporaryTablesCreated, searchQuery.getResultTable(), requestBodySearch);
+		requestBodySearch.getAggregations().executeSqlQuery(indices, types, jdbcTemplate, nodeSettingsService,
+				indexFieldMappingService, aggregationsResult, temporaryTablesCreated, searchQuery.getResultTable(),
+				requestBodySearch);
 		result.put("aggregations", aggregationsResult);
 		return result;
 	}
 
 	private Map<String, Object> searchWithoutAggregation(List<String> indices, String[] types,
 			RequestBodySearch requestBodySearch, long startTime) throws Exception {
-		final SearchQuery searchQuery = searchQueryBuilder.buildQuery(indices, types,
-				requestBodySearch);
+		final SearchQuery searchQuery = searchQueryBuilder.buildQuery(indices, types, requestBodySearch);
 		final List<String> temporaryTablesCreated = searchQuery.getTemporaryTables();
-		
+
 		return executeQuery(searchQuery.getQuery(), startTime, requestBodySearch.getSize());
 	}
 

@@ -79,18 +79,19 @@ public class CitusSearchQueryBuilder implements SearchQueryBuilder {
 				queryBuilder.append(")");
 			}
 			
-			if (requestBodySearch.getSize() > 0) {
-				queryBuilder.append(" LIMIT ");
-				queryBuilder.append(requestBodySearch.getSize());
-			}
-			if (requestBodySearch.getFrom() > 0) {
-				queryBuilder.append(" OFFSET ");
-				queryBuilder.append(requestBodySearch.getFrom());
-			}
-			
 			queryBuilder.append(')');
 		}
-		queryBuilder.append("))");
+		queryBuilder.append(") AS entries");
+		if (requestBodySearch.getFrom() > 0) {
+			queryBuilder.append(" OFFSET ");
+			queryBuilder.append(requestBodySearch.getFrom());
+		}
+		if (requestBodySearch.getSize() > 0) {
+			queryBuilder.append(" LIMIT ");
+			queryBuilder.append(requestBodySearch.getSize());
+		}
+		queryBuilder.append(')');
+		
 		jdbcTemplate.update(queryBuilder.toString());
 		
 		final String query = (requestBodySearch.getSize() == 0 ? "SELECT COUNT(*) " : "SELECT * ") + " FROM " + queryDataTableName;
