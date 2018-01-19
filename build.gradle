@@ -41,6 +41,7 @@ subprojects {
 		jsoniterVersion = '0.9.18'
 		metricsVersion = '4.0.2'
 		nativesLoaderVersion = '1.0.0'
+		nettyVersion = '4.1.19.Final'
 		restAssuredVersion = '3.0.6'
 	}
 	ext['postgresql.version'] = '42.1.4'
@@ -92,10 +93,11 @@ project(":" + rootProject.name + "-core") {
 		compile('org.springframework.boot:spring-boot-starter-jdbc') {
 			exclude group: 'org.apache.tomcat', module: 'tomcat-jdbc' 
 		}
-		compile('org.springframework.boot:spring-boot-starter-web')
+		compile('org.springframework.boot:spring-boot-starter')
 		compile "org.mini2Dx:natives-loader:$nativesLoaderVersion"
 		compile "com.jsoniter:jsoniter:$jsoniterVersion"
 		compile "com.zaxxer:HikariCP:$hikariVersion"
+		compile "io.netty:netty-all:$nettyVersion"
 		compile "com.elefana:es-query-string-parser:$esQueryStringVersion"
 		compile "com.elefana:es-compat-utils:$esCompatVersion"
 		compile "commons-codec:commons-codec:$codecVersion"

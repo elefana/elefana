@@ -54,8 +54,6 @@ public class SearchService {
 	@Autowired
 	private MetricRegistry metricRegistry;
 
-	private final ObjectMapper objectMapper = new ObjectMapper();
-
 	private SearchQueryBuilder searchQueryBuilder;
 	private Histogram searchTime, searchHits;
 

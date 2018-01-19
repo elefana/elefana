@@ -29,10 +29,9 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.event.ContextRefreshedEvent;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
+import com.jsoniter.JsonIterator;
+import com.jsoniter.spi.DecodingMode;
 
 @SpringBootApplication
 @ComponentScan(basePackages = { "com.elefana" })
@@ -51,12 +50,16 @@ public class ElefanaApplication implements ApplicationListener<ContextRefreshedE
 	}
 
 	public static void main(String[] args) {
+		JsonIterator.setMode(DecodingMode.REFLECTION_MODE);
+		
 		SpringApplicationBuilder springApplicationBuilder = new SpringApplicationBuilder(ElefanaApplication.class);
 		APP_CONTEXT = springApplicationBuilder.sources(ElefanaApplication.class).properties(getProperties(null)).bannerMode(Mode.OFF)
 				.run(args);
 	}
 
 	public static void start(String testConfigDirectory) {
+		JsonIterator.setMode(DecodingMode.REFLECTION_MODE);
+		
 		SpringApplicationBuilder springApplicationBuilder = new SpringApplicationBuilder(ElefanaApplication.class);
 		APP_CONTEXT = springApplicationBuilder.sources(ElefanaApplication.class).properties(getProperties(testConfigDirectory))
 				.bannerMode(Mode.OFF).run();
@@ -69,14 +72,6 @@ public class ElefanaApplication implements ApplicationListener<ContextRefreshedE
 	@Override
 	public void onApplicationEvent(ContextRefreshedEvent event) {
 		APPLICATION_STARTED = true;
-	}
-
-	@Bean
-	public MappingJackson2HttpMessageConverter mappingJackson2HttpMessageConverter() {
-		ObjectMapper mapper = new ObjectMapper();
-		mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
-		MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter(mapper);
-		return converter;
 	}
 
 	static Properties getProperties(String configDirectory) {

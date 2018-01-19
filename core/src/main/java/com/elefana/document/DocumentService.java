@@ -33,13 +33,12 @@ import org.springframework.stereotype.Service;
 import com.elefana.exception.DocumentAlreadyExistsException;
 import com.elefana.exception.NoSuchDocumentException;
 import com.elefana.indices.IndexFieldMappingService;
-import com.elefana.indices.IndexTemplate;
 import com.elefana.indices.IndexTemplateService;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
 import com.elefana.util.IndexUtils;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jsoniter.JsonIterator;
+import com.jsoniter.spi.TypeLiteral;
 
 @Service
 public class DocumentService {
@@ -57,8 +56,6 @@ public class DocumentService {
 	private VersionInfoService versionInfoService;
 	@Autowired
 	private IndexFieldMappingService indexFieldMappingService;
-
-	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	public Map<String, Object> get(String index, String type, String id) throws Exception {
 		Map<String, Object> result = new HashMap<String, Object>();
@@ -81,7 +78,7 @@ public class DocumentService {
 			if(resultSet.next()) {
 				result.put("_version", 1);
 				result.put("found", true);
-				result.put("_source", objectMapper.readValue(resultSet.getString("_source"), Map.class));
+				result.put("_source", JsonIterator.deserialize(resultSet.getString("_source"), new TypeLiteral<Map<String, Object>>(){}));
 			} else {
 				result.put("found", false);
 			}
@@ -93,7 +90,7 @@ public class DocumentService {
 	}
 
 	public MultiGetResponse multiGet(String requestBody) throws Exception {
-		Map<String, Object> request = objectMapper.readValue(requestBody, Map.class);
+		Map<String, Object> request = JsonIterator.deserialize(requestBody, new TypeLiteral<Map<String, Object>>(){});
 		List<Object> requestItems = (List<Object>) request.get("docs");
 
 		MultiGetResponse result = new MultiGetResponse();
@@ -141,7 +138,7 @@ public class DocumentService {
 						getResponse.set_index(resultSet.getString("_index"));
 						getResponse.set_type(resultSet.getString("_type"));
 						getResponse.set_id(resultSet.getString("_id"));
-						getResponse.set_source(objectMapper.readValue(resultSet.getString("_source"), Map.class));
+						getResponse.set_source(JsonIterator.deserialize(resultSet.getString("_source"), new TypeLiteral<Map<String, Object>>(){}));
 						result.getDocs().add(getResponse);
 					}
 				} catch (Exception e) {
@@ -161,7 +158,7 @@ public class DocumentService {
 	}
 
 	public MultiGetResponse multiGet(String indexPattern, String requestBody) throws Exception {
-		Map<String, Object> request = objectMapper.readValue(requestBody, Map.class);
+		Map<String, Object> request = JsonIterator.deserialize(requestBody, new TypeLiteral<Map<String, Object>>(){});
 		List<Object> requestItems = (List<Object>) request.get("docs");
 
 		MultiGetResponse result = new MultiGetResponse();
@@ -208,7 +205,7 @@ public class DocumentService {
 							getResponse.set_index(resultSet.getString("_index"));
 							getResponse.set_type(resultSet.getString("_type"));
 							getResponse.set_id(resultSet.getString("_id"));
-							getResponse.set_source(objectMapper.readValue(resultSet.getString("_source"), Map.class));
+							getResponse.set_source(JsonIterator.deserialize(resultSet.getString("_source"), new TypeLiteral<Map<String, Object>>(){}));
 							result.getDocs().add(getResponse);
 						}
 					} catch (Exception e) {
@@ -229,7 +226,7 @@ public class DocumentService {
 	}
 
 	public MultiGetResponse multiGet(String indexPattern, String typePattern, String requestBody) throws Exception {
-		Map<String, Object> request = objectMapper.readValue(requestBody, Map.class);
+		Map<String, Object> request = JsonIterator.deserialize(requestBody, new TypeLiteral<Map<String, Object>>(){});
 		List<Object> requestItems = (List<Object>) request.get("docs");
 
 		MultiGetResponse result = new MultiGetResponse();
@@ -277,7 +274,7 @@ public class DocumentService {
 								getResponse.set_index(resultSet.getString("_index"));
 								getResponse.set_type(resultSet.getString("_type"));
 								getResponse.set_id(resultSet.getString("_id"));
-								getResponse.set_source(objectMapper.readValue(resultSet.getString("_source"), Map.class));
+								getResponse.set_source(JsonIterator.deserialize(resultSet.getString("_source"), new TypeLiteral<Map<String, Object>>(){}));
 								result.getDocs().add(getResponse);
 							}
 						} catch (Exception e) {
