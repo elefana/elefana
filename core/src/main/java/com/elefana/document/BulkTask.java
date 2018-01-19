@@ -16,12 +16,14 @@
 package com.elefana.document;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.postgresql.copy.CopyIn;
 import org.postgresql.copy.CopyManager;
@@ -31,10 +33,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.codahale.metrics.Timer;
-import com.elefana.util.IndexUtils;
 
 public class BulkTask implements Callable<List<Map<String, Object>>> {
 	private static final Logger LOGGER = LoggerFactory.getLogger(BulkTask.class);
+	
+	private static final String STAGING_TABLE_PREFIX = "elefana_stg_";
+	private static final AtomicLong STAGING_TABLE_ID = new AtomicLong();
 
 	private static final String DELIMITER = "|";
 	private static final String NEW_LINE = "\n";
@@ -67,6 +71,8 @@ public class BulkTask implements Callable<List<Map<String, Object>>> {
 	private final String queryTarget;
 	private final int from;
 	private final int size;
+	
+	private final String stagingTable;
 
 	public BulkTask(Timer psqlTimer, JdbcTemplate jdbcTemplate, List<BulkIndexOperation> indexOperations, String index,
 			String queryTarget, int from, int size) {
@@ -78,6 +84,8 @@ public class BulkTask implements Callable<List<Map<String, Object>>> {
 		this.queryTarget = queryTarget;
 		this.from = from;
 		this.size = size;
+		
+		stagingTable = (STAGING_TABLE_PREFIX + STAGING_TABLE_ID.incrementAndGet()).replace('-', '_');
 	}
 
 	@Override
@@ -87,13 +95,18 @@ public class BulkTask implements Callable<List<Map<String, Object>>> {
 
 		try {
 			connection = jdbcTemplate.getDataSource().getConnection();
+			
+			PreparedStatement createTableStatement = connection.prepareStatement("CREATE TABLE " + stagingTable + " (LIKE " + queryTarget + ")");
+			createTableStatement.execute();
+			createTableStatement.close();
+			
 			final PgConnection pgConnection = connection.unwrap(PgConnection.class);
 			final CopyManager copyManager = new CopyManager(pgConnection);
 
 			Timer.Context timer = psqlTimer.time();
 			try {
 				CopyIn copyIn = copyManager
-						.copyIn("COPY " + queryTarget + " FROM STDIN WITH DELIMITER '" + DELIMITER + "'");
+						.copyIn("COPY " + stagingTable + " FROM STDIN WITH DELIMITER '" + DELIMITER + "'");
 
 				for (int i = from; i < from + size && i < indexOperations.size(); i++) {
 					BulkIndexOperation indexOperation = indexOperations.get(i);
@@ -163,5 +176,9 @@ public class BulkTask implements Callable<List<Map<String, Object>>> {
 
 	public int getSize() {
 		return size;
+	}
+
+	public String getStagingTable() {
+		return stagingTable;
 	}
 }

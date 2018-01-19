@@ -61,6 +61,10 @@ public class BulkApiTest {
 			.statusCode(200)
 			.body("errors", equalTo(false));
 		
+		try {
+			Thread.sleep(1000L);
+		} catch (Exception e) {}
+		
 		given()
 			.request()
 			.body("{\"query\":{\"match_all\":{}}, \"size\":" + totalDocuments + "}")
@@ -93,6 +97,10 @@ public class BulkApiTest {
 		.then()
 			.statusCode(200)
 			.body("errors", equalTo(false));
+		
+		try {
+			Thread.sleep(1000L);
+		} catch (Exception e) {}
 		
 		given()
 			.request()

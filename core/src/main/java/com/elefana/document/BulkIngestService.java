@@ -47,8 +47,8 @@ import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
 
 @Service
-public class BulkService {
-	private static final Logger LOGGER = LoggerFactory.getLogger(BulkService.class);
+public class BulkIngestService {
+	private static final Logger LOGGER = LoggerFactory.getLogger(BulkIngestService.class);
 	
 	private static final String OPERATION_INDEX = "index";
 	private static final String NEW_LINE = "\n";
@@ -58,9 +58,9 @@ public class BulkService {
 	@Autowired
 	private IndexUtils indexUtils;
 	@Autowired
-	private IndexFieldMappingService indexFieldMappingService;
-	@Autowired
 	private NodeSettingsService nodeSettingsService;
+	@Autowired
+	private BulkIndexService bulkIndexService;
 	@Autowired
 	private MetricRegistry metricRegistry;
 	
@@ -147,27 +147,28 @@ public class BulkService {
 		final List<Future<List<Map<String, Object>>>> results = new ArrayList<Future<List<Map<String, Object>>>>();
 		
 		for(int i = 0; i < indexOperations.size(); i += operationSize) {
-			BulkTask task = new BulkTask(bulkOperationsPsqlTimer, jdbcTemplate, indexOperations, index, queryTarget, i, operationSize);
+			final BulkTask task = new BulkTask(bulkOperationsPsqlTimer, jdbcTemplate, indexOperations, index, queryTarget, i, operationSize);
 			bulkTasks.add(task);
 			results.add(executorService.submit(task));
 		}
 		
 		for(int i = 0; i < results.size(); i++) {
+			final BulkTask task = bulkTasks.get(i);
 			try {
 				List<Map<String, Object>> nextResult = results.get(i).get();
 				if(nextResult.isEmpty()) {
-					bulkOperationsFailed.mark(bulkTasks.get(i).getSize());
+					bulkOperationsFailed.mark(task.getSize());
 					bulkApiResponse.setErrors(true);
 				} else {
-					bulkOperationsSuccess.mark(bulkTasks.get(i).getSize());
+					bulkOperationsSuccess.mark(task.getSize());
 					bulkApiResponse.getItems().addAll(nextResult);
 				}
+				bulkIndexService.queue(new IndexTarget(index, queryTarget, task.getStagingTable()));
 			} catch (InterruptedException e) {
 				LOGGER.error(e.getMessage(), e);
 			} catch (ExecutionException e) {
 				LOGGER.error(e.getMessage(), e);
 			}
 		}
-		indexFieldMappingService.scheduleIndexForMappingAndStats(index);
 	}
 }

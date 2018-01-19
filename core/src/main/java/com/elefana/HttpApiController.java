@@ -36,7 +36,7 @@ import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.elefana.cluster.AckResponse;
 import com.elefana.cluster.ClusterService;
-import com.elefana.document.BulkService;
+import com.elefana.document.BulkIngestService;
 import com.elefana.document.DocumentService;
 import com.elefana.document.IndexApiResponse;
 import com.elefana.document.IndexOpType;
@@ -52,7 +52,7 @@ public class HttpApiController {
 	@Autowired
 	private DocumentService documentService;
 	@Autowired
-	private BulkService bulkService;
+	private BulkIngestService bulkIngestService;
 	@Autowired
 	private IndexFieldMappingService indexFieldMappingService;
 	@Autowired
@@ -132,7 +132,7 @@ public class HttpApiController {
 		case "_msearch":
 			return searchService.multiSearch(null, null, requestBody);
 		case "_bulk":
-			return bulkService.bulkOperations(requestBody.getBody());
+			return bulkIngestService.bulkOperations(requestBody.getBody());
 		}
 		return null;
 	}
@@ -158,7 +158,7 @@ public class HttpApiController {
 
 		switch (indexPatternLowercase) {
 		case "_bulk":
-			return bulkService.bulkOperations(requestBody.getBody());
+			return bulkIngestService.bulkOperations(requestBody.getBody());
 		}
 
 		indexFieldMappingService.putMapping(indexPattern, requestBody.getBody());

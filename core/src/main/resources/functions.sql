@@ -1,3 +1,20 @@
+CREATE OR REPLACE FUNCTION select_shard(_distributedTable VARCHAR) RETURNS bigint AS $$
+DECLARE
+  shard_id bigint;
+BEGIN
+  SELECT shardid INTO shard_id
+  FROM pg_dist_shard JOIN pg_dist_placement USING (shardid)
+  WHERE logicalrelid = _distributedTable::regclass AND shardlength < 1024*1024*1024;
+
+  IF shard_id IS NULL THEN
+    /* no shard smaller than 1GB, create a new one */
+    SELECT master_create_empty_shard(_distributedTable) INTO shard_id;
+  END IF;
+
+  RETURN shard_id;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Workaround for PSQL not supporting ON CONFLICT on partition tables
 CREATE OR REPLACE FUNCTION elefana_create(_op_index VARCHAR, _op_type VARCHAR, _op_id VARCHAR, _op_timestamp BIGINT, _op_source json) RETURNS INT AS
 $$
