@@ -18,6 +18,7 @@ package com.elefana.search;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.elefana.exception.ElefanaException;
 import com.elefana.search.agg.AggregationsParser;
 import com.elefana.search.agg.RootAggregationContext;
 import com.elefana.search.query.Query;
@@ -39,11 +40,11 @@ public class RequestBodySearch {
 	protected int from;
 	protected int size;
 
-	public RequestBodySearch(String originalQuery) throws Exception {
+	public RequestBodySearch(String originalQuery) throws ElefanaException {
 		this(originalQuery, false);
 	}
 	
-	public RequestBodySearch(String originalQuery, boolean debug) throws Exception {
+	public RequestBodySearch(String originalQuery, boolean debug) throws ElefanaException {
 		super();
 		this.originalQuery = originalQuery;
 		this.timestamp = System.currentTimeMillis();

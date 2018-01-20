@@ -20,8 +20,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import javax.annotation.PostConstruct;
-
 import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,16 +28,18 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.stereotype.Service;
 
+import com.elefana.cluster.AckResponse;
 import com.elefana.exception.BadRequestException;
+import com.elefana.exception.ElefanaException;
 import com.elefana.exception.NoSuchTemplateException;
 import com.elefana.exception.ShardFailedException;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
 import com.elefana.util.IndexUtils;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
+import com.jsoniter.spi.TypeLiteral;
 
 @Service
 public class IndexTemplateService {
@@ -54,8 +54,6 @@ public class IndexTemplateService {
 	@Autowired
 	private IndexUtils indexUtils;
 	
-	private final ObjectMapper objectMapper = new ObjectMapper();
-	
 	private final Map<String, String> indexToIndexTemplateNullCache = new ConcurrentHashMap<String, String>();
 	private final Map<String, IndexTemplate> indexToIndexTemplateCache = new ConcurrentHashMap<String, IndexTemplate>();
 	
@@ -67,7 +65,7 @@ public class IndexTemplateService {
 				IndexTemplate indexTemplate = new IndexTemplate();
 				indexTemplate.setTemplate(rowSet.getString("_index_pattern"));
 				indexTemplate.setTimestamp_path(rowSet.getString("_timestamp_path"));
-				indexTemplate.setMappings(objectMapper.readValue(rowSet.getString("_mappings"), Map.class));
+				indexTemplate.setMappings(JsonIterator.deserialize(rowSet.getString("_mappings"), new TypeLiteral<Map<String, Object>>(){}));
 				results.add(indexTemplate);
 			}
 		} catch (Exception e) {
@@ -76,16 +74,16 @@ public class IndexTemplateService {
 		return results;
 	}
 	
-	public IndexTemplate getIndexTemplate(String templateId) {
+	public IndexTemplate getIndexTemplate(String templateId) throws ElefanaException {
 		SqlRowSet rowSet = jdbcTemplate.queryForRowSet("SELECT * FROM elefana_index_template WHERE _template_id = ?", templateId);
 		if(!rowSet.next()) {
-			throw new NoSuchTemplateException();
+			throw new NoSuchTemplateException(templateId);
 		}
 		try {
 			IndexTemplate result = new IndexTemplate();
 			result.setTemplate(rowSet.getString("_index_pattern"));
 			result.setTimestamp_path(rowSet.getString("_timestamp_path"));
-			result.setMappings(objectMapper.readValue(rowSet.getString("_mappings"), Map.class));
+			result.setMappings(JsonIterator.deserialize(rowSet.getString("_mappings"), new TypeLiteral<Map<String, Object>>(){}));
 			return result;
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
@@ -121,7 +119,7 @@ public class IndexTemplateService {
 		return null;
 	}
 	
-	public void putIndexTemplate(String templateId, String requestBody) {
+	public AckResponse putIndexTemplate(String templateId, String requestBody) throws ElefanaException {
 		Any templateData = JsonIterator.deserialize(requestBody);
 		if(templateData.get("template").valueType().equals(ValueType.INVALID)) {
 			throw new BadRequestException();
@@ -149,7 +147,7 @@ public class IndexTemplateService {
 			
 			indexToIndexTemplateNullCache.clear();
 			indexToIndexTemplateCache.clear();
-			return;
+			return new AckResponse();
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
 		}

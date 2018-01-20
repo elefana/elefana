@@ -45,6 +45,22 @@ public abstract class OsStats implements Runnable {
 		lock.readLock().unlock();
 		return result;
 	}
+	
+	public String getOsName() {
+		return stats.getOsName();
+	}
+	
+	public String getOsVersion() {
+		return stats.getOsVersion();
+	}
+	
+	public String getOsArch() {
+		return stats.getOsArch();
+	}
+	
+	public int getAvailableProcessors() {
+		return stats.getAvailableProcessors();
+	}
 
 	public long getFreePhysicalMemorySize() {
 		return stats.getFreePhysicalMemorySize();

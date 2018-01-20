@@ -13,17 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package com.elefana;
+package com.elefana.exception;
 
-import com.elefana.ElefanaApplication;
+import io.netty.handler.codec.http.HttpResponseStatus;
 
-public abstract class ElefanaUAT {
+public class ElefanaException extends Exception {
+	private static final long serialVersionUID = 6379299827846657776L;
+	
+	private final HttpResponseStatus statusCode;
 
-	protected void startElefana(String testConfigPath) {
-		ElefanaApplication.start(testConfigPath);
+	public ElefanaException(HttpResponseStatus statusCode, String message) {
+		super(message);
+		this.statusCode = statusCode;
 	}
 	
-	protected void stopElefana() {
-		ElefanaApplication.stop();
+	public ElefanaException(HttpResponseStatus statusCode, String message, Exception cause) {
+		super(message, cause);
+		this.statusCode = statusCode;
+	}
+
+	public HttpResponseStatus getStatusCode() {
+		return statusCode;
 	}
 }

@@ -3,28 +3,30 @@
  */
 package com.elefana.http;
 
+import com.codahale.metrics.Histogram;
+import com.codahale.metrics.Meter;
 import com.elefana.ApiRouter;
 
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.FullHttpRequest;
-import io.netty.handler.codec.http.LastHttpContent;
 
 /**
  *
  */
 public class PipelinedHttpRouter extends HttpRouter {
 
-	public PipelinedHttpRouter(ApiRouter apiRouter) {
-		super(apiRouter);
+	public PipelinedHttpRouter(ApiRouter apiRouter, Meter httpRequests, Histogram httpRequestSize) {
+		super(apiRouter, httpRequests, httpRequestSize);
 	}
 
 	@Override
-	protected void channelRead0(ChannelHandlerContext ctx, Object msg) throws Exception {
+	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
 		HttpPipelinedRequest request = (HttpPipelinedRequest) msg;
+				
 		if(!(request.getRequest() instanceof FullHttpRequest)) {
 			return;
 		}
-		
+		ctx.writeAndFlush(route((FullHttpRequest) request.getRequest()));
 	}
 
 }

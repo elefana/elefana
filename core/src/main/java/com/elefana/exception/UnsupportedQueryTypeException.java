@@ -15,11 +15,12 @@
  ******************************************************************************/
 package com.elefana.exception;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.ResponseStatus;
+import io.netty.handler.codec.http.HttpResponseStatus;
 
-@ResponseStatus(value=HttpStatus.UNSUPPORTED_MEDIA_TYPE, reason="Unsupported query type")
-public class UnsupportedQueryTypeException extends RuntimeException {
+public class UnsupportedQueryTypeException extends ElefanaException {
 	private static final long serialVersionUID = -8997220380930473443L;
 
+	public UnsupportedQueryTypeException() {
+		super(HttpResponseStatus.UNSUPPORTED_MEDIA_TYPE, "Unsupported query type");
+	}
 }

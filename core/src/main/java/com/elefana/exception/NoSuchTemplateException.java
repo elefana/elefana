@@ -15,11 +15,12 @@
  ******************************************************************************/
 package com.elefana.exception;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.ResponseStatus;
+import io.netty.handler.codec.http.HttpResponseStatus;
 
-@ResponseStatus(value=HttpStatus.NOT_FOUND, reason="Template not found") 
-public class NoSuchTemplateException extends RuntimeException {
+public class NoSuchTemplateException extends ElefanaException {
 	private static final long serialVersionUID = -7573981372413154677L;
-
+	
+	public NoSuchTemplateException(String templateId) {
+		super(HttpResponseStatus.NOT_FOUND, "Template not found - Id: " + templateId);
+	}
 }

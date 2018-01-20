@@ -15,7 +15,6 @@
  ******************************************************************************/
 package com.elefana.document;
 
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -39,7 +38,7 @@ import org.springframework.stereotype.Service;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
-import com.elefana.indices.IndexFieldMappingService;
+import com.elefana.exception.ElefanaException;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.util.IndexUtils;
 import com.jsoniter.JsonIterator;
@@ -85,7 +84,7 @@ public class BulkIngestService {
 		executorService.shutdown();
 	}
 
-	public BulkApiResponse bulkOperations(String requestBody) throws Exception {
+	public BulkApiResponse bulkOperations(String requestBody) throws ElefanaException {
 		final Timer.Context totalTimer = bulkOperationsTotalTimer.time();
 		
 		final BulkApiResponse bulkApiResponse = new BulkApiResponse();
@@ -137,7 +136,7 @@ public class BulkIngestService {
 	}
 
 	private void bulkIndex(BulkApiResponse bulkApiResponse, String index,
-			List<BulkIndexOperation> indexOperations) throws SQLException {
+			List<BulkIndexOperation> indexOperations) throws ElefanaException {
 		indexUtils.ensureIndexExists(index);
 		final String queryTarget = indexUtils.getQueryTarget(index);
 		

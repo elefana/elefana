@@ -32,7 +32,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 import com.elefana.ElefanaApplication;
 
 @RunWith(SpringRunner.class)
-@SpringBootTest(webEnvironment = WebEnvironment.DEFINED_PORT, classes = { ElefanaApplication.class })
+@SpringBootTest(classes = { ElefanaApplication.class })
 @TestPropertySource(locations = "classpath:es2.properties")
 public class CardinalityAggregationTest extends AbstractAggregationTest {
 

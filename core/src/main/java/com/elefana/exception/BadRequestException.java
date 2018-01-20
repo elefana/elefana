@@ -15,11 +15,12 @@
  ******************************************************************************/
 package com.elefana.exception;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.ResponseStatus;
+import io.netty.handler.codec.http.HttpResponseStatus;
 
-@ResponseStatus(value=HttpStatus.BAD_REQUEST, reason="Bad request") 
-public class BadRequestException extends RuntimeException {
+public class BadRequestException extends ElefanaException {
 	private static final long serialVersionUID = -4034193060316386474L;
 
+	public BadRequestException() {
+		super(HttpResponseStatus.BAD_REQUEST, "Bad request");
+	}
 }

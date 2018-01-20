@@ -22,6 +22,7 @@ import java.util.Map;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import com.elefana.exception.ElefanaException;
 import com.elefana.indices.IndexFieldMappingService;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.search.RequestBodySearch;
@@ -31,7 +32,7 @@ public abstract class Aggregation {
 	public static final List<Aggregation> EMPTY_AGGREGATION_LIST = Collections
 			.unmodifiableList(new ArrayList<Aggregation>(1));
 
-	public abstract void executeSqlQuery(final AggregationExec aggregationExec);
+	public abstract void executeSqlQuery(final AggregationExec aggregationExec) throws ElefanaException;
 
 	protected static void appendIndicesWhereClause(final AggregationExec aggregationExec,
 			final StringBuilder queryBuilder) {
@@ -52,7 +53,7 @@ public abstract class Aggregation {
 		queryBuilder.append(")");
 	}
 
-	public void executeSqlQuery(AggregationExec parentExec, Map<String, Object> aggregationsResult, String queryTable) {
+	public void executeSqlQuery(AggregationExec parentExec, Map<String, Object> aggregationsResult, String queryTable) throws ElefanaException {
 		executeSqlQuery(new AggregationExec(parentExec.getIndices(), parentExec.getTypes(),
 				parentExec.getJdbcTemplate(), parentExec.getNodeSettingsService(),
 				parentExec.getIndexFieldMappingService(), aggregationsResult, parentExec.getTempTablesCreated(),
@@ -62,7 +63,7 @@ public abstract class Aggregation {
 	public void executeSqlQuery(List<String> tableNames, String[] types, JdbcTemplate jdbcTemplate,
 			NodeSettingsService nodeSettingsService, IndexFieldMappingService indexFieldMappingService,
 			Map<String, Object> aggregationsResult, List<String> tempTablesCreated, String queryTable,
-			RequestBodySearch requestBodySearch) {
+			RequestBodySearch requestBodySearch) throws ElefanaException {
 		executeSqlQuery(new AggregationExec(tableNames, types, jdbcTemplate, nodeSettingsService,
 				indexFieldMappingService, aggregationsResult, tempTablesCreated, queryTable, requestBodySearch, this));
 	}

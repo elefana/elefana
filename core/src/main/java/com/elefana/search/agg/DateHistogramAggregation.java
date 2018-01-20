@@ -18,15 +18,14 @@ package com.elefana.search.agg;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 
+import com.elefana.exception.ElefanaException;
 import com.elefana.exception.NoSuchMappingException;
 import com.jsoniter.any.Any;
 
@@ -48,7 +47,7 @@ public class DateHistogramAggregation extends BucketAggregation {
 	}
 
 	@Override
-	public void executeSqlQuery(AggregationExec aggregationExec) {
+	public void executeSqlQuery(AggregationExec aggregationExec) throws ElefanaException {
 		final String fieldType = aggregationExec.getIndexFieldMappingService()
 				.getFirstFieldMappingType(aggregationExec.getIndices(), aggregationExec.getTypes(), fieldName);
 		if (fieldType == null) {

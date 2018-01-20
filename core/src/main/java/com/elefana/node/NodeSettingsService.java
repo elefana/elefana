@@ -28,45 +28,52 @@ import org.springframework.stereotype.Component;
 public class NodeSettingsService {
 	@Autowired
 	Environment environment;
-	
+
 	private String nodeId;
 	private String nodeName;
 	private String clusterId;
 	private String clusterName;
-	
-	private String hostIp;
-	private int port;
+
+	private String httpIp;
+	private int httpPort;
 	private String ip;
 	private String transportAddress;
 	private String httpAddress;
-	
+	private boolean gzipEnabled;
+	private int maxHttpPipelineEvents;
+	private int maxHttpPayloadSize;
+
 	private boolean usingCitus = false;
-	
+
 	private int bulkParallelisation;
 	private long fieldStatsInterval;
 	private long mappingInterval;
 	private double mappingSampleSize;
 	private int fallbackMappingSampleSize;
 	private long garbageCollectionInterval;
-	
+
 	@PostConstruct
 	public void postConstruct() {
 		nodeName = environment.getRequiredProperty("elefana.node.name");
 		nodeId = DigestUtils.md5Hex(nodeName + new Random().nextInt());
-		
+
 		clusterName = environment.getRequiredProperty("elefana.cluster.name");
 		clusterId = DigestUtils.md5Hex(clusterName);
+
+		httpIp = environment.getRequiredProperty("elefana.http.address");
+		httpPort = environment.getRequiredProperty("elefana.http.port", Integer.class);
+		gzipEnabled = environment.getRequiredProperty("elefana.http.gzip", Boolean.class);
+		maxHttpPipelineEvents = environment.getRequiredProperty("elefana.http.maxEvents", Integer.class);
+		maxHttpPayloadSize = environment.getRequiredProperty("elefana.http.maxPayloadSize", Integer.class);
 		
-		hostIp = environment.getRequiredProperty("server.address");
-		port = environment.getRequiredProperty("server.port", Integer.class);
-		
-		ip = hostIp;
-		transportAddress = hostIp + ":9300";
-		httpAddress = hostIp + port;
-		
+		ip = httpIp;
+		transportAddress = httpIp + ":9300";
+		httpAddress = httpIp + httpPort;
+
 		usingCitus = environment.getRequiredProperty("elefana.citus", Boolean.class);
-		
-		bulkParallelisation = Math.max(1, environment.getRequiredProperty("elefana.bulkParallelisation", Integer.class));
+
+		bulkParallelisation = Math.max(1,
+				environment.getRequiredProperty("elefana.bulkParallelisation", Integer.class));
 		fieldStatsInterval = environment.getRequiredProperty("elefana.fieldStatsInterval", Long.class);
 		mappingInterval = environment.getRequiredProperty("elefana.mappingInterval", Long.class);
 		mappingSampleSize = environment.getRequiredProperty("elefana.mappingSampleSize", Double.class);
@@ -94,12 +101,12 @@ public class NodeSettingsService {
 		return clusterName;
 	}
 
-	public String getHostIp() {
-		return hostIp;
+	public String getHttpIp() {
+		return httpIp;
 	}
 
-	public int getPort() {
-		return port;
+	public int getHttpPort() {
+		return httpPort;
 	}
 
 	public String getIp() {
@@ -112,6 +119,18 @@ public class NodeSettingsService {
 
 	public String getHttpAddress() {
 		return httpAddress;
+	}
+
+	public int getMaxHttpPipelineEvents() {
+		return maxHttpPipelineEvents;
+	}
+
+	public int getMaxHttpPayloadSize() {
+		return maxHttpPayloadSize;
+	}
+
+	public boolean isGzipEnabled() {
+		return gzipEnabled;
 	}
 
 	public boolean isUsingCitus() {

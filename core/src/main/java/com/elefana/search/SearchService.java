@@ -25,17 +25,18 @@ import javax.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.stereotype.Service;
 
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.MetricRegistry;
+import com.elefana.exception.ElefanaException;
 import com.elefana.indices.IndexFieldMappingService;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.util.IndexUtils;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jsoniter.JsonIterator;
+import com.jsoniter.spi.TypeLiteral;
 
 @Service
 public class SearchService {
@@ -68,15 +69,25 @@ public class SearchService {
 			searchQueryBuilder = new PartitionTableSearchQueryBuilder(jdbcTemplate, indexUtils);
 		}
 	}
+	
+	public Map<String, Object> multiSearch(String httpRequest)
+			throws ElefanaException {
+		return multiSearch(null, null, httpRequest);
+	}
+	
+	public Map<String, Object> multiSearch(String fallbackIndex, String httpRequest)
+			throws ElefanaException {
+		return multiSearch(fallbackIndex, null, httpRequest);
+	}
 
-	public Map<String, Object> multiSearch(String fallbackIndex, String fallbackType, HttpEntity<String> httpRequest)
-			throws Exception {
-		String[] lines = httpRequest.getBody().split("\n");
+	public Map<String, Object> multiSearch(String fallbackIndex, String fallbackType, String httpRequest)
+			throws ElefanaException {
+		String[] lines = httpRequest.split("\n");
 
 		List<Map<String, Object>> responses = new ArrayList<Map<String, Object>>(1);
 
 		for (int i = 0; i < lines.length; i += 2) {
-			Map<String, Object> indexTypeInfo = objectMapper.readValue(lines[i], Map.class);
+			Map<String, Object> indexTypeInfo = JsonIterator.deserialize(lines[i], new TypeLiteral<Map<String, Object>>(){});
 			indexTypeInfo.putIfAbsent("index", fallbackIndex);
 			indexTypeInfo.putIfAbsent("type", fallbackType);
 
@@ -95,7 +106,7 @@ public class SearchService {
 				types = ((String) indexTypeInfo.get("type")).split(",");
 			}
 
-			responses.add(search(indices, types, new HttpEntity<>(lines[i + 1])));
+			responses.add(search(indices, types, lines[i + 1]));
 		}
 
 		Map<String, Object> result = new HashMap<String, Object>();
@@ -103,26 +114,26 @@ public class SearchService {
 		return result;
 	}
 
-	public Map<String, Object> search(HttpEntity<String> httpRequest) throws Exception {
+	public Map<String, Object> search(String httpRequest) throws ElefanaException {
 		return search(null, httpRequest);
 	}
 
-	public Map<String, Object> search(String indexPattern, HttpEntity<String> httpRequest) throws Exception {
+	public Map<String, Object> search(String indexPattern, String httpRequest) throws ElefanaException {
 		return search(indexPattern, "", httpRequest);
 	}
 
-	public Map<String, Object> search(String indexPattern, String typesPattern, HttpEntity<String> httpRequest)
-			throws Exception {
+	public Map<String, Object> search(String indexPattern, String typesPattern, String httpRequest)
+			throws ElefanaException {
 		List<String> indices = indexPattern == null || indexPattern.isEmpty() ? indexUtils.listIndices()
 				: indexUtils.listIndicesForIndexPattern(indexPattern);
 		String[] types = typesPattern == null ? EMPTY_TYPES_LIST : typesPattern.split(",");
 		return search(indices, types, httpRequest);
 	}
 
-	private Map<String, Object> search(List<String> indices, String[] types, HttpEntity<String> httpRequest)
-			throws Exception {
+	private Map<String, Object> search(List<String> indices, String[] types, String httpRequest)
+			throws ElefanaException {
 		final long startTime = System.currentTimeMillis();
-		final RequestBodySearch requestBodySearch = new RequestBodySearch(httpRequest.getBody());
+		final RequestBodySearch requestBodySearch = new RequestBodySearch(httpRequest);
 		if (!requestBodySearch.hasAggregations()) {
 			return searchWithoutAggregation(indices, types, requestBodySearch, startTime);
 		}
@@ -130,7 +141,7 @@ public class SearchService {
 	}
 
 	private Map<String, Object> searchWithAggregation(List<String> indices, String[] types,
-			RequestBodySearch requestBodySearch, long startTime) throws Exception {
+			RequestBodySearch requestBodySearch, long startTime) throws ElefanaException {
 		final SearchQuery searchQuery = searchQueryBuilder.buildQuery(indices, types, requestBodySearch);
 		final List<String> temporaryTablesCreated = searchQuery.getTemporaryTables();
 
@@ -145,14 +156,14 @@ public class SearchService {
 	}
 
 	private Map<String, Object> searchWithoutAggregation(List<String> indices, String[] types,
-			RequestBodySearch requestBodySearch, long startTime) throws Exception {
+			RequestBodySearch requestBodySearch, long startTime) throws ElefanaException {
 		final SearchQuery searchQuery = searchQueryBuilder.buildQuery(indices, types, requestBodySearch);
 		final List<String> temporaryTablesCreated = searchQuery.getTemporaryTables();
 
 		return executeQuery(searchQuery.getQuery(), startTime, requestBodySearch.getSize());
 	}
 
-	private Map<String, Object> executeQuery(String query, long startTime, int size) throws Exception {
+	private Map<String, Object> executeQuery(String query, long startTime, int size) throws ElefanaException {
 		LOGGER.info(query);
 		SqlRowSet sqlRowSet = null;
 		try {
@@ -168,7 +179,7 @@ public class SearchService {
 	}
 
 	private Map<String, Object> convertSqlQueryResultToSearchResult(SqlRowSet rowSet, long startTime, int size)
-			throws Exception {
+			throws ElefanaException {
 		final Map<String, Object> result = new HashMap<String, Object>();
 		final List<Map<String, Object>> hitsList = new ArrayList<Map<String, Object>>(1);
 
@@ -189,8 +200,7 @@ public class SearchService {
 				hit.put("_type", rowSet.getString("_type"));
 				hit.put("_id", rowSet.getString("_id"));
 				hit.put("_score", 1.0);
-				hit.put("_source",
-						objectMapper.readValue(indexUtils.destringifyJson(rowSet.getString("_source")), Map.class));
+				hit.put("_source", JsonIterator.deserialize(rowSet.getString("_source"), new TypeLiteral<Map<String, Object>>(){}));
 				hitsList.add(hit);
 				count++;
 			}
@@ -226,7 +236,7 @@ public class SearchService {
 		return result;
 	}
 
-	private Map<String, Object> getEmptySearchResult(long startTime, int size) throws Exception {
+	private Map<String, Object> getEmptySearchResult(long startTime, int size) throws ElefanaException {
 		return convertSqlQueryResultToSearchResult(null, startTime, size);
 	}
 }

@@ -36,7 +36,7 @@ import com.elefana.search.agg.PercentilesAggregation;
 import io.restassured.response.ValidatableResponse;
 
 @RunWith(SpringRunner.class)
-@SpringBootTest(webEnvironment = WebEnvironment.DEFINED_PORT, classes = { ElefanaApplication.class })
+@SpringBootTest(classes = { ElefanaApplication.class })
 @TestPropertySource(locations = "classpath:es2.properties")
 public class PercentilesAggregationTest extends AbstractAggregationTest {
 

@@ -15,6 +15,7 @@
  ******************************************************************************/
 package com.elefana.search.query;
 
+import com.elefana.exception.ElefanaException;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
 
@@ -24,7 +25,7 @@ public class FilteredQuery extends Query {
 	
 	private Query query, filter;
 	
-	public FilteredQuery(Any queryContext) {
+	public FilteredQuery(Any queryContext) throws ElefanaException {
 		super();
 		
 		if(!queryContext.get(KEY_QUERY).valueType().equals(ValueType.INVALID)) {

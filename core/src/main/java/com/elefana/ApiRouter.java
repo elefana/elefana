@@ -52,4 +52,32 @@ public class ApiRouter {
 	private ClusterService clusterService;
 	@Autowired
 	private MetricRegistry metricRegistry;
+	
+	public DocumentService getDocumentApi() {
+		return documentService;
+	}
+	
+	public BulkIngestService getBulkApi() {
+		return bulkIngestService;
+	}
+	
+	public IndexFieldMappingService getFieldMappingApi() {
+		return indexFieldMappingService;
+	}
+	
+	public IndexTemplateService getIndexTemplateApi() {
+		return indexTemplateService;
+	}
+	
+	public SearchService getSearchApi() {
+		return searchService;
+	}
+	
+	public NodesService getNodeApi() {
+		return nodesService;
+	}
+	
+	public ClusterService getClusterApi() {
+		return clusterService;
+	}
 }

@@ -18,6 +18,7 @@ package com.elefana.search.query;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.elefana.exception.ElefanaException;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
 
@@ -26,7 +27,7 @@ public class DisMaxQuery extends Query {
 	
 	private final List<Query> queries = new ArrayList<Query>();
 	
-	public DisMaxQuery(Any queryContext) {
+	public DisMaxQuery(Any queryContext) throws ElefanaException {
 		super();
 		
 		if(!queryContext.get(KEY_QUERIES).valueType().equals(ValueType.INVALID)) {

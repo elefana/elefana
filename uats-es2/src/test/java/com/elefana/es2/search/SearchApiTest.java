@@ -32,7 +32,7 @@ import com.elefana.ElefanaApplication;
 import io.restassured.RestAssured;
 
 @RunWith(SpringRunner.class)
-@SpringBootTest(webEnvironment = WebEnvironment.DEFINED_PORT, classes = { ElefanaApplication.class })
+@SpringBootTest(classes = { ElefanaApplication.class })
 @TestPropertySource(locations = "classpath:es2.properties")
 public class SearchApiTest {
 	private static final int DOCUMENT_QUANTITY = 100;

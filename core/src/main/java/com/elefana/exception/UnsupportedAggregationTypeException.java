@@ -15,18 +15,17 @@
  ******************************************************************************/
 package com.elefana.exception;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.ResponseStatus;
+import io.netty.handler.codec.http.HttpResponseStatus;
 
-@ResponseStatus(value=HttpStatus.UNSUPPORTED_MEDIA_TYPE, reason="Unsupported aggregation type") 
-public class UnsupportedAggregationTypeException extends RuntimeException {
+public class UnsupportedAggregationTypeException extends ElefanaException {
 	private static final long serialVersionUID = 4035166893370142375L;
 
-	public UnsupportedAggregationTypeException() {
-		super();
+	public UnsupportedAggregationTypeException(String aggregationType) {
+		super(HttpResponseStatus.UNSUPPORTED_MEDIA_TYPE, "Unsupported aggregation type '" + aggregationType + "'");
 	}
-	
-	public UnsupportedAggregationTypeException(String aggregationName) {
-		super("Unsupported aggregation type used in aggregation '" + aggregationName + "'");
+
+	public UnsupportedAggregationTypeException(String aggregationType, String aggregationName) {
+		super(HttpResponseStatus.UNSUPPORTED_MEDIA_TYPE,
+				"Unsupported aggregation type '" + aggregationType + "' used in aggregation '" + aggregationName + "'");
 	}
 }

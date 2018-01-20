@@ -15,11 +15,13 @@
  ******************************************************************************/
 package com.elefana.exception;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.ResponseStatus;
+import io.netty.handler.codec.http.HttpResponseStatus;
 
-@ResponseStatus(value=HttpStatus.CONFLICT, reason="Document not found") 
-public class DocumentAlreadyExistsException extends RuntimeException {
+public class DocumentAlreadyExistsException extends ElefanaException {
 	private static final long serialVersionUID = -6892951993135542009L;
 
+	public DocumentAlreadyExistsException(String index, String type, String id) {
+		super(HttpResponseStatus.CONFLICT,
+				"Conflict - document already exists. Index: " + index + ", Type: " + type + ", Id: ");
+	}
 }

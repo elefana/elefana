@@ -23,7 +23,6 @@ public class V2OsStats extends OsStats {
 
 	@Override
 	protected void generateCurrentStats(Map<String, Object> result) {
-		// TODO Auto-generated method stub
 		
 	}
 	

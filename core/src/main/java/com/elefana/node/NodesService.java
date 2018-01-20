@@ -39,7 +39,7 @@ public class NodesService {
 		clusterName = environment.getRequiredProperty("elefana.cluster.name");
 	}
 
-	public Map<String, Object> getNodesInfo() throws IOException {
+	public Map<String, Object> getNodesInfo() {
 		// TODO: Support clustering
 		Map<String, Object> result = new HashMap<String, Object>();
 		result.put("cluster_name", clusterName);
@@ -51,7 +51,19 @@ public class NodesService {
 		return result;
 	}
 
-	public Map<String, Object> getLocalNodeInfo() throws IOException {
+	public Map<String, Object> getLocalNodeInfo() {
+		// TODO: Support clustering
+		Map<String, Object> result = new HashMap<String, Object>();
+		result.put("cluster_name", clusterName);
+
+		Map<String, Object> nodes = new HashMap<String, Object>();
+		nodes.put(nodeInfoService.getNodeId(), nodeInfoService.getNodeInfo());
+		
+		result.put("nodes", nodes);
+		return result;
+	}
+	
+	public Map<String, Object> getNodesInfo(String [] filteredNodes) {
 		// TODO: Support clustering
 		Map<String, Object> result = new HashMap<String, Object>();
 		result.put("cluster_name", clusterName);
@@ -63,7 +75,19 @@ public class NodesService {
 		return result;
 	}
 
-	public Map<String, Object> getNodesInfo(String[] infoFields) throws IOException {
+	public Map<String, Object> getNodesInfo(String [] filteredNodes, String[] infoFields) {
+		// TODO: Support clustering
+		Map<String, Object> result = new HashMap<String, Object>();
+		result.put("cluster_name", clusterName);
+
+		Map<String, Object> nodes = new HashMap<String, Object>();
+		nodes.put(nodeInfoService.getNodeId(), nodeInfoService.getNodeInfo(infoFields));
+		
+		result.put("nodes", nodes);
+		return result;
+	}
+	
+	public Map<String, Object> getLocalNodeInfo(String[] infoFields) {
 		// TODO: Support clustering
 		Map<String, Object> result = new HashMap<String, Object>();
 		result.put("cluster_name", clusterName);

@@ -18,6 +18,7 @@ package com.elefana.search.query;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.elefana.exception.ElefanaException;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
 
@@ -41,7 +42,7 @@ public class BoolQuery extends Query {
 	private boolean disabledCoord = false;
 	private boolean adjustPureNegative = true;
 
-	public BoolQuery(Any queryContext) {
+	public BoolQuery(Any queryContext) throws ElefanaException {
 		super();
 
 		if (queryContext.get(KEY_MUST).valueType().equals(ValueType.OBJECT)) {

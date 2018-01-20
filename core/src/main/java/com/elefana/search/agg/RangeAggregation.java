@@ -25,6 +25,7 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.elefana.exception.ElefanaException;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
 
@@ -74,7 +75,7 @@ public class RangeAggregation extends BucketAggregation {
 	}
 
 	@Override
-	public void executeSqlQuery(AggregationExec aggregationExec) {
+	public void executeSqlQuery(AggregationExec aggregationExec) throws ElefanaException {
 		final Map<String, Object> result = new HashMap<String, Object>();
 		final List<Map<String, Object>> buckets = new ArrayList<Map<String, Object>>();
 		

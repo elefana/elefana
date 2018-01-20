@@ -45,7 +45,7 @@ import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
 
 @RunWith(SpringRunner.class)
-@SpringBootTest(webEnvironment = WebEnvironment.DEFINED_PORT, classes = { ElefanaApplication.class })
+@SpringBootTest(classes = { ElefanaApplication.class })
 @TestPropertySource(locations = "classpath:es2.properties")
 public class DocumentApiTest extends DocumentedTest {
 	private static final String INDEX = UUID.randomUUID().toString();
@@ -242,6 +242,7 @@ public class DocumentApiTest extends DocumentedTest {
 		.when()
 			.post("/" + INDEX + "/" + TYPE + "/" + id)
 		.then()
+			.log().all()
 			.statusCode(201)
 			.body("_index", equalTo(INDEX))
 			.body("_type", equalTo(TYPE))

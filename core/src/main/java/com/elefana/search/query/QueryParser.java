@@ -18,6 +18,7 @@ package com.elefana.search.query;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.elefana.exception.ElefanaException;
 import com.elefana.exception.UnsupportedQueryTypeException;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.ValueType;
@@ -46,7 +47,7 @@ public class QueryParser {
 	public static final String QUERY_TYPE = "type";
 	public static final String QUERY_WILDCARD = "wildcard";
 	
-	public static Query parseQuery(String content) {
+	public static Query parseQuery(String content) throws ElefanaException {
 		if(content == null || content.isEmpty()) {
 			return new MatchAllQuery();
 		}
@@ -57,7 +58,7 @@ public class QueryParser {
 		return new MatchAllQuery();
 	}
 	
-	public static Query parseQuery(Any queryContext) {
+	public static Query parseQuery(Any queryContext) throws ElefanaException {
 		if(!queryContext.get(QUERY_BOOL).valueType().equals(ValueType.INVALID)) {
 			return new BoolQuery(queryContext.get(QUERY_BOOL));
 		} else if(!queryContext.get(QUERY_DIS_MAX).valueType().equals(ValueType.INVALID)) {

@@ -21,6 +21,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.elefana.exception.ElefanaException;
 import com.elefana.exception.UnsupportedAggregationTypeException;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.ValueType;
@@ -44,7 +45,7 @@ public class AggregationsParser {
 	private static final String AGGREGATION_DATE_HISTOGRAM = "date_histogram";
 	private static final String AGGREGATION_RANGE = "range";
 
-	public static List<Aggregation> parseAggregations(String content) {
+	public static List<Aggregation> parseAggregations(String content) throws ElefanaException {
 		Any contentContext = JsonIterator.deserialize(content);
 		if(!contentContext.get(FIELD_AGGS).valueType().equals(ValueType.INVALID)) {
 			return parseAggregations(contentContext.get(FIELD_AGGS));
@@ -54,7 +55,7 @@ public class AggregationsParser {
 		return null;
 	}
 	
-	public static List<Aggregation> parseAggregations(Any context) {
+	public static List<Aggregation> parseAggregations(Any context) throws ElefanaException {
 		List<Aggregation> result = new ArrayList<Aggregation>();
 		
 		for(String aggregationName : context.keys()) {
@@ -71,7 +72,7 @@ public class AggregationsParser {
 		return result;
 	}
 	
-	public static Aggregation parseAggregation(String aggregationName, Any context) {
+	public static Aggregation parseAggregation(String aggregationName, Any context) throws ElefanaException {
 		if(!context.get(AGGREGATION_AVG).valueType().equals(ValueType.INVALID)) {
 			return new AvgAggregation(aggregationName, context.get(AGGREGATION_AVG));
 		}

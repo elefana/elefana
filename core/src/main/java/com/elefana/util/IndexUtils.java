@@ -35,6 +35,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import com.codahale.metrics.MetricRegistry;
+import com.elefana.exception.ElefanaException;
+import com.elefana.exception.ShardFailedException;
 import com.elefana.indices.IndexTemplate;
 import com.elefana.indices.IndexTemplateService;
 import com.elefana.node.NodeSettingsService;
@@ -82,19 +84,22 @@ public class IndexUtils {
 		knownTables.addAll(listTables());
 	}
 
-	public List<String> listIndices() throws SQLException {
+	public List<String> listIndices() throws ElefanaException {
 		final String query = "SELECT _index FROM " + PARTITION_TRACKING_TABLE;
 		final List<String> results = new ArrayList<String>(1);
 
-		for (Map<String, Object> row : jdbcTemplate.queryForList(query)) {
-			final String index = (String) row.get("_index");
-			LOGGER.info(index + " " + dbInitializer.isTableDistributed(getPartitionTableForIndex(index)));
-			results.add(index);
+		try {
+			for (Map<String, Object> row : jdbcTemplate.queryForList(query)) {
+				final String index = (String) row.get("_index");
+				results.add(index);
+			}
+			return results;
+		} catch (Exception e) {
+			throw new ShardFailedException(e);
 		}
-		return results;
 	}
 
-	public List<String> listIndicesForIndexPattern(List<String> indexPatterns) throws SQLException {
+	public List<String> listIndicesForIndexPattern(List<String> indexPatterns) throws ElefanaException {
 		Set<String> results = new HashSet<String>();
 		for (String indexPattern : indexPatterns) {
 			results.addAll(listIndicesForIndexPattern(indexPattern));
@@ -102,7 +107,7 @@ public class IndexUtils {
 		return new ArrayList<String>(results);
 	}
 
-	public List<String> listIndicesForIndexPattern(String indexPattern) throws SQLException {
+	public List<String> listIndicesForIndexPattern(String indexPattern) throws ElefanaException {
 		final List<String> results = listIndices();
 		final String[] patterns = indexPattern.split(",");
 
@@ -162,7 +167,7 @@ public class IndexUtils {
 		return json.toLong();
 	}
 
-	public void ensureIndexExists(String indexName) throws SQLException {
+	public void ensureIndexExists(String indexName) throws ElefanaException {
 		final String tableName = convertIndexNameToTableName(indexName);
 		if (knownTables.contains(tableName)) {
 			return;
@@ -177,72 +182,84 @@ public class IndexUtils {
 		final String ginIndexName = GIN_INDEX_PREFIX + tableName;
 		final String constraintName = PRIMARY_KEY_PREFIX + tableName;
 
-		Connection connection = jdbcTemplate.getDataSource().getConnection();
-		PreparedStatement preparedStatement;
+		Connection connection = null;
+		try {
+			connection = jdbcTemplate.getDataSource().getConnection();
+			PreparedStatement preparedStatement;
 
-		if (nodeSettingsService.isUsingCitus()) {
-			final String createTableQuery = "CREATE TABLE IF NOT EXISTS " + tableName
-					+ " (_index VARCHAR(255) NOT NULL, _type VARCHAR(255) NOT NULL, _id VARCHAR(255) NOT NULL, _timestamp BIGINT, _source jsonb)";
-			LOGGER.info(createTableQuery);
-			preparedStatement = connection.prepareStatement(createTableQuery);
-			preparedStatement.execute();
-			preparedStatement.close();
-		} else {
-			final String createTableQuery = "CREATE TABLE IF NOT EXISTS " + tableName + " PARTITION OF " + DATA_TABLE
-					+ " FOR VALUES in ('" + indexName + "')";
-			LOGGER.info(createTableQuery);
-			preparedStatement = connection.prepareStatement(createTableQuery);
-			preparedStatement.execute();
-			preparedStatement.close();
-		}
-		
-		if (nodeSettingsService.isUsingCitus() && timeSeries) {
-			final String createPrimaryKeyQuery = "ALTER TABLE " + tableName + " ADD CONSTRAINT " + constraintName
-					+ " PRIMARY KEY (_timestamp, _id);";
-			LOGGER.info(createPrimaryKeyQuery);
-			preparedStatement = connection.prepareStatement(createPrimaryKeyQuery);
-			preparedStatement.execute();
-			preparedStatement.close();
-		} else {
-			final String createPrimaryKeyQuery = "ALTER TABLE " + tableName + " ADD CONSTRAINT " + constraintName
-					+ " PRIMARY KEY (_id);";
-			LOGGER.info(createPrimaryKeyQuery);
-			preparedStatement = connection.prepareStatement(createPrimaryKeyQuery);
-			preparedStatement.execute();
-			preparedStatement.close();
-		}
-
-		final String createGinIndexQuery = "CREATE INDEX IF NOT EXISTS " + ginIndexName + " ON " + tableName
-				+ " USING GIN (_source jsonb_ops)";
-		LOGGER.info(createGinIndexQuery);
-		preparedStatement = connection.prepareStatement(createGinIndexQuery);
-		preparedStatement.execute();
-		preparedStatement.close();
-
-		final String createPartitionTrackingEntry = "INSERT INTO " + PARTITION_TRACKING_TABLE
-				+ " (_index, _partitionTable) VALUES (?, ?) ON CONFLICT DO NOTHING";
-		preparedStatement = connection.prepareStatement(createPartitionTrackingEntry);
-		preparedStatement.setString(1, indexName);
-		preparedStatement.setString(2, tableName);
-		preparedStatement.execute();
-		preparedStatement.close();
-
-		if (nodeSettingsService.isUsingCitus()) {
-			if (timeSeries) {
-				preparedStatement = connection.prepareStatement(
-						"SELECT create_distributed_table('" + tableName + "', '_timestamp', 'append');");
+			if (nodeSettingsService.isUsingCitus()) {
+				final String createTableQuery = "CREATE TABLE IF NOT EXISTS " + tableName
+						+ " (_index VARCHAR(255) NOT NULL, _type VARCHAR(255) NOT NULL, _id VARCHAR(255) NOT NULL, _timestamp BIGINT, _source jsonb)";
+				LOGGER.info(createTableQuery);
+				preparedStatement = connection.prepareStatement(createTableQuery);
 				preparedStatement.execute();
 				preparedStatement.close();
 			} else {
-				preparedStatement = connection
-						.prepareStatement("SELECT create_distributed_table('" + tableName + "', '_id');");
+				final String createTableQuery = "CREATE TABLE IF NOT EXISTS " + tableName + " PARTITION OF " + DATA_TABLE
+						+ " FOR VALUES in ('" + indexName + "')";
+				LOGGER.info(createTableQuery);
+				preparedStatement = connection.prepareStatement(createTableQuery);
 				preparedStatement.execute();
 				preparedStatement.close();
 			}
-		}
+			
+			if (nodeSettingsService.isUsingCitus() && timeSeries) {
+				final String createPrimaryKeyQuery = "ALTER TABLE " + tableName + " ADD CONSTRAINT " + constraintName
+						+ " PRIMARY KEY (_timestamp, _id);";
+				LOGGER.info(createPrimaryKeyQuery);
+				preparedStatement = connection.prepareStatement(createPrimaryKeyQuery);
+				preparedStatement.execute();
+				preparedStatement.close();
+			} else {
+				final String createPrimaryKeyQuery = "ALTER TABLE " + tableName + " ADD CONSTRAINT " + constraintName
+						+ " PRIMARY KEY (_id);";
+				LOGGER.info(createPrimaryKeyQuery);
+				preparedStatement = connection.prepareStatement(createPrimaryKeyQuery);
+				preparedStatement.execute();
+				preparedStatement.close();
+			}
 
-		connection.close();
-		knownTables.add(tableName);
+			final String createGinIndexQuery = "CREATE INDEX IF NOT EXISTS " + ginIndexName + " ON " + tableName
+					+ " USING GIN (_source jsonb_ops)";
+			LOGGER.info(createGinIndexQuery);
+			preparedStatement = connection.prepareStatement(createGinIndexQuery);
+			preparedStatement.execute();
+			preparedStatement.close();
+
+			final String createPartitionTrackingEntry = "INSERT INTO " + PARTITION_TRACKING_TABLE
+					+ " (_index, _partitionTable) VALUES (?, ?) ON CONFLICT DO NOTHING";
+			preparedStatement = connection.prepareStatement(createPartitionTrackingEntry);
+			preparedStatement.setString(1, indexName);
+			preparedStatement.setString(2, tableName);
+			preparedStatement.execute();
+			preparedStatement.close();
+
+			if (nodeSettingsService.isUsingCitus()) {
+				if (timeSeries) {
+					preparedStatement = connection.prepareStatement(
+							"SELECT create_distributed_table('" + tableName + "', '_timestamp', 'append');");
+					preparedStatement.execute();
+					preparedStatement.close();
+				} else {
+					preparedStatement = connection
+							.prepareStatement("SELECT create_distributed_table('" + tableName + "', '_id');");
+					preparedStatement.execute();
+					preparedStatement.close();
+				}
+			}
+
+			connection.close();
+			knownTables.add(tableName);
+		} catch (Exception e) {
+			if(connection != null) {
+				try {
+					connection.close();
+				} catch (SQLException e1) {
+					e1.printStackTrace();
+				}
+			}
+			throw new ShardFailedException(e);
+		}
 	}
 
 	public void deleteIndex(String indexName) {

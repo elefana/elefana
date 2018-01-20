@@ -15,6 +15,7 @@
  ******************************************************************************/
 package com.elefana.search.agg;
 
+import com.elefana.exception.ElefanaException;
 import com.elefana.exception.UnsupportedAggregationTypeException;
 
 public enum AggregationType {
@@ -55,11 +56,11 @@ public enum AggregationType {
 	SIGNIFICANT_TERMS,
 	TERMS;
 	
-	public static AggregationType parse(String value) {
+	public static AggregationType parse(String value) throws ElefanaException {
 		try {
 			return AggregationType.valueOf(value.toUpperCase());
 		} catch (Exception e) {
-			throw new UnsupportedAggregationTypeException();
+			throw new UnsupportedAggregationTypeException(value);
 		}
 	}
 }

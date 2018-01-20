@@ -34,7 +34,7 @@ subprojects {
 	ext {
 		codecVersion = '1.10'
 		commonsMathVersion = '3.6.1'
-		esCompatVersion = '1.0.0'
+		esCompatVersion = '1.0.1'
 		esQueryStringVersion = '1.0.1'
 		hikariVersion = '2.7.4'
 		jodaVersion = '2.9.9'
@@ -43,6 +43,7 @@ subprojects {
 		nativesLoaderVersion = '1.0.0'
 		nettyVersion = '4.1.19.Final'
 		restAssuredVersion = '3.0.6'
+		stringSearchVersion = '2.2.0'
 	}
 	ext['postgresql.version'] = '42.1.4'
 	ext['tomcat.version'] = '8.5.24'
@@ -98,6 +99,7 @@ project(":" + rootProject.name + "-core") {
 		compile "com.jsoniter:jsoniter:$jsoniterVersion"
 		compile "com.zaxxer:HikariCP:$hikariVersion"
 		compile "io.netty:netty-all:$nettyVersion"
+		compile "com.elefana:stringsearch:$stringSearchVersion"
 		compile "com.elefana:es-query-string-parser:$esQueryStringVersion"
 		compile "com.elefana:es-compat-utils:$esCompatVersion"
 		compile "commons-codec:commons-codec:$codecVersion"
@@ -106,6 +108,7 @@ project(":" + rootProject.name + "-core") {
 		compile('org.postgresql:postgresql')
 		
 		testCompile('org.springframework.boot:spring-boot-starter-test')
+		testCompile "io.rest-assured:rest-assured:$restAssuredVersion"
 	}
 	
 	task copyToRelease(type: Copy, dependsOn: bootRepackage) {

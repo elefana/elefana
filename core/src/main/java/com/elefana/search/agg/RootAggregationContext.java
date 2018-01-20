@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import com.elefana.exception.ElefanaException;
 import com.elefana.indices.IndexFieldMappingService;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.search.RequestBodySearch;
@@ -30,14 +31,14 @@ public class RootAggregationContext extends BucketAggregation {
 	private static final Logger LOGGER = LoggerFactory.getLogger(RootAggregationContext.class);
 
 	@Override
-	public void executeSqlQuery(AggregationExec aggregationExec) {
+	public void executeSqlQuery(AggregationExec aggregationExec) throws ElefanaException {
 		for (Aggregation aggregation : getSubAggregations()) {
 			aggregation.executeSqlQuery(aggregationExec);
 		}
 	}
 
 	@Override
-	public void executeSqlQuery(AggregationExec parentExec, Map<String, Object> aggregationsResult, String queryTable) {
+	public void executeSqlQuery(AggregationExec parentExec, Map<String, Object> aggregationsResult, String queryTable) throws ElefanaException {
 		for (Aggregation aggregation : subaggregations) {
 			aggregation.executeSqlQuery(parentExec, aggregationsResult, queryTable);
 		}
@@ -47,7 +48,7 @@ public class RootAggregationContext extends BucketAggregation {
 	public void executeSqlQuery(List<String> indices, String[] types, JdbcTemplate jdbcTemplate,
 			NodeSettingsService nodeSettingsService, IndexFieldMappingService indexFieldMappingService,
 			Map<String, Object> aggregationsResult, List<String> tempTablesCreated, String queryTable,
-			RequestBodySearch requestBodySearch) {
+			RequestBodySearch requestBodySearch) throws ElefanaException {
 		for (Aggregation aggregation : subaggregations) {
 			aggregation.executeSqlQuery(indices, types, jdbcTemplate, nodeSettingsService, indexFieldMappingService,
 					aggregationsResult, tempTablesCreated, queryTable, requestBodySearch);

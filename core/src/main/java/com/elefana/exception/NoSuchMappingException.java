@@ -15,14 +15,12 @@
  ******************************************************************************/
 package com.elefana.exception;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.ResponseStatus;
+import io.netty.handler.codec.http.HttpResponseStatus;
 
-@ResponseStatus(value=HttpStatus.INTERNAL_SERVER_ERROR, reason="No mapping for queried field") 
-public class NoSuchMappingException extends RuntimeException {
+public class NoSuchMappingException extends ElefanaException {
 	private static final long serialVersionUID = 6356913353166607360L;
 
 	public NoSuchMappingException(String fieldName) {
-		super("No mapping for field '" + fieldName + "' was found");
+		super(HttpResponseStatus.INTERNAL_SERVER_ERROR, "No mapping for field '" + fieldName + "' was found");
 	}
 }

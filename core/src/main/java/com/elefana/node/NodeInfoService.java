@@ -73,11 +73,11 @@ public class NodeInfoService {
 		nodeAttributes.put("data", dataNode);
 		nodeAttributes.put("master", false);
 		
-		httpAttributes.put("bound_address", new String [] { nodeSettingsService.getHostIp() });
+		httpAttributes.put("bound_address", new String [] { nodeSettingsService.getHttpIp() });
 		httpAttributes.put("publish_address", nodeSettingsService.getHttpAddress());
 		httpAttributes.put("profiles", EmptyJsonObject.INSTANCE);
 		
-		transportAttributes.put("bound_address", new String [] { nodeSettingsService.getHostIp() });
+		transportAttributes.put("bound_address", new String [] { nodeSettingsService.getHttpIp() });
 		transportAttributes.put("publish_address", nodeSettingsService.getTransportAddress());
 		transportAttributes.put("profiles", EmptyJsonObject.INSTANCE);
 		
@@ -105,11 +105,11 @@ public class NodeInfoService {
 		scheduledExecutorService.shutdown();
 	}
 
-	public Map<String, Object> getNodeInfo(String... infoFields) throws IOException {
+	public Map<String, Object> getNodeInfo(String... infoFields) {
 		Map<String, Object> result = new HashMap<String, Object>();
 		result.put("name", nodeSettingsService.getNodeName());
 		result.put("transport_address", nodeSettingsService.getTransportAddress());
-		result.put("host", nodeSettingsService.getHostIp());
+		result.put("host", nodeSettingsService.getHttpIp());
 		result.put("ip", nodeSettingsService.getIp());
 		result.put("version", versionInfoService.getVersionNumber());
 		result.put("build", versionInfoService.getBuildHash());
@@ -151,7 +151,7 @@ public class NodeInfoService {
 		return result;
 	}
 	
-	public Map<String, Object> getNodeInfo() throws IOException {
+	public Map<String, Object> getNodeInfo() {
 		return getNodeInfo(ALL_INFO);
 	}
 
@@ -171,7 +171,7 @@ public class NodeInfoService {
 		if(jdbcUrl.contains("127.0.0.1")) {
 			return true;
 		}
-		if(jdbcUrl.contains(nodeSettingsService.getHostIp())) {
+		if(jdbcUrl.contains(nodeSettingsService.getHttpIp())) {
 			return true;
 		}
 		return false;
@@ -187,5 +187,17 @@ public class NodeInfoService {
 
 	public void setVersionInfoService(VersionInfoService versionInfoService) {
 		this.versionInfoService = versionInfoService;
+	}
+
+	public OsStats getOsStats() {
+		return osStats;
+	}
+
+	public JvmStats getJvmStats() {
+		return jvmStats;
+	}
+
+	public ProcessStats getProcessStats() {
+		return processStats;
 	}
 }

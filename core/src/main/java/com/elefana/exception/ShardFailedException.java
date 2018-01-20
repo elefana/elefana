@@ -15,11 +15,16 @@
  ******************************************************************************/
 package com.elefana.exception;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.ResponseStatus;
+import io.netty.handler.codec.http.HttpResponseStatus;
 
-@ResponseStatus(value=HttpStatus.INTERNAL_SERVER_ERROR, reason="Shard failed") 
-public class ShardFailedException extends RuntimeException {
+public class ShardFailedException extends ElefanaException {
 	private static final long serialVersionUID = -1696903796723939014L;
 
+	public ShardFailedException() {
+		super(HttpResponseStatus.INTERNAL_SERVER_ERROR, "Shard failed");
+	}
+	
+	public ShardFailedException(Exception e) {
+		super(HttpResponseStatus.INTERNAL_SERVER_ERROR, "Shard failed - " + e.getMessage(), e);
+	}
 }

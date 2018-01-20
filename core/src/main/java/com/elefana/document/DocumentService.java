@@ -18,6 +18,7 @@ package com.elefana.document;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,7 +32,9 @@ import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.stereotype.Service;
 
 import com.elefana.exception.DocumentAlreadyExistsException;
+import com.elefana.exception.ElefanaException;
 import com.elefana.exception.NoSuchDocumentException;
+import com.elefana.exception.ShardFailedException;
 import com.elefana.indices.IndexFieldMappingService;
 import com.elefana.indices.IndexTemplateService;
 import com.elefana.node.NodeSettingsService;
@@ -57,7 +60,7 @@ public class DocumentService {
 	@Autowired
 	private IndexFieldMappingService indexFieldMappingService;
 
-	public Map<String, Object> get(String index, String type, String id) throws Exception {
+	public Map<String, Object> get(String index, String type, String id) throws ElefanaException {
 		Map<String, Object> result = new HashMap<String, Object>();
 		try {
 			final String queryTarget = indexUtils.getQueryTarget(index);
@@ -80,32 +83,35 @@ public class DocumentService {
 				result.put("found", true);
 				result.put("_source", JsonIterator.deserialize(resultSet.getString("_source"), new TypeLiteral<Map<String, Object>>(){}));
 			} else {
-				result.put("found", false);
+				throw new NoSuchDocumentException(index, type, id);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			throw new NoSuchDocumentException();
+			throw new NoSuchDocumentException(index, type, id);
 		}
 		return result;
 	}
 
-	public MultiGetResponse multiGet(String requestBody) throws Exception {
+	public MultiGetResponse multiGet(String requestBody) throws ElefanaException {
 		Map<String, Object> request = JsonIterator.deserialize(requestBody, new TypeLiteral<Map<String, Object>>(){});
 		List<Object> requestItems = (List<Object>) request.get("docs");
 
 		MultiGetResponse result = new MultiGetResponse();
-		try {
-			for (Object tmpRequestItem : requestItems) {
-				Map<String, Object> requestItem = (Map<String, Object>) tmpRequestItem;
+		for (Object tmpRequestItem : requestItems) {
+			Map<String, Object> requestItem = (Map<String, Object>) tmpRequestItem;
 				
-				final String index = (String) requestItem.get("_index");
+			final String index = (String) requestItem.get("_index");
+			final String type = requestItem.containsKey("_type") ? (String) requestItem.get("_type") : null;
+			final String id = requestItem.containsKey("_id") ? (String) requestItem.get("_id") : null;
+
+			try {
 				final String queryTarget = indexUtils.getQueryTarget(index);
-				
+
 				StringBuilder queryBuilder = new StringBuilder();
 				queryBuilder.append("SELECT * FROM ");
 				queryBuilder.append(queryTarget);
 				queryBuilder.append(" WHERE ");
-				
+
 				if (!nodeSettingsService.isUsingCitus()) {
 					queryBuilder.append("_index = '");
 					queryBuilder.append(index);
@@ -116,18 +122,19 @@ public class DocumentService {
 					}
 				}
 
-				if (requestItem.containsKey("_type")) {
+				if (type != null) {
 					queryBuilder.append("_type = '");
-					queryBuilder.append(requestItem.get("_type"));
+					queryBuilder.append(type);
 					queryBuilder.append("'");
 
 					if (requestItem.containsKey("_id")) {
 						queryBuilder.append(" AND ");
 					}
 				}
-				if (requestItem.containsKey("_id")) {
+
+				if (id != null) {
 					queryBuilder.append("_id = '");
-					queryBuilder.append(requestItem.get("_id"));
+					queryBuilder.append(id);
 					queryBuilder.append("'");
 				}
 
@@ -138,7 +145,9 @@ public class DocumentService {
 						getResponse.set_index(resultSet.getString("_index"));
 						getResponse.set_type(resultSet.getString("_type"));
 						getResponse.set_id(resultSet.getString("_id"));
-						getResponse.set_source(JsonIterator.deserialize(resultSet.getString("_source"), new TypeLiteral<Map<String, Object>>(){}));
+						getResponse.set_source(JsonIterator.deserialize(resultSet.getString("_source"),
+								new TypeLiteral<Map<String, Object>>() {
+								}));
 						result.getDocs().add(getResponse);
 					}
 				} catch (Exception e) {
@@ -149,15 +158,15 @@ public class DocumentService {
 					getResponse.setFound(false);
 					result.getDocs().add(getResponse);
 				}
+			} catch (Exception e) {
+				e.printStackTrace();
+				throw new ShardFailedException(e);
 			}
-		} catch (Exception e) {
-			e.printStackTrace();
-			throw new NoSuchDocumentException();
 		}
 		return result;
 	}
 
-	public MultiGetResponse multiGet(String indexPattern, String requestBody) throws Exception {
+	public MultiGetResponse multiGet(String indexPattern, String requestBody) throws ElefanaException {
 		Map<String, Object> request = JsonIterator.deserialize(requestBody, new TypeLiteral<Map<String, Object>>(){});
 		List<Object> requestItems = (List<Object>) request.get("docs");
 
@@ -220,12 +229,12 @@ public class DocumentService {
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			throw new NoSuchDocumentException();
+			throw new ShardFailedException(e);
 		}
 		return result;
 	}
 
-	public MultiGetResponse multiGet(String indexPattern, String typePattern, String requestBody) throws Exception {
+	public MultiGetResponse multiGet(String indexPattern, String typePattern, String requestBody) throws ElefanaException {
 		Map<String, Object> request = JsonIterator.deserialize(requestBody, new TypeLiteral<Map<String, Object>>(){});
 		List<Object> requestItems = (List<Object>) request.get("docs");
 
@@ -290,13 +299,13 @@ public class DocumentService {
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			throw new NoSuchDocumentException();
+			throw new ShardFailedException(e);
 		}
 		return result;
 	}
 
 	public IndexApiResponse index(String index, String type, String id, String document, IndexOpType opType)
-			throws Exception {
+			throws ElefanaException {
 		indexUtils.ensureIndexExists(index);
 
 		switch(versionInfoService.getApiVersion()) {
@@ -319,7 +328,11 @@ public class DocumentService {
 
 		PGobject jsonObject = new PGobject();
 		jsonObject.setType("json");
-		jsonObject.setValue(document);
+		try {
+			jsonObject.setValue(document);
+		} catch (SQLException e) {
+			throw new ShardFailedException(e);
+		}
 
 		final StringBuilder queryBuilder = new StringBuilder();
 		
@@ -360,30 +373,35 @@ public class DocumentService {
 			queryBuilder.append("(?, ?, ?, ?, ?);");
 		}
 
-		Connection connection = jdbcTemplate.getDataSource().getConnection();
-		PreparedStatement preparedStatement = connection.prepareStatement(queryBuilder.toString());
-		preparedStatement.setString(1, index);
-		preparedStatement.setString(2, type);
-		preparedStatement.setString(3, id);
-		preparedStatement.setLong(4, timestamp);
-		preparedStatement.setObject(5, jsonObject);
-		
 		int rows = 0;
-		if(nodeSettingsService.isUsingCitus()) {
-			rows = preparedStatement.executeUpdate();
-		} else {
-			ResultSet resultSet = preparedStatement.executeQuery();
-			if (!resultSet.next()) {
-				preparedStatement.close();
-				connection.close();
-				throw new RuntimeException("");
+		try {
+			Connection connection = jdbcTemplate.getDataSource().getConnection();
+			PreparedStatement preparedStatement = connection.prepareStatement(queryBuilder.toString());
+			preparedStatement.setString(1, index);
+			preparedStatement.setString(2, type);
+			preparedStatement.setString(3, id);
+			preparedStatement.setLong(4, timestamp);
+			preparedStatement.setObject(5, jsonObject);
+			
+			if(nodeSettingsService.isUsingCitus()) {
+				rows = preparedStatement.executeUpdate();
+			} else {
+				ResultSet resultSet = preparedStatement.executeQuery();
+				if (!resultSet.next()) {
+					preparedStatement.close();
+					connection.close();
+					throw new RuntimeException("");
+				}
+				rows = resultSet.getInt(1);
+				resultSet.close();
 			}
-			rows = resultSet.getInt(1);
-			resultSet.close();
+			
+			preparedStatement.close();
+			connection.close();
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ShardFailedException(e);
 		}
-		
-		preparedStatement.close();
-		connection.close();
 
 		if (rows > 0) {
 			IndexApiResponse result = new IndexApiResponse();
@@ -397,9 +415,9 @@ public class DocumentService {
 			return result;
 		} else {
 			if (opType == IndexOpType.CREATE) {
-				throw new DocumentAlreadyExistsException();
+				throw new DocumentAlreadyExistsException(index, type, id);
 			}
-			throw new RuntimeException("");
+			throw new ShardFailedException();
 		}
 	}
 }

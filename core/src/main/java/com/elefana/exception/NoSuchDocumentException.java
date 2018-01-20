@@ -15,11 +15,12 @@
  ******************************************************************************/
 package com.elefana.exception;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.ResponseStatus;
+import io.netty.handler.codec.http.HttpResponseStatus;
 
-@ResponseStatus(value=HttpStatus.NOT_FOUND, reason="Document not found") 
-public class NoSuchDocumentException extends RuntimeException {
+public class NoSuchDocumentException extends ElefanaException {
 	private static final long serialVersionUID = 923131659302915891L;
 
+	public NoSuchDocumentException(String index, String type, String id) {
+		super(HttpResponseStatus.NOT_FOUND, "Document not found - Index: " + index + ", Type: " + type + ", Id: " + id);
+	}
 }

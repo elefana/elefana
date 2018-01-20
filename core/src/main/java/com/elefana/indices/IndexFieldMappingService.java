@@ -36,6 +36,8 @@ import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 
 import com.elefana.ApiVersion;
+import com.elefana.exception.ElefanaException;
+import com.elefana.exception.ShardFailedException;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
 import com.elefana.util.IndexUtils;
@@ -122,11 +124,11 @@ public class IndexFieldMappingService implements Runnable {
 		return results;
 	}
 
-	public Map<String, Object> getMappings() throws Exception {
+	public Map<String, Object> getMappings() throws ElefanaException {
 		return getMapping("*");
 	}
 
-	public Map<String, Object> getMapping(String indexPattern) throws Exception {
+	public Map<String, Object> getMapping(String indexPattern) throws ElefanaException {
 		Map<String, Object> result = new HashMap<String, Object>();
 		for (String index : indexUtils.listIndicesForIndexPattern(indexPattern)) {
 			Map<String, Object> mappings = new HashMap<String, Object>();
@@ -149,7 +151,7 @@ public class IndexFieldMappingService implements Runnable {
 		return result;
 	}
 
-	public void putMapping(String index, String mappingBody) throws Exception {
+	public void putMapping(String index, String mappingBody) throws ElefanaException {
 		Map<String, Object> mappings = (Map<String, Object>) JsonIterator.deserialize(mappingBody, new TypeLiteral<Map<String, Object>>(){}).get("mappings");
 		if (mappings == null) {
 			return;
@@ -159,11 +161,11 @@ public class IndexFieldMappingService implements Runnable {
 		}
 	}
 
-	public void putMapping(String index, String type, String mappingBody) throws Exception {
+	public void putMapping(String index, String type, String mappingBody) throws ElefanaException {
 		putIndexMapping(index, type, JsonIterator.deserialize(mappingBody, new TypeLiteral<Map<String, Object>>(){}));
 	}
 
-	private void putIndexMapping(String index, String type, Map<String, Object> newMappings) throws Exception {
+	private void putIndexMapping(String index, String type, Map<String, Object> newMappings) throws ElefanaException {
 		Map<String, Object> existingMappings = getIndexTypeMapping(index, type);
 
 		if (newMappings.containsKey(type)) {
@@ -350,7 +352,7 @@ public class IndexFieldMappingService implements Runnable {
 		return results;
 	}
 
-	public Map<String, Object> getFieldCapabilities(String indexPattern) throws Exception {
+	public Map<String, Object> getFieldCapabilities(String indexPattern) throws ElefanaException {
 		Map<String, Object> fields = new HashMap<String, Object>();
 		for (String index : indexUtils.listIndicesForIndexPattern(indexPattern)) {
 			try {
@@ -556,12 +558,12 @@ public class IndexFieldMappingService implements Runnable {
 				indexName, jsonObject);
 	}
 
-	private void generateFieldCapabilitiesForIndex(String index) throws Exception {
+	private void generateFieldCapabilitiesForIndex(String index) throws ElefanaException {
 		generateFieldCapabilitiesForIndex(index, jdbcTemplate
 				.queryForRowSet("SELECT _type, _mapping FROM elefana_index_mapping WHERE _index = ?", index));
 	}
 
-	private void generateFieldCapabilitiesForIndex(String index, SqlRowSet indexMappingSet) throws Exception {
+	private void generateFieldCapabilitiesForIndex(String index, SqlRowSet indexMappingSet) throws ElefanaException {
 		if (!versionInfoService.getApiVersion().isNewerThan(ApiVersion.V_2_4_3)) {
 			return;
 		}
@@ -583,12 +585,17 @@ public class IndexFieldMappingService implements Runnable {
 			}
 		}
 
-		PGobject jsonObject = new PGobject();
-		jsonObject.setType("json");
-		jsonObject.setValue(JsonStream.serialize(fields));
-		jdbcTemplate.update(
-				"INSERT INTO elefana_index_field_capabilities (_index, _capabilities) VALUES (?, ?) ON CONFLICT (_index) DO UPDATE SET _capabilities = EXCLUDED._capabilities",
-				index, jsonObject);
+		try {
+			PGobject jsonObject = new PGobject();
+			jsonObject.setType("json");
+			jsonObject.setValue(JsonStream.serialize(fields));
+			jdbcTemplate.update(
+					"INSERT INTO elefana_index_field_capabilities (_index, _capabilities) VALUES (?, ?) ON CONFLICT (_index) DO UPDATE SET _capabilities = EXCLUDED._capabilities",
+					index, jsonObject);
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ShardFailedException(e);
+		}
 	}
 
 	private Map<String, Object> generateFieldCapability(String mappingType) {
@@ -638,13 +645,18 @@ public class IndexFieldMappingService implements Runnable {
 		fieldStatsQueue.add(index);
 	}
 
-	private void saveMappings(String index, String type, Map<String, Object> mappings) throws Exception {
-		PGobject jsonObject = new PGobject();
-		jsonObject.setType("json");
-		jsonObject.setValue(JsonStream.serialize(mappings));
+	private void saveMappings(String index, String type, Map<String, Object> mappings) throws ElefanaException {
+		try {
+			PGobject jsonObject = new PGobject();
+			jsonObject.setType("json");
+			jsonObject.setValue(JsonStream.serialize(mappings));
 
-		jdbcTemplate.update(
-				"INSERT INTO elefana_index_mapping (_tracking_id, _index, _type, _mapping) VALUES (?, ?, ?, ?) ON CONFLICT (_tracking_id) DO UPDATE SET _mapping = EXCLUDED._mapping",
-				index + "-" + type, index, type, jsonObject);
+			jdbcTemplate.update(
+					"INSERT INTO elefana_index_mapping (_tracking_id, _index, _type, _mapping) VALUES (?, ?, ?, ?) ON CONFLICT (_tracking_id) DO UPDATE SET _mapping = EXCLUDED._mapping",
+					index + "-" + type, index, type, jsonObject);
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ShardFailedException(e);
+		}
 	}
 }

@@ -98,7 +98,11 @@ public class ElefanaApplication implements ApplicationListener<ContextRefreshedE
 				break;
 			}
 		}
-		LOGGER.info(props.getProperty("spring.config.location"));
+		if(props.getProperty("spring.config.location") == null) {
+			LOGGER.info("No config file found - using default internal configuration");
+		} else {
+			LOGGER.info("Using config " + props.getProperty("spring.config.location"));
+		}
 		return props;
 	}
 }
