@@ -30,10 +30,7 @@ import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
-import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
@@ -42,7 +39,9 @@ import com.elefana.ApiVersion;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
 import com.elefana.util.IndexUtils;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jsoniter.JsonIterator;
+import com.jsoniter.output.JsonStream;
+import com.jsoniter.spi.TypeLiteral;
 
 @Service
 public class IndexFieldMappingService implements Runnable {
@@ -66,7 +65,6 @@ public class IndexFieldMappingService implements Runnable {
 	@Autowired
 	private IndexUtils indexUtils;
 
-	private final ObjectMapper objectMapper = new ObjectMapper();
 	private ScheduledFuture<?> scheduledTask;
 
 	private FieldMapper fieldMapper;
@@ -152,8 +150,7 @@ public class IndexFieldMappingService implements Runnable {
 	}
 
 	public void putMapping(String index, String mappingBody) throws Exception {
-		Map<String, Object> mappings = (Map<String, Object>) objectMapper.readValue(mappingBody, Map.class)
-				.get("mappings");
+		Map<String, Object> mappings = (Map<String, Object>) JsonIterator.deserialize(mappingBody, new TypeLiteral<Map<String, Object>>(){}).get("mappings");
 		if (mappings == null) {
 			return;
 		}
@@ -163,7 +160,7 @@ public class IndexFieldMappingService implements Runnable {
 	}
 
 	public void putMapping(String index, String type, String mappingBody) throws Exception {
-		putIndexMapping(index, type, objectMapper.readValue(mappingBody, Map.class));
+		putIndexMapping(index, type, JsonIterator.deserialize(mappingBody, new TypeLiteral<Map<String, Object>>(){}));
 	}
 
 	private void putIndexMapping(String index, String type, Map<String, Object> newMappings) throws Exception {
@@ -341,7 +338,7 @@ public class IndexFieldMappingService implements Runnable {
 				SqlRowSet rowSet = jdbcTemplate
 						.queryForRowSet("SELECT _stats FROM elefana_index_field_stats WHERE _index = ? LIMIT 1", index);
 				if (rowSet.next()) {
-					indexResult.put("fields", objectMapper.readValue(rowSet.getString("_stats"), Map.class));
+					indexResult.put("fields", JsonIterator.deserialize(rowSet.getString("_stats"), new TypeLiteral<Map<String, Object>>(){}));
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -360,7 +357,7 @@ public class IndexFieldMappingService implements Runnable {
 				SqlRowSet rowSet = jdbcTemplate.queryForRowSet(
 						"SELECT _capabilities FROM elefana_index_field_capabilities WHERE _index = ? LIMIT 1", index);
 				if (rowSet.next()) {
-					fields.putAll(objectMapper.readValue(rowSet.getString("_capabilities"), Map.class));
+					fields.putAll(JsonIterator.deserialize(rowSet.getString("_capabilities"), new TypeLiteral<Map<String, Object>>(){}));
 				}
 			} catch (Exception e) {
 				LOGGER.error(e.getMessage(), e);
@@ -378,7 +375,7 @@ public class IndexFieldMappingService implements Runnable {
 			SqlRowSet rowSet = jdbcTemplate
 					.queryForRowSet("SELECT _type, _mapping FROM elefana_index_mapping WHERE _index = ?", index);
 			while (rowSet.next()) {
-				results.put(rowSet.getString("_type"), objectMapper.readValue(rowSet.getString("_mapping"), Map.class));
+				results.put(rowSet.getString("_type"), JsonIterator.deserialize(rowSet.getString("_mapping"), new TypeLiteral<Map<String, Object>>(){}));
 			}
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
@@ -391,7 +388,7 @@ public class IndexFieldMappingService implements Runnable {
 			SqlRowSet rowSet = jdbcTemplate.queryForRowSet(
 					"SELECT _mapping FROM elefana_index_mapping WHERE _index = ? AND _type = ? LIMIT 1", index, type);
 			if (rowSet.next()) {
-				return objectMapper.readValue(rowSet.getString("_mapping"), Map.class);
+				return JsonIterator.deserialize(rowSet.getString("_mapping"), new TypeLiteral<Map<String, Object>>(){});
 			}
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
@@ -465,12 +462,12 @@ public class IndexFieldMappingService implements Runnable {
 				}
 				mapping.put(type, typeMappings);
 			}
-			Map<String, Object> document = objectMapper.readValue(rowSet.getString("_source"), Map.class);
+			Map<String, Object> document = JsonIterator.deserialize(rowSet.getString("_source"), new TypeLiteral<Map<String, Object>>(){});
 			fieldMapper.generateMappings(typeMappings, document);
 
 			PGobject jsonObject = new PGobject();
 			jsonObject.setType("json");
-			jsonObject.setValue(objectMapper.writeValueAsString(typeMappings));
+			jsonObject.setValue(JsonStream.serialize(typeMappings));
 
 			jdbcTemplate.update(
 					"INSERT INTO elefana_index_mapping (_tracking_id, _index, _type, _mapping) VALUES (?, ?, ?, ?) ON CONFLICT (_tracking_id) DO UPDATE SET _mapping = EXCLUDED._mapping",
@@ -484,7 +481,7 @@ public class IndexFieldMappingService implements Runnable {
 			SqlRowSet rowSet) throws Exception {
 		int totalSamples = 0;
 		while (rowSet.next()) {
-			Map<String, Object> document = objectMapper.readValue(rowSet.getString("_source"), Map.class);
+			Map<String, Object> document = JsonIterator.deserialize(rowSet.getString("_source"), new TypeLiteral<Map<String, Object>>(){});
 			fieldMapper.generateMappings(typeMappings, document);
 			totalSamples++;
 		}
@@ -552,7 +549,7 @@ public class IndexFieldMappingService implements Runnable {
 
 		PGobject jsonObject = new PGobject();
 		jsonObject.setType("json");
-		jsonObject.setValue(objectMapper.writeValueAsString(fieldStats));
+		jsonObject.setValue(JsonStream.serialize(fieldStats));
 
 		jdbcTemplate.update(
 				"INSERT INTO elefana_index_field_stats (_index, _stats) VALUES (?, ?) ON CONFLICT (_index) DO UPDATE SET _stats = EXCLUDED._stats",
@@ -572,7 +569,7 @@ public class IndexFieldMappingService implements Runnable {
 		Map<String, Object> fields = new HashMap<String, Object>();
 
 		while (indexMappingSet.next()) {
-			Map<String, Object> mappings = objectMapper.readValue(indexMappingSet.getString("_mapping"), Map.class);
+			Map<String, Object> mappings = JsonIterator.deserialize(indexMappingSet.getString("_mapping"), new TypeLiteral<Map<String, Object>>(){});
 			Map<String, Object> properties = (Map) mappings.get("properties");
 			for (String propertyKey : properties.keySet()) {
 				if (fields.containsKey(propertyKey)) {
@@ -588,7 +585,7 @@ public class IndexFieldMappingService implements Runnable {
 
 		PGobject jsonObject = new PGobject();
 		jsonObject.setType("json");
-		jsonObject.setValue(objectMapper.writeValueAsString(fields));
+		jsonObject.setValue(JsonStream.serialize(fields));
 		jdbcTemplate.update(
 				"INSERT INTO elefana_index_field_capabilities (_index, _capabilities) VALUES (?, ?) ON CONFLICT (_index) DO UPDATE SET _capabilities = EXCLUDED._capabilities",
 				index, jsonObject);
@@ -644,7 +641,7 @@ public class IndexFieldMappingService implements Runnable {
 	private void saveMappings(String index, String type, Map<String, Object> mappings) throws Exception {
 		PGobject jsonObject = new PGobject();
 		jsonObject.setType("json");
-		jsonObject.setValue(objectMapper.writeValueAsString(mappings));
+		jsonObject.setValue(JsonStream.serialize(mappings));
 
 		jdbcTemplate.update(
 				"INSERT INTO elefana_index_mapping (_tracking_id, _index, _type, _mapping) VALUES (?, ?, ?, ?) ON CONFLICT (_tracking_id) DO UPDATE SET _mapping = EXCLUDED._mapping",
