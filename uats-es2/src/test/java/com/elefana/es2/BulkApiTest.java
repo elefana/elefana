@@ -62,7 +62,7 @@ public class BulkApiTest {
 			.body("errors", equalTo(false));
 		
 		try {
-			Thread.sleep(1000L);
+			Thread.sleep(5000L);
 		} catch (Exception e) {}
 		
 		given()
@@ -99,7 +99,7 @@ public class BulkApiTest {
 			.body("errors", equalTo(false));
 		
 		try {
-			Thread.sleep(1000L);
+			Thread.sleep(5000L);
 		} catch (Exception e) {}
 		
 		given()

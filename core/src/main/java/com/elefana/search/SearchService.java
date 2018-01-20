@@ -106,7 +106,7 @@ public class SearchService {
 				types = ((String) indexTypeInfo.get("type")).split(",");
 			}
 
-			responses.add(search(indices, types, lines[i + 1]));
+			responses.add(internalSearch(indices, types, lines[i + 1]));
 		}
 
 		Map<String, Object> result = new HashMap<String, Object>();
@@ -115,7 +115,7 @@ public class SearchService {
 	}
 
 	public Map<String, Object> search(String httpRequest) throws ElefanaException {
-		return search(null, httpRequest);
+		return search(null, null, httpRequest);
 	}
 
 	public Map<String, Object> search(String indexPattern, String httpRequest) throws ElefanaException {
@@ -127,10 +127,10 @@ public class SearchService {
 		List<String> indices = indexPattern == null || indexPattern.isEmpty() ? indexUtils.listIndices()
 				: indexUtils.listIndicesForIndexPattern(indexPattern);
 		String[] types = typesPattern == null ? EMPTY_TYPES_LIST : typesPattern.split(",");
-		return search(indices, types, httpRequest);
+		return internalSearch(indices, types, httpRequest);
 	}
 
-	private Map<String, Object> search(List<String> indices, String[] types, String httpRequest)
+	private Map<String, Object> internalSearch(List<String> indices, String[] types, String httpRequest)
 			throws ElefanaException {
 		final long startTime = System.currentTimeMillis();
 		final RequestBodySearch requestBodySearch = new RequestBodySearch(httpRequest);
@@ -164,7 +164,6 @@ public class SearchService {
 	}
 
 	private Map<String, Object> executeQuery(String query, long startTime, int size) throws ElefanaException {
-		LOGGER.info(query);
 		SqlRowSet sqlRowSet = null;
 		try {
 			sqlRowSet = jdbcTemplate.queryForRowSet(query);

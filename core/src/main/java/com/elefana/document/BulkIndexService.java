@@ -4,6 +4,8 @@
 package com.elefana.document;
 
 import java.net.URI;
+import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
@@ -29,6 +31,8 @@ import com.elefana.util.IndexUtils;
 @Service
 public class BulkIndexService implements Runnable {
 	private static final Logger LOGGER = LoggerFactory.getLogger(BulkIndexService.class);
+	
+	private static final long SHARD_TIMEOUT = 5000L;
 
 	@Autowired
 	private Environment environment;
@@ -73,7 +77,10 @@ public class BulkIndexService implements Runnable {
 			while (!indexQueue.isEmpty()) {
 				final IndexTarget indexTarget = indexQueue.poll();
 				if (nodeSettingsService.isUsingCitus()) {
-					mergeStagingTableIntoDistributedTable(indexTarget);
+					if(!mergeStagingTableIntoDistributedTable(indexTarget)) {
+						indexQueue.offer(indexTarget);
+						continue;
+					}
 				} else {
 					mergeStagingTableIntoPartitionTable(indexTarget);
 				}
@@ -94,9 +101,32 @@ public class BulkIndexService implements Runnable {
 		final IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndex(indexTarget.getIndex());
 
 		if (indexTemplate != null && indexTemplate.isTimeSeries()) {
-			jdbcTemplate
-					.queryForList("SELECT master_append_table_to_shard(select_shard('" + indexTarget.getTargetTable()
-							+ "'), '" + indexTarget.getStagingTable() + "', '" + jdbcHost + "', " + jdbcPort + ");");
+			List<Map<String, Object>> shardResultSet = jdbcTemplate
+					.queryForList("SELECT select_shard('" + indexTarget.getTargetTable() + "')");
+			if(shardResultSet.isEmpty()) {
+				return false;
+			}
+			long shardId = (long) shardResultSet.get(0).get("select_shard");
+			
+			long timer = 0L;
+			Exception lastException = null;
+			while(timer < SHARD_TIMEOUT) {
+				long startTime = System.currentTimeMillis();
+				try {
+					jdbcTemplate.queryForList("SELECT master_append_table_to_shard(" + shardId + ", '"
+							+ indexTarget.getStagingTable() + "', '" + jdbcHost + "', " + jdbcPort + ");");
+					LOGGER.info(indexTarget.getStagingTable() + " appended to shard " + shardId);
+					return true;
+				} catch (Exception e) {
+					lastException = e;
+				}
+				try {
+					Thread.sleep(100L);
+				} catch (Exception e) {}
+				timer += (System.currentTimeMillis() - startTime);
+			}
+			lastException.printStackTrace();
+			return false;
 		} else {
 			jdbcTemplate.update("INSERT INTO " + indexTarget.getTargetTable()
 					+ "(_index, _type, _id, _timestamp, _source) select _index, _type, _id, _timestamp, _source FROM "

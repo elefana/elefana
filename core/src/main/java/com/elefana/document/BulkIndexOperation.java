@@ -18,7 +18,10 @@ package com.elefana.document;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import com.jsoniter.annotation.JsonIgnore;
+
 public class BulkIndexOperation {
+	@JsonIgnore
 	private static final Queue<BulkIndexOperation> POOL = new ConcurrentLinkedQueue<BulkIndexOperation>();
 	
 	private String index;
@@ -27,6 +30,7 @@ public class BulkIndexOperation {
 	private String source;
 	private long timestamp;
 	
+	@JsonIgnore
 	public static BulkIndexOperation allocate() {
 		BulkIndexOperation result = POOL.poll();
 		if(result == null) {
@@ -80,6 +84,7 @@ public class BulkIndexOperation {
 	}
 
 	@Override
+	@JsonIgnore
 	public String toString() {
 		return "BulkIndexOperation [index=" + index + ", type=" + type + ", id=" + id + ", source=" + source + "]";
 	}

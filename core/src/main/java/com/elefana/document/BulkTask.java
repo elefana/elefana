@@ -56,13 +56,7 @@ public class BulkTask implements Callable<List<Map<String, Object>>> {
 	public static final String KEY_STATUS = "status";
 	public static final int VALUE_STATUS_CREATED = 201;
 
-	private static final Map<String, Object> SHARDS = new HashMap<String, Object>() {
-		{
-			put("total", 1);
-			put("successful", 1);
-			put("failed", 0);
-		}
-	};
+	private static final DocumentShardInfo SHARDS = new DocumentShardInfo();
 
 	private final Timer psqlTimer;
 	private final JdbcTemplate jdbcTemplate;

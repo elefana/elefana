@@ -409,7 +409,11 @@ public class DocumentService {
 			result._type = type;
 			result._id = id;
 			result._version = 1;
-			result.created = true;
+			if(opType == IndexOpType.UPDATE) {
+				result.created = false;
+			} else {
+				result.created = true;
+			}
 			
 			indexFieldMappingService.scheduleIndexForMappingAndStats(index);
 			return result;

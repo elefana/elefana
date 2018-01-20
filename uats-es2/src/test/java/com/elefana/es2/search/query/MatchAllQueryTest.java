@@ -44,7 +44,6 @@ public class MatchAllQueryTest extends AbstractQueryTest {
 		given().when()
 			.post("/_search")
 		.then()
-			.log().all()
 			.statusCode(200)
 			.body("hits.total", equalTo(10));
 	}
@@ -59,7 +58,6 @@ public class MatchAllQueryTest extends AbstractQueryTest {
 		given().when()
 			.get("/_search")
 		.then()
-			.log().all()
 			.statusCode(200)
 			.body("hits.total", equalTo(10));
 	}
@@ -86,6 +84,7 @@ public class MatchAllQueryTest extends AbstractQueryTest {
 		.when()
 			.post("/" + index + "/" + type + "/_search")
 		.then()
+			.log().all()
 			.statusCode(200)
 			.body("hits.total", equalTo(10));
 		

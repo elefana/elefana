@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 
 import com.elefana.exception.ElefanaException;
+import com.elefana.exception.InvalidAggregationFieldType;
 import com.elefana.exception.NoSuchMappingException;
 import com.jsoniter.any.Any;
 
@@ -34,6 +35,8 @@ public class DateHistogramAggregation extends BucketAggregation {
 	
 	private static final String KEY_FIELD = "field";
 	private static final String KEY_INTERVAL = "interval";
+	
+	private static final String [] EXPECTED_FIELD_TYPES = new String [] {"long", "double", "data"};
 	
 	private final String aggregationName;
 	private final String fieldName;
@@ -50,7 +53,7 @@ public class DateHistogramAggregation extends BucketAggregation {
 	public void executeSqlQuery(AggregationExec aggregationExec) throws ElefanaException {
 		final String fieldType = aggregationExec.getIndexFieldMappingService()
 				.getFirstFieldMappingType(aggregationExec.getIndices(), aggregationExec.getTypes(), fieldName);
-		if (fieldType == null) {
+		if (fieldType == null || fieldType.isEmpty()) {
 			throw new NoSuchMappingException(fieldName);
 		}
 		final String fieldFormat = aggregationExec.getIndexFieldMappingService()
@@ -114,7 +117,6 @@ public class DateHistogramAggregation extends BucketAggregation {
 
 		switch (fieldType) {
 		case "date":
-			LOGGER.info(fieldFormat);
 			switch(fieldFormat) {
 			case "epoch_millis":
 				queryBuilder.append("to_timestamp((_source->>'");
@@ -128,13 +130,14 @@ public class DateHistogramAggregation extends BucketAggregation {
 				break;
 			}
 			break;
+		case "double":
 		case "long":
 			queryBuilder.append("to_timestamp((_source->>'");
 			queryBuilder.append(fieldName);
 			queryBuilder.append("')::numeric / 1000)");
 			break;
 		default:
-			break;
+			throw new InvalidAggregationFieldType(EXPECTED_FIELD_TYPES, fieldType);
 		}
 		queryBuilder.append(") AS elefana_agg_bucket");
 		queryBuilder.append(", * FROM ");

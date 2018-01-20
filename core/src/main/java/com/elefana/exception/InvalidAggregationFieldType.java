@@ -15,32 +15,28 @@
  ******************************************************************************/
 package com.elefana.exception;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import com.jsoniter.output.JsonStream;
-
 import io.netty.handler.codec.http.HttpResponseStatus;
 
-public class NoSuchDocumentException extends ElefanaException {
-	private static final long serialVersionUID = 923131659302915891L;
-	
-	private final String index, type, id;
+/**
+ *
+ */
+public class InvalidAggregationFieldType extends ElefanaException {
+	private static final long serialVersionUID = -7458851310111019153L;
 
-	public NoSuchDocumentException(String index, String type, String id) {
-		super(HttpResponseStatus.NOT_FOUND, "Document not found - Index: " + index + ", Type: " + type + ", Id: " + id);
-		this.index = index;
-		this.type = type;
-		this.id = id;
+	public InvalidAggregationFieldType(String[] expectedFieldTypes, String actualFieldType) {
+		super(HttpResponseStatus.PRECONDITION_FAILED, "Invalid aggregation field type - expected ["
+				+ stringify(expectedFieldTypes) + "], actual '" + actualFieldType + "'");
 	}
-	
-	@Override
-	public String getMessage() {
-		Map<String, Object> result = new HashMap<String, Object>();
-		result.put("_index", index);
-		result.put("_type", type);
-		result.put("_id", id);
-		result.put("found", false);
-		return JsonStream.serialize(result);
+
+	private static String stringify(String[] expectedFieldTypes) {
+		final StringBuilder result = new StringBuilder();
+		for (int i = 0; i < expectedFieldTypes.length; i++) {
+			if (i > 0) {
+				result.append(',');
+				result.append(' ');
+			}
+			result.append(expectedFieldTypes[i]);
+		}
+		return result.toString();
 	}
 }

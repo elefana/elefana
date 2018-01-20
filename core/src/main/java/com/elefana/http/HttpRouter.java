@@ -3,6 +3,7 @@
  */
 package com.elefana.http;
 
+import java.net.URLDecoder;
 import java.util.Map;
 import java.util.UUID;
 
@@ -14,6 +15,8 @@ import com.codahale.metrics.Meter;
 import com.elefana.ApiRouter;
 import com.elefana.document.IndexOpType;
 import com.elefana.exception.ElefanaException;
+import com.elefana.exception.NoSuchDocumentException;
+import com.elefana.exception.ShardFailedException;
 import com.jsoniter.output.JsonStream;
 
 import io.netty.buffer.Unpooled;
@@ -67,6 +70,8 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 				return routeToRootUrl(httpRequest);
 			}
 			return routeToApi(httpRequest, urlComponents);
+		} catch (NoSuchDocumentException e) {
+			return createResponse(httpRequest, HttpResponseStatus.NOT_FOUND, e.getMessage());
 		} catch (ElefanaException e) {
 			LOGGER.error(e.getMessage(), e);
 			return createErrorResponse(httpRequest, e);
@@ -114,6 +119,15 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 			}
 			break;
 		case 3:
+			switch (urlComponents[1].toLowerCase()) {
+			case "_mapping":
+				return routeToFieldMappingApi(httpRequest, urlComponents);
+			}
+			switch (urlComponents[2].toLowerCase()) {
+			case "_msearch":
+			case "_search":
+				return routeToSearchApi(httpRequest, urlComponents);
+			}
 			break;
 		case 4:
 			break;
@@ -142,14 +156,14 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 			break;
 		case 2: {
 			// 0 = INDEX
-			final String index = urlComponents[0];
+			final String index = urlDecode(urlComponents[0]);
 
 			switch (urlComponents[1].toLowerCase()) {
 			case "_mget":
 				return createOkResponse(httpRequest,
 						JsonStream.serialize(apiRouter.getDocumentApi().multiGet(index, requestBody)));
 			}
-			final String type = urlComponents[2];
+			final String type = urlDecode(urlComponents[1]);
 
 			if (isPostMethod(httpRequest)) {
 				return createResponse(httpRequest, HttpResponseStatus.CREATED,
@@ -160,15 +174,15 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 		}
 		case 3: {
 			// 0 = INDEX, 1 = TYPE
-			final String index = urlComponents[0];
-			final String type = urlComponents[1];
-
+			final String index = urlDecode(urlComponents[0]);
+			final String type = urlDecode(urlComponents[1]);
+			
 			switch (urlComponents[2].toLowerCase()) {
 			case "_mget":
 				return createOkResponse(httpRequest,
 						JsonStream.serialize(apiRouter.getDocumentApi().multiGet(index, type, requestBody)));
 			}
-			final String id = urlComponents[2];
+			final String id = urlDecode(urlComponents[2]);
 
 			if (isGetMethod(httpRequest)) {
 				return createOkResponse(httpRequest, apiRouter.getDocumentApi().get(index, type, id));
@@ -180,9 +194,9 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 		}
 		case 4: {
 			// 0 = INDEX, 1 = TYPE, 2 = ID
-			final String index = urlComponents[0];
-			final String type = urlComponents[1];
-			final String id = urlComponents[2];
+			final String index = urlDecode(urlComponents[0]);
+			final String type = urlDecode(urlComponents[1]);
+			final String id = urlDecode(urlComponents[2]);
 
 			if (isPostMethod(httpRequest) || isPutMethod(httpRequest)) {
 				switch (urlComponents[3].toLowerCase()) {
@@ -220,18 +234,29 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 			case 1:
 				//_mapping
 				return createOkResponse(httpRequest, apiRouter.getFieldMappingApi().getMappings());
-			case 2:
+			case 2: {
 				//INDICES/_mapping or INDICES/_field_caps
-				final String indexPattern = urlComponents[0];
+				final String indexPattern = urlDecode(urlComponents[0]);
 				switch (urlComponents[1].toLowerCase()) {
 				case "_mapping":
 					return createOkResponse(httpRequest, apiRouter.getFieldMappingApi().getMapping(indexPattern));
 				case "_field_caps":
 					return createOkResponse(httpRequest, apiRouter.getFieldMappingApi().getFieldCapabilities(indexPattern));
 				}
+				break;
+			}
+			case 3:
+				//INDICES/_mapping/TYPE
+				final String indexPattern = urlDecode(urlComponents[0]);
+				final String typePattern = urlDecode(urlComponents[2]);
+				switch (urlComponents[1].toLowerCase()) {
+				case "_mapping":
+					return createOkResponse(httpRequest, apiRouter.getFieldMappingApi().getMapping(indexPattern, typePattern));
+				}
+				break;
 			}
 		} else if (isPutMethod(httpRequest)) {
-			final String index = urlComponents[0];
+			final String index = urlDecode(urlComponents[0]);
 			apiRouter.getFieldMappingApi().putMapping(index, getRequestBody(httpRequest));
 			return createOkResponse(httpRequest);
 		}
@@ -242,7 +267,7 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 			throws ElefanaException {
 		switch (urlComponents.length) {
 		case 2:
-			final String templateId = urlComponents[1];
+			final String templateId = urlDecode(urlComponents[1]);
 			if (isGetMethod(httpRequest)) {
 				return createOkResponse(httpRequest,
 						JsonStream.serialize(apiRouter.getIndexTemplateApi().getIndexTemplate(templateId)));
@@ -250,6 +275,7 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 				return createOkResponse(httpRequest, JsonStream.serialize(
 						apiRouter.getIndexTemplateApi().putIndexTemplate(templateId, getRequestBody(httpRequest))));
 			}
+			break;
 		}
 		return createResponse(httpRequest, HttpResponseStatus.NOT_FOUND);
 	}
@@ -264,20 +290,22 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 			case "_msearch":
 				return createOkResponse(httpRequest, apiRouter.getSearchApi().multiSearch(getRequestBody(httpRequest)));
 			}
+			break;
 		case 2: {
 			//INDICES/_search
-			final String indexPattern = urlComponents[0];
+			final String indexPattern = urlDecode(urlComponents[0]);
 			switch(urlComponents[1].toLowerCase()) {
 			case "_search":
 				return createOkResponse(httpRequest, apiRouter.getSearchApi().search(indexPattern, getRequestBody(httpRequest)));
 			case "_msearch":
 				return createOkResponse(httpRequest, apiRouter.getSearchApi().multiSearch(indexPattern, getRequestBody(httpRequest)));
 			}
+			break;
 		}
 		case 3:
 			//INDICES/TYPES/_search
-			final String indexPattern = urlComponents[0];
-			final String typePattern = urlComponents[1];
+			final String indexPattern = urlDecode(urlComponents[0]);
+			final String typePattern = urlDecode(urlComponents[1]);
 			
 			switch(urlComponents[2].toLowerCase()) {
 			case "_search":
@@ -295,7 +323,7 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 		case 1:
 			return createOkResponse(httpRequest, apiRouter.getNodeApi().getNodesInfo());
 		case 2: {
-			final String nodes = urlComponents[1];
+			final String nodes = urlDecode(urlComponents[1]);
 			switch(nodes.toLowerCase()) {
 			case "_all":
 				return createOkResponse(httpRequest, apiRouter.getNodeApi().getNodesInfo());
@@ -306,7 +334,7 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 			}
 		}
 		case 3: {
-			final String nodes = urlComponents[1];
+			final String nodes = urlDecode(urlComponents[1]);
 			final String [] filter = urlComponents[2].split(",");
 			switch(nodes.toLowerCase()) {
 			case "_all":
@@ -326,7 +354,7 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 		case 1:
 			return createOkResponse(httpRequest, apiRouter.getClusterApi().getNodeRootInfo());
 		case 2:
-			final String target = urlComponents[1];
+			final String target = urlDecode(urlComponents[1]);
 			switch(target.toLowerCase()) {
 			case "health":
 				return createOkResponse(httpRequest, apiRouter.getClusterApi().getClusterHealth());
@@ -347,20 +375,17 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 	}
 
 	private FullHttpResponse createOkResponse(FullHttpRequest request, String json) {
-		FullHttpResponse result = createResponse(request, HttpResponseStatus.OK);
-		result.content().writeBytes(json.getBytes());
-		return result;
+		return createResponse(request, HttpResponseStatus.OK, json);
 	}
 
 	private FullHttpResponse createErrorResponse(FullHttpRequest request, ElefanaException e) {
-		FullHttpResponse result = createResponse(request, e.getStatusCode());
-		result.content().writeBytes(e.getMessage().getBytes());
-		result.content().writeChar('\n');
+		final StringBuilder content = new StringBuilder();
+		content.append(e.getMessage());
+		content.append('\n');
 		for (int i = 0; i < e.getStackTrace().length; i++) {
-			result.content().writeBytes(e.getStackTrace()[i].toString().getBytes());
-			result.content().writeChar('\n');
+			content.append(e.getStackTrace()[i].toString());
 		}
-		return result;
+		return createResponse(request, e.getStatusCode(), content.toString());
 	}
 
 	private FullHttpResponse createResponse(FullHttpRequest request, HttpResponseStatus status) {
@@ -401,5 +426,14 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 	private String getRequestBody(FullHttpRequest request) {
 		httpRequestSize.update(request.content().readableBytes());
 		return request.content().toString(CharsetUtil.UTF_8);
+	}
+	
+	private String urlDecode(String url) throws ElefanaException {
+		try {
+			return URLDecoder.decode(url, "UTF-8");
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ShardFailedException();
+		}
 	}
 }
