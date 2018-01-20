@@ -20,6 +20,7 @@ import com.elefana.node.NodeInfoService;
 import com.elefana.node.NodeSettingsService;
 
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.EventLoopGroup;
@@ -129,8 +130,13 @@ public class HttpServer {
 		});
 
 		serverBootstrap.validate();
-		serverBootstrap.bind(ip, port);
-		LOGGER.info("Started HTTP server on " + ip + ":" + port);
+		ChannelFuture channelFuture = serverBootstrap.bind(ip, port);
+		try {
+			channelFuture.sync();
+			LOGGER.info("Started HTTP server on " + ip + ":" + port);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}	
 	}
 	
 	public void stop() {
