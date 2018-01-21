@@ -145,12 +145,9 @@ public class DateHistogramAggregation extends BucketAggregation {
 		appendIndicesWhereClause(aggregationExec, queryBuilder);
 		queryBuilder.append(")");
 
-		LOGGER.info(queryBuilder.toString());
-
 		aggregationExec.getJdbcTemplate().execute(queryBuilder.toString());
 
 		final String distinctBucketsQuery = "SELECT DISTINCT elefana_agg_bucket FROM " + aggregationTableName;
-		LOGGER.info(distinctBucketsQuery);
 		SqlRowSet resultSet = aggregationExec.getJdbcTemplate().queryForRowSet(distinctBucketsQuery);
 
 		final List<Timestamp> uniqueBuckets = new ArrayList<Timestamp>();
@@ -165,11 +162,9 @@ public class DateHistogramAggregation extends BucketAggregation {
 			final String bucketTableName = aggregationTableName + "_" + bucketTimestamp.getTime();
 			final String bucketQuery = "SELECT * INTO " + bucketTableName + " FROM " + aggregationTableName
 					+ " WHERE elefana_agg_bucket = to_timestamp(" + bucketTimestamp.getTime() / 1000L + ")";
-			LOGGER.info(bucketQuery);
 			aggregationExec.getJdbcTemplate().execute(bucketQuery);
 
 			final String bucketCountQuery = "SELECT COUNT(*) FROM " + bucketTableName;
-			LOGGER.info(bucketCountQuery);
 			Map<String, Object> aggResult = aggregationExec.getJdbcTemplate().queryForMap(bucketCountQuery);
 			bucket.put("doc_count", aggResult.get("count"));
 
