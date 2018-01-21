@@ -79,15 +79,16 @@ public class DocumentApiTest extends DocumentedTest {
 	public void testIndexWithId() {
 		final String id = UUID.randomUUID().toString();
 		final String message = "This is a test";
-		indexWithId(id, message);
+		indexWithId(id, message, System.currentTimeMillis());
 	}
 
 	@Test
 	public void testGet() {
 		final String id = UUID.randomUUID().toString();
 		final String message = "This is a test at " + System.currentTimeMillis();
+		final long timestamp = System.currentTimeMillis();
 		
-		indexWithId(id, message);
+		indexWithId(id, message, timestamp);
 		
 		given().when().get("/" + INDEX + "/" + TYPE + "/" + id)
 		.then()
@@ -97,7 +98,8 @@ public class DocumentApiTest extends DocumentedTest {
 			.body("_id", equalTo(id))
 			.body("found", equalTo(true))
 			.body("_source.message", equalTo(message))
-			.body("_source.date", notNullValue());
+			.body("_source.date", notNullValue())
+			.body("_source.timestamp", equalTo(timestamp));
 	}
 	
 	@Test
@@ -116,7 +118,8 @@ public class DocumentApiTest extends DocumentedTest {
 	public void testUpdate() {
 		final String id = UUID.randomUUID().toString();
 		final String message = "This is a test";
-		indexWithId(id, message);
+		final long timestamp = System.currentTimeMillis();
+		indexWithId(id, message, timestamp);
 		
 		final String updatedMessage = "This is an update test";
 		
@@ -141,7 +144,8 @@ public class DocumentApiTest extends DocumentedTest {
 			.body("_id", equalTo(id))
 			.body("found", equalTo(true))
 			.body("_source.message", equalTo(updatedMessage))
-			.body("_source.date", notNullValue());
+			.body("_source.date", notNullValue())
+			.body("_source.timestamp", equalTo(timestamp));
 	}
 
 	@Test
@@ -150,8 +154,8 @@ public class DocumentApiTest extends DocumentedTest {
 		final String id2 = UUID.randomUUID().toString();
 		final String message1 = "This is message 1";
 		final String message2 = "This is message 2";
-		indexWithId(id1, message1);
-		indexWithId(id2, message2);
+		indexWithId(id1, message1, System.currentTimeMillis());
+		indexWithId(id2, message2, System.currentTimeMillis());
 		
 		given()
 			.request()
@@ -179,8 +183,8 @@ public class DocumentApiTest extends DocumentedTest {
 		final String id2 = UUID.randomUUID().toString();
 		final String message1 = "This is message 1";
 		final String message2 = "This is message 2";
-		indexWithId(id1, message1);
-		indexWithId(id2, message2);
+		indexWithId(id1, message1, System.currentTimeMillis());
+		indexWithId(id2, message2, System.currentTimeMillis());
 		
 		given()
 			.request()
@@ -208,8 +212,8 @@ public class DocumentApiTest extends DocumentedTest {
 		final String id2 = UUID.randomUUID().toString();
 		final String message1 = "This is message 1";
 		final String message2 = "This is message 2";
-		indexWithId(id1, message1);
-		indexWithId(id2, message2);
+		indexWithId(id1, message1, System.currentTimeMillis());
+		indexWithId(id2, message2, System.currentTimeMillis());
 		
 		try {
 			Thread.sleep(1000L);
@@ -235,10 +239,10 @@ public class DocumentApiTest extends DocumentedTest {
 			.body("docs[1].found", equalTo(true));
 	}
 	
-	private void indexWithId(final String id, final String message) {
+	private void indexWithId(final String id, final String message, final long timestamp) {
 		given()
 			.request()
-			.body("{\"message\" : \"" + message + "\",\"date\" : \"2009-11-15T14:12:12\"}")
+			.body("{\"message\" : \"" + message + "\",\"date\" : \"2009-11-15T14:12:12\",\"timestamp\" : " + timestamp + "}")
 		.when()
 			.post("/" + INDEX + "/" + TYPE + "/" + id)
 		.then()

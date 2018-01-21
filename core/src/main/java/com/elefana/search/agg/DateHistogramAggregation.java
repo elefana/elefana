@@ -36,7 +36,7 @@ public class DateHistogramAggregation extends BucketAggregation {
 	private static final String KEY_FIELD = "field";
 	private static final String KEY_INTERVAL = "interval";
 	
-	private static final String [] EXPECTED_FIELD_TYPES = new String [] {"long", "double", "data"};
+	private static final String [] EXPECTED_FIELD_TYPES = new String [] {"long", "date"};
 	
 	private final String aggregationName;
 	private final String fieldName;
@@ -130,7 +130,6 @@ public class DateHistogramAggregation extends BucketAggregation {
 				break;
 			}
 			break;
-		case "double":
 		case "long":
 			queryBuilder.append("to_timestamp((_source->>'");
 			queryBuilder.append(fieldName);

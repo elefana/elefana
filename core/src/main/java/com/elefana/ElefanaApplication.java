@@ -26,11 +26,11 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.event.ContextRefreshedEvent;
 
 import com.jsoniter.JsonIterator;
+import com.jsoniter.extra.PreciseFloatSupport;
 import com.jsoniter.spi.DecodingMode;
 
 @SpringBootApplication
@@ -44,6 +44,10 @@ public class ElefanaApplication implements ApplicationListener<ContextRefreshedE
 	
 	private static boolean APPLICATION_STARTED = false;
 	private static ConfigurableApplicationContext APP_CONTEXT;
+	
+	static {
+		PreciseFloatSupport.enable();
+	}
 	
 	public static boolean isApplicationStarted() {
 		return APPLICATION_STARTED;
