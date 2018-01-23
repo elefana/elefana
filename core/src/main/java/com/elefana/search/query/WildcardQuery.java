@@ -29,7 +29,8 @@ public class WildcardQuery extends Query {
 	public WildcardQuery(Any queryContext) {
 		super();
 		
-		for(String fieldName : queryContext.keys()) {
+		for(Object fieldKey : queryContext.keys()) {
+			final String fieldName = fieldKey.toString();
 			this.fieldName = fieldName;
 			
 			Any fieldContext = queryContext.get(fieldName);

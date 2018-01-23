@@ -58,7 +58,8 @@ public class AggregationsParser {
 	public static List<Aggregation> parseAggregations(Any context) throws ElefanaException {
 		List<Aggregation> result = new ArrayList<Aggregation>();
 		
-		for(String aggregationName : context.keys()) {
+		for(Object aggregationKey : context.keys()) {
+			String aggregationName = aggregationKey.toString();
 			Any aggregationContext = context.get(aggregationName);
 			Aggregation aggregation = parseAggregation(aggregationName, aggregationContext);
 			

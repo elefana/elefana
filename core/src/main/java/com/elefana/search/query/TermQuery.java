@@ -33,7 +33,8 @@ public class TermQuery extends Query {
 	
 	public TermQuery(Any queryContext) {
 		super();
-		for(String fieldName : queryContext.keys()) {
+		for(Object fieldKey : queryContext.keys()) {
+			final String fieldName = fieldKey.toString();
 			this.fieldName = fieldName;
 			
 			Any fieldContext = queryContext.get(fieldName);
