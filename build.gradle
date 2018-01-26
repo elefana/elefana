@@ -85,6 +85,13 @@ subprojects {
 		archives javadocJar, sourcesJar, testJar, bootJar
 		testOutput testJar
 	}
+	
+	test {
+		testLogging {
+			events "failed"
+			exceptionFormat "full"
+		}
+	}
 }
 
 project(":" + rootProject.name + "-core") {
