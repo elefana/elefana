@@ -1,3 +1,5 @@
+import org.apache.tools.ant.taskdefs.condition.Os
+
 buildscript {
 	ext {
 		springBootVersion = '1.5.9.RELEASE'
@@ -128,6 +130,12 @@ project(":" + rootProject.name + "-core") {
 		compile "io.dropwizard.metrics:metrics-core:$metricsVersion"
 		compile "io.dropwizard.metrics:metrics-graphite:$metricsVersion"
 		compile('org.postgresql:postgresql')
+		
+		if (Os.isFamily(Os.FAMILY_MAC)) {
+			compile "io.netty:netty-transport-native-kqueue:$nettyVersion"
+		} else if (Os.isFamily(Os.FAMILY_UNIX)) {
+			compile "io.netty:netty-transport-native-epoll:$nettyVersion"
+		}
 		
 		testCompile('org.springframework.boot:spring-boot-starter-test')
 		testCompile "io.rest-assured:rest-assured:$restAssuredVersion"
