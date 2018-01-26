@@ -31,7 +31,7 @@ import com.elefana.util.IndexUtils;
 @Service
 public class BulkIndexService implements Runnable {
 	private static final Logger LOGGER = LoggerFactory.getLogger(BulkIndexService.class);
-	
+
 	private static final long SHARD_TIMEOUT = 5000L;
 
 	@Autowired
@@ -77,7 +77,7 @@ public class BulkIndexService implements Runnable {
 			while (!indexQueue.isEmpty()) {
 				final IndexTarget indexTarget = indexQueue.poll();
 				if (nodeSettingsService.isUsingCitus()) {
-					if(!mergeStagingTableIntoDistributedTable(indexTarget)) {
+					if (!mergeStagingTableIntoDistributedTable(indexTarget)) {
 						indexQueue.offer(indexTarget);
 						continue;
 					}
@@ -103,18 +103,19 @@ public class BulkIndexService implements Runnable {
 		if (indexTemplate != null && indexTemplate.isTimeSeries()) {
 			List<Map<String, Object>> shardResultSet = jdbcTemplate
 					.queryForList("SELECT select_shard('" + indexTarget.getTargetTable() + "')");
-			if(shardResultSet.isEmpty()) {
+			if (shardResultSet.isEmpty()) {
 				return false;
 			}
 			long shardId = (long) shardResultSet.get(0).get("select_shard");
-			
+
 			long timer = 0L;
 			Exception lastException = null;
-			while(timer < SHARD_TIMEOUT) {
+			while (timer < SHARD_TIMEOUT) {
 				long startTime = System.currentTimeMillis();
 				try {
 					jdbcTemplate.queryForList("SELECT master_append_table_to_shard(" + shardId + ", '"
-							+ indexTarget.getStagingTable() + "', '" + jdbcHost + "', " + jdbcPort + ");");
+							+ indexTarget.getStagingTable() + "', '" + nodeSettingsService.getCitusCoordinatorHost()
+							+ "', " + nodeSettingsService.getCitusCoordinatorPort() + ");");
 					LOGGER.info(indexTarget.getStagingTable() + " appended to shard " + shardId);
 					return true;
 				} catch (Exception e) {
@@ -122,7 +123,8 @@ public class BulkIndexService implements Runnable {
 				}
 				try {
 					Thread.sleep(100L);
-				} catch (Exception e) {}
+				} catch (Exception e) {
+				}
 				timer += (System.currentTimeMillis() - startTime);
 			}
 			lastException.printStackTrace();

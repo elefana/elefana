@@ -65,7 +65,7 @@ public class HttpServerTest extends ChannelInboundHandlerAdapter {
 		when(nodeSettingsService.isGzipEnabled()).thenReturn(false);
 		when(nodeSettingsService.getMaxHttpPipelineEvents()).thenReturn(0);
 		when(nodeSettingsService.getMaxHttpPayloadSize()).thenReturn(104857600);
-		server.start("127.0.0.1", port);
+		server.start("localhost", port);
 		
 		RestAssured.baseURI = "http://localhost:" + port;
 		given()
@@ -85,7 +85,7 @@ public class HttpServerTest extends ChannelInboundHandlerAdapter {
 		when(nodeSettingsService.isGzipEnabled()).thenReturn(true);
 		when(nodeSettingsService.getMaxHttpPipelineEvents()).thenReturn(0);
 		when(nodeSettingsService.getMaxHttpPayloadSize()).thenReturn(104857600);
-		server.start("127.0.0.1", port);
+		server.start("localhost", port);
 		
 		RestAssured.baseURI = "http://localhost:" + port;
 		given()
@@ -106,7 +106,7 @@ public class HttpServerTest extends ChannelInboundHandlerAdapter {
 		when(nodeSettingsService.isGzipEnabled()).thenReturn(false);
 		when(nodeSettingsService.getMaxHttpPipelineEvents()).thenReturn(100);
 		when(nodeSettingsService.getMaxHttpPayloadSize()).thenReturn(104857600);
-		server.start("127.0.0.1", port);
+		server.start("localhost", port);
 		
 		//Make sure regular HTTP requests still work
 		RestAssured.baseURI = "http://localhost:" + port;
@@ -121,7 +121,7 @@ public class HttpServerTest extends ChannelInboundHandlerAdapter {
 		
 		//Test pipelined request
 		Bootstrap client = createHttpClient();
-        ChannelFuture channelFuture = client.connect("127.0.0.1", port).sync();
+        ChannelFuture channelFuture = client.connect("localhost", port).sync();
         channelFuture.channel().writeAndFlush(createHttpRequest(generateRequestBody()));
         channelFuture.channel().writeAndFlush(createHttpRequest(generateRequestBody()));
         channelFuture.channel().writeAndFlush(createLastHttpRequest());
@@ -140,7 +140,7 @@ public class HttpServerTest extends ChannelInboundHandlerAdapter {
 		when(nodeSettingsService.isGzipEnabled()).thenReturn(true);
 		when(nodeSettingsService.getMaxHttpPipelineEvents()).thenReturn(100);
 		when(nodeSettingsService.getMaxHttpPayloadSize()).thenReturn(104857600);
-		server.start("127.0.0.1", port);
+		server.start("localhost", port);
 		
 		//Make sure regular HTTP requests still work
 		RestAssured.baseURI = "http://localhost:" + port;
@@ -155,7 +155,7 @@ public class HttpServerTest extends ChannelInboundHandlerAdapter {
 		
 		//Test pipelined request
 		Bootstrap client = createHttpClient();
-        ChannelFuture channelFuture = client.connect("127.0.0.1", port).sync();
+        ChannelFuture channelFuture = client.connect("localhost", port).sync();
         channelFuture.channel().writeAndFlush(createHttpRequest(generateGzipRequestBody()));
         channelFuture.channel().writeAndFlush(createHttpRequest(generateGzipRequestBody()));
         channelFuture.channel().writeAndFlush(createLastHttpRequest());
@@ -175,7 +175,7 @@ public class HttpServerTest extends ChannelInboundHandlerAdapter {
 		when(nodeSettingsService.isGzipEnabled()).thenReturn(false);
 		when(nodeSettingsService.getMaxHttpPipelineEvents()).thenReturn(0);
 		when(nodeSettingsService.getMaxHttpPayloadSize()).thenReturn(payloadSize);
-		server.start("127.0.0.1", port);
+		server.start("localhost", port);
 		
 		RestAssured.baseURI = "http://localhost:" + port;
 		

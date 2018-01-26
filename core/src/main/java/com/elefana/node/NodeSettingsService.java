@@ -44,6 +44,8 @@ public class NodeSettingsService {
 	private int maxHttpPayloadSize;
 
 	private boolean usingCitus = false;
+	private String citusCoordinatorHost = "";
+	private int citusCoordinatorPort = 5432;
 
 	private int bulkParallelisation;
 	private long fieldStatsInterval;
@@ -70,7 +72,11 @@ public class NodeSettingsService {
 		transportAddress = httpIp + ":9300";
 		httpAddress = httpIp + httpPort;
 
-		usingCitus = environment.getRequiredProperty("elefana.citus", Boolean.class);
+		usingCitus = environment.getRequiredProperty("elefana.citus.enabled", Boolean.class);
+		if(usingCitus) {
+			citusCoordinatorHost = environment.getRequiredProperty("elefana.citus.coordinator.host");
+			citusCoordinatorPort = environment.getRequiredProperty("elefana.citus.coordinator.port", Integer.class);
+		}
 
 		bulkParallelisation = Math.max(1,
 				environment.getRequiredProperty("elefana.bulkParallelisation", Integer.class));
@@ -135,6 +141,14 @@ public class NodeSettingsService {
 
 	public boolean isUsingCitus() {
 		return usingCitus;
+	}
+
+	public String getCitusCoordinatorHost() {
+		return citusCoordinatorHost;
+	}
+
+	public int getCitusCoordinatorPort() {
+		return citusCoordinatorPort;
 	}
 
 	public int getBulkParallelisation() {
