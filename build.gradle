@@ -131,9 +131,9 @@ project(":" + rootProject.name + "-core") {
 		compile "io.dropwizard.metrics:metrics-graphite:$metricsVersion"
 		compile('org.postgresql:postgresql')
 		
-		if (Os.isFamily(Os.FAMILY_MAC)) {
+		if (Os.isFamily(Os.FAMILY_MAC) && !project.hasProperty("release")) {
 			compile "io.netty:netty-transport-native-kqueue:$nettyVersion"
-		} else if (Os.isFamily(Os.FAMILY_UNIX)) {
+		} else if (Os.isFamily(Os.FAMILY_UNIX) && !project.hasProperty("release")) {
 			compile "io.netty:netty-transport-native-epoll:$nettyVersion"
 		}
 		

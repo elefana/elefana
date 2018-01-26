@@ -25,7 +25,9 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.epoll.EpollServerSocketChannel;
 import io.netty.channel.kqueue.KQueueEventLoopGroup;
+import io.netty.channel.kqueue.KQueueServerSocketChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
@@ -70,7 +72,6 @@ public class HttpServer {
 	
 	public void start(String ip, int port) {
 		final ServerBootstrap serverBootstrap = new ServerBootstrap();
-		serverBootstrap.channel(NioServerSocketChannel.class);
 
 		if (OsInformation.isMac()) {
 			//KQueue only supported by Netty on OS X >= 10.12
@@ -79,24 +80,30 @@ public class HttpServer {
 				switch(Integer.parseInt(macVersion[0])) {
 				case 10:
 					if(Integer.parseInt(macVersion[1]) > 11) {
+						serverBootstrap.channel(KQueueServerSocketChannel.class);
 						serverExecutor = new KQueueEventLoopGroup();
 					} else {
 						LOGGER.info("KQueue not supported on this Mac version - falling back to Nio");
+						serverBootstrap.channel(NioServerSocketChannel.class);
 						serverExecutor = new NioEventLoopGroup();
 					}
 					break;
 				default:
 					LOGGER.info("KQueue not supported on this Mac version - falling back to Nio");
+					serverBootstrap.channel(NioServerSocketChannel.class);
 					serverExecutor = new NioEventLoopGroup();
 					break;
 				}
 			} catch (Exception e) {
 				LOGGER.info("KQueue not supported on this Mac version - falling back to Nio");
+				serverBootstrap.channel(NioServerSocketChannel.class);
 				serverExecutor = new NioEventLoopGroup();
 			}
 		} else if (OsInformation.isUnix()) {
+			serverBootstrap.channel(EpollServerSocketChannel.class);
 			serverExecutor = new EpollEventLoopGroup();
 		} else {
+			serverBootstrap.channel(NioServerSocketChannel.class);
 			serverExecutor = new NioEventLoopGroup();
 		}
 		serverBootstrap.group(serverExecutor);
