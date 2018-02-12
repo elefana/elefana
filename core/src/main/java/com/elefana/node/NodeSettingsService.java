@@ -36,7 +36,8 @@ public class NodeSettingsService {
 
 	private String httpIp;
 	private int httpPort;
-	private String ip;
+	private String transportIp;
+	private int transportPort;
 	private String transportAddress;
 	private String httpAddress;
 	private boolean gzipEnabled;
@@ -68,10 +69,12 @@ public class NodeSettingsService {
 		maxHttpPipelineEvents = environment.getRequiredProperty("elefana.http.maxEvents", Integer.class);
 		maxHttpPayloadSize = environment.getRequiredProperty("elefana.http.maxPayloadSize", Integer.class);
 		
-		ip = httpIp;
-		transportAddress = httpIp + ":9300";
-		httpAddress = httpIp + httpPort;
-
+		transportIp = environment.getProperty("elefana.transport.address", String.class, "127.0.0.1");
+		transportPort = environment.getProperty("elefana.transport.port", Integer.class, 9300);
+		
+		httpAddress = httpIp + ":" + httpPort;
+		transportAddress = transportIp + ":" + transportPort;
+		
 		usingCitus = environment.getRequiredProperty("elefana.citus.enabled", Boolean.class);
 		if(usingCitus) {
 			citusCoordinatorHost = environment.getRequiredProperty("elefana.citus.coordinator.host");
@@ -114,17 +117,21 @@ public class NodeSettingsService {
 	public int getHttpPort() {
 		return httpPort;
 	}
+	
+	public String getHttpAddress() {
+		return httpAddress;
+	}
 
-	public String getIp() {
-		return ip;
+	public String getTransportIp() {
+		return transportIp;
+	}
+
+	public int getTransportPort() {
+		return transportPort;
 	}
 
 	public String getTransportAddress() {
 		return transportAddress;
-	}
-
-	public String getHttpAddress() {
-		return httpAddress;
 	}
 
 	public int getMaxHttpPipelineEvents() {

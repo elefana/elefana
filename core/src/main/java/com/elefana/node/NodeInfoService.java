@@ -110,7 +110,7 @@ public class NodeInfoService {
 		result.put("name", nodeSettingsService.getNodeName());
 		result.put("transport_address", nodeSettingsService.getTransportAddress());
 		result.put("host", nodeSettingsService.getHttpIp());
-		result.put("ip", nodeSettingsService.getIp());
+		result.put("ip", nodeSettingsService.getHttpIp());
 		result.put("version", versionInfoService.getVersionNumber());
 		result.put("build", versionInfoService.getBuildHash());
 		
