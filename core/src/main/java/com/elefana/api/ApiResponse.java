@@ -13,17 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package com.elefana.document;
+package com.elefana.api;
 
-public interface DocumentService {
+public abstract class ApiResponse {
+	private int statusCode;
+	
+	public ApiResponse() {
+	}
+	
+	public ApiResponse(int statusCode) {
+		super();
+		this.statusCode = statusCode;
+	}
 
-	public GetRequest prepareGet(String index, String type, String id);
-
-	public MultiGetRequest prepareMultiGet(String requestBody);
-
-	public MultiGetRequest prepareMultiGet(String indexPattern, String requestBody);
-
-	public MultiGetRequest prepareMultiGet(String indexPattern, String typePattern, String requestBody);
-
-	public IndexRequest prepareIndex(String index, String type, String id, String document, IndexOpType opType);
+	public abstract String toJsonString();
+	
+	public int getStatusCode() {
+		return statusCode;
+	}
+	
+	public void setStatusCode(int statusCode) {
+		this.statusCode = statusCode;
+	}
 }

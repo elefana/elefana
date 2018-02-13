@@ -13,17 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package com.elefana.document;
+package com.elefana.document.local;
 
-public interface DocumentService {
+import java.util.concurrent.Callable;
 
-	public GetRequest prepareGet(String index, String type, String id);
+import com.elefana.document.BulkApiResponse;
+import com.elefana.document.BulkRequest;
 
-	public MultiGetRequest prepareMultiGet(String requestBody);
+public class LocalBulkRequest extends BulkRequest implements Callable<BulkApiResponse> {
+	private final LocalBulkIngestService bulkIngestService;
 
-	public MultiGetRequest prepareMultiGet(String indexPattern, String requestBody);
+	public LocalBulkRequest(LocalBulkIngestService bulkIngestService, String requestBody) {
+		super(bulkIngestService.getExecutorService(), requestBody);
+		this.bulkIngestService = bulkIngestService;
+	}
 
-	public MultiGetRequest prepareMultiGet(String indexPattern, String typePattern, String requestBody);
+	@Override
+	protected Callable<BulkApiResponse> internalExecute() {
+		return this;
+	}
 
-	public IndexRequest prepareIndex(String index, String type, String id, String document, IndexOpType opType);
+	@Override
+	public BulkApiResponse call() throws Exception {
+		return bulkIngestService.bulkOperations(requestBody);
+	}
+
 }

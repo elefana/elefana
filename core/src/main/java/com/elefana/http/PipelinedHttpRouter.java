@@ -5,7 +5,7 @@ package com.elefana.http;
 
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
-import com.elefana.ApiRouter;
+import com.elefana.api.ApiRouter;
 
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.FullHttpRequest;

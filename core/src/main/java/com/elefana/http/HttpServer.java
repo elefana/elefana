@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
-import com.elefana.ApiRouter;
+import com.elefana.api.ApiRouter;
 import com.elefana.node.NodeInfoService;
 import com.elefana.node.NodeSettingsService;
 

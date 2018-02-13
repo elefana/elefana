@@ -15,15 +15,27 @@
  ******************************************************************************/
 package com.elefana.document;
 
-public interface DocumentService {
+import java.util.concurrent.ExecutorService;
 
-	public GetRequest prepareGet(String index, String type, String id);
+import com.elefana.api.ApiRequest;
 
-	public MultiGetRequest prepareMultiGet(String requestBody);
+public abstract class BulkRequest extends ApiRequest<BulkApiResponse> {
+	protected String requestBody;
 
-	public MultiGetRequest prepareMultiGet(String indexPattern, String requestBody);
+	public BulkRequest(ExecutorService executorService, String requestBody) {
+		super(executorService);
+		this.requestBody = requestBody;
+	}
 
-	public MultiGetRequest prepareMultiGet(String indexPattern, String typePattern, String requestBody);
+	public String getRequestBody() {
+		return requestBody;
+	}
 
-	public IndexRequest prepareIndex(String index, String type, String id, String document, IndexOpType opType);
+	public void setRequestBody(String requestBody) {
+		if(requestBody == null) {
+			return;
+		}
+		this.requestBody = requestBody;
+	}
+
 }

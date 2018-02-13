@@ -15,15 +15,50 @@
  ******************************************************************************/
 package com.elefana.document;
 
-public interface DocumentService {
+import java.util.concurrent.ExecutorService;
 
-	public GetRequest prepareGet(String index, String type, String id);
+import com.elefana.api.ApiRequest;
 
-	public MultiGetRequest prepareMultiGet(String requestBody);
+public abstract class GetRequest extends ApiRequest<GetResponse> {
+	protected String index, type, id;
 
-	public MultiGetRequest prepareMultiGet(String indexPattern, String requestBody);
+	public GetRequest(ExecutorService executorService, String index, String type, String id) {
+		super(executorService);
+		this.index = index;
+		this.type = type;
+		this.id = id;
+	}
 
-	public MultiGetRequest prepareMultiGet(String indexPattern, String typePattern, String requestBody);
+	public String getIndex() {
+		return index;
+	}
 
-	public IndexRequest prepareIndex(String index, String type, String id, String document, IndexOpType opType);
+	public void setIndex(String index) {
+		if(index == null) {
+			return;
+		}
+		this.index = index;
+	}
+
+	public String getType() {
+		return type;
+	}
+
+	public void setType(String type) {
+		if(type == null) {
+			return;
+		}
+		this.type = type;
+	}
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		if(id == null) {
+			return;
+		}
+		this.id = id;
+	}
 }

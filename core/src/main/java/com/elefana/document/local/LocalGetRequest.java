@@ -13,17 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package com.elefana.document;
+package com.elefana.document.local;
 
-public interface DocumentService {
+import java.util.concurrent.Callable;
 
-	public GetRequest prepareGet(String index, String type, String id);
+import com.elefana.document.GetRequest;
+import com.elefana.document.GetResponse;
 
-	public MultiGetRequest prepareMultiGet(String requestBody);
+public class LocalGetRequest extends GetRequest implements Callable<GetResponse> {
+	private final LocalDocumentService documentService;
 
-	public MultiGetRequest prepareMultiGet(String indexPattern, String requestBody);
+	public LocalGetRequest(LocalDocumentService documentService, String index, String type, String id) {
+		super(documentService.getExecutorService(), index, type, id);
+		this.documentService = documentService;
+	}
 
-	public MultiGetRequest prepareMultiGet(String indexPattern, String typePattern, String requestBody);
+	@Override
+	protected Callable<GetResponse> internalExecute() {
+		return this;
+	}
 
-	public IndexRequest prepareIndex(String index, String type, String id, String document, IndexOpType opType);
+	@Override
+	public GetResponse call() throws Exception {
+		return documentService.get(index, type, id);
+	}
 }

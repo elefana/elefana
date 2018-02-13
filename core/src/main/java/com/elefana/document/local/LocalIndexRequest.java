@@ -13,17 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package com.elefana.document;
+package com.elefana.document.local;
 
-public interface DocumentService {
+import java.util.concurrent.Callable;
 
-	public GetRequest prepareGet(String index, String type, String id);
+import com.elefana.document.IndexApiResponse;
+import com.elefana.document.IndexRequest;
 
-	public MultiGetRequest prepareMultiGet(String requestBody);
+public class LocalIndexRequest extends IndexRequest implements Callable<IndexApiResponse> {
+	private final LocalDocumentService documentService;
 
-	public MultiGetRequest prepareMultiGet(String indexPattern, String requestBody);
+	public LocalIndexRequest(LocalDocumentService documentService) {
+		super(documentService.getExecutorService());
+		this.documentService = documentService;
+	}
 
-	public MultiGetRequest prepareMultiGet(String indexPattern, String typePattern, String requestBody);
+	@Override
+	protected Callable<IndexApiResponse> internalExecute() {
+		return this;
+	}
 
-	public IndexRequest prepareIndex(String index, String type, String id, String document, IndexOpType opType);
+	@Override
+	public IndexApiResponse call() throws Exception {
+		return documentService.index(getIndex(), getType(), getId(), getDocument(), getOpType());
+	}
 }
