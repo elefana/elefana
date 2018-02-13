@@ -34,15 +34,18 @@ public class NodeSettingsService {
 	private String clusterId;
 	private String clusterName;
 
+	private boolean httpEnabled;
 	private String httpIp;
 	private int httpPort;
-	private String transportIp;
-	private int transportPort;
-	private String transportAddress;
 	private String httpAddress;
 	private boolean gzipEnabled;
 	private int maxHttpPipelineEvents;
 	private int maxHttpPayloadSize;
+	
+	private boolean transportEnabled;
+	private String transportIp;
+	private int transportPort;
+	private String transportAddress;
 
 	private boolean usingCitus = false;
 	private String citusCoordinatorHost = "";
@@ -63,17 +66,22 @@ public class NodeSettingsService {
 		clusterName = environment.getRequiredProperty("elefana.cluster.name");
 		clusterId = DigestUtils.md5Hex(clusterName);
 
-		httpIp = environment.getRequiredProperty("elefana.http.address");
-		httpPort = environment.getRequiredProperty("elefana.http.port", Integer.class);
-		gzipEnabled = environment.getRequiredProperty("elefana.http.gzip", Boolean.class);
-		maxHttpPipelineEvents = environment.getRequiredProperty("elefana.http.maxEvents", Integer.class);
-		maxHttpPayloadSize = environment.getRequiredProperty("elefana.http.maxPayloadSize", Integer.class);
-		
-		transportIp = environment.getProperty("elefana.transport.address", String.class, "127.0.0.1");
-		transportPort = environment.getProperty("elefana.transport.port", Integer.class, 9300);
-		
-		httpAddress = httpIp + ":" + httpPort;
-		transportAddress = transportIp + ":" + transportPort;
+		httpEnabled = environment.getProperty("elefana.http.enabled", Boolean.class, true);
+		if(httpEnabled) {
+			httpIp = environment.getRequiredProperty("elefana.http.address");
+			httpPort = environment.getRequiredProperty("elefana.http.port", Integer.class);
+			gzipEnabled = environment.getRequiredProperty("elefana.http.gzip", Boolean.class);
+			maxHttpPipelineEvents = environment.getRequiredProperty("elefana.http.maxEvents", Integer.class);
+			maxHttpPayloadSize = environment.getRequiredProperty("elefana.http.maxPayloadSize", Integer.class);
+			httpAddress = httpIp + ":" + httpPort;
+		}
+
+		transportEnabled = environment.getProperty("elefana.transport.enabled", Boolean.class, false);
+		if(transportEnabled) {
+			transportIp = environment.getRequiredProperty("elefana.transport.address", String.class);
+			transportPort = environment.getRequiredProperty("elefana.transport.port", Integer.class);
+			transportAddress = transportIp + ":" + transportPort;
+		}
 		
 		usingCitus = environment.getRequiredProperty("elefana.citus.enabled", Boolean.class);
 		if(usingCitus) {
@@ -108,6 +116,14 @@ public class NodeSettingsService {
 
 	public String getClusterName() {
 		return clusterName;
+	}
+
+	public boolean isHttpEnabled() {
+		return httpEnabled;
+	}
+
+	public boolean isTransportEnabled() {
+		return transportEnabled;
 	}
 
 	public String getHttpIp() {

@@ -59,6 +59,10 @@ public class HttpServer {
 
 	@PostConstruct
 	public void postConstruct() {
+		if(!nodeSettingsService.isHttpEnabled()) {
+			return;
+		}
+		
 		httpRequests = metricRegistry.meter(MetricRegistry.name("http", "requests"));
 		httpRequestSize = metricRegistry.histogram(MetricRegistry.name("http", "requestSize"));
 		
@@ -67,6 +71,10 @@ public class HttpServer {
 
 	@PreDestroy
 	public void preDestroy() {
+		if(!nodeSettingsService.isHttpEnabled()) {
+			return;
+		}
+		
 		stop();
 	}
 	
