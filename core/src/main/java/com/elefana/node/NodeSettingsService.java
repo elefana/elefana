@@ -76,10 +76,10 @@ public class NodeSettingsService {
 			httpAddress = httpIp + ":" + httpPort;
 		}
 
-		transportEnabled = environment.getProperty("elefana.transport.enabled", Boolean.class, false);
+		transportEnabled = environment.getProperty("elefana.transport.server.enabled", Boolean.class, false);
 		if(transportEnabled) {
-			transportIp = environment.getRequiredProperty("elefana.transport.address", String.class);
-			transportPort = environment.getRequiredProperty("elefana.transport.port", Integer.class);
+			transportIp = environment.getRequiredProperty("elefana.transport.server.address", String.class);
+			transportPort = environment.getRequiredProperty("elefana.transport.server.port", Integer.class);
 			transportAddress = transportIp + ":" + transportPort;
 		}
 		

@@ -15,11 +15,15 @@
  ******************************************************************************/
 package com.elefana.indices;
 
-public interface IndexTemplateService {
-	
-	public GetIndexTemplateRequest prepareGetIndexTemplates(String ... templateIds);
-	
-	public IndexTemplate getIndexTemplateForIndex(String index);
-	
-	public PutIndexTemplateRequest preparePutIndexTemplate(String templateId, String requestBody);
+public class PutIndexTemplateResponse {
+	private final boolean acknowledged;
+
+	public PutIndexTemplateResponse(boolean acknowledged) {
+		super();
+		this.acknowledged = acknowledged;
+	}
+
+	public boolean isAcknowledged() {
+		return acknowledged;
+	}
 }

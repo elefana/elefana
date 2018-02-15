@@ -164,7 +164,7 @@ public class NodeInfoService {
 	}
 	
 	protected boolean checkIfDataNode() {
-		String jdbcUrl = environment.getRequiredProperty("spring.datasource.url");
+		String jdbcUrl = environment.getProperty("spring.datasource.url", "");
 		if(jdbcUrl.contains("localhost")) {
 			return true;
 		}

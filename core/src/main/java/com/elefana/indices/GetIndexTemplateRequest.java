@@ -15,11 +15,26 @@
  ******************************************************************************/
 package com.elefana.indices;
 
-public interface IndexTemplateService {
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+
+import com.elefana.api.ApiRequest;
+
+public abstract class GetIndexTemplateRequest extends ApiRequest<GetIndexTemplateResponse> implements Callable<GetIndexTemplateResponse> {
+	private final List<String> templateIds = new ArrayList<String>(1);
 	
-	public GetIndexTemplateRequest prepareGetIndexTemplates(String ... templateIds);
+	public GetIndexTemplateRequest(ExecutorService executorService) {
+		super(executorService);
+	}
 	
-	public IndexTemplate getIndexTemplateForIndex(String index);
-	
-	public PutIndexTemplateRequest preparePutIndexTemplate(String templateId, String requestBody);
+	@Override
+	protected Callable<GetIndexTemplateResponse> internalExecute() {
+		return this;
+	}
+
+	public List<String> getTemplateIds() {
+		return templateIds;
+	}
 }

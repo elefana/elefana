@@ -23,6 +23,10 @@ import com.elefana.document.MultiGetResponse;
 import com.elefana.exception.ElefanaException;
 import com.elefana.exception.NoSuchDocumentException;
 import com.elefana.exception.ShardFailedException;
+import com.elefana.indices.GetIndexTemplateRequest;
+import com.elefana.indices.GetIndexTemplateResponse;
+import com.elefana.indices.PutIndexTemplateRequest;
+import com.elefana.indices.PutIndexTemplateResponse;
 import com.jsoniter.output.JsonStream;
 
 import io.netty.buffer.Unpooled;
@@ -287,11 +291,13 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 		case 2:
 			final String templateId = urlDecode(urlComponents[1]);
 			if (isGetMethod(httpRequest)) {
-				return createOkResponse(httpRequest,
-						JsonStream.serialize(apiRouter.getIndexTemplateApi().getIndexTemplate(templateId)));
+				GetIndexTemplateRequest request = apiRouter.getIndexTemplateApi().prepareGetIndexTemplates(templateId);
+				GetIndexTemplateResponse response = request.get();
+				return createOkResponse(httpRequest, JsonStream.serialize(response.getTemplates().get(0)));
 			} else if (isPostMethod(httpRequest) || isPutMethod(httpRequest)) {
-				return createOkResponse(httpRequest, JsonStream.serialize(
-						apiRouter.getIndexTemplateApi().putIndexTemplate(templateId, getRequestBody(httpRequest))));
+				PutIndexTemplateRequest request = apiRouter.getIndexTemplateApi().preparePutIndexTemplate(templateId, getRequestBody(httpRequest));
+				PutIndexTemplateResponse response = request.get();
+				return createOkResponse(httpRequest, JsonStream.serialize(response));
 			}
 			break;
 		}

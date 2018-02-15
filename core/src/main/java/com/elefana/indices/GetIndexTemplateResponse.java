@@ -15,11 +15,13 @@
  ******************************************************************************/
 package com.elefana.indices;
 
-public interface IndexTemplateService {
-	
-	public GetIndexTemplateRequest prepareGetIndexTemplates(String ... templateIds);
-	
-	public IndexTemplate getIndexTemplateForIndex(String index);
-	
-	public PutIndexTemplateRequest preparePutIndexTemplate(String templateId, String requestBody);
+import java.util.ArrayList;
+import java.util.List;
+
+public class GetIndexTemplateResponse {
+	private final List<IndexTemplate> templates = new ArrayList<IndexTemplate>(1);
+
+	public List<IndexTemplate> getTemplates() {
+		return templates;
+	}
 }
