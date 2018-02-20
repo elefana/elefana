@@ -20,6 +20,10 @@ import com.elefana.api.RequestExecutor;
 
 public abstract class BulkRequest extends ApiRequest<BulkResponse> {
 	protected String requestBody;
+	
+	public BulkRequest(RequestExecutor requestExecutor) {
+		super(requestExecutor);
+	}
 
 	public BulkRequest(RequestExecutor requestExecutor, String requestBody) {
 		super(requestExecutor);

@@ -21,10 +21,12 @@ import java.util.concurrent.Future;
 
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.ShardFailedException;
+import com.jsoniter.annotation.JsonIgnore;
 
 public abstract class ApiRequest<T extends ApiResponse> {
+	@JsonIgnore
 	protected final RequestExecutor requestExecutor;
-	
+	@JsonIgnore
 	protected Future<T> responseFuture;
 
 	public ApiRequest(RequestExecutor requestExecutor) {

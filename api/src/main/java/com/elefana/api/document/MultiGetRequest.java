@@ -20,6 +20,10 @@ import com.elefana.api.RequestExecutor;
 
 public abstract class MultiGetRequest extends ApiRequest<MultiGetResponse> {
 	protected String indexPattern, typePattern, requestBody;
+	
+	public MultiGetRequest(RequestExecutor requestExecutor) {
+		super(requestExecutor);
+	}
 
 	public MultiGetRequest(RequestExecutor requestExecutor, String requestBody) {
 		super(requestExecutor);
