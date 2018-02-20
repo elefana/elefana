@@ -22,8 +22,8 @@ import java.util.Map;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import com.elefana.exception.ElefanaException;
-import com.elefana.indices.IndexFieldMappingService;
+import com.elefana.api.exception.ElefanaException;
+import com.elefana.indices.psql.PsqlIndexFieldMappingService;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.search.RequestBodySearch;
 
@@ -61,7 +61,7 @@ public abstract class Aggregation {
 	}
 
 	public void executeSqlQuery(List<String> tableNames, String[] types, JdbcTemplate jdbcTemplate,
-			NodeSettingsService nodeSettingsService, IndexFieldMappingService indexFieldMappingService,
+			NodeSettingsService nodeSettingsService, PsqlIndexFieldMappingService indexFieldMappingService,
 			Map<String, Object> aggregationsResult, List<String> tempTablesCreated, String queryTable,
 			RequestBodySearch requestBodySearch) throws ElefanaException {
 		executeSqlQuery(new AggregationExec(tableNames, types, jdbcTemplate, nodeSettingsService,

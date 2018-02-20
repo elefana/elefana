@@ -44,7 +44,7 @@ subprojects {
 		jsoniterVersion = '0.9.21'
 		metricsVersion = '4.0.2'
 		nativesLoaderVersion = '1.0.0'
-		nettyVersion = '4.1.19.Final'
+		nettyVersion = '4.1.21.Final'
 		restAssuredVersion = '3.0.6'
 		stringSearchVersion = '2.2.0'
 	}
@@ -94,33 +94,96 @@ subprojects {
 			exceptionFormat "full"
 		}
 	}
+	
+	if(project.name.contains("core") || project.name.contains("api")) {
+		apply plugin: 'maven'
+		apply plugin: 'signing'
+		
+		if(project.hasProperty('ossrhUser') && project.hasProperty("release")) {
+			apply plugin: "io.codearte.nexus-staging"
+		
+			nexusStaging {
+				username = ossrhUser
+				password = ossrhPassword
+			}
+		}
+		
+		// Maven Central publication
+		if(project.hasProperty('ossrhUser')) {
+			signing {
+				sign configurations.archives
+			}
+			
+			uploadArchives {
+				repositories {
+					mavenDeployer {
+						// POM signature
+						beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+						// Target repository
+						repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+							authentication(userName: ossrhUser, password: ossrhPassword)
+						}
+						pom.project {
+							name project.name
+							description project.description
+							packaging 'jar'
+							url 'https://github.com/elefana/elefana'
+		
+							scm {
+								connection 'scm:git:https://github.com/elefana/elefana.git'
+								developerConnection 'scm:git:git@github.com:elefana/elefana.git'
+								url 'https://github.com/elefana/elefana.git'
+							}
+		
+							licenses {
+								license {
+									name 'Apache License 2.0'
+									url 'https://opensource.org/licenses/Apache-2.0'
+									distribution 'repo'
+								}
+							}
+		
+							developers {
+								developer {
+									id = 'tomcashman'
+									name = 'Thomas Cashman'
+									email = 'thomascashman404@gmail.com'
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+project(":" + rootProject.name + "-api") {
+	description = 'Elefana API classes'
+	
+	bootRepackage.enabled = false
+	
+	dependencies {
+		compile "com.jsoniter:jsoniter:$jsoniterVersion"
+		compile "io.netty:netty-codec-http:$nettyVersion"
+		
+		testCompile('org.springframework.boot:spring-boot-starter-test')
+	}
 }
 
 project(":" + rootProject.name + "-core") {
-	apply plugin: 'maven'
-	apply plugin: 'signing'
-	
 	description = 'Elastic HTTP API for PostgreSQL'
 	
 	bootRepackage.withJarTask = bootJar
 	
-	if(project.hasProperty('ossrhUser') && project.hasProperty("release")) {
-		apply plugin: "io.codearte.nexus-staging"
-	
-		nexusStaging {
-			username = ossrhUser
-			password = ossrhPassword
-		}
-	}
-	
 	dependencies {
+		compile project(path: ":" + rootProject.name + "-api")
 		compile('org.springframework.boot:spring-boot-starter-cache')
 		compile('org.springframework.boot:spring-boot-starter-jdbc') {
 			exclude group: 'org.apache.tomcat', module: 'tomcat-jdbc' 
 		}
 		compile('org.springframework.boot:spring-boot-starter')
 		compile "org.mini2Dx:natives-loader:$nativesLoaderVersion"
-		compile "com.jsoniter:jsoniter:$jsoniterVersion"
 		compile "com.zaxxer:HikariCP:$hikariVersion"
 		compile "io.netty:netty-all:$nettyVersion"
 		compile "com.elefana:stringsearch:$stringSearchVersion"
@@ -173,54 +236,6 @@ project(":" + rootProject.name + "-core") {
 					"--force",
 					"--before-install", "fpm/deb/scripts/before-install.sh",
 					"--after-install", "fpm/deb/scripts/after-install.sh" ]
-	}
-	
-	// Maven Central publication
-	if(project.hasProperty('ossrhUser')) {
-		signing {
-			sign configurations.archives
-		}
-		
-		uploadArchives {
-			repositories {
-				mavenDeployer {
-					// POM signature
-					beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
-					// Target repository
-					repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
-						authentication(userName: ossrhUser, password: ossrhPassword)
-					}
-					pom.project {
-						name project.name
-						description project.description
-						packaging 'jar'
-						url 'https://github.com/elefana/elefana'
-	
-						scm {
-							connection 'scm:git:https://github.com/elefana/elefana.git'
-							developerConnection 'scm:git:git@github.com:elefana/elefana.git'
-							url 'https://github.com/elefana/elefana.git'
-						}
-	
-						licenses {
-							license {
-								name 'Apache License 2.0'
-								url 'https://opensource.org/licenses/Apache-2.0'
-								distribution 'repo'
-							}
-						}
-	
-						developers {
-							developer {
-								id = 'tomcashman'
-								name = 'Thomas Cashman'
-								email = 'thomascashman404@gmail.com'
-							}
-						}
-					}
-				}
-			}
-		}
 	}
 }
 

@@ -38,13 +38,14 @@ public class NodeSettingsService {
 	private String httpIp;
 	private int httpPort;
 	private String httpAddress;
-	private boolean gzipEnabled;
+	private boolean httpGzipEnabled;
 	private int maxHttpPipelineEvents;
 	private int maxHttpPayloadSize;
 	
 	private boolean transportEnabled;
 	private String transportIp;
 	private int transportPort;
+	private boolean transportCompressionEnabled;
 	private String transportAddress;
 
 	private boolean usingCitus = false;
@@ -70,7 +71,7 @@ public class NodeSettingsService {
 		if(httpEnabled) {
 			httpIp = environment.getRequiredProperty("elefana.http.address");
 			httpPort = environment.getRequiredProperty("elefana.http.port", Integer.class);
-			gzipEnabled = environment.getRequiredProperty("elefana.http.gzip", Boolean.class);
+			httpGzipEnabled = environment.getRequiredProperty("elefana.http.gzip", Boolean.class);
 			maxHttpPipelineEvents = environment.getRequiredProperty("elefana.http.maxEvents", Integer.class);
 			maxHttpPayloadSize = environment.getRequiredProperty("elefana.http.maxPayloadSize", Integer.class);
 			httpAddress = httpIp + ":" + httpPort;
@@ -80,6 +81,7 @@ public class NodeSettingsService {
 		if(transportEnabled) {
 			transportIp = environment.getRequiredProperty("elefana.transport.server.address", String.class);
 			transportPort = environment.getRequiredProperty("elefana.transport.server.port", Integer.class);
+			transportCompressionEnabled = environment.getProperty("elefana.transport.server.compression", Boolean.class, false);
 			transportAddress = transportIp + ":" + transportPort;
 		}
 		
@@ -122,10 +124,6 @@ public class NodeSettingsService {
 		return httpEnabled;
 	}
 
-	public boolean isTransportEnabled() {
-		return transportEnabled;
-	}
-
 	public String getHttpIp() {
 		return httpIp;
 	}
@@ -137,7 +135,15 @@ public class NodeSettingsService {
 	public String getHttpAddress() {
 		return httpAddress;
 	}
+	
+	public boolean isHttpGzipEnabled() {
+		return httpGzipEnabled;
+	}
 
+	public boolean isTransportEnabled() {
+		return transportEnabled;
+	}
+	
 	public String getTransportIp() {
 		return transportIp;
 	}
@@ -150,16 +156,16 @@ public class NodeSettingsService {
 		return transportAddress;
 	}
 
+	public boolean isTransportCompressionEnabled() {
+		return transportCompressionEnabled;
+	}
+
 	public int getMaxHttpPipelineEvents() {
 		return maxHttpPipelineEvents;
 	}
 
 	public int getMaxHttpPayloadSize() {
 		return maxHttpPayloadSize;
-	}
-
-	public boolean isGzipEnabled() {
-		return gzipEnabled;
 	}
 
 	public boolean isUsingCitus() {

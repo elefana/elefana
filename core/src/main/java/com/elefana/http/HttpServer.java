@@ -122,7 +122,7 @@ public class HttpServer {
 				ChannelPipeline channelPipeline = ch.pipeline().addLast(new HttpServerCodec());
 				channelPipeline = channelPipeline.addLast(new HttpServerExpectContinueHandler());
 
-				final boolean compressionEnabled = nodeSettingsService.isGzipEnabled();
+				final boolean compressionEnabled = nodeSettingsService.isHttpGzipEnabled();
 				if (compressionEnabled) {
 					channelPipeline = channelPipeline.addLast("httpContentCompressor", new HttpContentCompressor(1));
 				}

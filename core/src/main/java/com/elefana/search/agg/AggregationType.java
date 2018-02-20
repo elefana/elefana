@@ -15,8 +15,8 @@
  ******************************************************************************/
 package com.elefana.search.agg;
 
-import com.elefana.exception.ElefanaException;
-import com.elefana.exception.UnsupportedAggregationTypeException;
+import com.elefana.api.exception.ElefanaException;
+import com.elefana.api.exception.UnsupportedAggregationTypeException;
 
 public enum AggregationType {
 	/* METRICS AGGREGATIONS */

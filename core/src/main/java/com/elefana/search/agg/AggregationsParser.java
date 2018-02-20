@@ -21,8 +21,8 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.elefana.exception.ElefanaException;
-import com.elefana.exception.UnsupportedAggregationTypeException;
+import com.elefana.api.exception.ElefanaException;
+import com.elefana.api.exception.UnsupportedAggregationTypeException;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;

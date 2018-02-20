@@ -15,7 +15,6 @@
  ******************************************************************************/
 package com.elefana.node;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Executors;
@@ -31,12 +30,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
+import com.elefana.api.json.EmptyJsonObject;
+import com.elefana.api.node.NodeInfo;
+import com.elefana.api.node.v2.V2NodeInfo;
+import com.elefana.api.node.v5.V5NodeInfo;
 import com.elefana.node.v2.V2OsStats;
 import com.elefana.node.v2.V2ProcessStats;
 import com.elefana.node.v5.V5JvmStats;
 import com.elefana.node.v5.V5OsStats;
 import com.elefana.node.v5.V5ProcessStats;
-import com.elefana.util.EmptyJsonObject;
 
 @Service
 public class NodeInfoService {
@@ -105,27 +107,40 @@ public class NodeInfoService {
 		scheduledExecutorService.shutdown();
 	}
 
-	public Map<String, Object> getNodeInfo(String... infoFields) {
-		Map<String, Object> result = new HashMap<String, Object>();
-		result.put("name", nodeSettingsService.getNodeName());
-		result.put("transport_address", nodeSettingsService.getTransportAddress());
-		result.put("host", nodeSettingsService.getHttpIp());
-		result.put("ip", nodeSettingsService.getHttpIp());
-		result.put("version", versionInfoService.getVersionNumber());
-		result.put("build", versionInfoService.getBuildHash());
+	public NodeInfo getNodeInfo(String... infoFields) {
+		NodeInfo result = null;
 		
 		switch(versionInfoService.getApiVersion()) {
-		case V_2_4_3:
-			result.put("http_address", nodeSettingsService.getHttpAddress());
-			result.put("attributes", nodeAttributes);
-			break;
-		case V_5_5_2:
-		default:
-			result.put("http", httpAttributes);
-			result.put("transport", transportAttributes);
-			result.put("roles", new String [] { (dataNode ? "data" : "") });
+		case V_5_5_2: {
+			V5NodeInfo v5NodeInfo = new V5NodeInfo();
+			v5NodeInfo.setRoles(new String [] { (dataNode ? "data" : "") });
+			
+			v5NodeInfo.getHttp().setBoundAddress(new String [] { nodeSettingsService.getHttpIp() });
+			v5NodeInfo.getHttp().setPublishAddress(nodeSettingsService.getHttpAddress());
+			
+			v5NodeInfo.getTransport().setBoundAddress(new String [] { nodeSettingsService.getTransportIp() });
+			v5NodeInfo.getTransport().setPublishAddress(nodeSettingsService.getTransportAddress());
+			
+			result = v5NodeInfo;
 			break;
 		}
+		default:
+		case V_2_4_3: {
+			V2NodeInfo v2NodeInfo = new V2NodeInfo();
+			v2NodeInfo.setHttpAddress(nodeSettingsService.getHttpAddress());
+			v2NodeInfo.getAttributes().setData(checkIfDataNode());
+			
+			result = v2NodeInfo;
+			break;
+		}
+		}
+		
+		result.setName(nodeSettingsService.getNodeName());
+		result.setTransportAddress(nodeSettingsService.getTransportAddress());
+		result.setHost(nodeSettingsService.getHttpIp());
+		result.setIp(nodeSettingsService.getHttpIp());
+		result.setVersion(versionInfoService.getVersionNumber());
+		result.setBuild(versionInfoService.getBuildHash());
 		
 		for (int i = 0; i < infoFields.length; i++) {
 			if(infoFields[i] == null) {
@@ -136,13 +151,13 @@ public class NodeInfoService {
 			}
 			switch (infoFields[i]) {
 			case KEY_OS:
-				result.put("os", osStats.getCurrentStats());
+				result.setOs(osStats.getCurrentStats());
 				break;
 			case KEY_JVM:
-				result.put("jvm", jvmStats.getCurrentStats());
+				result.setJvm(jvmStats.getCurrentStats());
 				break;
 			case KEY_PROCESS:
-				result.put("process", jvmStats.getCurrentStats());
+				result.setProcess(processStats.getCurrentStats());
 				break;
 			default:
 				continue;
@@ -151,7 +166,7 @@ public class NodeInfoService {
 		return result;
 	}
 	
-	public Map<String, Object> getNodeInfo() {
+	public NodeInfo getNodeInfo() {
 		return getNodeInfo(ALL_INFO);
 	}
 

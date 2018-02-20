@@ -19,9 +19,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -33,8 +31,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.codahale.metrics.Timer;
+import com.elefana.api.document.BulkItemResponse;
+import com.elefana.api.document.BulkOpType;
 
-public class BulkTask implements Callable<List<Map<String, Object>>> {
+public class BulkTask implements Callable<List<BulkItemResponse>> {
 	private static final Logger LOGGER = LoggerFactory.getLogger(BulkTask.class);
 	
 	private static final String STAGING_TABLE_PREFIX = "elefana_stg_";
@@ -83,8 +83,8 @@ public class BulkTask implements Callable<List<Map<String, Object>>> {
 	}
 
 	@Override
-	public List<Map<String, Object>> call() throws Exception {
-		final List<Map<String, Object>> results = new ArrayList<Map<String, Object>>(1);
+	public List<BulkItemResponse> call() throws Exception {
+		final List<BulkItemResponse> results = new ArrayList<BulkItemResponse>(1);
 		Connection connection = null;
 
 		try {
@@ -119,11 +119,9 @@ public class BulkTask implements Callable<List<Map<String, Object>>> {
 
 			for (int i = from; i < from + size && i < indexOperations.size(); i++) {
 				BulkIndexOperation indexOperation = indexOperations.get(i);
-				Map<String, Object> responseEntry = createEntry(results, "index", indexOperation.getIndex(),
+				BulkItemResponse responseEntry = createEntry(i, "index", indexOperation.getIndex(),
 						indexOperation.getType(), indexOperation.getId());
-				responseEntry.put(KEY_RESULT, VALUE_RESULT_CREATED);
-				responseEntry.put(KEY_CREATED, VALUE_CREATED);
-				responseEntry.put(KEY_STATUS, VALUE_STATUS_CREATED);
+				results.add(responseEntry);
 				indexOperation.release();
 			}
 		} catch (Exception e) {
@@ -144,20 +142,16 @@ public class BulkTask implements Callable<List<Map<String, Object>>> {
 		return results;
 	}
 
-	public Map<String, Object> createEntry(List<Map<String, Object>> results, String operation, String index,
+	public BulkItemResponse createEntry(int operationIndex, String operation, String index,
 			String type, String id) {
-		final Map<String, Object> entry = new HashMap<String, Object>();
-		final Map<String, Object> entryData = new HashMap<String, Object>();
-
-		entryData.put(KEY_INDEX, index);
-		entryData.put(KEY_TYPE, type);
-		entryData.put(KEY_ID, id);
-		entryData.put(KEY_VERSION, 1);
-		entryData.put(KEY_SHARDS, SHARDS);
-
-		entry.put(operation, entryData);
-		results.add(entry);
-		return entryData;
+		BulkOpType opType = BulkOpType.valueOf(operation.toUpperCase());
+		BulkItemResponse result = new BulkItemResponse(operationIndex, opType);
+		result.setIndex(index);
+		result.setType(type);
+		result.setId(id);
+		result.setVersion(1);
+		result.setResult(BulkItemResponse.STATUS_CREATED);
+		return result;
 	}
 
 	public String getIndex() {

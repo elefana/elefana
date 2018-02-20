@@ -25,9 +25,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 
-import com.elefana.exception.ElefanaException;
-import com.elefana.exception.InvalidAggregationFieldType;
-import com.elefana.exception.NoSuchMappingException;
+import com.elefana.api.exception.ElefanaException;
+import com.elefana.api.exception.InvalidAggregationFieldType;
+import com.elefana.api.exception.NoSuchMappingException;
 import com.jsoniter.any.Any;
 
 public class DateHistogramAggregation extends BucketAggregation {

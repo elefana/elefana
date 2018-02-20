@@ -5,7 +5,7 @@ package com.elefana.util;
 
 import java.util.List;
 
-import com.elefana.exception.ElefanaException;
+import com.elefana.api.exception.ElefanaException;
 
 public interface IndexUtils {
 	public static final String DATA_TABLE = "elefana_data";
@@ -23,7 +23,7 @@ public interface IndexUtils {
 
 	public String getQueryTarget(String indexName);
 	
-	public long getTimestamp(String index, String document);
+	public long getTimestamp(String index, String document) throws ElefanaException;
 
 	public void ensureIndexExists(String indexName) throws ElefanaException;
 

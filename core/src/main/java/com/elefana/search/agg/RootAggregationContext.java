@@ -22,8 +22,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import com.elefana.exception.ElefanaException;
-import com.elefana.indices.IndexFieldMappingService;
+import com.elefana.api.exception.ElefanaException;
+import com.elefana.indices.psql.PsqlIndexFieldMappingService;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.search.RequestBodySearch;
 
@@ -46,7 +46,7 @@ public class RootAggregationContext extends BucketAggregation {
 
 	@Override
 	public void executeSqlQuery(List<String> indices, String[] types, JdbcTemplate jdbcTemplate,
-			NodeSettingsService nodeSettingsService, IndexFieldMappingService indexFieldMappingService,
+			NodeSettingsService nodeSettingsService, PsqlIndexFieldMappingService indexFieldMappingService,
 			Map<String, Object> aggregationsResult, List<String> tempTablesCreated, String queryTable,
 			RequestBodySearch requestBodySearch) throws ElefanaException {
 		for (Aggregation aggregation : subaggregations) {

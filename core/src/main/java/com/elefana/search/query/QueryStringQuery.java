@@ -25,7 +25,6 @@ import com.elefana.esqs.EsFieldQuery;
 import com.elefana.esqs.EsQueryOperator;
 import com.elefana.esqs.EsQueryString;
 import com.elefana.esqs.EsQueryStringWalker;
-import com.elefana.node.NodeInfoService;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
 

@@ -62,7 +62,7 @@ public class HttpServerTest extends ChannelInboundHandlerAdapter {
 	public void testDefaultServer() {
 		final int port = 9202;
 		
-		when(nodeSettingsService.isGzipEnabled()).thenReturn(false);
+		when(nodeSettingsService.isHttpGzipEnabled()).thenReturn(false);
 		when(nodeSettingsService.getMaxHttpPipelineEvents()).thenReturn(0);
 		when(nodeSettingsService.getMaxHttpPayloadSize()).thenReturn(104857600);
 		server.start("localhost", port);
@@ -82,7 +82,7 @@ public class HttpServerTest extends ChannelInboundHandlerAdapter {
 	public void testGzipServer() {
 		final int port = 9203;
 		
-		when(nodeSettingsService.isGzipEnabled()).thenReturn(true);
+		when(nodeSettingsService.isHttpGzipEnabled()).thenReturn(true);
 		when(nodeSettingsService.getMaxHttpPipelineEvents()).thenReturn(0);
 		when(nodeSettingsService.getMaxHttpPayloadSize()).thenReturn(104857600);
 		server.start("localhost", port);
@@ -103,7 +103,7 @@ public class HttpServerTest extends ChannelInboundHandlerAdapter {
 	public void testHttpPipelinedServer() throws Exception {
 		final int port = 9204;
 		
-		when(nodeSettingsService.isGzipEnabled()).thenReturn(false);
+		when(nodeSettingsService.isHttpGzipEnabled()).thenReturn(false);
 		when(nodeSettingsService.getMaxHttpPipelineEvents()).thenReturn(100);
 		when(nodeSettingsService.getMaxHttpPayloadSize()).thenReturn(104857600);
 		server.start("localhost", port);
@@ -137,7 +137,7 @@ public class HttpServerTest extends ChannelInboundHandlerAdapter {
 	public void testGzipHttpPipelinedServer() throws Exception {
 		final int port = 9205;
 		
-		when(nodeSettingsService.isGzipEnabled()).thenReturn(true);
+		when(nodeSettingsService.isHttpGzipEnabled()).thenReturn(true);
 		when(nodeSettingsService.getMaxHttpPipelineEvents()).thenReturn(100);
 		when(nodeSettingsService.getMaxHttpPayloadSize()).thenReturn(104857600);
 		server.start("localhost", port);
@@ -172,7 +172,7 @@ public class HttpServerTest extends ChannelInboundHandlerAdapter {
 		final int port = 9202;
 		final int payloadSize = 10485760;
 		
-		when(nodeSettingsService.isGzipEnabled()).thenReturn(false);
+		when(nodeSettingsService.isHttpGzipEnabled()).thenReturn(false);
 		when(nodeSettingsService.getMaxHttpPipelineEvents()).thenReturn(0);
 		when(nodeSettingsService.getMaxHttpPayloadSize()).thenReturn(payloadSize);
 		server.start("localhost", port);

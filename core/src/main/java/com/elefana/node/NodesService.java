@@ -15,87 +15,17 @@
  ******************************************************************************/
 package com.elefana.node;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
+import com.elefana.api.node.NodesInfoRequest;
 
-import javax.annotation.PostConstruct;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.env.Environment;
-import org.springframework.stereotype.Service;
-
-@Service
-public class NodesService {
-	@Autowired
-	Environment environment;
-	@Autowired
-	private NodeInfoService nodeInfoService;
-
-	private String clusterName;
-
-	@PostConstruct
-	public void postConstruct() {
-		clusterName = environment.getRequiredProperty("elefana.cluster.name");
-	}
-
-	public Map<String, Object> getNodesInfo() {
-		// TODO: Support clustering
-		Map<String, Object> result = new HashMap<String, Object>();
-		result.put("cluster_name", clusterName);
-
-		Map<String, Object> nodes = new HashMap<String, Object>();
-		nodes.put(nodeInfoService.getNodeId(), nodeInfoService.getNodeInfo());
-		
-		result.put("nodes", nodes);
-		return result;
-	}
-
-	public Map<String, Object> getLocalNodeInfo() {
-		// TODO: Support clustering
-		Map<String, Object> result = new HashMap<String, Object>();
-		result.put("cluster_name", clusterName);
-
-		Map<String, Object> nodes = new HashMap<String, Object>();
-		nodes.put(nodeInfoService.getNodeId(), nodeInfoService.getNodeInfo());
-		
-		result.put("nodes", nodes);
-		return result;
-	}
+public interface NodesService {
 	
-	public Map<String, Object> getNodesInfo(String [] filteredNodes) {
-		// TODO: Support clustering
-		Map<String, Object> result = new HashMap<String, Object>();
-		result.put("cluster_name", clusterName);
-
-		Map<String, Object> nodes = new HashMap<String, Object>();
-		nodes.put(nodeInfoService.getNodeId(), nodeInfoService.getNodeInfo());
-		
-		result.put("nodes", nodes);
-		return result;
-	}
-
-	public Map<String, Object> getNodesInfo(String [] filteredNodes, String[] infoFields) {
-		// TODO: Support clustering
-		Map<String, Object> result = new HashMap<String, Object>();
-		result.put("cluster_name", clusterName);
-
-		Map<String, Object> nodes = new HashMap<String, Object>();
-		nodes.put(nodeInfoService.getNodeId(), nodeInfoService.getNodeInfo(infoFields));
-		
-		result.put("nodes", nodes);
-		return result;
-	}
+	public NodesInfoRequest prepareNodesInfo();
 	
-	public Map<String, Object> getLocalNodeInfo(String[] infoFields) {
-		// TODO: Support clustering
-		Map<String, Object> result = new HashMap<String, Object>();
-		result.put("cluster_name", clusterName);
-
-		Map<String, Object> nodes = new HashMap<String, Object>();
-		nodes.put(nodeInfoService.getNodeId(), nodeInfoService.getNodeInfo(infoFields));
-		
-		result.put("nodes", nodes);
-		return result;
-	}
+	public NodesInfoRequest prepareNodesInfo(String [] filteredNodes);
+	
+	public NodesInfoRequest prepareNodesInfo(String [] filteredNodes, String[] infoFields);
+	
+	public NodesInfoRequest prepareLocalNodeInfo();
+	
+	public NodesInfoRequest prepareLocalNodeInfo(String[] infoFields);
 }

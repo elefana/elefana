@@ -18,7 +18,7 @@ package com.elefana.search;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.elefana.exception.ElefanaException;
+import com.elefana.api.exception.ElefanaException;
 import com.elefana.search.agg.AggregationsParser;
 import com.elefana.search.agg.RootAggregationContext;
 import com.elefana.search.query.Query;

@@ -23,6 +23,8 @@ import java.util.Map;
 
 import org.joda.time.DateTime;
 
+import com.elefana.api.indices.IndexTemplate;
+
 public class V5FieldMapper extends FieldMapper {
 	private static final Map<String, Object> EMPTY_MAPPING = new HashMap<String, Object>();
 

@@ -57,10 +57,11 @@ public class IndexTemplateTest {
 			.statusCode(200);
 		
 		given().when().get("/_template/testIndexTemplate")
-		.then()
+			.then()
+			.log().all()
 			.statusCode(200)
-			.body("template", equalTo(index))
-			.body("mappings." + type, notNullValue());
+			.body("testIndexTemplate.template", equalTo(index))
+			.body("testIndexTemplate.mappings." + type, notNullValue());
 	}
 	
 	@Test
@@ -91,7 +92,6 @@ public class IndexTemplateTest {
 		given().when().get("/" + index + "/_mapping/" + type)
 		.then()
 			.statusCode(200)
-			.log().all()
 			.body(index + ".mappings." + type + ".nonDocField.mapping.nonDocField.type", equalTo("date"))
 			.body(index + ".mappings." + type + ".docField.mapping.docField.type", equalTo("text"));
 	}

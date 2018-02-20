@@ -15,6 +15,11 @@
  ******************************************************************************/
 package com.elefana.document;
 
+import com.elefana.api.document.GetRequest;
+import com.elefana.api.document.IndexOpType;
+import com.elefana.api.document.IndexRequest;
+import com.elefana.api.document.MultiGetRequest;
+
 public interface DocumentService {
 
 	public GetRequest prepareGet(String index, String type, String id);

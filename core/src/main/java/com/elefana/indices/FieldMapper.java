@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import com.elefana.api.indices.IndexTemplate;
 import com.elefana.es.compat.date.FormatDateTimeFormatter;
 import com.elefana.es.compat.date.JodaUtils;
 

@@ -25,7 +25,7 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.elefana.exception.ElefanaException;
+import com.elefana.api.exception.ElefanaException;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
 

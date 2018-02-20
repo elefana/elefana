@@ -20,7 +20,7 @@ import java.util.Map;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import com.elefana.indices.IndexFieldMappingService;
+import com.elefana.indices.psql.PsqlIndexFieldMappingService;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.search.RequestBodySearch;
 
@@ -29,7 +29,7 @@ public class AggregationExec {
 	private final String[] types;
 	private final JdbcTemplate jdbcTemplate;
 	private final NodeSettingsService nodeSettingsService;
-	private final IndexFieldMappingService indexFieldMappingService;
+	private final PsqlIndexFieldMappingService indexFieldMappingService;
 	private final Map<String, Object> aggregationsResult;
 	private final List<String> tempTablesCreated;
 	private final String queryTable;
@@ -37,7 +37,7 @@ public class AggregationExec {
 	private final Aggregation aggregation;
 
 	public AggregationExec(List<String> indices, String[] types, JdbcTemplate jdbcTemplate,
-			NodeSettingsService nodeSettingsService, IndexFieldMappingService indexFieldMappingService,
+			NodeSettingsService nodeSettingsService, PsqlIndexFieldMappingService indexFieldMappingService,
 			Map<String, Object> aggregationsResult, List<String> tempTablesCreated, String queryTable,
 			RequestBodySearch requestBodySearch, Aggregation aggregation) {
 		super();
@@ -69,7 +69,7 @@ public class AggregationExec {
 		return nodeSettingsService;
 	}
 
-	public IndexFieldMappingService getIndexFieldMappingService() {
+	public PsqlIndexFieldMappingService getIndexFieldMappingService() {
 		return indexFieldMappingService;
 	}
 

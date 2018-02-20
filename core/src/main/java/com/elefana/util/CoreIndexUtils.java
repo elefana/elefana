@@ -35,10 +35,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import com.codahale.metrics.MetricRegistry;
-import com.elefana.exception.ElefanaException;
-import com.elefana.exception.ShardFailedException;
-import com.elefana.indices.IndexTemplate;
-import com.elefana.indices.IndexTemplateService;
+import com.elefana.api.exception.ElefanaException;
+import com.elefana.api.exception.ShardFailedException;
+import com.elefana.api.indices.IndexTemplate;
+import com.elefana.indices.psql.PsqlIndexTemplateService;
 import com.elefana.node.NodeSettingsService;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.ValueType;
@@ -58,7 +58,7 @@ public class CoreIndexUtils implements IndexUtils {
 	@Autowired
 	private NodeSettingsService nodeSettingsService;
 	@Autowired
-	private IndexTemplateService indexTemplateService;
+	private PsqlIndexTemplateService indexTemplateService;
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 	@Autowired
@@ -150,7 +150,7 @@ public class CoreIndexUtils implements IndexUtils {
 		return getPartitionTableForIndex(indexName);
 	}
 	
-	public long getTimestamp(String index, String document) {
+	public long getTimestamp(String index, String document) throws ElefanaException {
 		final IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndex(index);
 		if(indexTemplate == null) {
 			return System.currentTimeMillis();

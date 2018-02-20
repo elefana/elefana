@@ -15,6 +15,8 @@
  ******************************************************************************/
 package com.elefana.document;
 
+import com.elefana.api.document.BulkRequest;
+
 public interface BulkIngestService {
 
 	public BulkRequest prepareBulkRequest(String requestBody);

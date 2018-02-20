@@ -15,7 +15,7 @@
  ******************************************************************************/
 package com.elefana.search.query;
 
-import com.elefana.exception.ElefanaException;
+import com.elefana.api.exception.ElefanaException;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
 
