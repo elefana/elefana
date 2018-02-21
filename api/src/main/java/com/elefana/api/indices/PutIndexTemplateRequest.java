@@ -22,7 +22,13 @@ import com.elefana.api.RequestExecutor;
 
 public abstract class PutIndexTemplateRequest extends ApiRequest<PutIndexTemplateResponse> implements Callable<PutIndexTemplateResponse> {
 	protected final String templateId;
-	protected final String requestBody;
+	protected String requestBody;
+	
+	public PutIndexTemplateRequest(RequestExecutor requestExecutor, String templateId) {
+		super(requestExecutor);
+		this.templateId = templateId;
+		this.requestBody = "{}";
+	}
 
 	public PutIndexTemplateRequest(RequestExecutor requestExecutor, String templateId, String requestBody) {
 		super(requestExecutor);
@@ -37,6 +43,13 @@ public abstract class PutIndexTemplateRequest extends ApiRequest<PutIndexTemplat
 
 	public String getRequestBody() {
 		return requestBody;
+	}
+
+	public void setRequestBody(String requestBody) {
+		if(requestBody == null) {
+			return;
+		}
+		this.requestBody = requestBody;
 	}
 
 	public String getTemplateId() {

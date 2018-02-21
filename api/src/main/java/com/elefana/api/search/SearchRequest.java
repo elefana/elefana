@@ -19,8 +19,14 @@ import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
 
 public abstract class SearchRequest extends ApiRequest<SearchResponse> {
+	private static final String DEFAULT_QUERY = "{\"query\":{\"match_all\": {}}}";
+	
 	protected String indexPattern, typePattern;
 	protected String requestBody;
+	
+	public SearchRequest(RequestExecutor requestExecutor) {
+		this(requestExecutor, DEFAULT_QUERY);
+	}
 
 	public SearchRequest(RequestExecutor requestExecutor, String requestBody) {
 		super(requestExecutor);

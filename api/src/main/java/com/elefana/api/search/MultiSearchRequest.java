@@ -21,9 +21,14 @@ import com.elefana.api.RequestExecutor;
 public abstract class MultiSearchRequest extends ApiRequest<MultiSearchResponse> {
 	protected String fallbackIndex, fallbackType;
 	protected String requestBody;
+	
+	public MultiSearchRequest(RequestExecutor requestExecutor) {
+		this(requestExecutor, "");
+	}
 
 	public MultiSearchRequest(RequestExecutor requestExecutor, String requestBody) {
 		super(requestExecutor);
+		this.requestBody = requestBody;
 	}
 
 	public String getFallbackIndex() {

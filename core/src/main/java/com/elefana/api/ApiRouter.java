@@ -172,6 +172,8 @@ public class ApiRouter {
 					return indexFieldMappingService.prepareGetFieldMappings(indexPattern).get();
 				case "_field_caps":
 					return indexFieldMappingService.prepareGetFieldCapabilities(indexPattern).get();
+				case "_field_stats":
+					return indexFieldMappingService.prepareGetFieldStats(indexPattern).get();
 				}
 				break;
 			}
