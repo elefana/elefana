@@ -23,8 +23,9 @@ public abstract class PutFieldMappingRequest extends ApiRequest<PutFieldMappingR
 	protected String type;
 	protected String mappings;
 	
-	public PutFieldMappingRequest(RequestExecutor requestExecutor) {
+	public PutFieldMappingRequest(RequestExecutor requestExecutor, String index) {
 		super(requestExecutor);
+		this.index = index;
 	}
 
 	public String getIndex() {
@@ -32,6 +33,9 @@ public abstract class PutFieldMappingRequest extends ApiRequest<PutFieldMappingR
 	}
 
 	public void setIndex(String index) {
+		if(index == null) {
+			return;
+		}
 		this.index = index;
 	}
 
@@ -40,6 +44,9 @@ public abstract class PutFieldMappingRequest extends ApiRequest<PutFieldMappingR
 	}
 
 	public void setType(String type) {
+		if(type == null) {
+			return;
+		}
 		this.type = type;
 	}
 
@@ -48,6 +55,9 @@ public abstract class PutFieldMappingRequest extends ApiRequest<PutFieldMappingR
 	}
 
 	public void setMappings(String mappings) {
+		if(mappings == null) {
+			return;
+		}
 		this.mappings = mappings;
 	}
 }

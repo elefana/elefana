@@ -23,8 +23,8 @@ import com.elefana.api.indices.PutFieldMappingResponse;
 public class PsqlPutFieldMappingRequest extends PutFieldMappingRequest implements Callable<PutFieldMappingResponse> {
 	private final PsqlIndexFieldMappingService indexFieldMappingService;
 
-	public PsqlPutFieldMappingRequest(PsqlIndexFieldMappingService indexFieldMappingService) {
-		super(indexFieldMappingService);
+	public PsqlPutFieldMappingRequest(PsqlIndexFieldMappingService indexFieldMappingService, String index) {
+		super(indexFieldMappingService, index);
 		this.indexFieldMappingService = indexFieldMappingService;
 	}
 

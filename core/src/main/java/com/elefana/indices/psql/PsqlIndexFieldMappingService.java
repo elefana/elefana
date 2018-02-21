@@ -700,16 +700,14 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 	
 	@Override
 	public PutFieldMappingRequest preparePutFieldMappings(String index, String mappings) {
-		PsqlPutFieldMappingRequest result = new PsqlPutFieldMappingRequest(this);
-		result.setIndex(index);
+		PsqlPutFieldMappingRequest result = new PsqlPutFieldMappingRequest(this, index);
 		result.setMappings(mappings);
 		return result;
 	}
 
 	@Override
 	public PutFieldMappingRequest preparePutFieldMappings(String index, String type, String mappings) {
-		PsqlPutFieldMappingRequest result = new PsqlPutFieldMappingRequest(this);
-		result.setIndex(index);
+		PsqlPutFieldMappingRequest result = new PsqlPutFieldMappingRequest(this, index);
 		result.setType(type);
 		result.setMappings(mappings);
 		return result;
