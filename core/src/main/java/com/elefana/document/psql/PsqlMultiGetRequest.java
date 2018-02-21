@@ -36,11 +36,11 @@ public class PsqlMultiGetRequest extends MultiGetRequest implements Callable<Mul
 	@Override
 	public MultiGetResponse call() throws Exception {
 		if(indexPattern != null && typePattern != null) {
-			return documentService.multiGet(indexPattern, typePattern, requestBody);
+			return documentService.multiGet(indexPattern, typePattern, getRequestBody());
 		} else if(indexPattern != null) {
-			return documentService.multiGet(indexPattern, requestBody);
+			return documentService.multiGet(indexPattern, getRequestBody());
 		} else {
-			return documentService.multiGet(requestBody);
+			return documentService.multiGet(getRequestBody());
 		}
 	}
 

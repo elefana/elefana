@@ -23,7 +23,8 @@ import com.elefana.api.RequestExecutor;
 
 public abstract class MultiGetRequest extends ApiRequest<MultiGetResponse> {
 	private final List<GetRequest> getRequests = new ArrayList<GetRequest>(1);
-	protected String indexPattern, typePattern, requestBody;
+	protected String indexPattern, typePattern;
+	private String requestBody;
 	
 	public MultiGetRequest(RequestExecutor requestExecutor) {
 		super(requestExecutor);

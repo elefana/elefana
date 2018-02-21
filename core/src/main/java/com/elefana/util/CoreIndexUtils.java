@@ -25,6 +25,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import javax.annotation.PostConstruct;
 
@@ -54,6 +56,7 @@ public class CoreIndexUtils implements IndexUtils {
 	
 	private final Map<String, String []> jsonPathCache = new ConcurrentHashMap<String, String []>();
 	private final Set<String> knownTables = new ConcurrentSkipListSet<String>();
+	private final Lock tableCreationLock = new ReentrantLock();
 	
 	@Autowired
 	private NodeSettingsService nodeSettingsService;
@@ -181,6 +184,12 @@ public class CoreIndexUtils implements IndexUtils {
 		if (isKnownTable(tableName)) {
 			return;
 		}
+		tableCreationLock.lock();
+		if (isKnownTable(tableName)) {
+			tableCreationLock.unlock();
+			return;
+		}
+		
 		final IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndex(indexName);
 		boolean timeSeries = false;
 
@@ -258,7 +267,8 @@ public class CoreIndexUtils implements IndexUtils {
 			}
 
 			connection.close();
-			knownTables.add(tableName);
+			addKnownTable(tableName);
+			tableCreationLock.unlock();
 		} catch (Exception e) {
 			if(connection != null) {
 				try {
@@ -267,6 +277,8 @@ public class CoreIndexUtils implements IndexUtils {
 					e1.printStackTrace();
 				}
 			}
+			e.printStackTrace();
+			tableCreationLock.unlock();
 			throw new ShardFailedException(e);
 		}
 	}
