@@ -16,7 +16,6 @@
 package com.elefana.indices.psql;
 
 import java.util.concurrent.Callable;
-import java.util.concurrent.FutureTask;
 
 import com.elefana.api.indices.PutIndexTemplateRequest;
 import com.elefana.api.indices.PutIndexTemplateResponse;

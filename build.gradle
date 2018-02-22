@@ -37,6 +37,7 @@ subprojects {
 	ext {
 		codecVersion = '1.10'
 		commonsMathVersion = '3.6.1'
+		commonsValidatorVersion = '1.6'
 		esCompatVersion = '1.0.1'
 		esQueryStringVersion = '1.0.1'
 		hikariVersion = '2.7.4'
@@ -192,6 +193,7 @@ project(":" + rootProject.name + "-core") {
 		compile "commons-codec:commons-codec:$codecVersion"
 		compile "io.dropwizard.metrics:metrics-core:$metricsVersion"
 		compile "io.dropwizard.metrics:metrics-graphite:$metricsVersion"
+		compile "commons-validator:commons-validator:$commonsValidatorVersion"		
 		compile('org.postgresql:postgresql')
 		
 		if (Os.isFamily(Os.FAMILY_MAC) && !project.hasProperty("release")) {

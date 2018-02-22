@@ -52,7 +52,7 @@ import com.zaxxer.hikari.HikariDataSource;
  */
 @Service
 public class CoreIndexUtils implements IndexUtils {
-	private static final Logger LOGGER = LoggerFactory.getLogger(IndexUtils.class);
+	private static final Logger LOGGER = LoggerFactory.getLogger(CoreIndexUtils.class);
 	
 	private final Map<String, String []> jsonPathCache = new ConcurrentHashMap<String, String []>();
 	private final Set<String> knownTables = new ConcurrentSkipListSet<String>();
@@ -318,7 +318,7 @@ public class CoreIndexUtils implements IndexUtils {
 		return null;
 	}
 
-	private static String convertIndexNameToTableName(String indexName) {
+	protected static String convertIndexNameToTableName(String indexName) {
 		indexName = indexName.replace(".", "_f_");
 		indexName = indexName.replace("-", "_m_");
 		indexName = indexName.replace(":", "_c_");
@@ -329,7 +329,7 @@ public class CoreIndexUtils implements IndexUtils {
 		return indexName;
 	}
 
-	private static String convertTableNameToIndexName(String tableName) {
+	protected static String convertTableNameToIndexName(String tableName) {
 		tableName = tableName.replace("_f_", ".");
 		tableName = tableName.replace("_m_", "-");
 		tableName = tableName.replace("_c_", ":");
