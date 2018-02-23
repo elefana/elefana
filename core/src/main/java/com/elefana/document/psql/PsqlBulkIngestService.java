@@ -33,6 +33,7 @@ import javax.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -62,6 +63,8 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 	private static final String NEW_LINE = "\n";
 
 	@Autowired
+	private Environment environment;
+	@Autowired
 	private JdbcTemplate jdbcTemplate;
 	@Autowired
 	private IndexUtils indexUtils;
@@ -79,7 +82,8 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 	
 	@PostConstruct
 	public void postConstruct() {
-		executorService = Executors.newWorkStealingPool();
+		final int totalThreads = environment.getProperty("elefana.service.bulk.threads", Integer.class, Runtime.getRuntime().availableProcessors());
+		executorService = Executors.newFixedThreadPool(totalThreads);
 		
 		bulkOperationsTotalTimer = metricRegistry.timer(MetricRegistry.name("bulk", "operations", "duration", "total"));
 		bulkOperationsSerializationTimer = metricRegistry.timer(MetricRegistry.name("bulk", "operations", "duration", "serialization"));

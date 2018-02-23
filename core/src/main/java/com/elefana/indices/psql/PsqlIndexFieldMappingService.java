@@ -34,6 +34,7 @@ import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.scheduling.TaskScheduler;
@@ -74,6 +75,8 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 	private long lastFieldStats = -1L;
 
 	@Autowired
+	private Environment environment;
+	@Autowired
 	private NodeSettingsService nodeSettingsService;
 	@Autowired
 	private VersionInfoService versionInfoService;
@@ -103,7 +106,9 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 			break;
 		}
 
-		executorService = Executors.newSingleThreadExecutor();
+		final int totalThreads = environment.getProperty("elefana.service.field.threads", Integer.class, 2);
+		executorService = Executors.newFixedThreadPool(totalThreads);
+		
 		scheduledTask = taskScheduler.scheduleWithFixedDelay(this,
 				Math.min(nodeSettingsService.getFieldStatsInterval(), nodeSettingsService.getMappingInterval()));
 	}

@@ -64,7 +64,8 @@ public class PsqlClusterService implements ClusterService, RequestExecutor {
 
 	@PostConstruct
 	public void postConstruct() {
-		executorService = Executors.newSingleThreadExecutor();
+		final int totalThreads = environment.getProperty("elefana.service.cluster.threads", Integer.class, 2);
+		executorService = Executors.newFixedThreadPool(totalThreads);
 		
 		clusterInfoResponse.getVersion().setBuildSnapshot(false);
 		clusterInfoResponse.getVersion().setLuceneVersion("N/A");
@@ -78,7 +79,7 @@ public class PsqlClusterService implements ClusterService, RequestExecutor {
 		clusterInfoResponse.setClusterUuid(nodeSettingsService.getClusterId());
 		clusterInfoResponse.setTagline(TAGLINE);
 	}
-	
+
 	public String getNodeName() {
 		return (String) info.get("name");
 	}
@@ -90,7 +91,7 @@ public class PsqlClusterService implements ClusterService, RequestExecutor {
 	public ClusterInfoResponse getClusterInfo() {
 		return clusterInfoResponse;
 	}
-	
+
 	public ClusterHealthResponse getClusterHealth() {
 		ClusterHealthResponse result = new ClusterHealthResponse();
 		result.setClusterName(getClusterName());
@@ -110,7 +111,7 @@ public class PsqlClusterService implements ClusterService, RequestExecutor {
 		result.setActiveShardsPercentAsNumber(100.0);
 		return result;
 	}
-	
+
 	public ClusterSettingsResponse getClusterSettings() {
 		return new ClusterSettingsResponse();
 	}
@@ -125,7 +126,7 @@ public class PsqlClusterService implements ClusterService, RequestExecutor {
 			e.printStackTrace();
 		}
 		try {
-			if(connection != null) {
+			if (connection != null) {
 				connection.close();
 			}
 		} catch (SQLException e) {

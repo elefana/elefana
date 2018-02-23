@@ -29,6 +29,7 @@ import javax.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.stereotype.Service;
@@ -61,6 +62,8 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 	private static final String[] EMPTY_TYPES_LIST = new String[0];
 
 	@Autowired
+	private Environment environment;
+	@Autowired
 	private JdbcTemplate jdbcTemplate;
 	@Autowired
 	private NodeSettingsService nodeSettingsService;
@@ -77,7 +80,8 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 
 	@PostConstruct
 	public void postConstruct() {
-		executorService = Executors.newSingleThreadExecutor();
+		final int totalThreads = environment.getProperty("elefana.service.search.threads", Integer.class, Runtime.getRuntime().availableProcessors());
+		executorService = Executors.newFixedThreadPool(totalThreads);
 		
 		searchTime = metricRegistry.histogram(MetricRegistry.name("search", "time"));
 		searchHits = metricRegistry.histogram(MetricRegistry.name("search", "hits"));

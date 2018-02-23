@@ -33,6 +33,7 @@ import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.stereotype.Service;
@@ -62,11 +63,11 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 	private static final Logger LOGGER = LoggerFactory.getLogger(PsqlDocumentService.class);
 
 	@Autowired
+	private Environment environment;
+	@Autowired
 	private JdbcTemplate jdbcTemplate;
 	@Autowired
 	private IndexUtils indexUtils;
-	@Autowired
-	private IndexTemplateService indexTemplateService;
 	@Autowired
 	private NodeSettingsService nodeSettingsService;
 	@Autowired
@@ -78,7 +79,8 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 	
 	@PostConstruct
 	public void postConstruct() {
-		executorService = Executors.newFixedThreadPool(1);
+		final int totalThreads = environment.getProperty("elefana.service.document.threads", Integer.class, Runtime.getRuntime().availableProcessors());
+		executorService = Executors.newFixedThreadPool(totalThreads);
 	}
 	
 	@PreDestroy

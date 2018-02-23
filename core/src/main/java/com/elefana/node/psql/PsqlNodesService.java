@@ -46,7 +46,9 @@ public class PsqlNodesService implements NodesService, RequestExecutor {
 
 	@PostConstruct
 	public void postConstruct() {
-		executorService = Executors.newSingleThreadExecutor();
+		final int totalThreads = environment.getProperty("elefana.service.node.threads", Integer.class, 2);
+		executorService = Executors.newFixedThreadPool(totalThreads);
+		
 		clusterName = environment.getRequiredProperty("elefana.cluster.name");
 	}
 	

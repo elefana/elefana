@@ -31,6 +31,7 @@ import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.stereotype.Service;
@@ -46,9 +47,6 @@ import com.elefana.api.indices.ListIndexTemplatesRequest;
 import com.elefana.api.indices.PutIndexTemplateRequest;
 import com.elefana.cluster.AckResponse;
 import com.elefana.indices.IndexTemplateService;
-import com.elefana.node.NodeSettingsService;
-import com.elefana.node.VersionInfoService;
-import com.elefana.util.IndexUtils;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
@@ -59,13 +57,9 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 	private static final Logger LOGGER = LoggerFactory.getLogger(PsqlIndexTemplateService.class);
 
 	@Autowired
-	private NodeSettingsService nodeSettingsService;
-	@Autowired
-	private VersionInfoService versionInfoService;
+	private Environment environment;
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
-	@Autowired
-	private IndexUtils indexUtils;
 
 	private final Map<String, String> indexToIndexTemplateNullCache = new ConcurrentHashMap<String, String>();
 	private final Map<String, IndexTemplate> indexToIndexTemplateCache = new ConcurrentHashMap<String, IndexTemplate>();
@@ -74,7 +68,8 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 	
 	@PostConstruct
 	public void postConstruct() {
-		executorService = Executors.newSingleThreadExecutor();
+		final int totalThreads = environment.getProperty("elefana.service.template.threads", Integer.class, Runtime.getRuntime().availableProcessors());
+		executorService = Executors.newFixedThreadPool(totalThreads);
 	}
 	
 	@PreDestroy
