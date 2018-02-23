@@ -52,6 +52,7 @@ import com.elefana.search.SearchQuery;
 import com.elefana.search.SearchQueryBuilder;
 import com.elefana.search.SearchService;
 import com.elefana.util.IndexUtils;
+import com.elefana.util.TableGarbageCollector;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.spi.TypeLiteral;
 
@@ -69,6 +70,8 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 	private NodeSettingsService nodeSettingsService;
 	@Autowired
 	private PsqlIndexFieldMappingService indexFieldMappingService;
+	@Autowired
+	private TableGarbageCollector tableGarbageCollector;
 	@Autowired
 	private IndexUtils indexUtils;
 	@Autowired
@@ -178,14 +181,14 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 				indexFieldMappingService, aggregationsResult, temporaryTablesCreated, searchQuery.getResultTable(),
 				requestBodySearch);
 		result.setAggregations(aggregationsResult);
+		
+		tableGarbageCollector.queueTemporaryTablesForDeletion(temporaryTablesCreated);
 		return result;
 	}
 
 	private SearchResponse searchWithoutAggregation(List<String> indices, String[] types,
 			RequestBodySearch requestBodySearch, long startTime) throws ElefanaException {
 		final SearchQuery searchQuery = searchQueryBuilder.buildQuery(indices, types, requestBodySearch);
-		final List<String> temporaryTablesCreated = searchQuery.getTemporaryTables();
-
 		return executeQuery(searchQuery.getQuery(), startTime, requestBodySearch.getSize());
 	}
 

@@ -28,6 +28,8 @@ public interface IndexUtils {
 	public void ensureIndexExists(String indexName) throws ElefanaException;
 
 	public void deleteIndex(String indexName);
+	
+	public void deleteTemporaryTable(String tableName);
 
 	public String getIndexForPartitionTable(String partitionTable);
 
