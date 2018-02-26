@@ -62,4 +62,11 @@ public abstract class ApiRequest<T extends ApiResponse> {
 			throw new ShardFailedException(e);
 		}
 	}
+	
+	public boolean isDone() {
+		if(responseFuture == null) {
+			return false;
+		}
+		return responseFuture.isDone();
+	}
 }
