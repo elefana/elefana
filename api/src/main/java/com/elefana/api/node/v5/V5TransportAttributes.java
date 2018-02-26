@@ -48,4 +48,29 @@ public class V5TransportAttributes {
 	public void setProfiles(EmptyJsonObject profiles) {
 		this.profiles = profiles;
 	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((publishAddress == null) ? 0 : publishAddress.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		V5TransportAttributes other = (V5TransportAttributes) obj;
+		if (publishAddress == null) {
+			if (other.publishAddress != null)
+				return false;
+		} else if (!publishAddress.equals(other.publishAddress))
+			return false;
+		return true;
+	}
 }

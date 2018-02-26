@@ -13,34 +13,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package com.elefana.api.node.v2;
+package com.elefana.api.json;
 
-public class V2NodeAttributes {
-	private boolean data;
-	private boolean master;
-	private boolean ingest;
+import java.io.IOException;
 
-	public boolean isData() {
-		return data;
+import com.elefana.api.node.NodeInfo;
+import com.elefana.api.node.v2.V2NodeInfo;
+import com.elefana.api.node.v5.V5NodeInfo;
+import com.jsoniter.JsonIterator;
+import com.jsoniter.ValueType;
+import com.jsoniter.any.Any;
+import com.jsoniter.spi.Decoder;
+
+public class NodeInfoDecoder implements Decoder {
+
+	@Override
+	public Object decode(JsonIterator iter) throws IOException {
+		Any any = iter.readAny();
+
+		NodeInfo result = null;
+		if (any.get("http_address").valueType().equals(ValueType.STRING)
+				|| any.get("http_address").valueType().equals(ValueType.NULL)) {
+			result = any.as(V2NodeInfo.class);
+		} else {
+			result = any.as(V5NodeInfo.class);
+		}
+		return result;
 	}
 
-	public void setData(boolean data) {
-		this.data = data;
-	}
-
-	public boolean isMaster() {
-		return master;
-	}
-
-	public void setMaster(boolean master) {
-		this.master = master;
-	}
-
-	public boolean isIngest() {
-		return ingest;
-	}
-
-	public void setIngest(boolean ingest) {
-		this.ingest = ingest;
-	}
 }

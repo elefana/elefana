@@ -17,9 +17,16 @@ package com.elefana.api.node;
 
 import java.util.Map;
 
+import com.elefana.api.json.NodeInfoDecoder;
 import com.jsoniter.annotation.JsonProperty;
+import com.jsoniter.spi.JsoniterSpi;
 
-public class NodeInfo {
+public abstract class NodeInfo {
+	
+	static {
+		JsoniterSpi.registerTypeDecoder(NodeInfo.class, new NodeInfoDecoder());
+	}
+	
 	private String name;
 	@JsonProperty("transport_address")
 	private String transportAddress;
@@ -31,6 +38,12 @@ public class NodeInfo {
 	private Map<String, Object> jvm;
 	private Map<String, Object> process;
 	
+	public abstract boolean isMasterNode();
+	
+	public abstract boolean isDataNode();
+	
+	public abstract boolean isIngestNode();
+
 	public String getName() {
 		return name;
 	}
@@ -101,5 +114,36 @@ public class NodeInfo {
 
 	public void setProcess(Map<String, Object> process) {
 		this.process = process;
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((host == null) ? 0 : host.hashCode());
+		result = prime * result + ((ip == null) ? 0 : ip.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		NodeInfo other = (NodeInfo) obj;
+		if (host == null) {
+			if (other.host != null)
+				return false;
+		} else if (!host.equals(other.host))
+			return false;
+		if (ip == null) {
+			if (other.ip != null)
+				return false;
+		} else if (!ip.equals(other.ip))
+			return false;
+		return true;
 	}
 }

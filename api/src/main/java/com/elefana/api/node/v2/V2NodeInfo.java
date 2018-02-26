@@ -22,6 +22,30 @@ public class V2NodeInfo extends NodeInfo {
 	private final V2NodeAttributes attributes = new V2NodeAttributes();
 	@JsonProperty("http_address")
 	private String httpAddress;
+	
+	@Override
+	public boolean isMasterNode() {
+		return attributes.isMaster();
+	}
+
+	@Override
+	public boolean isDataNode() {
+		return attributes.isData();
+	}
+
+	@Override
+	public boolean isIngestNode() {
+		return attributes.isIngest();
+	}
+	
+	public V2NodeInfo() {
+		super();
+	}
+	
+	public V2NodeInfo(String httpAddress) {
+		super();
+		this.httpAddress = httpAddress;
+	}
 
 	public String getHttpAddress() {
 		return httpAddress;
@@ -33,5 +57,30 @@ public class V2NodeInfo extends NodeInfo {
 
 	public V2NodeAttributes getAttributes() {
 		return attributes;
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((httpAddress == null) ? 0 : httpAddress.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		V2NodeInfo other = (V2NodeInfo) obj;
+		if (httpAddress == null) {
+			if (other.httpAddress != null)
+				return false;
+		} else if (!httpAddress.equals(other.httpAddress))
+			return false;
+		return true;
 	}
 }

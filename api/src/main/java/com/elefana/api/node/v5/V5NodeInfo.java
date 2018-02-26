@@ -21,6 +21,45 @@ public class V5NodeInfo extends NodeInfo {
 	private V5HttpAttributes http;
 	private V5TransportAttributes transport;
 	private String [] roles;
+	
+	@Override
+	public boolean isMasterNode() {
+		if(roles == null) {
+			return false;
+		}
+		for(String role : roles) {
+			if(role.equalsIgnoreCase("master")) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	@Override
+	public boolean isDataNode() {
+		if(roles == null) {
+			return false;
+		}
+		for(String role : roles) {
+			if(role.equalsIgnoreCase("data")) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	@Override
+	public boolean isIngestNode() {
+		if(roles == null) {
+			return false;
+		}
+		for(String role : roles) {
+			if(role.equalsIgnoreCase("ingest")) {
+				return true;
+			}
+		}
+		return false;
+	}
 
 	public String[] getRoles() {
 		return roles;
@@ -44,5 +83,36 @@ public class V5NodeInfo extends NodeInfo {
 
 	public void setTransport(V5TransportAttributes transport) {
 		this.transport = transport;
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((http == null) ? 0 : http.hashCode());
+		result = prime * result + ((transport == null) ? 0 : transport.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		V5NodeInfo other = (V5NodeInfo) obj;
+		if (http == null) {
+			if (other.http != null)
+				return false;
+		} else if (!http.equals(other.http))
+			return false;
+		if (transport == null) {
+			if (other.transport != null)
+				return false;
+		} else if (!transport.equals(other.transport))
+			return false;
+		return true;
 	}
 }
