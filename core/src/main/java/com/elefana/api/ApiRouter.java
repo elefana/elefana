@@ -59,7 +59,7 @@ public class ApiRouter {
 	@Autowired
 	private ClusterService clusterService;
 
-	public ApiResponse route(HttpMethod method, String url, String requestBody) throws ElefanaException {
+	public ApiRequest<?> route(HttpMethod method, String url, String requestBody) throws ElefanaException {
 		if (url.length() == 1) {
 			return routeToRootUrl();
 		}
@@ -71,11 +71,11 @@ public class ApiRouter {
 		return routeToApi(method, url, urlComponents, requestBody);
 	}
 
-	private ApiResponse routeToRootUrl() throws ElefanaException {
-		return clusterService.prepareClusterInfo().get();
+	private ApiRequest<?> routeToRootUrl() throws ElefanaException {
+		return clusterService.prepareClusterInfo();
 	}
 
-	private ApiResponse routeToApi(HttpMethod method, String url, String[] urlComponents, String requestBody)
+	private ApiRequest<?> routeToApi(HttpMethod method, String url, String[] urlComponents, String requestBody)
 			throws ElefanaException {
 		switch (urlComponents[0].toLowerCase()) {
 		case "_bulk":
@@ -131,49 +131,49 @@ public class ApiRouter {
 		}
 	}
 
-	private ApiResponse routeToBulkApi(HttpMethod method, String url, String[] urlComponents, String requestBody)
+	private ApiRequest<?> routeToBulkApi(HttpMethod method, String url, String[] urlComponents, String requestBody)
 			throws ElefanaException {
 		switch (urlComponents[0].toLowerCase()) {
 		case "_bulk":
-			return bulkIngestService.prepareBulkRequest(requestBody).get();
+			return bulkIngestService.prepareBulkRequest(requestBody);
 		}
 		throw new NoSuchApiException(url);
 	}
 
-	private ApiResponse routeToClusterApi(HttpMethod method, String url, String[] urlComponents, String requestBody)
+	private ApiRequest<?> routeToClusterApi(HttpMethod method, String url, String[] urlComponents, String requestBody)
 			throws ElefanaException {
 		switch (urlComponents.length) {
 		case 1:
-			return clusterService.prepareClusterInfo().get();
+			return clusterService.prepareClusterInfo();
 		case 2:
 			final String target = urlDecode(urlComponents[1]);
 			switch (target.toLowerCase()) {
 			case "health":
-				return clusterService.prepareClusterHealth().get();
+				return clusterService.prepareClusterHealth();
 			case "settings":
-				return clusterService.prepareClusterSettings().get();
+				return clusterService.prepareClusterSettings();
 			}
 		}
 		throw new NoSuchApiException(url);
 	}
 
-	private ApiResponse routeToFieldMappingApi(HttpMethod method, String url, String[] urlComponents,
+	private ApiRequest<?> routeToFieldMappingApi(HttpMethod method, String url, String[] urlComponents,
 			String requestBody) throws ElefanaException {
 		if (isGetMethod(method)) {
 			switch (urlComponents.length) {
 			case 1:
 				// _mapping
-				return indexFieldMappingService.prepareGetFieldMappings().get();
+				return indexFieldMappingService.prepareGetFieldMappings();
 			case 2: {
 				// INDICES/_mapping or INDICES/_field_caps
 				final String indexPattern = urlDecode(urlComponents[0]);
 				switch (urlComponents[1].toLowerCase()) {
 				case "_mapping":
-					return indexFieldMappingService.prepareGetFieldMappings(indexPattern).get();
+					return indexFieldMappingService.prepareGetFieldMappings(indexPattern);
 				case "_field_caps":
-					return indexFieldMappingService.prepareGetFieldCapabilities(indexPattern).get();
+					return indexFieldMappingService.prepareGetFieldCapabilities(indexPattern);
 				case "_field_stats":
-					return indexFieldMappingService.prepareGetFieldStats(indexPattern).get();
+					return indexFieldMappingService.prepareGetFieldStats(indexPattern);
 				}
 				break;
 			}
@@ -183,24 +183,24 @@ public class ApiRouter {
 				final String typePattern = urlDecode(urlComponents[2]);
 				switch (urlComponents[1].toLowerCase()) {
 				case "_mapping":
-					return indexFieldMappingService.prepareGetFieldMappings(indexPattern, typePattern).get();
+					return indexFieldMappingService.prepareGetFieldMappings(indexPattern, typePattern);
 				}
 				break;
 			}
 		} else if (isPutMethod(method)) {
 			final String index = urlDecode(urlComponents[0]);
-			return indexFieldMappingService.preparePutFieldMappings(index, requestBody).get();
+			return indexFieldMappingService.preparePutFieldMappings(index, requestBody);
 		}
 		throw new NoSuchApiException(url);
 	}
 
-	private ApiResponse routeToDocumentApi(HttpMethod method, String url, String[] urlComponents, String requestBody)
+	private ApiRequest<?> routeToDocumentApi(HttpMethod method, String url, String[] urlComponents, String requestBody)
 			throws ElefanaException {
 		switch (urlComponents.length) {
 		case 1:
 			switch (urlComponents[0].toLowerCase()) {
 			case "_mget":
-				return documentService.prepareMultiGet(requestBody).get();
+				return documentService.prepareMultiGet(requestBody);
 			}
 			break;
 		case 2: {
@@ -209,14 +209,13 @@ public class ApiRouter {
 
 			switch (urlComponents[1].toLowerCase()) {
 			case "_mget":
-				return documentService.prepareMultiGet(index, requestBody).get();
+				return documentService.prepareMultiGet(index, requestBody);
 			}
 			final String type = urlDecode(urlComponents[1]);
 
 			if (isPostMethod(method)) {
 				return documentService
-						.prepareIndex(index, type, UUID.randomUUID().toString(), requestBody, IndexOpType.OVERWRITE)
-						.get();
+						.prepareIndex(index, type, UUID.randomUUID().toString(), requestBody, IndexOpType.OVERWRITE);
 			}
 			break;
 		}
@@ -227,14 +226,14 @@ public class ApiRouter {
 
 			switch (urlComponents[2].toLowerCase()) {
 			case "_mget":
-				return documentService.prepareMultiGet(index, type, requestBody).get();
+				return documentService.prepareMultiGet(index, type, requestBody);
 			}
 			final String id = urlDecode(urlComponents[2]);
 
 			if (isGetMethod(method)) {
-				return documentService.prepareGet(index, type, id).get();
+				return documentService.prepareGet(index, type, id);
 			} else if (isPostMethod(method)) {
-				return documentService.prepareIndex(index, type, id, requestBody, IndexOpType.OVERWRITE).get();
+				return documentService.prepareIndex(index, type, id, requestBody, IndexOpType.OVERWRITE);
 			}
 			break;
 		}
@@ -248,11 +247,11 @@ public class ApiRouter {
 				switch (urlComponents[3].toLowerCase()) {
 				case "_create": {
 					return documentService.prepareIndex(index, type, id, requestBody,
-							IndexOpType.CREATE).get();
+							IndexOpType.CREATE);
 				}
 				case "_update": {
 					return documentService.prepareIndex(index, type, id, requestBody,
-							IndexOpType.UPDATE).get();
+							IndexOpType.UPDATE);
 				}
 				}
 			}
@@ -262,16 +261,16 @@ public class ApiRouter {
 		throw new NoSuchApiException(url);
 	}
 
-	private ApiResponse routeToSearchApi(HttpMethod method, String url, String[] urlComponents, String requestBody)
+	private ApiRequest<?> routeToSearchApi(HttpMethod method, String url, String[] urlComponents, String requestBody)
 			throws ElefanaException {
 		switch (urlComponents.length) {
 		case 1:
 			// _search
 			switch (urlComponents[0].toLowerCase()) {
 			case "_search":
-				return searchService.prepareSearch(requestBody).get();
+				return searchService.prepareSearch(requestBody);
 			case "_msearch":
-				return searchService.prepareMultiSearch(requestBody).get();
+				return searchService.prepareMultiSearch(requestBody);
 			}
 			break;
 		case 2: {
@@ -279,9 +278,9 @@ public class ApiRouter {
 			final String indexPattern = urlDecode(urlComponents[0]);
 			switch (urlComponents[1].toLowerCase()) {
 			case "_search":
-				return searchService.prepareSearch(indexPattern, requestBody).get();
+				return searchService.prepareSearch(indexPattern, requestBody);
 			case "_msearch":
-				return searchService.prepareMultiSearch(indexPattern, requestBody).get();
+				return searchService.prepareMultiSearch(indexPattern, requestBody);
 			}
 			break;
 		}
@@ -292,29 +291,29 @@ public class ApiRouter {
 
 			switch (urlComponents[2].toLowerCase()) {
 			case "_search":
-				return searchService.prepareSearch(indexPattern, typePattern, requestBody).get();
+				return searchService.prepareSearch(indexPattern, typePattern, requestBody);
 			case "_msearch":
-				return searchService.prepareMultiSearch(indexPattern, typePattern, requestBody).get();
+				return searchService.prepareMultiSearch(indexPattern, typePattern, requestBody);
 			}
 			break;
 		}
 		throw new NoSuchApiException(url);
 	}
 
-	private ApiResponse routeToNodeApi(HttpMethod method, String url, String[] urlComponents, String requestBody)
+	private ApiRequest<?> routeToNodeApi(HttpMethod method, String url, String[] urlComponents, String requestBody)
 			throws ElefanaException {
 		switch (urlComponents.length) {
 		case 1:
-			return nodesService.prepareNodesInfo().get();
+			return nodesService.prepareNodesInfo();
 		case 2: {
 			final String nodes = urlDecode(urlComponents[1]);
 			switch (nodes.toLowerCase()) {
 			case "_all":
-				return nodesService.prepareNodesInfo().get();
+				return nodesService.prepareNodesInfo();
 			case "_local":
-				return nodesService.prepareLocalNodeInfo().get();
+				return nodesService.prepareLocalNodeInfo();
 			default:
-				return nodesService.prepareNodesInfo(nodes.split(",")).get();
+				return nodesService.prepareNodesInfo(nodes.split(","));
 			}
 		}
 		case 3: {
@@ -322,26 +321,26 @@ public class ApiRouter {
 			final String[] filter = urlComponents[2].split(",");
 			switch (nodes.toLowerCase()) {
 			case "_all":
-				return nodesService.prepareNodesInfo(filter).get();
+				return nodesService.prepareNodesInfo(filter);
 			case "_local":
-				return nodesService.prepareLocalNodeInfo(filter).get();
+				return nodesService.prepareLocalNodeInfo(filter);
 			default:
-				return nodesService.prepareNodesInfo(nodes.split(","), filter).get();
+				return nodesService.prepareNodesInfo(nodes.split(","), filter);
 			}
 		}
 		}
 		throw new NoSuchApiException(url);
 	}
 
-	private ApiResponse routeToIndexTemplateApi(HttpMethod method, String url, String[] urlComponents,
+	private ApiRequest<?> routeToIndexTemplateApi(HttpMethod method, String url, String[] urlComponents,
 			String requestBody) throws ElefanaException {
 		switch (urlComponents.length) {
 		case 2:
 			final String templateId = urlDecode(urlComponents[1]);
 			if (isGetMethod(method)) {
-				return indexTemplateService.prepareGetIndexTemplate(templateId).get();
+				return indexTemplateService.prepareGetIndexTemplate(templateId);
 			} else if (isPostMethod(method) || isPutMethod(method)) {
-				return indexTemplateService.preparePutIndexTemplate(templateId, requestBody).get();
+				return indexTemplateService.preparePutIndexTemplate(templateId, requestBody);
 			}
 			break;
 		}

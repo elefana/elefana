@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
+import com.elefana.api.ApiRequest;
 import com.elefana.api.ApiResponse;
 import com.elefana.api.ApiRouter;
 import com.elefana.api.exception.ElefanaException;
@@ -55,7 +56,11 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 			httpRequests.mark();
 
 			final String uri = httpRequest.uri();
-			final ApiResponse apiResponse = apiRouter.route(httpRequest.getMethod(), uri, getRequestBody(httpRequest));
+			final ApiRequest<?> apiRequest = apiRouter.route(httpRequest.getMethod(), uri, getRequestBody(httpRequest));
+			if(apiRequest == null) {
+				throw new NoSuchApiException(uri);
+			}
+			final ApiResponse apiResponse = apiRequest.get();
 			if(apiResponse == null) {
 				throw new NoSuchApiException(uri);
 			}
