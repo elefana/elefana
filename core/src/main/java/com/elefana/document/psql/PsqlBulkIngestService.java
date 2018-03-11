@@ -74,7 +74,8 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 	private PsqlBulkIndexService bulkIndexService;
 	@Autowired
 	private MetricRegistry metricRegistry;
-	
+
+	private String tablespace;
 	private ExecutorService executorService;
 	
 	private Timer bulkOperationsTotalTimer, bulkOperationsPsqlTimer, bulkOperationsSerializationTimer;
@@ -82,6 +83,8 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 	
 	@PostConstruct
 	public void postConstruct() {
+		tablespace = environment.getProperty("elefana.service.bulk.tablespace", "");
+
 		final int totalThreads = environment.getProperty("elefana.service.bulk.threads", Integer.class, Runtime.getRuntime().availableProcessors());
 		executorService = Executors.newFixedThreadPool(totalThreads);
 		
@@ -164,7 +167,7 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 		final List<Future<List<BulkItemResponse>>> results = new ArrayList<Future<List<BulkItemResponse>>>();
 		
 		for(int i = 0; i < indexOperations.size(); i += operationSize) {
-			final BulkTask task = new BulkTask(bulkOperationsPsqlTimer, jdbcTemplate, indexOperations, index, queryTarget, i, operationSize);
+			final BulkTask task = new BulkTask(bulkOperationsPsqlTimer, jdbcTemplate, indexOperations, tablespace, index, queryTarget, i, operationSize);
 			bulkTasks.add(task);
 			results.add(executorService.submit(task));
 		}

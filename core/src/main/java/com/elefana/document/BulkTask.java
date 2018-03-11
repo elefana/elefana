@@ -61,6 +61,7 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 	private final Timer psqlTimer;
 	private final JdbcTemplate jdbcTemplate;
 	private final List<BulkIndexOperation> indexOperations;
+	private final String tablespace;
 	private final String index;
 	private final String queryTarget;
 	private final int from;
@@ -68,12 +69,13 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 	
 	private final String stagingTable;
 
-	public BulkTask(Timer psqlTimer, JdbcTemplate jdbcTemplate, List<BulkIndexOperation> indexOperations, String index,
+	public BulkTask(Timer psqlTimer, JdbcTemplate jdbcTemplate, List<BulkIndexOperation> indexOperations, String tablespace, String index,
 			String queryTarget, int from, int size) {
 		super();
 		this.psqlTimer = psqlTimer;
 		this.jdbcTemplate = jdbcTemplate;
 		this.indexOperations = indexOperations;
+		this.tablespace = tablespace;
 		this.index = index;
 		this.queryTarget = queryTarget;
 		this.from = from;
@@ -89,8 +91,19 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 
 		try {
 			connection = jdbcTemplate.getDataSource().getConnection();
-			
-			PreparedStatement createTableStatement = connection.prepareStatement("CREATE TABLE " + stagingTable + " (LIKE " + queryTarget + ")");
+
+			StringBuilder createTableQuery = new StringBuilder();
+			createTableQuery.append("CREATE TABLE ");
+			createTableQuery.append(stagingTable);
+			createTableQuery.append(" (LIKE ");
+			createTableQuery.append(queryTarget);
+			createTableQuery.append(")");
+			if(tablespace != null && !tablespace.isEmpty()) {
+				createTableQuery.append(" TABLESPACE ");
+				createTableQuery.append(tablespace);
+			}
+
+			PreparedStatement createTableStatement = connection.prepareStatement(createTableQuery.toString());
 			createTableStatement.execute();
 			createTableStatement.close();
 			
