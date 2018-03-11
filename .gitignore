@@ -18,6 +18,8 @@ gradle-app.setting
 .project
 .settings/
 
+.idea/
+*.iml
 .springBeans
 
 proguard.map
