@@ -29,6 +29,7 @@ import javax.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -45,6 +46,7 @@ import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
 
 @Service
+@DependsOn("nodeSettingsService")
 public class PsqlClusterService implements ClusterService, RequestExecutor {
 	private static final Logger LOGGER = LoggerFactory.getLogger(PsqlClusterService.class);
 	private static final String TAGLINE = "For search or something";

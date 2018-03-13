@@ -32,6 +32,7 @@ import org.springframework.stereotype.Component;
 
 import com.codahale.metrics.MetricRegistry;
 import com.elefana.indices.IndexFieldMappingService;
+import com.elefana.node.NodeInfoService;
 import com.elefana.node.NodeSettingsService;
 
 @Component
@@ -42,10 +43,9 @@ public class DbInitializer {
 	private NodeSettingsService nodeSettingsService;
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
-	@Autowired
-	private MetricRegistry metricRegistry;
 
 	public void initialiseDatabase() throws SQLException {
+		createSqlFunctions();
 		createMasterTableIfNotExists();
 		createPartitionTrackingTableIfNotExists();
 		createFieldStatsTablesIfNotExists();
@@ -61,8 +61,8 @@ public class DbInitializer {
 						+ tableName + "'::regclass;");
 		return !results.isEmpty();
 	}
-
-	private void createMasterTableIfNotExists() throws SQLException {
+	
+	private void createSqlFunctions() {
 		try {
 			ResourceDatabasePopulator resourceDatabasePopulator = new ResourceDatabasePopulator(
 					new ClassPathResource("/functions.sql", IndexFieldMappingService.class));
@@ -71,7 +71,9 @@ public class DbInitializer {
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
 		}
-		
+	}
+
+	private void createMasterTableIfNotExists() throws SQLException {		
 		if (nodeSettingsService.isUsingCitus()) {
 			return;
 		}
@@ -89,6 +91,10 @@ public class DbInitializer {
 	}
 
 	private void createPartitionTrackingTableIfNotExists() throws SQLException {
+		if(!nodeSettingsService.isMasterNode()) {
+			return;
+		}
+		
 		Connection connection = jdbcTemplate.getDataSource().getConnection();
 
 		final String createMasterTableQuery = "CREATE TABLE IF NOT EXISTS " + IndexUtils.PARTITION_TRACKING_TABLE
@@ -108,6 +114,10 @@ public class DbInitializer {
 	}
 
 	private void createFieldStatsTablesIfNotExists() throws SQLException {
+		if(!nodeSettingsService.isMasterNode()) {
+			return;
+		}
+		
 		jdbcTemplate.execute(
 				"CREATE TABLE IF NOT EXISTS elefana_index_mapping (_tracking_id VARCHAR(255) PRIMARY KEY, _index VARCHAR(255), _type VARCHAR(255), _mapping jsonb);");
 		jdbcTemplate.execute(
@@ -126,6 +136,10 @@ public class DbInitializer {
 	}
 	
 	private void createIndexTemplatesTableIfNotExists() throws SQLException {
+		if(!nodeSettingsService.isMasterNode()) {
+			return;
+		}
+		
 		jdbcTemplate.execute(
 				"CREATE TABLE IF NOT EXISTS elefana_index_template (_template_id VARCHAR(255) PRIMARY KEY, _index_pattern VARCHAR(255), _timestamp_path VARCHAR(255), _mappings jsonb);");
 		

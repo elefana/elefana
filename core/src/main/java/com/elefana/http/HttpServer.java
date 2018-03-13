@@ -10,6 +10,7 @@ import org.mini2Dx.natives.OsInformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Service;
 
 import com.codahale.metrics.Histogram;
@@ -41,6 +42,7 @@ import io.netty.handler.codec.http.HttpServerKeepAliveHandler;
  *
  */
 @Service
+@DependsOn("nodeSettingsService")
 public class HttpServer {
 	private static final Logger LOGGER = LoggerFactory.getLogger(HttpServer.class);
 

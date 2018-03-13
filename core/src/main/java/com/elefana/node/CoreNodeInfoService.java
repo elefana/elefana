@@ -3,14 +3,7 @@
  */
 package com.elefana.node;
 
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.SocketException;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -19,10 +12,10 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 
-import org.apache.commons.validator.routines.InetAddressValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
@@ -36,7 +29,8 @@ import com.elefana.node.v5.V5JvmStats;
 import com.elefana.node.v5.V5OsStats;
 import com.elefana.node.v5.V5ProcessStats;
 
-@Service
+@Service("nodeInfoService")
+@DependsOn("nodeSettingsService")
 public class CoreNodeInfoService implements NodeInfoService {
 	private static final Logger LOGGER = LoggerFactory.getLogger(CoreNodeInfoService.class);
 
@@ -63,18 +57,10 @@ public class CoreNodeInfoService implements NodeInfoService {
 	protected JvmStats jvmStats;
 	protected ProcessStats processStats;
 
-	protected boolean masterNode;
-	protected boolean dataNode;
-	protected boolean ingestNode;
-	protected String[] roles;
-
 	@PostConstruct
 	public void postConstruct() {
-		masterNode = checkIfMasterNode();
-		dataNode = checkIfDataNode();
-
-		nodeAttributes.put("master", masterNode);
-		nodeAttributes.put("data", dataNode);
+		nodeAttributes.put("master", nodeSettingsService.isMasterNode());
+		nodeAttributes.put("data", nodeSettingsService.isDataNode());
 
 		httpAttributes.put("bound_address", new String[] { nodeSettingsService.getHttpIp() });
 		httpAttributes.put("publish_address", nodeSettingsService.getHttpAddress());
@@ -98,21 +84,6 @@ public class CoreNodeInfoService implements NodeInfoService {
 			break;
 		}
 
-		List<String> roles = new ArrayList<String>();
-		if (masterNode) {
-			roles.add("master");
-		}
-		if (dataNode) {
-			roles.add("data");
-		}
-		if (ingestNode) {
-			roles.add("ingest");
-		}
-		this.roles = new String[roles.size()];
-		for (int i = 0; i < roles.size(); i++) {
-			this.roles[i] = roles.get(i);
-		}
-
 		scheduledExecutorService.scheduleAtFixedRate(jvmStats, 0L, 1L, TimeUnit.SECONDS);
 		scheduledExecutorService.scheduleAtFixedRate(osStats, 0L, 1L, TimeUnit.SECONDS);
 		scheduledExecutorService.scheduleAtFixedRate(processStats, 0L, 1L, TimeUnit.SECONDS);
@@ -130,7 +101,7 @@ public class CoreNodeInfoService implements NodeInfoService {
 		case V_5_5_2: {
 			V5NodeInfo v5NodeInfo = new V5NodeInfo();
 
-			v5NodeInfo.setRoles(new String[] { (dataNode ? "data" : "") });
+			v5NodeInfo.setRoles(nodeSettingsService.getRoles());
 
 			v5NodeInfo.getHttp().setBoundAddress(new String[] { nodeSettingsService.getHttpIp() });
 			v5NodeInfo.getHttp().setPublishAddress(nodeSettingsService.getHttpAddress());
@@ -145,7 +116,7 @@ public class CoreNodeInfoService implements NodeInfoService {
 		case V_2_4_3: {
 			V2NodeInfo v2NodeInfo = new V2NodeInfo();
 			v2NodeInfo.setHttpAddress(nodeSettingsService.getHttpAddress());
-			v2NodeInfo.getAttributes().setData(checkIfDataNode());
+			v2NodeInfo.getAttributes().setData(nodeSettingsService.isDataNode());
 
 			result = v2NodeInfo;
 			break;
@@ -195,71 +166,6 @@ public class CoreNodeInfoService implements NodeInfoService {
 		return nodeSettingsService.getNodeName();
 	}
 
-	protected boolean checkIfMasterNode() {
-		if (!nodeSettingsService.isUsingCitus()) {
-			return true;
-		}
-		final String jdbcUrl = environment.getProperty("spring.datasource.url", "");
-		if (jdbcUrl.contains(nodeSettingsService.getCitusCoordinatorHost())) {
-			return true;
-		}
-		if (environment.containsProperty("elefana.citus.coordinator.direct")) {
-			if (environment.getRequiredProperty("elefana.citus.coordinator.direct", Boolean.class)) {
-				return true;
-			}
-		}
-
-		try {
-			if (InetAddressValidator.getInstance().isValidInet4Address(nodeSettingsService.getCitusCoordinatorHost())) {
-				return hasMatchingInterface(nodeSettingsService.getCitusCoordinatorHost());
-			} else if (InetAddressValidator.getInstance()
-					.isValidInet6Address(nodeSettingsService.getCitusCoordinatorHost())) {
-				return hasMatchingInterface(nodeSettingsService.getCitusCoordinatorHost());
-			} else {
-				try {
-					InetAddress coordinatorAddress = InetAddress
-							.getByName(nodeSettingsService.getCitusCoordinatorHost());
-					return jdbcUrl.contains(coordinatorAddress.getHostAddress())
-							|| hasMatchingInterface(coordinatorAddress.getHostAddress());
-				} catch (UnknownHostException e) {
-					LOGGER.error(e.getMessage(), e);
-				}
-			}
-		} catch (SocketException e) {
-			LOGGER.error(e.getMessage(), e);
-		}
-		return false;
-	}
-
-	private boolean hasMatchingInterface(String ipAddress) throws SocketException {
-		Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
-		while (networkInterfaces.hasMoreElements()) {
-			NetworkInterface networkInterface = networkInterfaces.nextElement();
-			Enumeration<InetAddress> networkAddresses = networkInterface.getInetAddresses();
-			while (networkAddresses.hasMoreElements()) {
-				InetAddress networkAddress = networkAddresses.nextElement();
-				if (networkAddress.getHostAddress().equals(ipAddress)) {
-					return true;
-				}
-			}
-		}
-		return false;
-	}
-
-	protected boolean checkIfDataNode() {
-		final String jdbcUrl = environment.getProperty("spring.datasource.url", "");
-		if (jdbcUrl.contains("localhost")) {
-			return true;
-		}
-		if (jdbcUrl.contains("127.0.0.1")) {
-			return true;
-		}
-		if (jdbcUrl.contains(nodeSettingsService.getHttpIp())) {
-			return true;
-		}
-		return false;
-	}
-
 	public void setEnvironment(Environment environment) {
 		this.environment = environment;
 	}
@@ -285,14 +191,14 @@ public class CoreNodeInfoService implements NodeInfoService {
 	}
 
 	public boolean isMasterNode() {
-		return masterNode;
+		return nodeSettingsService.isMasterNode();
 	}
 
 	public boolean isDataNode() {
-		return dataNode;
+		return nodeSettingsService.isDataNode();
 	}
 
 	public boolean isIngestNode() {
-		return ingestNode;
+		return nodeSettingsService.isIngestNode();
 	}
 }

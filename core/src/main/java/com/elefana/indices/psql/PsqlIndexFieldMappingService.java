@@ -34,6 +34,7 @@ import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
@@ -66,6 +67,7 @@ import com.jsoniter.output.JsonStream;
 import com.jsoniter.spi.TypeLiteral;
 
 @Service
+@DependsOn("nodeSettingsService")
 public class PsqlIndexFieldMappingService implements IndexFieldMappingService, RequestExecutor, Runnable {
 	private static final Logger LOGGER = LoggerFactory.getLogger(IndexFieldMappingService.class);
 

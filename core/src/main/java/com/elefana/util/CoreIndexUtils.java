@@ -34,6 +34,7 @@ import javax.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -43,6 +44,7 @@ import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.ShardFailedException;
 import com.elefana.api.indices.IndexTemplate;
 import com.elefana.indices.psql.PsqlIndexTemplateService;
+import com.elefana.node.NodeInfoService;
 import com.elefana.node.NodeSettingsService;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.ValueType;
@@ -53,6 +55,7 @@ import com.zaxxer.hikari.HikariDataSource;
  *
  */
 @Service
+@DependsOn("nodeSettingsService")
 public class CoreIndexUtils implements IndexUtils {
 	private static final String [] DEFAULT_TABLESPACES = new String [] { "" };
 	private static final Logger LOGGER = LoggerFactory.getLogger(CoreIndexUtils.class);

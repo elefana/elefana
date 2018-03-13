@@ -28,12 +28,14 @@ import javax.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Service;
 
 import com.elefana.node.NodeInfoService;
 import com.elefana.node.NodeSettingsService;
 
 @Service
+@DependsOn("nodeInfoService")
 public class TableGarbageCollector implements Runnable {
 	private static final Logger LOGGER = LoggerFactory.getLogger(TableGarbageCollector.class);
 	private static final long GC_TIME_MILLIS = 1000L;

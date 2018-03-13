@@ -15,17 +15,29 @@
  ******************************************************************************/
 package com.elefana.node;
 
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.List;
 import java.util.Random;
 
 import javax.annotation.PostConstruct;
 
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.validator.routines.InetAddressValidator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
 @Component
 public class NodeSettingsService {
+	private static final Logger LOGGER = LoggerFactory.getLogger(NodeSettingsService.class);
+	
 	@Autowired
 	Environment environment;
 
@@ -33,6 +45,11 @@ public class NodeSettingsService {
 	private String nodeName;
 	private String clusterId;
 	private String clusterName;
+	
+	private boolean masterNode;
+	private boolean dataNode;
+	private boolean ingestNode;
+	private String[] roles;
 
 	private boolean httpEnabled;
 	private String httpIp;
@@ -98,6 +115,97 @@ public class NodeSettingsService {
 		mappingSampleSize = environment.getRequiredProperty("elefana.mappingSampleSize", Double.class);
 		fallbackMappingSampleSize = environment.getRequiredProperty("elefana.fallbackMappingSampleSize", Integer.class);
 		garbageCollectionInterval = environment.getRequiredProperty("elefana.gcInterval", Long.class);
+		
+		masterNode = checkIfMasterNode();
+		dataNode = checkIfDataNode();
+		
+		if(!dataNode && environment.containsProperty("elefana.transport.client.hosts")) {
+			String transportClientHosts = environment.getProperty("elefana.transport.client.hosts", "");
+			if(!transportClientHosts.isEmpty()) {
+				ingestNode = true;
+			}
+		}
+		
+		List<String> roles = new ArrayList<String>();
+		if (masterNode) {
+			roles.add("master");
+		}
+		if (dataNode) {
+			roles.add("data");
+		}
+		if (ingestNode) {
+			roles.add("ingest");
+		}
+		this.roles = new String[roles.size()];
+		for (int i = 0; i < roles.size(); i++) {
+			this.roles[i] = roles.get(i);
+		}
+		LOGGER.info("Master: " + masterNode + ", Data: " + dataNode + ", Ingest: " + ingestNode);
+	}
+	
+	protected boolean checkIfMasterNode() {
+		if (!usingCitus) {
+			return true;
+		}
+		final String jdbcUrl = environment.getProperty("spring.datasource.url", "");
+		if (jdbcUrl.contains(citusCoordinatorHost)) {
+			return true;
+		}
+		if (environment.containsProperty("elefana.citus.coordinator.direct")) {
+			if (environment.getRequiredProperty("elefana.citus.coordinator.direct", Boolean.class)) {
+				return true;
+			}
+		}
+
+		try {
+			if (InetAddressValidator.getInstance().isValidInet4Address(citusCoordinatorHost)) {
+				return hasMatchingInterface(citusCoordinatorHost);
+			} else if (InetAddressValidator.getInstance()
+					.isValidInet6Address(citusCoordinatorHost)) {
+				return hasMatchingInterface(citusCoordinatorHost);
+			} else {
+				try {
+					InetAddress coordinatorAddress = InetAddress
+							.getByName(citusCoordinatorHost);
+					return jdbcUrl.contains(coordinatorAddress.getHostAddress())
+							|| hasMatchingInterface(coordinatorAddress.getHostAddress());
+				} catch (UnknownHostException e) {
+					LOGGER.error(e.getMessage(), e);
+				}
+			}
+		} catch (SocketException e) {
+			LOGGER.error(e.getMessage(), e);
+		}
+		return false;
+	}
+
+	private boolean hasMatchingInterface(String ipAddress) throws SocketException {
+		Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
+		while (networkInterfaces.hasMoreElements()) {
+			NetworkInterface networkInterface = networkInterfaces.nextElement();
+			Enumeration<InetAddress> networkAddresses = networkInterface.getInetAddresses();
+			while (networkAddresses.hasMoreElements()) {
+				InetAddress networkAddress = networkAddresses.nextElement();
+				if (networkAddress.getHostAddress().equals(ipAddress)) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	protected boolean checkIfDataNode() {
+		final String jdbcUrl = environment.getProperty("spring.datasource.url", "");
+		if (jdbcUrl.contains("localhost")) {
+			return true;
+		}
+		if (jdbcUrl.contains("127.0.0.1")) {
+			return true;
+		}
+		if (jdbcUrl.contains(httpIp)) {
+			return true;
+		}
+		return false;
 	}
 
 	public Environment getEnvironment() {
@@ -202,5 +310,21 @@ public class NodeSettingsService {
 
 	public long getGarbageCollectionInterval() {
 		return garbageCollectionInterval;
+	}
+	
+	public boolean isMasterNode() {
+		return masterNode;
+	}
+
+	public boolean isDataNode() {
+		return dataNode;
+	}
+
+	public boolean isIngestNode() {
+		return ingestNode;
+	}
+
+	public String[] getRoles() {
+		return roles;
 	}
 }
