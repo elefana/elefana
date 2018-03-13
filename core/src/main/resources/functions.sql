@@ -15,6 +15,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION elefana_json_field(_json_column jsonb, _json_field text) RETURNS text AS $$
+	select _json_column->>_json_field
+$$
+LANGUAGE SQL IMMUTABLE PARALLEL SAFE;
+
 -- Workaround for PSQL not supporting ON CONFLICT on partition tables
 CREATE OR REPLACE FUNCTION elefana_create(_op_index VARCHAR, _op_type VARCHAR, _op_id VARCHAR, _op_timestamp BIGINT, _op_source json) RETURNS INT AS
 $$

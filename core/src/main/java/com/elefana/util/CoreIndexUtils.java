@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -33,6 +34,7 @@ import javax.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -52,12 +54,15 @@ import com.zaxxer.hikari.HikariDataSource;
  */
 @Service
 public class CoreIndexUtils implements IndexUtils {
+	private static final String [] DEFAULT_TABLESPACES = new String [] { "" };
 	private static final Logger LOGGER = LoggerFactory.getLogger(CoreIndexUtils.class);
 	
 	private final Map<String, String []> jsonPathCache = new ConcurrentHashMap<String, String []>();
 	private final Set<String> knownTables = new ConcurrentSkipListSet<String>();
 	private final Lock tableCreationLock = new ReentrantLock();
 	
+	@Autowired
+	private Environment environment;
 	@Autowired
 	private NodeSettingsService nodeSettingsService;
 	@Autowired
@@ -68,9 +73,17 @@ public class CoreIndexUtils implements IndexUtils {
 	private MetricRegistry metricRegistry;
 	@Autowired
 	private DbInitializer dbInitializer;
+	
+	private final AtomicInteger tablespaceIndex = new AtomicInteger();
+	private String [] tablespaces;
 
 	@PostConstruct
 	public void postConstruct() throws SQLException {
+		tablespaces = environment.getProperty("elefana.service.document.tablespaces", "").split(",");
+		if(isEmptyTablespaceList(tablespaces)) {
+			tablespaces = DEFAULT_TABLESPACES;
+		}
+		
 		dbInitializer.initialiseDatabase();
 
 		if (jdbcTemplate.getDataSource() instanceof HikariDataSource) {
@@ -178,7 +191,51 @@ public class CoreIndexUtils implements IndexUtils {
 		}
 		return json.toLong();
 	}
+	
+	@Override
+	public void ensureJsonFieldIndexExist(String indexName, List<String> fieldNames) throws ElefanaException {
+		final String tableName = convertIndexNameToTableName(indexName);
+		
+		Connection connection = null;
+		try {
+			connection = jdbcTemplate.getDataSource().getConnection();
+			PreparedStatement preparedStatement;
+			
+			for(String fieldName : fieldNames) {
+				final String jsonIndexName = JSON_INDEX_PREFIX + tableName + "_" + fieldName;
+				
+				final StringBuilder createJsonFilterQuery = new StringBuilder();
+				createJsonFilterQuery.append("CREATE INDEX IF NOT EXISTS ");
+				createJsonFilterQuery.append(jsonIndexName);
+				createJsonFilterQuery.append(" ON ");
+				if (nodeSettingsService.isUsingCitus()) {
+					createJsonFilterQuery.append(tableName);
+				} else {
+					createJsonFilterQuery.append(DATA_TABLE);
+				}
+				createJsonFilterQuery.append("(elefana_json_field(_source,");
+				createJsonFilterQuery.append(fieldName);
+				createJsonFilterQuery.append("))");
+				
+				preparedStatement = connection.prepareStatement(createJsonFilterQuery.toString());
+				preparedStatement.execute();
+				preparedStatement.close();
+			}
+			
+		} catch (Exception e) {
+			if(connection != null) {
+				try {
+					connection.close();
+				} catch (SQLException e1) {
+					e1.printStackTrace();
+				}
+			}
+			e.printStackTrace();
+			throw new ShardFailedException(e);
+		}
+	}
 
+	@Override
 	public void ensureIndexExists(String indexName) throws ElefanaException {
 		final String tableName = convertIndexNameToTableName(indexName);
 		if (isKnownTable(tableName)) {
@@ -205,21 +262,29 @@ public class CoreIndexUtils implements IndexUtils {
 			connection = jdbcTemplate.getDataSource().getConnection();
 			PreparedStatement preparedStatement;
 
+			final StringBuilder createTableQuery = new StringBuilder();
+			createTableQuery.append("CREATE TABLE IF NOT EXISTS ");
+			createTableQuery.append(tableName);
+			
 			if (nodeSettingsService.isUsingCitus()) {
-				final String createTableQuery = "CREATE TABLE IF NOT EXISTS " + tableName
-						+ " (_index VARCHAR(255) NOT NULL, _type VARCHAR(255) NOT NULL, _id VARCHAR(255) NOT NULL, _timestamp BIGINT, _source jsonb)";
-				LOGGER.info(createTableQuery);
-				preparedStatement = connection.prepareStatement(createTableQuery);
-				preparedStatement.execute();
-				preparedStatement.close();
+				createTableQuery.append(" (_index VARCHAR(255) NOT NULL, _type VARCHAR(255) NOT NULL, _id VARCHAR(255) NOT NULL, _timestamp BIGINT, _source jsonb)");
 			} else {
-				final String createTableQuery = "CREATE TABLE IF NOT EXISTS " + tableName + " PARTITION OF " + DATA_TABLE
-						+ " FOR VALUES in ('" + indexName + "')";
-				LOGGER.info(createTableQuery);
-				preparedStatement = connection.prepareStatement(createTableQuery);
-				preparedStatement.execute();
-				preparedStatement.close();
+				createTableQuery.append(" PARTITION OF ");
+				createTableQuery.append(DATA_TABLE);
+				createTableQuery.append(" FOR VALUES in ('");
+				createTableQuery.append(indexName);
+				createTableQuery.append("')");
 			}
+			final String tablespace = tablespaces[tablespaceIndex.incrementAndGet() % tablespaces.length];
+			if(tablespace != null && !tablespace.isEmpty()) {
+				createTableQuery.append(" TABLESPACE ");
+				createTableQuery.append(tablespace);
+			}
+			
+			LOGGER.info(createTableQuery.toString());
+			preparedStatement = connection.prepareStatement(createTableQuery.toString());
+			preparedStatement.execute();
+			preparedStatement.close();
 			
 			if (nodeSettingsService.isUsingCitus() && timeSeries) {
 				final String createPrimaryKeyQuery = "ALTER TABLE " + tableName + " ADD CONSTRAINT " + constraintName
@@ -364,6 +429,22 @@ public class CoreIndexUtils implements IndexUtils {
 				continue;
 			}
 			if (types[i].isEmpty()) {
+				continue;
+			}
+			return false;
+		}
+		return true;
+	}
+	
+	private boolean isEmptyTablespaceList(String [] tablespaces) {
+		if(tablespaces == null) {
+			return true;
+		}
+		for(int i = 0; i < tablespaces.length; i++) {
+			if(tablespaces[i] == null) {
+				continue;
+			}
+			if(tablespaces[i].isEmpty()) {
 				continue;
 			}
 			return false;

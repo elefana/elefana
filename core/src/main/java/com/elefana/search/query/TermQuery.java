@@ -51,7 +51,7 @@ public class TermQuery extends Query {
 
 	@Override
 	public String toSqlWhereClause() {
-		return "_source->>'" + fieldName + "' = '" + value + "'";
+		return "elefana_json_field(_source, '" + fieldName + "') = '" + value + "'";
 	}
 
 }

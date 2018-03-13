@@ -66,13 +66,13 @@ public class RangeQuery extends Query {
 	public String toSqlWhereClause() {
 		StringBuilder result = new StringBuilder();
 		if (from != null) {
-			result.append("(_source->>'" + fieldName + "')::numeric " + (includeLower ? ">=" : ">") + " " + from);
+			result.append("elefana_json_field(_source, '" + fieldName + "')::numeric " + (includeLower ? ">=" : ">") + " " + from);
 		}
 		if (to != null) {
 			if (from != null) {
 				result.append(" AND ");
 			}
-			result.append("(_source->>'" + fieldName + "')::numeric " + (includeUpper ? "<=" : "<") + " " + to);
+			result.append("elefana_json_field(_source, '" + fieldName + "')::numeric " + (includeUpper ? "<=" : "<") + " " + to);
 		}
 		return result.toString();
 	}

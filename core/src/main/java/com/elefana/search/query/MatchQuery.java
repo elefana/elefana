@@ -75,11 +75,11 @@ public class MatchQuery extends Query {
 	}
 	
 	protected String toPhrasePrefixSqlWhereClause() {
-		return "_source->>'" + fieldName + "' ILIKE '" + query + "%'";
+		return "elefana_json_field(_source, '" + fieldName + "') ILIKE '" + query + "%'";
 	}
 	
 	protected String toPhraseSqlWhereClause() {
-		return "_source->>'" + fieldName + "' ILIKE '%" + query + "%'";
+		return "elefana_json_field(_source, '" + fieldName + "') ILIKE '%" + query + "%'";
 	}
 		
 	protected String toDefaultSqlWhereClause() {
@@ -91,7 +91,7 @@ public class MatchQuery extends Query {
 			if(i > 0) {
 				stringBuilder.append(" " + operator + " ");
 			}
-			stringBuilder.append("_source->>'" + fieldName + "' ILIKE '%" + terms[i] + "%'");
+			stringBuilder.append("elefana_json_field(_source, '" + fieldName + "') ILIKE '%" + terms[i] + "%'");
 		}
 		stringBuilder.append(')');
 		return stringBuilder.toString();

@@ -49,7 +49,7 @@ public class WildcardQuery extends Query {
 
 	@Override
 	public String toSqlWhereClause() {
-		return "_source->>'" + fieldName + "' LIKE '" + value.replace("*", "%").replace("?", "_") + "'";
+		return "elefana_json_field(_source, '" + fieldName + "') LIKE '" + value.replace("*", "%").replace("?", "_") + "'";
 	}
 
 }

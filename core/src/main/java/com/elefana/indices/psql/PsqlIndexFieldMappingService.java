@@ -547,6 +547,7 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 
 		for (String type : types) {
 			List<String> fieldNames = getFieldNames(indexName, type);
+			indexUtils.ensureJsonFieldIndexExist(indexName, fieldNames);
 
 			for (String fieldName : fieldNames) {
 				if (fieldStats.containsKey(fieldName)) {

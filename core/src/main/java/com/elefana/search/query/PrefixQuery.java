@@ -49,7 +49,7 @@ public class PrefixQuery extends Query {
 	
 	@Override
 	public String toSqlWhereClause() {
-		return "_source->>'" + fieldName + "' LIKE '" + value + "%'";
+		return "elefana_json_field(_source, '" + fieldName + "') LIKE '" + value + "%'";
 	}
 
 }
