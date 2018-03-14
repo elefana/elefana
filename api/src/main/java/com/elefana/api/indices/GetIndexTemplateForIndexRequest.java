@@ -13,20 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package com.elefana.indices;
+package com.elefana.api.indices;
 
-import com.elefana.api.indices.GetIndexTemplateForIndexRequest;
-import com.elefana.api.indices.GetIndexTemplateRequest;
-import com.elefana.api.indices.ListIndexTemplatesRequest;
-import com.elefana.api.indices.PutIndexTemplateRequest;
+import java.util.concurrent.Callable;
 
-public interface IndexTemplateService {
+import com.elefana.api.ApiRequest;
+import com.elefana.api.RequestExecutor;
+
+public abstract class GetIndexTemplateForIndexRequest extends ApiRequest<GetIndexTemplateForIndexResponse> implements Callable<GetIndexTemplateForIndexResponse> {
+	private final String index;
 	
-	public ListIndexTemplatesRequest prepareListIndexTemplates(String ... templateIds);
+	public GetIndexTemplateForIndexRequest(RequestExecutor requestExecutor, String index) {
+		super(requestExecutor);
+		this.index = index;
+	}
 	
-	public GetIndexTemplateForIndexRequest prepareGetIndexTemplateForIndex(String index);
-	
-	public GetIndexTemplateRequest prepareGetIndexTemplate(String templateId);
-	
-	public PutIndexTemplateRequest preparePutIndexTemplate(String templateId, String requestBody);
+	@Override
+	protected Callable<GetIndexTemplateForIndexResponse> internalExecute() {
+		return this;
+	}
+
+	public String getIndex() {
+		return index;
+	}
+
 }

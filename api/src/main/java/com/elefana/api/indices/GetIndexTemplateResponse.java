@@ -39,10 +39,16 @@ public class GetIndexTemplateResponse extends ApiResponse {
 	}
 
 	public IndexTemplate getIndexTemplate() {
+		if(templateId == null) {
+			return null;
+		}
 		return templates.get(templateId);
 	}
 
 	public void setIndexTemplate(IndexTemplate indexTemplate) {
+		if(templateId == null) {
+			return;
+		}
 		templates.put(templateId, indexTemplate);
 	}
 }

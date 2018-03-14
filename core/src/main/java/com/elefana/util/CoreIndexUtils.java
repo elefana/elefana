@@ -42,9 +42,10 @@ import org.springframework.stereotype.Service;
 import com.codahale.metrics.MetricRegistry;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.ShardFailedException;
+import com.elefana.api.indices.GetIndexTemplateForIndexRequest;
+import com.elefana.api.indices.GetIndexTemplateForIndexResponse;
 import com.elefana.api.indices.IndexTemplate;
-import com.elefana.indices.psql.PsqlIndexTemplateService;
-import com.elefana.node.NodeInfoService;
+import com.elefana.indices.IndexTemplateService;
 import com.elefana.node.NodeSettingsService;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.ValueType;
@@ -69,7 +70,7 @@ public class CoreIndexUtils implements IndexUtils {
 	@Autowired
 	private NodeSettingsService nodeSettingsService;
 	@Autowired
-	private PsqlIndexTemplateService indexTemplateService;
+	private IndexTemplateService indexTemplateService;
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 	@Autowired
@@ -170,7 +171,9 @@ public class CoreIndexUtils implements IndexUtils {
 	}
 	
 	public long getTimestamp(String index, String document) throws ElefanaException {
-		final IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndex(index);
+		final GetIndexTemplateForIndexRequest indexTemplateForIndexRequest = indexTemplateService.prepareGetIndexTemplateForIndex(index);
+		final GetIndexTemplateForIndexResponse indexTemplateForIndexResponse = indexTemplateForIndexRequest.get();
+		final IndexTemplate indexTemplate = indexTemplateForIndexResponse.getIndexTemplate();
 		if(indexTemplate == null) {
 			return System.currentTimeMillis();
 		}
@@ -250,7 +253,9 @@ public class CoreIndexUtils implements IndexUtils {
 			return;
 		}
 		
-		final IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndex(indexName);
+		final GetIndexTemplateForIndexRequest indexTemplateForIndexRequest = indexTemplateService.prepareGetIndexTemplateForIndex(indexName);
+		final GetIndexTemplateForIndexResponse indexTemplateForIndexResponse = indexTemplateForIndexRequest.get();
+		final IndexTemplate indexTemplate = indexTemplateForIndexResponse.getIndexTemplate();
 		boolean timeSeries = false;
 
 		if (indexTemplate != null && indexTemplate.isTimeSeries()) {

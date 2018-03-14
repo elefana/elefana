@@ -13,20 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package com.elefana.indices;
+package com.elefana.api.indices;
 
-import com.elefana.api.indices.GetIndexTemplateForIndexRequest;
-import com.elefana.api.indices.GetIndexTemplateRequest;
-import com.elefana.api.indices.ListIndexTemplatesRequest;
-import com.elefana.api.indices.PutIndexTemplateRequest;
+public class GetIndexTemplateForIndexResponse extends GetIndexTemplateResponse {
+	private final String index;
 
-public interface IndexTemplateService {
-	
-	public ListIndexTemplatesRequest prepareListIndexTemplates(String ... templateIds);
-	
-	public GetIndexTemplateForIndexRequest prepareGetIndexTemplateForIndex(String index);
-	
-	public GetIndexTemplateRequest prepareGetIndexTemplate(String templateId);
-	
-	public PutIndexTemplateRequest preparePutIndexTemplate(String templateId, String requestBody);
+	public GetIndexTemplateForIndexResponse(String index, String templateId) {
+		super(templateId);
+		this.index = index;
+	}
+
+	public String getIndex() {
+		return index;
+	}
 }

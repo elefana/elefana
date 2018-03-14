@@ -41,6 +41,7 @@ import com.elefana.api.exception.BadRequestException;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.NoSuchTemplateException;
 import com.elefana.api.exception.ShardFailedException;
+import com.elefana.api.indices.GetIndexTemplateForIndexRequest;
 import com.elefana.api.indices.GetIndexTemplateRequest;
 import com.elefana.api.indices.IndexTemplate;
 import com.elefana.api.indices.ListIndexTemplatesRequest;
@@ -90,6 +91,11 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 	@Override
 	public PutIndexTemplateRequest preparePutIndexTemplate(String templateId, String requestBody) {
 		return new PsqlPutIndexTemplateRequest(this, templateId, requestBody);
+	}
+	
+	@Override
+	public GetIndexTemplateForIndexRequest prepareGetIndexTemplateForIndex(String index) {
+		return new PsqlGetIndexTemplateForIndexRequest(this, index);
 	}
 	
 	public List<IndexTemplate> getIndexTemplates() {
