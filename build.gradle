@@ -209,6 +209,10 @@ project(":" + rootProject.name + "-core") {
 		testCompile "io.rest-assured:rest-assured:$restAssuredVersion"
 	}
 	
+	processResources {
+		exclude('application.properties')
+	}
+	
 	task copyToRelease(type: Copy, dependsOn: bootRepackage) {
 		from "build/libs/elefana-core-" + project.version + "-boot.jar"
 		into "build/release/"
