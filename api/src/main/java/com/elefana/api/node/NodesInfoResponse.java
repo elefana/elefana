@@ -54,4 +54,35 @@ public class NodesInfoResponse extends ApiResponse {
 	public String toJsonString() {
 		return JsonStream.serialize(this);
 	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((clusterName == null) ? 0 : clusterName.hashCode());
+		result = prime * result + ((nodes == null) ? 0 : nodes.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		NodesInfoResponse other = (NodesInfoResponse) obj;
+		if (clusterName == null) {
+			if (other.clusterName != null)
+				return false;
+		} else if (!clusterName.equals(other.clusterName))
+			return false;
+		if (nodes == null) {
+			if (other.nodes != null)
+				return false;
+		} else if (!nodes.equals(other.nodes))
+			return false;
+		return true;
+	}
 }
