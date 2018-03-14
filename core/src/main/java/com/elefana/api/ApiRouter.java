@@ -64,6 +64,9 @@ public class ApiRouter {
 			return routeToRootUrl();
 		}
 
+		if(url.contains("?")) {
+			url = url.substring(0, url.indexOf('?'));
+		}
 		final String[] urlComponents = url.startsWith("/") ? url.substring(1).split("\\/") : url.split("\\/");
 		if (urlComponents[0] == null || urlComponents[0].isEmpty()) {
 			return routeToRootUrl();
