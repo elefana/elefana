@@ -99,6 +99,8 @@ public class ApiRouter {
 		switch (urlComponents.length) {
 		case 2:
 			switch (urlComponents[1].toLowerCase()) {
+			case "_template":
+				return routeToIndexTemplateApi(method, url, urlComponents, requestBody);
 			case "_field_caps":
 			case "_mapping":
 				return routeToFieldMappingApi(method, url, urlComponents, requestBody);
@@ -336,11 +338,18 @@ public class ApiRouter {
 			String requestBody) throws ElefanaException {
 		switch (urlComponents.length) {
 		case 2:
-			final String templateId = urlDecode(urlComponents[1]);
-			if (isGetMethod(method)) {
-				return indexTemplateService.prepareGetIndexTemplate(templateId);
-			} else if (isPostMethod(method) || isPutMethod(method)) {
-				return indexTemplateService.preparePutIndexTemplate(templateId, requestBody);
+			switch(urlComponents[0].toLowerCase()) {
+			case "_template":
+				final String templateId = urlDecode(urlComponents[1]);
+				if (isGetMethod(method)) {
+					return indexTemplateService.prepareGetIndexTemplate(templateId);
+				} else if (isPostMethod(method) || isPutMethod(method)) {
+					return indexTemplateService.preparePutIndexTemplate(templateId, requestBody);
+				}
+				break;
+			default:
+				//INDEX/_template
+				return indexTemplateService.prepareGetIndexTemplateForIndex(urlComponents[0]);
 			}
 			break;
 		}

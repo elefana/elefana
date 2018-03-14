@@ -25,8 +25,8 @@ import com.jsoniter.output.JsonStream;
 import io.netty.handler.codec.http.HttpResponseStatus;
 
 public class GetIndexTemplateResponse extends ApiResponse {
-	private final String templateId;
-	private final Map<String, IndexTemplate> templates = new HashMap<String, IndexTemplate>(1);
+	protected final String templateId;
+	protected final Map<String, IndexTemplate> templates = new HashMap<String, IndexTemplate>(1);
 	
 	public GetIndexTemplateResponse(String templateId) {
 		super(HttpResponseStatus.OK.code());
@@ -50,5 +50,36 @@ public class GetIndexTemplateResponse extends ApiResponse {
 			return;
 		}
 		templates.put(templateId, indexTemplate);
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((templateId == null) ? 0 : templateId.hashCode());
+		result = prime * result + ((templates == null) ? 0 : templates.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		GetIndexTemplateResponse other = (GetIndexTemplateResponse) obj;
+		if (templateId == null) {
+			if (other.templateId != null)
+				return false;
+		} else if (!templateId.equals(other.templateId))
+			return false;
+		if (templates == null) {
+			if (other.templates != null)
+				return false;
+		} else if (!templates.equals(other.templates))
+			return false;
+		return true;
 	}
 }

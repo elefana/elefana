@@ -37,7 +37,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class NodeSettingsService {
 	private static final Logger LOGGER = LoggerFactory.getLogger(NodeSettingsService.class);
-	
+
 	@Autowired
 	Environment environment;
 
@@ -45,7 +45,7 @@ public class NodeSettingsService {
 	private String nodeName;
 	private String clusterId;
 	private String clusterName;
-	
+
 	private boolean masterNode;
 	private boolean dataNode;
 	private boolean ingestNode;
@@ -58,7 +58,7 @@ public class NodeSettingsService {
 	private boolean httpGzipEnabled;
 	private int maxHttpPipelineEvents;
 	private int maxHttpPayloadSize;
-	
+
 	private boolean transportEnabled;
 	private String transportIp;
 	private int transportPort;
@@ -85,7 +85,7 @@ public class NodeSettingsService {
 		clusterId = DigestUtils.md5Hex(clusterName);
 
 		httpEnabled = environment.getProperty("elefana.http.enabled", Boolean.class, true);
-		if(httpEnabled) {
+		if (httpEnabled) {
 			httpIp = environment.getRequiredProperty("elefana.http.address");
 			httpPort = environment.getRequiredProperty("elefana.http.port", Integer.class);
 			httpGzipEnabled = environment.getRequiredProperty("elefana.http.gzip", Boolean.class);
@@ -95,15 +95,16 @@ public class NodeSettingsService {
 		}
 
 		transportEnabled = environment.getProperty("elefana.transport.server.enabled", Boolean.class, false);
-		if(transportEnabled) {
+		if (transportEnabled) {
 			transportIp = environment.getRequiredProperty("elefana.transport.server.address", String.class);
 			transportPort = environment.getRequiredProperty("elefana.transport.server.port", Integer.class);
-			transportCompressionEnabled = environment.getProperty("elefana.transport.server.compression", Boolean.class, false);
+			transportCompressionEnabled = environment.getProperty("elefana.transport.server.compression", Boolean.class,
+					false);
 			transportAddress = transportIp + ":" + transportPort;
 		}
-		
+
 		usingCitus = environment.getRequiredProperty("elefana.citus.enabled", Boolean.class);
-		if(usingCitus) {
+		if (usingCitus) {
 			citusCoordinatorHost = environment.getRequiredProperty("elefana.citus.coordinator.host");
 			citusCoordinatorPort = environment.getRequiredProperty("elefana.citus.coordinator.port", Integer.class);
 		}
@@ -115,17 +116,17 @@ public class NodeSettingsService {
 		mappingSampleSize = environment.getRequiredProperty("elefana.mappingSampleSize", Double.class);
 		fallbackMappingSampleSize = environment.getRequiredProperty("elefana.fallbackMappingSampleSize", Integer.class);
 		garbageCollectionInterval = environment.getRequiredProperty("elefana.gcInterval", Long.class);
-		
+
 		masterNode = checkIfMasterNode();
 		dataNode = checkIfDataNode();
-		
-		if(!dataNode && environment.containsProperty("elefana.transport.client.hosts")) {
+
+		if (!dataNode && environment.containsProperty("elefana.transport.client.hosts")) {
 			String transportClientHosts = environment.getProperty("elefana.transport.client.hosts", "");
-			if(!transportClientHosts.isEmpty()) {
+			if (!transportClientHosts.isEmpty()) {
 				ingestNode = true;
 			}
 		}
-		
+
 		List<String> roles = new ArrayList<String>();
 		if (masterNode) {
 			roles.add("master");
@@ -142,7 +143,7 @@ public class NodeSettingsService {
 		}
 		LOGGER.info("Master: " + masterNode + ", Data: " + dataNode + ", Ingest: " + ingestNode);
 	}
-	
+
 	protected boolean checkIfMasterNode() {
 		if (!usingCitus) {
 			return true;
@@ -160,13 +161,11 @@ public class NodeSettingsService {
 		try {
 			if (InetAddressValidator.getInstance().isValidInet4Address(citusCoordinatorHost)) {
 				return hasMatchingInterface(citusCoordinatorHost);
-			} else if (InetAddressValidator.getInstance()
-					.isValidInet6Address(citusCoordinatorHost)) {
+			} else if (InetAddressValidator.getInstance().isValidInet6Address(citusCoordinatorHost)) {
 				return hasMatchingInterface(citusCoordinatorHost);
 			} else {
 				try {
-					InetAddress coordinatorAddress = InetAddress
-							.getByName(citusCoordinatorHost);
+					InetAddress coordinatorAddress = InetAddress.getByName(citusCoordinatorHost);
 					return jdbcUrl.contains(coordinatorAddress.getHostAddress())
 							|| hasMatchingInterface(coordinatorAddress.getHostAddress());
 				} catch (UnknownHostException e) {
@@ -195,6 +194,9 @@ public class NodeSettingsService {
 	}
 
 	protected boolean checkIfDataNode() {
+		if (!environment.containsProperty("spring.datasource.url")) {
+			return false;
+		}
 		final String jdbcUrl = environment.getProperty("spring.datasource.url", "");
 		if (jdbcUrl.contains("localhost")) {
 			return true;
@@ -239,11 +241,11 @@ public class NodeSettingsService {
 	public int getHttpPort() {
 		return httpPort;
 	}
-	
+
 	public String getHttpAddress() {
 		return httpAddress;
 	}
-	
+
 	public boolean isHttpGzipEnabled() {
 		return httpGzipEnabled;
 	}
@@ -251,7 +253,7 @@ public class NodeSettingsService {
 	public boolean isTransportEnabled() {
 		return transportEnabled;
 	}
-	
+
 	public String getTransportIp() {
 		return transportIp;
 	}
@@ -311,7 +313,7 @@ public class NodeSettingsService {
 	public long getGarbageCollectionInterval() {
 		return garbageCollectionInterval;
 	}
-	
+
 	public boolean isMasterNode() {
 		return masterNode;
 	}

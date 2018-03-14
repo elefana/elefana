@@ -24,6 +24,7 @@ import com.elefana.api.exception.ShardFailedException;
 import com.jsoniter.annotation.JsonIgnore;
 
 public abstract class ApiRequest<T extends ApiResponse> {
+	
 	@JsonIgnore
 	protected final RequestExecutor requestExecutor;
 	@JsonIgnore
@@ -57,8 +58,10 @@ public abstract class ApiRequest<T extends ApiResponse> {
 		try {
 			return responseFuture.get();
 		} catch (InterruptedException e) {
+			e.printStackTrace();
 			throw new ShardFailedException(e);
 		} catch (ExecutionException e) {
+			e.printStackTrace();
 			throw new ShardFailedException(e);
 		}
 	}

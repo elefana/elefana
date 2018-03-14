@@ -15,15 +15,75 @@
  ******************************************************************************/
 package com.elefana.api.indices;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import com.elefana.api.json.GetIndexTemplateForIndexResponseDecoder;
+import com.jsoniter.output.JsonStream;
+import com.jsoniter.spi.JsoniterSpi;
+
 public class GetIndexTemplateForIndexResponse extends GetIndexTemplateResponse {
+	static {
+		JsoniterSpi.registerTypeDecoder(GetIndexTemplateForIndexResponse.class, new GetIndexTemplateForIndexResponseDecoder());
+	}
+	
 	private final String index;
 
 	public GetIndexTemplateForIndexResponse(String index, String templateId) {
 		super(templateId);
 		this.index = index;
 	}
+	
+	@Override
+	public String toJsonString() {
+		final Map<String, Object> result = new HashMap<String, Object>();
+		result.put("index", index);
+		result.put("templateId", templateId);
+		result.put("template", getIndexTemplate());
+		return JsonStream.serialize(result);
+	}
 
 	public String getIndex() {
 		return index;
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = super.hashCode();
+		result = prime * result + ((index == null) ? 0 : index.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (!super.equals(obj))
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		GetIndexTemplateForIndexResponse other = (GetIndexTemplateForIndexResponse) obj;
+		if (templateId == null) {
+			if (other.templateId != null)
+				return false;
+		} else if (!templateId.equals(other.templateId))
+			return false;
+		if (templates == null) {
+			if (other.templates != null)
+				return false;
+		} else if (!templates.equals(other.templates))
+			return false;
+		if (index == null) {
+			if (other.index != null)
+				return false;
+		} else if (!index.equals(other.index))
+			return false;
+		return true;
+	}
+
+	@Override
+	public String toString() {
+		return "GetIndexTemplateForIndexResponse [toJsonString()=" + toJsonString() + "]";
 	}
 }
