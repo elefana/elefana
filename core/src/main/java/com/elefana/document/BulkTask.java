@@ -20,9 +20,8 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 import org.postgresql.copy.CopyIn;
 import org.postgresql.copy.CopyManager;
@@ -34,13 +33,13 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import com.codahale.metrics.Timer;
 import com.elefana.api.document.BulkItemResponse;
 import com.elefana.api.document.BulkOpType;
+import com.elefana.api.exception.ShardFailedException;
 
 public class BulkTask implements Callable<List<BulkItemResponse>> {
 	private static final Logger LOGGER = LoggerFactory.getLogger(BulkTask.class);
-	
-	private static final String STAGING_TABLE_PREFIX = "elefana_stg_";
-	private static final Lock STAGING_TABLE_ID_LOCK = new ReentrantLock();
-	private static int STAGING_TABLE_ID = 0;
+
+	private static final String FALLBACK_STAGING_TABLE_PREFIX = "elefana_fallback_stg_";
+	private static int FALLBACK_STAGING_TABLE_ID = 0;
 
 	private static final String DELIMITER = "|";
 	private static final String NEW_LINE = "\n";
@@ -68,11 +67,11 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 	private final String queryTarget;
 	private final int from;
 	private final int size;
-	
+
 	private final String stagingTable;
 
-	public BulkTask(Timer psqlTimer, JdbcTemplate jdbcTemplate, List<BulkIndexOperation> indexOperations, String tablespace, String index,
-			String queryTarget, int from, int size) {
+	public BulkTask(Timer psqlTimer, JdbcTemplate jdbcTemplate, List<BulkIndexOperation> indexOperations,
+			String tablespace, String index, String queryTarget, int from, int size) {
 		super();
 		this.psqlTimer = psqlTimer;
 		this.jdbcTemplate = jdbcTemplate;
@@ -83,11 +82,14 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 		this.from = from;
 		this.size = size;
 
-		STAGING_TABLE_ID_LOCK.lock();
-		int stagingTableId = STAGING_TABLE_ID;
-		STAGING_TABLE_ID++;
-		STAGING_TABLE_ID_LOCK.unlock();
-		stagingTable = (STAGING_TABLE_PREFIX + stagingTableId).replace('-', '_');
+		List<Map<String, Object>> nextTableResults = jdbcTemplate.queryForList("SELECT elefana_next_staging_table()");
+		if (nextTableResults.isEmpty()) {
+			stagingTable = FALLBACK_STAGING_TABLE_PREFIX + FALLBACK_STAGING_TABLE_ID++;
+		} else {
+			Map<String, Object> row = nextTableResults.get(0);
+			stagingTable = row.get("table_name") != null ? ((String) row.get("table_name")).replace('-', '_')
+					: FALLBACK_STAGING_TABLE_PREFIX + FALLBACK_STAGING_TABLE_ID++;
+		}
 	}
 
 	@Override
@@ -104,7 +106,7 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 			createTableQuery.append(" (LIKE ");
 			createTableQuery.append(queryTarget);
 			createTableQuery.append(")");
-			if(tablespace != null && !tablespace.isEmpty()) {
+			if (tablespace != null && !tablespace.isEmpty()) {
 				createTableQuery.append(" TABLESPACE ");
 				createTableQuery.append(tablespace);
 			}
@@ -112,7 +114,7 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 			PreparedStatement createTableStatement = connection.prepareStatement(createTableQuery.toString());
 			createTableStatement.execute();
 			createTableStatement.close();
-			
+
 			final PgConnection pgConnection = connection.unwrap(PgConnection.class);
 			final CopyManager copyManager = new CopyManager(pgConnection);
 
@@ -162,8 +164,7 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 		return results;
 	}
 
-	public BulkItemResponse createEntry(int operationIndex, String operation, String index,
-			String type, String id) {
+	public BulkItemResponse createEntry(int operationIndex, String operation, String index, String type, String id) {
 		BulkOpType opType = BulkOpType.valueOf(operation.toUpperCase());
 		BulkItemResponse result = new BulkItemResponse(operationIndex, opType);
 		result.setIndex(index);

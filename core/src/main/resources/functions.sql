@@ -1,3 +1,5 @@
+CREATE SEQUENCE IF NOT EXISTS elefana_stg_table_id MINVALUE -9223372036854775807 START -9223372036854775807 CYCLE;
+
 CREATE OR REPLACE FUNCTION select_shard(_distributedTable VARCHAR) RETURNS bigint AS $$
 DECLARE
   shard_id bigint;
@@ -19,6 +21,17 @@ CREATE OR REPLACE FUNCTION elefana_json_field(_json_column jsonb, _json_field te
 	select _json_column->>_json_field
 $$
 LANGUAGE SQL IMMUTABLE PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION elefana_next_staging_table() RETURNS text AS
+$$
+DECLARE
+	table_name text;
+BEGIN
+	SELECT CONCAT('elefana_stg_', nextval('elefana_stg_table_id')) INTO table_name;
+	RETURN table_name;
+END;
+$$
+LANGUAGE 'plpgsql';
 
 -- Workaround for PSQL not supporting ON CONFLICT on partition tables
 CREATE OR REPLACE FUNCTION elefana_create(_op_index VARCHAR, _op_type VARCHAR, _op_id VARCHAR, _op_timestamp BIGINT, _op_source json) RETURNS INT AS

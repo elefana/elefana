@@ -51,7 +51,7 @@ public class CoreDbInitializer implements DbInitializer {
 	}
 
 	public boolean isTableDistributed(String tableName) {
-		if(!nodeSettingsService.isUsingCitus()) {
+		if (!nodeSettingsService.isUsingCitus()) {
 			return false;
 		}
 		List<Map<String, Object>> results = jdbcTemplate.queryForList(
@@ -59,7 +59,7 @@ public class CoreDbInitializer implements DbInitializer {
 						+ tableName + "'::regclass;");
 		return !results.isEmpty();
 	}
-	
+
 	private void createSqlFunctions() {
 		try {
 			ResourceDatabasePopulator resourceDatabasePopulator = new ResourceDatabasePopulator(
@@ -71,28 +71,28 @@ public class CoreDbInitializer implements DbInitializer {
 		}
 	}
 
-	private void createMasterTableIfNotExists() throws SQLException {		
+	private void createMasterTableIfNotExists() throws SQLException {
 		if (nodeSettingsService.isUsingCitus()) {
 			return;
 		}
 
 		Connection connection = jdbcTemplate.getDataSource().getConnection();
 		PreparedStatement preparedStatement;
-		
+
 		final String createMasterTableQuery = "CREATE TABLE IF NOT EXISTS " + IndexUtils.DATA_TABLE
 				+ " (_index VARCHAR(255) NOT NULL, _type VARCHAR(255) NOT NULL, _id VARCHAR(255) NOT NULL, _timestamp BIGINT, _source jsonb) PARTITION BY LIST (_index);";
 		preparedStatement = connection.prepareStatement(createMasterTableQuery);
 		preparedStatement.execute();
 		preparedStatement.close();
-		
+
 		connection.close();
 	}
 
 	private void createPartitionTrackingTableIfNotExists() throws SQLException {
-		if(!nodeSettingsService.isMasterNode()) {
+		if (!nodeSettingsService.isMasterNode()) {
 			return;
 		}
-		
+
 		Connection connection = jdbcTemplate.getDataSource().getConnection();
 
 		final String createMasterTableQuery = "CREATE TABLE IF NOT EXISTS " + IndexUtils.PARTITION_TRACKING_TABLE
@@ -112,10 +112,10 @@ public class CoreDbInitializer implements DbInitializer {
 	}
 
 	private void createFieldStatsTablesIfNotExists() throws SQLException {
-		if(!nodeSettingsService.isMasterNode()) {
+		if (!nodeSettingsService.isMasterNode()) {
 			return;
 		}
-		
+
 		jdbcTemplate.execute(
 				"CREATE TABLE IF NOT EXISTS elefana_index_mapping (_tracking_id VARCHAR(255) PRIMARY KEY, _index VARCHAR(255), _type VARCHAR(255), _mapping jsonb);");
 		jdbcTemplate.execute(
@@ -132,15 +132,15 @@ public class CoreDbInitializer implements DbInitializer {
 			jdbcTemplate.execute("SELECT create_distributed_table('elefana_index_field_stats', '_index');");
 		}
 	}
-	
+
 	private void createIndexTemplatesTableIfNotExists() throws SQLException {
-		if(!nodeSettingsService.isMasterNode()) {
+		if (!nodeSettingsService.isMasterNode()) {
 			return;
 		}
-		
+
 		jdbcTemplate.execute(
 				"CREATE TABLE IF NOT EXISTS elefana_index_template (_template_id VARCHAR(255) PRIMARY KEY, _index_pattern VARCHAR(255), _timestamp_path VARCHAR(255), _mappings jsonb);");
-		
+
 		if (nodeSettingsService.isUsingCitus() && !isTableDistributed("elefana_index_template")) {
 			jdbcTemplate.execute("SELECT create_distributed_table('elefana_index_template', '_template_id');");
 		}

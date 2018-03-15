@@ -60,22 +60,13 @@ public class PsqlBulkIndexService implements Runnable {
 	private IndexUtils indexUtils;
 	@Autowired
 	private NodeSettingsService nodeSettingsService;
-	@Autowired
-	private MetricRegistry metricRegistry;
 
 	private final Queue<IndexTarget> indexQueue = new ConcurrentLinkedQueue<IndexTarget>();
 
-	private String jdbcHost;
-	private int jdbcPort;
 	private ExecutorService executorService;
 
 	@PostConstruct
 	public void postConstruct() {
-		String jdbcUrl = environment.getRequiredProperty("spring.datasource.url").substring(5);
-		URI jdbcUri = URI.create(jdbcUrl);
-		jdbcHost = jdbcUri.getHost();
-		jdbcPort = jdbcUri.getPort();
-
 		executorService = Executors.newFixedThreadPool(1);
 		executorService.submit(this);
 	}
@@ -99,9 +90,7 @@ public class PsqlBulkIndexService implements Runnable {
 					} else {
 						mergeStagingTableIntoPartitionTable(indexTarget);
 					}
-					LOGGER.info("Index ingest table " + indexTarget.getStagingTable() + " into " + indexTarget.getTargetTable());
 					jdbcTemplate.execute("DROP TABLE IF EXISTS " + indexTarget.getStagingTable());
-					LOGGER.info("Dropped ingest table " + indexTarget.getStagingTable());
 					indexFieldMappingService.scheduleIndexForMappingAndStats(indexTarget.getIndex());
 				} catch (Exception e) {
 					LOGGER.error(e.getMessage(), e);

@@ -22,6 +22,9 @@ gradle-app.setting
 *.iml
 .springBeans
 
+*.log
+*.log.gz
+
 proguard.map
 
 Gemfile.lock
