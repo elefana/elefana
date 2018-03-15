@@ -142,6 +142,7 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 				if (e.getMessage().contains(indexOperation.getId())) {
 					LOGGER.info(indexOperation.getSource());
 				}
+				indexOperation.release();
 			}
 			LOGGER.error(e.getMessage(), e);
 		}
