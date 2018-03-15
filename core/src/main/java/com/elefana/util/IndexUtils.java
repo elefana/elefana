@@ -15,6 +15,8 @@ public interface IndexUtils {
 	public static final String GIN_INDEX_PREFIX = "elefana_gin_idx_";
 	public static final String JSON_INDEX_PREFIX = "elefana_json_idx_";
 	public static final String PRIMARY_KEY_PREFIX = "elefana_pkey_";
+	
+	public String generateDocumentId(String index, String type, String source);
 
 	public List<String> listIndices() throws ElefanaException;
 

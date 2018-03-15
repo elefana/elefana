@@ -15,8 +15,6 @@
  ******************************************************************************/
 package com.elefana.api.document;
 
-import java.util.UUID;
-
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
 
@@ -51,9 +49,6 @@ public abstract class IndexRequest extends ApiRequest<IndexResponse> {
 	}
 
 	public String getId() {
-		if(id == null) {
-			id = UUID.randomUUID().toString();
-		}
 		return id;
 	}
 

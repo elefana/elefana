@@ -51,6 +51,7 @@ subprojects {
 		nettyVersion = '4.1.22.Final'
 		restAssuredVersion = '3.0.6'
 		stringSearchVersion = '2.2.0'
+		zeroAllocationHashingVersion = '0.8'
 	}
 	ext['postgresql.version'] = '42.1.4'
 	ext['tomcat.version'] = '8.5.24'
@@ -196,7 +197,8 @@ project(":" + rootProject.name + "-core") {
 		compile "commons-codec:commons-codec:$codecVersion"
 		compile "io.dropwizard.metrics:metrics-core:$metricsVersion"
 		compile "io.dropwizard.metrics:metrics-graphite:$metricsVersion"
-		compile "commons-validator:commons-validator:$commonsValidatorVersion"		
+		compile "commons-validator:commons-validator:$commonsValidatorVersion"
+		compile "net.openhft:zero-allocation-hashing:$zeroAllocationHashingVersion"	
 		compile('org.postgresql:postgresql')
 		
 		if (Os.isFamily(Os.FAMILY_MAC) && !project.hasProperty("release")) {

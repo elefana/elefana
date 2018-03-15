@@ -90,16 +90,23 @@ public class PsqlBulkIndexService implements Runnable {
 		try {
 			while (!indexQueue.isEmpty()) {
 				final IndexTarget indexTarget = indexQueue.poll();
-				if (nodeSettingsService.isUsingCitus()) {
-					if (!mergeStagingTableIntoDistributedTable(indexTarget)) {
-						indexQueue.offer(indexTarget);
-						continue;
+				try {
+					if (nodeSettingsService.isUsingCitus()) {
+						if (!mergeStagingTableIntoDistributedTable(indexTarget)) {
+							indexQueue.offer(indexTarget);
+							continue;
+						}
+					} else {
+						mergeStagingTableIntoPartitionTable(indexTarget);
 					}
-				} else {
-					mergeStagingTableIntoPartitionTable(indexTarget);
+					LOGGER.info("Index ingest table " + indexTarget.getStagingTable() + " into " + indexTarget.getTargetTable());
+					jdbcTemplate.execute("DROP TABLE IF EXISTS " + indexTarget.getStagingTable());
+					LOGGER.info("Dropped ingest table " + indexTarget.getStagingTable());
+					indexFieldMappingService.scheduleIndexForMappingAndStats(indexTarget.getIndex());
+				} catch (Exception e) {
+					LOGGER.error(e.getMessage(), e);
+					indexQueue.offer(indexTarget);
 				}
-				jdbcTemplate.execute("DROP TABLE IF EXISTS " + indexTarget.getStagingTable());
-				indexFieldMappingService.scheduleIndexForMappingAndStats(indexTarget.getIndex());
 			}
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);

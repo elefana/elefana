@@ -23,6 +23,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -52,6 +53,8 @@ import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
 import com.zaxxer.hikari.HikariDataSource;
 
+import net.openhft.hashing.LongHashFunction;
+
 /**
  *
  */
@@ -64,6 +67,7 @@ public class CoreIndexUtils implements IndexUtils {
 	private final Map<String, String []> jsonPathCache = new ConcurrentHashMap<String, String []>();
 	private final Set<String> knownTables = new ConcurrentSkipListSet<String>();
 	private final Lock tableCreationLock = new ReentrantLock();
+	private final LongHashFunction xxHash = LongHashFunction.xx();
 	
 	@Autowired
 	private Environment environment;
@@ -111,6 +115,11 @@ public class CoreIndexUtils implements IndexUtils {
 	
 	protected boolean isKnownTable(String tableName) {
 		return knownTables.contains(tableName);
+	}
+	
+	@Override
+	public String generateDocumentId(String index, String type, String source) {
+		return Long.toHexString(xxHash.hashChars(System.nanoTime() + index + type + source));
 	}
 
 	public List<String> listIndices() throws ElefanaException {

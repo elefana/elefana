@@ -371,6 +371,10 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 	public IndexResponse index(String index, String type, String id, String document, IndexOpType opType)
 			throws ElefanaException {
 		indexUtils.ensureIndexExists(index);
+		
+		if(id == null) {
+			id = indexUtils.generateDocumentId(index, type, document);
+		}
 
 		switch(versionInfoService.getApiVersion()) {
 		case V_2_4_3:

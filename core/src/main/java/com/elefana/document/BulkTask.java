@@ -21,7 +21,8 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.postgresql.copy.CopyIn;
 import org.postgresql.copy.CopyManager;
@@ -38,7 +39,8 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 	private static final Logger LOGGER = LoggerFactory.getLogger(BulkTask.class);
 	
 	private static final String STAGING_TABLE_PREFIX = "elefana_stg_";
-	private static final AtomicLong STAGING_TABLE_ID = new AtomicLong();
+	private static final Lock STAGING_TABLE_ID_LOCK = new ReentrantLock();
+	private static int STAGING_TABLE_ID = 0;
 
 	private static final String DELIMITER = "|";
 	private static final String NEW_LINE = "\n";
@@ -80,8 +82,12 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 		this.queryTarget = queryTarget;
 		this.from = from;
 		this.size = size;
-		
-		stagingTable = (STAGING_TABLE_PREFIX + STAGING_TABLE_ID.incrementAndGet()).replace('-', '_');
+
+		STAGING_TABLE_ID_LOCK.lock();
+		int stagingTableId = STAGING_TABLE_ID;
+		STAGING_TABLE_ID++;
+		STAGING_TABLE_ID_LOCK.unlock();
+		stagingTable = (STAGING_TABLE_PREFIX + stagingTableId).replace('-', '_');
 	}
 
 	@Override
