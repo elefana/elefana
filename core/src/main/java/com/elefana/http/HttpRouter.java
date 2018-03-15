@@ -3,6 +3,10 @@
  */
 package com.elefana.http;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.nio.charset.Charset;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,7 +28,6 @@ import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpUtil;
-import io.netty.util.CharsetUtil;
 
 /**
  *
@@ -103,6 +106,19 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 
 	private String getRequestBody(FullHttpRequest request) {
 		httpRequestSize.update(request.content().readableBytes());
-		return request.content().toString(CharsetUtil.UTF_8);
+		String charset = request.headers().contains("charset") ? request.headers().get("charset").toUpperCase() : "UTF-8";
+		String result = request.content().toString(Charset.forName(charset));
+		if(request.headers().contains("Content-Type")) {
+			switch(request.headers().get("Content-Type").toLowerCase()) {
+			case "application/x-www-form-urlencoded":
+				try {
+					result = URLDecoder.decode(result, charset);
+				} catch (UnsupportedEncodingException e) {
+					LOGGER.error(e.getMessage(), e);
+				}
+				break;
+			}
+		}
+		return result;
 	}
 }
