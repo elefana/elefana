@@ -64,6 +64,8 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 	private static final String OPERATION_INDEX = "index";
 	private static final String NEW_LINE = "\n";
 
+	public static final int MINIMUM_BULK_SIZE = 250;
+	
 	@Autowired
 	private Environment environment;
 	@Autowired
@@ -152,10 +154,14 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 							indexOperations.put(indexOperation.getIndex(), new ArrayList<BulkIndexOperation>(1));
 						}
 						indexOperations.get(indexOperation.getIndex()).add(indexOperation);
+					} else {
+						bulkApiResponse.setErrors(true);
+						LOGGER.error("Invalid JSON at line number " + (i + 1) + ": " + lines[i]);
+						break;
 					}
 					// TODO: Handle other operations
 				} catch (JsonException e) {
-					LOGGER.error("Error parsing JSON at line number " + i + ": " + lines[i] + " - " + e.getMessage(), e);
+					LOGGER.error("Error parsing JSON at line number " + (i + 1) + ": " + lines[i] + " - " + e.getMessage(), e);
 					bulkApiResponse.setErrors(true);
 				}
 			}
@@ -177,8 +183,8 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 		indexUtils.ensureIndexExists(index);
 		final String queryTarget = indexUtils.getQueryTarget(index);
 
-		final int operationSize = Math.max(250, indexOperations.size() / nodeSettingsService.getBulkParallelisation());
-
+		final int operationSize = Math.max(MINIMUM_BULK_SIZE, indexOperations.size() / nodeSettingsService.getBulkParallelisation());
+		
 		final List<BulkTask> bulkTasks = new ArrayList<BulkTask>();
 		final List<Future<List<BulkItemResponse>>> results = new ArrayList<Future<List<BulkItemResponse>>>();
 
@@ -198,7 +204,17 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 					bulkOperationsFailed.mark(task.getSize());
 					bulkApiResponse.setErrors(true);
 				} else {
-					bulkOperationsSuccess.mark(task.getSize());
+					for(int j = 0; j < nextResult.size(); j++) {
+						BulkItemResponse response = nextResult.get(j);
+						if(response.isFailed()) {
+							bulkApiResponse.setErrors(true);
+							bulkOperationsFailed.mark();
+							break;
+						} else {
+							bulkOperationsSuccess.mark();
+						}
+					}
+					
 					bulkApiResponse.getItems().addAll(nextResult);
 				}
 				bulkIndexService.queue(new IndexTarget(index, queryTarget, task.getStagingTable()));

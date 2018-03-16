@@ -31,8 +31,10 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import com.elefana.ElefanaApplication;
+import com.elefana.document.psql.PsqlBulkIngestService;
 
 import io.restassured.RestAssured;
+import io.restassured.http.ContentType;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = { ElefanaApplication.class })
@@ -48,7 +50,7 @@ public class BulkApiTest {
 
 	@Test
 	public void testBulkIndexing() {
-		final int totalDocuments = RANDOM.nextInt(100);
+		final int totalDocuments = RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE * 2);
 		final String index = "message-logs-" + UUID.randomUUID().toString();
 		final String type = "test";
 		
@@ -59,7 +61,8 @@ public class BulkApiTest {
 			post("/_bulk")
 		.then()
 			.statusCode(200)
-			.body("errors", equalTo(false));
+			.body("errors", equalTo(false))
+			.body("items.size()", equalTo(totalDocuments));
 		
 		try {
 			Thread.sleep(5000L);
@@ -77,7 +80,7 @@ public class BulkApiTest {
 
 	@Test
 	public void testBulkIndexingTimeSeries() {
-		final int totalDocuments = RANDOM.nextInt(100);
+		final int totalDocuments = RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE * 2);
 		final String index = "message-logs-" + UUID.randomUUID().toString();
 		final String type = "test";
 		
@@ -96,7 +99,61 @@ public class BulkApiTest {
 			post("/_bulk")
 		.then()
 			.statusCode(200)
-			.body("errors", equalTo(false));
+			.body("errors", equalTo(false))
+			.body("items.size()", equalTo(totalDocuments));
+		
+		try {
+			Thread.sleep(5000L);
+		} catch (Exception e) {}
+		
+		given()
+			.request()
+			.body("{\"query\":{\"match_all\":{}}, \"size\":" + totalDocuments + "}")
+		.when()
+			.post("/" + index + "/_search")
+		.then()
+			.statusCode(200)
+			.body("hits.total", equalTo(totalDocuments));
+	}
+	
+	@Test
+	public void testBulkIndexingWithInvalidData() {
+		final int totalDocuments = RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE * 2);
+		final String index = "message-logs-" + UUID.randomUUID().toString();
+		final String type = "test";
+		
+		String data = generateBulkRequest(index, type, totalDocuments);
+		data = data.substring(0, data.length() - 5);
+		
+		given()
+			.request()
+			.body(data)
+		.when().
+			post("/_bulk")
+		.then()
+			.statusCode(200)
+			.body("errors", equalTo(true))
+			.body("items.size()", equalTo(totalDocuments));
+	}
+	
+	@Test
+	public void testBulkIndexingFormEncodedData() {
+		final int totalDocuments = RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE * 2);
+		final String index = "message-logs-" + UUID.randomUUID().toString();
+		final String type = "test";
+		
+		final String requestBody = generateBulkRequest(index, type, totalDocuments);
+		
+		given()
+			.request()
+			.contentType(ContentType.URLENC)
+			.formParam(requestBody, "")
+		.when().
+			post("/_bulk")
+		.then()
+			.statusCode(200)
+			.body("errors", equalTo(false))
+			.body("items.size()", equalTo(totalDocuments));
 		
 		try {
 			Thread.sleep(5000L);

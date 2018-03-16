@@ -6,6 +6,7 @@ package com.elefana.http;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.nio.charset.Charset;
+import java.util.Map.Entry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -108,8 +109,17 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 		httpRequestSize.update(request.content().readableBytes());
 		String charset = request.headers().contains("charset") ? request.headers().get("charset").toUpperCase() : "UTF-8";
 		String result = request.content().toString(Charset.forName(charset));
+//		for(Entry<String, String> header : request.headers().entries()) {
+//			LOGGER.info(header.getKey() + " " + header.getValue());
+//		}
+		
 		if(request.headers().contains("Content-Type")) {
-			switch(request.headers().get("Content-Type").toLowerCase()) {
+			String contentType = request.headers().get("Content-Type").toLowerCase();
+			if(contentType.contains(";")) {
+				contentType = contentType.substring(0, contentType.indexOf(';'));
+			}
+			
+			switch(contentType) {
 			case "application/x-www-form-urlencoded":
 				try {
 					result = URLDecoder.decode(result, charset);

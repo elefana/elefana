@@ -155,10 +155,8 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 
 	public SearchResponse search(String indexPattern, String typesPattern, String httpRequest)
 			throws ElefanaException {
-		LOGGER.info(indexPattern);
 		List<String> indices = indexPattern == null || indexPattern.isEmpty() ? indexUtils.listIndices()
 				: indexUtils.listIndicesForIndexPattern(indexPattern);
-		LOGGER.info("Total indices " + indices.size());
 		String[] types = typesPattern == null ? EMPTY_TYPES_LIST : typesPattern.split(",");
 		return internalSearch(indices, types, httpRequest);
 	}

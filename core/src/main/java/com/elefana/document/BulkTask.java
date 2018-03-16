@@ -34,6 +34,8 @@ import com.codahale.metrics.Timer;
 import com.elefana.api.document.BulkItemResponse;
 import com.elefana.api.document.BulkOpType;
 import com.elefana.api.exception.ShardFailedException;
+import com.jsoniter.JsonIterator;
+import com.jsoniter.spi.JsonException;
 
 public class BulkTask implements Callable<List<BulkItemResponse>> {
 	private static final Logger LOGGER = LoggerFactory.getLogger(BulkTask.class);
@@ -141,18 +143,39 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 			for (int i = from; i < from + size && i < indexOperations.size(); i++) {
 				BulkIndexOperation indexOperation = indexOperations.get(i);
 				BulkItemResponse responseEntry = createEntry(i, "index", indexOperation.getIndex(),
-						indexOperation.getType(), indexOperation.getId());
+						indexOperation.getType(), indexOperation.getId(), BulkItemResponse.STATUS_CREATED);
 				results.add(responseEntry);
 				indexOperation.release();
 			}
 		} catch (Exception e) {
-			for (BulkIndexOperation indexOperation : indexOperations) {
-				if (e.getMessage().contains(indexOperation.getId())) {
-					LOGGER.info(indexOperation.getSource());
+			boolean foundBadEntry = false;
+			for (int i = from; i < from + size && i < indexOperations.size(); i++) {
+				BulkIndexOperation indexOperation = indexOperations.get(i);
+		
+				if(!foundBadEntry) {
+					try {
+						JsonIterator.deserialize(indexOperation.getSource()).toString();
+					} catch (JsonException ex) {
+						LOGGER.error("Invalid JSON: " + indexOperation.getSource());
+						foundBadEntry = true;
+					}
 				}
+				
+				BulkItemResponse responseEntry = null;
+				if(foundBadEntry) {
+					responseEntry = createEntry(i, "index", indexOperation.getIndex(),
+							indexOperation.getType(), indexOperation.getId(), BulkItemResponse.STATUS_FAILED);
+				} else {
+					responseEntry = createEntry(i, "index", indexOperation.getIndex(),
+							indexOperation.getType(), indexOperation.getId(), BulkItemResponse.STATUS_CREATED);
+				}
+				results.add(responseEntry);
+				
 				indexOperation.release();
 			}
-			LOGGER.error(e.getMessage(), e);
+			if(!foundBadEntry) {
+				LOGGER.error(e.getMessage(), e);
+			}
 		}
 
 		if (connection != null) {
@@ -164,14 +187,14 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 		return results;
 	}
 
-	public BulkItemResponse createEntry(int operationIndex, String operation, String index, String type, String id) {
+	public BulkItemResponse createEntry(int operationIndex, String operation, String index, String type, String id, String resultStatus) {
 		BulkOpType opType = BulkOpType.valueOf(operation.toUpperCase());
 		BulkItemResponse result = new BulkItemResponse(operationIndex, opType);
 		result.setIndex(index);
 		result.setType(type);
 		result.setId(id);
 		result.setVersion(1);
-		result.setResult(BulkItemResponse.STATUS_CREATED);
+		result.setResult(resultStatus);
 		return result;
 	}
 
