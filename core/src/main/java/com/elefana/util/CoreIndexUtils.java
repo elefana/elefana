@@ -131,6 +131,7 @@ public class CoreIndexUtils implements IndexUtils {
 				final String index = (String) row.get("_index");
 				results.add(index);
 			}
+			LOGGER.info("Total indices: " + results.size());
 			return results;
 		} catch (Exception e) {
 			throw new ShardFailedException(e);
@@ -146,19 +147,25 @@ public class CoreIndexUtils implements IndexUtils {
 	}
 
 	public List<String> listIndicesForIndexPattern(String indexPattern) throws ElefanaException {
+		LOGGER.info(indexPattern);
 		final List<String> results = listIndices();
 		final String[] patterns = indexPattern.split(",");
+		LOGGER.info("Total patterns " + patterns.length);
 
 		for (int i = 0; i < patterns.length; i++) {
 			patterns[i] = patterns[i].toLowerCase();
+			patterns[i] = patterns[i].replace(".", "\\.");
+			patterns[i] = patterns[i].replace("-", "\\-");
 			patterns[i] = patterns[i].replace("*", "(.*)");
 			patterns[i] = "^" + patterns[i] + "$";
+			LOGGER.info(patterns[i]);
 		}
 
 		for (int i = results.size() - 1; i >= 0; i--) {
 			boolean matchesPattern = false;
 
 			for (int j = 0; j < patterns.length; j++) {
+				LOGGER.info(results.get(i).toLowerCase());
 				if (results.get(i).toLowerCase().matches(patterns[j])) {
 					matchesPattern = true;
 					break;
@@ -467,5 +474,9 @@ public class CoreIndexUtils implements IndexUtils {
 			return false;
 		}
 		return true;
+	}
+
+	public void setJdbcTemplate(JdbcTemplate jdbcTemplate) {
+		this.jdbcTemplate = jdbcTemplate;
 	}
 }

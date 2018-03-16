@@ -49,7 +49,7 @@ public class BulkApiTest {
 	@Test
 	public void testBulkIndexing() {
 		final int totalDocuments = RANDOM.nextInt(100);
-		final String index = UUID.randomUUID().toString();
+		final String index = "message-logs-" + UUID.randomUUID().toString();
 		final String type = "test";
 		
 		given()
@@ -78,7 +78,7 @@ public class BulkApiTest {
 	@Test
 	public void testBulkIndexingTimeSeries() {
 		final int totalDocuments = RANDOM.nextInt(100);
-		final String index = UUID.randomUUID().toString();
+		final String index = "message-logs-" + UUID.randomUUID().toString();
 		final String type = "test";
 		
 		given()

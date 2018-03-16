@@ -15,6 +15,8 @@
  ******************************************************************************/
 package com.elefana.document.psql;
 
+import java.io.File;
+import java.io.IOException;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
@@ -107,7 +109,7 @@ public class PsqlBulkIndexService implements Runnable {
 		indexQueue.offer(indexTarget);
 	}
 
-	private boolean mergeStagingTableIntoDistributedTable(IndexTarget indexTarget) throws ElefanaException {
+	private boolean mergeStagingTableIntoDistributedTable(IndexTarget indexTarget) throws ElefanaException, IOException {
 		final IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndex(indexTarget.getIndex());
 
 		if (indexTemplate != null && indexTemplate.isTimeSeries()) {
@@ -140,16 +142,18 @@ public class PsqlBulkIndexService implements Runnable {
 			lastException.printStackTrace();
 			return false;
 		} else {
-			jdbcTemplate.update("INSERT INTO " + indexTarget.getTargetTable()
-					+ "(_index, _type, _id, _timestamp, _source) select _index, _type, _id, _timestamp, _source FROM "
-					+ indexTarget.getStagingTable());
+			File tempFile = File.createTempFile("elefana-builk-index-", null);
+			jdbcTemplate.execute("COPY " + indexTarget.getStagingTable() + " TO '" + tempFile.getAbsolutePath() + "' WITH BINARY");
+			jdbcTemplate.execute("COPY " + indexTarget.getTargetTable() + " FROM '" + tempFile.getAbsolutePath() + "' WITH BINARY");
+			tempFile.delete();
 		}
 		return true;
 	}
 
-	private void mergeStagingTableIntoPartitionTable(IndexTarget indexTarget) {
-		jdbcTemplate.update("INSERT INTO " + indexTarget.getTargetTable()
-				+ "(_index, _type, _id, _timestamp, _source) select _index, _type, _id, _timestamp, _source FROM "
-				+ indexTarget.getStagingTable());
+	private void mergeStagingTableIntoPartitionTable(IndexTarget indexTarget) throws IOException {
+		File tempFile = File.createTempFile("elefana-builk-index-", null);
+		jdbcTemplate.execute("COPY " + indexTarget.getStagingTable() + " TO '" + tempFile.getAbsolutePath() + "' WITH BINARY");
+		jdbcTemplate.execute("COPY " + indexTarget.getTargetTable() + " FROM '" + tempFile.getAbsolutePath() + "' WITH BINARY");
+		tempFile.delete();
 	}
 }
