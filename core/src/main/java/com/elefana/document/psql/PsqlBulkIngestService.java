@@ -19,7 +19,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -55,6 +54,7 @@ import com.elefana.util.IndexUtils;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
+import com.jsoniter.spi.JsonException;
 
 @Service
 public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor {
@@ -117,6 +117,7 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 		final Timer.Context totalTimer = bulkOperationsTotalTimer.time();
 
 		final BulkResponse bulkApiResponse = new BulkResponse();
+		bulkApiResponse.setErrors(false);
 
 		final String[] lines = requestBody.split(NEW_LINE);
 
@@ -128,36 +129,40 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 				if (i + 1 >= lines.length) {
 					break;
 				}
-				Any operation = JsonIterator.deserialize(lines[i]);
-				if (!operation.get(OPERATION_INDEX).valueType().equals(ValueType.INVALID)) {
-					Any indexOperationTarget = operation.get(OPERATION_INDEX);
+				try {
+					Any operation = JsonIterator.deserialize(lines[i]);
+					if (!operation.get(OPERATION_INDEX).valueType().equals(ValueType.INVALID)) {
+						Any indexOperationTarget = operation.get(OPERATION_INDEX);
 
-					BulkIndexOperation indexOperation = BulkIndexOperation.allocate();
-					indexOperation.setIndex(indexOperationTarget.get(BulkTask.KEY_INDEX).toString());
-					indexOperation.setType(indexOperationTarget.get(BulkTask.KEY_TYPE).toString());
-					indexOperation.setSource(lines[i + 1]);
-					indexOperation.setTimestamp(
-							indexUtils.getTimestamp(indexOperation.getIndex(), indexOperation.getSource()));
+						BulkIndexOperation indexOperation = BulkIndexOperation.allocate();
+						indexOperation.setIndex(indexOperationTarget.get(BulkTask.KEY_INDEX).toString());
+						indexOperation.setType(indexOperationTarget.get(BulkTask.KEY_TYPE).toString());
+						indexOperation.setSource(lines[i + 1]);
+						indexOperation.setTimestamp(
+								indexUtils.getTimestamp(indexOperation.getIndex(), indexOperation.getSource()));
 
-					if (!indexOperationTarget.get(BulkTask.KEY_ID).valueType().equals(ValueType.INVALID)) {
-						indexOperation.setId(indexOperationTarget.get(BulkTask.KEY_ID).toString());
-					} else {
-						indexOperation.setId(indexUtils.generateDocumentId(indexOperation.getIndex(),
-								indexOperation.getType(), indexOperation.getSource()));
+						if (!indexOperationTarget.get(BulkTask.KEY_ID).valueType().equals(ValueType.INVALID)) {
+							indexOperation.setId(indexOperationTarget.get(BulkTask.KEY_ID).toString());
+						} else {
+							indexOperation.setId(indexUtils.generateDocumentId(indexOperation.getIndex(),
+									indexOperation.getType(), indexOperation.getSource()));
+						}
+
+						if (!indexOperations.containsKey(indexOperation.getIndex())) {
+							indexOperations.put(indexOperation.getIndex(), new ArrayList<BulkIndexOperation>(1));
+						}
+						indexOperations.get(indexOperation.getIndex()).add(indexOperation);
 					}
-
-					if (!indexOperations.containsKey(indexOperation.getIndex())) {
-						indexOperations.put(indexOperation.getIndex(), new ArrayList<BulkIndexOperation>(1));
-					}
-					indexOperations.get(indexOperation.getIndex()).add(indexOperation);
+					// TODO: Handle other operations
+				} catch (JsonException e) {
+					LOGGER.error("Error parsing JSON at line number " + i + ": " + lines[i] + " - " + e.getMessage(), e);
+					bulkApiResponse.setErrors(true);
 				}
-				// TODO: Handle other operations
 			}
 		} finally {
 			serializationTimer.stop();
 		}
 
-		bulkApiResponse.setErrors(false);
 		for (String index : indexOperations.keySet()) {
 			bulkIndex(bulkApiResponse, index, indexOperations.get(index));
 		}
