@@ -142,18 +142,19 @@ public class PsqlBulkIndexService implements Runnable {
 			lastException.printStackTrace();
 			return false;
 		} else {
-			File tempFile = File.createTempFile("elefana-builk-index-", null);
-			jdbcTemplate.execute("COPY " + indexTarget.getStagingTable() + " TO '" + tempFile.getAbsolutePath() + "' WITH BINARY");
-			jdbcTemplate.execute("COPY " + indexTarget.getTargetTable() + " FROM '" + tempFile.getAbsolutePath() + "' WITH BINARY");
-			tempFile.delete();
+			mergeStagingTableIntoPartitionTable(indexTarget);
 		}
 		return true;
 	}
 
 	private void mergeStagingTableIntoPartitionTable(IndexTarget indexTarget) throws IOException {
-		File tempFile = File.createTempFile("elefana-builk-index-", null);
-		jdbcTemplate.execute("COPY " + indexTarget.getStagingTable() + " TO '" + tempFile.getAbsolutePath() + "' WITH BINARY");
-		jdbcTemplate.execute("COPY " + indexTarget.getTargetTable() + " FROM '" + tempFile.getAbsolutePath() + "' WITH BINARY");
-		tempFile.delete();
+		String tmpFile = "/tmp/elefana-idx-" + indexTarget.getTargetTable() + "-" + System.nanoTime() + ".tmp";
+		jdbcTemplate.execute("COPY " + indexTarget.getStagingTable() + " TO '" + tmpFile + "' WITH BINARY");
+		jdbcTemplate.execute("COPY " + indexTarget.getTargetTable() + " FROM '" + tmpFile + "' WITH BINARY");
+		
+		File file = new File(tmpFile);
+		if(file.exists()) {
+			file.delete();
+		}
 	}
 }
