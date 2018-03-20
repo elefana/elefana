@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Service;
 
+import com.codahale.metrics.Counter;
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
@@ -57,6 +58,7 @@ public class HttpServer {
 	private MetricRegistry metricRegistry;
 
 	private EventLoopGroup serverExecutor;
+	private Counter httpConnections;
 	private Meter httpRequests;
 	private Histogram httpRequestSize;
 
@@ -66,6 +68,7 @@ public class HttpServer {
 			return;
 		}
 		
+		httpConnections = metricRegistry.counter(MetricRegistry.name("http", "connections"));
 		httpRequests = metricRegistry.meter(MetricRegistry.name("http", "requests"));
 		httpRequestSize = metricRegistry.histogram(MetricRegistry.name("http", "requestSize"));
 		
@@ -122,6 +125,8 @@ public class HttpServer {
 		serverBootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
 			@Override
 			protected void initChannel(SocketChannel ch) throws Exception {
+				httpConnections.inc();
+				
 				ChannelPipeline channelPipeline = ch.pipeline().addLast(new HttpServerCodec());
 				channelPipeline = channelPipeline.addLast(new HttpServerExpectContinueHandler());
 
@@ -140,10 +145,10 @@ public class HttpServer {
 					channelPipeline = channelPipeline.addLast("httpPipeliningHandler",
 							new HttpPipeliningHandler(maxHttpPipelineEvents));
 					channelPipeline = channelPipeline.addLast("httpRouter",
-							new PipelinedHttpRouter(apiRouter, httpRequests, httpRequestSize));
+							new PipelinedHttpRouter(apiRouter, httpConnections, httpRequests, httpRequestSize));
 				} else {
 					channelPipeline = channelPipeline.addLast("httpRouter",
-							new DefaultHttpRouter(apiRouter, httpRequests, httpRequestSize));
+							new DefaultHttpRouter(apiRouter, httpConnections, httpRequests, httpRequestSize));
 				}
 			}
 		});
@@ -162,7 +167,12 @@ public class HttpServer {
 		if(serverExecutor == null) {
 			return;
 		}
-		serverExecutor.shutdownGracefully();
+		try {
+			serverExecutor.shutdownGracefully().sync();
+			LOGGER.info("Stopped HTTP server");
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 	}
 
 	public void setNodeInfoService(NodeInfoService nodeInfoService) {

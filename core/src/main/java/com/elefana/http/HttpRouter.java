@@ -11,6 +11,7 @@ import java.util.Map.Entry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.codahale.metrics.Counter;
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
 import com.elefana.api.ApiRequest;
@@ -40,12 +41,14 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 	private static final String APPLICATION_JSON = "application/json";
 
 	private final ApiRouter apiRouter;
+	private final Counter httpConnections;
 	private final Meter httpRequests;
 	private final Histogram httpRequestSize;
 
-	public HttpRouter(ApiRouter apiRouter, Meter httpRequests, Histogram httpRequestSize) {
+	public HttpRouter(ApiRouter apiRouter, Counter httpConnections, Meter httpRequests, Histogram httpRequestSize) {
 		super();
 		this.apiRouter = apiRouter;
+		this.httpConnections = httpConnections;
 		this.httpRequests = httpRequests;
 		this.httpRequestSize = httpRequestSize;
 	}
@@ -53,6 +56,12 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
 		cause.printStackTrace();
+	}
+	
+	@Override
+	public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+		httpConnections.dec();
+		super.channelInactive(ctx);
 	}
 
 	public HttpResponse route(FullHttpRequest httpRequest) {

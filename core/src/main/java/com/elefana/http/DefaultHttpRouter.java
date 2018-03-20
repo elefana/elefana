@@ -3,6 +3,7 @@
  */
 package com.elefana.http;
 
+import com.codahale.metrics.Counter;
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
 import com.elefana.api.ApiRouter;
@@ -16,8 +17,8 @@ import io.netty.handler.codec.http.HttpRequest;
  */
 public class DefaultHttpRouter extends HttpRouter {
 
-	public DefaultHttpRouter(ApiRouter apiRouter, Meter httpRequests, Histogram httpRequestSize) {
-		super(apiRouter, httpRequests, httpRequestSize);
+	public DefaultHttpRouter(ApiRouter apiRouter, Counter httpConnections, Meter httpRequests, Histogram httpRequestSize) {
+		super(apiRouter, httpConnections, httpRequests, httpRequestSize);
 	}
 
 	@Override
