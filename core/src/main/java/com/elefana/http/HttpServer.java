@@ -125,7 +125,9 @@ public class HttpServer {
 		serverBootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
 			@Override
 			protected void initChannel(SocketChannel ch) throws Exception {
-				httpConnections.inc();
+				if(httpConnections != null) {
+					httpConnections.inc();
+				}
 				
 				ChannelPipeline channelPipeline = ch.pipeline().addLast(new HttpServerCodec());
 				channelPipeline = channelPipeline.addLast(new HttpServerExpectContinueHandler());
