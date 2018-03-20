@@ -83,14 +83,21 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 		this.queryTarget = queryTarget;
 		this.from = from;
 		this.size = size;
-
+		
 		List<Map<String, Object>> nextTableResults = jdbcTemplate.queryForList("SELECT elefana_next_staging_table()");
 		if (nextTableResults.isEmpty()) {
+			LOGGER.error("Could not get next staging table ID from elefana_next_staging_table(), using fallback table");
 			stagingTable = FALLBACK_STAGING_TABLE_PREFIX + FALLBACK_STAGING_TABLE_ID++;
 		} else {
 			Map<String, Object> row = nextTableResults.get(0);
-			stagingTable = row.get("table_name") != null ? ((String) row.get("table_name")).replace('-', '_')
-					: FALLBACK_STAGING_TABLE_PREFIX + FALLBACK_STAGING_TABLE_ID++;
+			if(row.containsKey("table_name")) {
+				stagingTable = ((String) row.get("table_name")).replace('-', '_');
+			} else if(row.containsKey("elefana_next_staging_table")) {
+				stagingTable = ((String) row.get("elefana_next_staging_table")).replace('-', '_');
+			} else {
+				LOGGER.error("Could not get next staging table ID from elefana_next_staging_table(), using fallback table");
+				stagingTable = FALLBACK_STAGING_TABLE_PREFIX + FALLBACK_STAGING_TABLE_ID++;
+			}
 		}
 	}
 
