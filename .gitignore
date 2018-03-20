@@ -32,3 +32,4 @@ Gemfile.lock
 *.rpm
 uats-es2-citus/src/test/java
 uats-es5-citus/src/test/java
+*.tmp

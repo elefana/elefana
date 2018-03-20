@@ -18,8 +18,13 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION elefana_delete_tmp_file(_filepath text) RETURNS INT AS $$
-	EXECUTE format($$COPY (SELECT 1) TO PROGRAM 'rm %I'$$, _filepath);
+DECLARE
+	_command text;
+BEGIN
+	_command := CONCAT('COPY (SELECT 1) TO PROGRAM ', '''rm ', _filepath, '''');
+	EXECUTE _command;
 	RETURN 0;
+END;
 $$
 LANGUAGE 'plpgsql';
 

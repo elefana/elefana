@@ -152,6 +152,6 @@ public class PsqlBulkIndexService implements Runnable {
 		String tmpFile = "/tmp/elefana-idx-" + indexTarget.getTargetTable() + "-" + System.nanoTime() + ".tmp";
 		jdbcTemplate.execute("COPY " + indexTarget.getStagingTable() + " TO '" + tmpFile + "' WITH BINARY");
 		jdbcTemplate.execute("COPY " + indexTarget.getTargetTable() + " FROM '" + tmpFile + "' WITH BINARY");
-		jdbcTemplate.execute("SELECT elefana_delete_tmp_file('" + tmpFile + "')");
+		jdbcTemplate.queryForList("SELECT elefana_delete_tmp_file('" + tmpFile + "')");
 	}
 }
