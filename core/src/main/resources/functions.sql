@@ -17,6 +17,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION elefana_delete_tmp_file(_filepath text) RETURNS INT AS $$
+	EXECUTE format($$COPY (SELECT 1) TO PROGRAM 'rm %I'$$, _filepath);
+	RETURN 0;
+$$
+LANGUAGE 'plpgsql';
+
 CREATE OR REPLACE FUNCTION elefana_json_field(_json_column jsonb, _json_field text) RETURNS text AS $$
 	select _json_column->>_json_field
 $$

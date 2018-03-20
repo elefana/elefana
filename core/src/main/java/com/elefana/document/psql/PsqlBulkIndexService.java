@@ -152,19 +152,6 @@ public class PsqlBulkIndexService implements Runnable {
 		String tmpFile = "/tmp/elefana-idx-" + indexTarget.getTargetTable() + "-" + System.nanoTime() + ".tmp";
 		jdbcTemplate.execute("COPY " + indexTarget.getStagingTable() + " TO '" + tmpFile + "' WITH BINARY");
 		jdbcTemplate.execute("COPY " + indexTarget.getTargetTable() + " FROM '" + tmpFile + "' WITH BINARY");
-		
-		File file = new File(tmpFile);
-		if(file.exists()) {
-			for(int i = 0; i < MAX_FILE_DELETION_RETRIES; i++) {
-				try {
-					Files.delete(file.toPath());
-					return;
-				} catch (IOException e) {
-					LOGGER.error(e.getMessage(), e);
-				}
-			}
-		} else {
-			LOGGER.error(tmpFile + " does not exists");
-		}
+		jdbcTemplate.execute("SELECT elefana_delete_tmp_file('" + tmpFile + "')");
 	}
 }
