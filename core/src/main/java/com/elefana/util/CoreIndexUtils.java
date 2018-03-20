@@ -250,6 +250,13 @@ public class CoreIndexUtils implements IndexUtils {
 			e.printStackTrace();
 			throw new ShardFailedException(e);
 		}
+		if(connection != null) {
+			try {
+				connection.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		}
 	}
 
 	@Override
