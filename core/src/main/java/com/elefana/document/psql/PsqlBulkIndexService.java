@@ -17,7 +17,8 @@ package com.elefana.document.psql;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -35,7 +36,6 @@ import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
-import com.codahale.metrics.MetricRegistry;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.indices.IndexTemplate;
 import com.elefana.document.IndexTarget;
@@ -48,6 +48,7 @@ import com.elefana.util.IndexUtils;
 public class PsqlBulkIndexService implements Runnable {
 	private static final Logger LOGGER = LoggerFactory.getLogger(PsqlBulkIndexService.class);
 
+	private static final int MAX_FILE_DELETION_RETRIES = 5;
 	private static final long SHARD_TIMEOUT = 5000L;
 
 	@Autowired
@@ -154,7 +155,16 @@ public class PsqlBulkIndexService implements Runnable {
 		
 		File file = new File(tmpFile);
 		if(file.exists()) {
-			file.delete();
+			for(int i = 0; i < MAX_FILE_DELETION_RETRIES; i++) {
+				try {
+					Files.delete(file.toPath());
+					return;
+				} catch (IOException e) {
+					LOGGER.error(e.getMessage(), e);
+				}
+			}
+		} else {
+			LOGGER.error(tmpFile + " does not exists");
 		}
 	}
 }
