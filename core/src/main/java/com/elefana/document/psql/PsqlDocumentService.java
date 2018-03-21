@@ -392,6 +392,8 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 		default:
 			break;
 		}
+		document = IndexUtils.psqlEscapeString(document);
+		
 		final long timestamp = indexUtils.getTimestamp(index, document);
 
 		PGobject jsonObject = new PGobject();

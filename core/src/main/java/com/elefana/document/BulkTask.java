@@ -34,6 +34,7 @@ import com.codahale.metrics.Timer;
 import com.elefana.api.document.BulkItemResponse;
 import com.elefana.api.document.BulkOpType;
 import com.elefana.api.exception.ShardFailedException;
+import com.elefana.util.IndexUtils;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.spi.JsonException;
 
@@ -136,7 +137,7 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 					BulkIndexOperation indexOperation = indexOperations.get(i);
 					final String row = indexOperation.getIndex() + DELIMITER + indexOperation.getType() + DELIMITER
 							+ indexOperation.getId() + DELIMITER + System.currentTimeMillis() + DELIMITER
-							+ indexOperation.getSource() + NEW_LINE;
+							+ IndexUtils.psqlEscapeString(indexOperation.getSource()) + NEW_LINE;
 					final byte[] rowBytes = row.getBytes();
 					copyIn.writeToCopy(rowBytes, 0, rowBytes.length);
 				}

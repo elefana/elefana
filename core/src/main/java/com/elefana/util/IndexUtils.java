@@ -66,4 +66,13 @@ public interface IndexUtils {
 		}
 		return true;
 	}
+	
+	/**
+	 * If JSON string contains \" we need to escape it as \\" for PSQL to handle correctly
+	 * @param json The original JSON string
+	 * @return The escaped JSON string
+	 */
+	public static String psqlEscapeString(String json) {
+		return json.replace("\\\"", "\\\\\"");
+	}
 }
