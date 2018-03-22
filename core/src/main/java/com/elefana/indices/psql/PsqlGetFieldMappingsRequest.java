@@ -35,7 +35,9 @@ public class PsqlGetFieldMappingsRequest extends GetFieldMappingsRequest impleme
 
 	@Override
 	public GetFieldMappingsResponse call() throws Exception {
-		if(getTypesPattern() != null) {
+		if(getTypesPattern() != null && getField() != null) {
+			return indexFieldMappingService.getFieldMapping(getIndicesPattern(), getTypesPattern(), getField());
+		} else if(getTypesPattern() != null) {
 			return indexFieldMappingService.getMapping(getIndicesPattern(), getTypesPattern());
 		} else {
 			return indexFieldMappingService.getMapping(getIndicesPattern());

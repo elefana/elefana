@@ -21,6 +21,7 @@ import com.elefana.api.RequestExecutor;
 public abstract class GetFieldMappingsRequest extends ApiRequest<GetFieldMappingsResponse> {
 	private String indicesPattern;
 	private String typesPattern;
+	private String field;
 	
 	public GetFieldMappingsRequest(RequestExecutor requestExecutor) {
 		super(requestExecutor);
@@ -48,5 +49,13 @@ public abstract class GetFieldMappingsRequest extends ApiRequest<GetFieldMapping
 			return;
 		}
 		this.typesPattern = typesPattern;
+	}
+
+	public String getField() {
+		return field;
+	}
+
+	public void setField(String field) {
+		this.field = field;
 	}
 }

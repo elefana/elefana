@@ -65,4 +65,28 @@ public class IndexMappingTest {
 			.log().all()
 			.body(index + ".mappings." + type + ".docField.mapping.docField.type", equalTo("text"));
 	}
+	
+	@Test
+	public void testFieldMappingGeneration() {
+		final String index = UUID.randomUUID().toString();
+		final String type = "test";
+		
+		given()
+			.request()
+			.body("{\"docField\" : \"This is a test\"}")
+		.when()
+			.post("/" + index + "/" + type)
+		.then()
+			.statusCode(201);
+		
+		try {
+			Thread.sleep(1000L);
+		} catch (Exception e) {}
+		
+		given().when().get("/" + index + "/_mapping/" + type + "/field/docField")
+		.then()
+			.statusCode(200)
+			.log().all()
+			.body(index + ".mappings." + type + ".docField.mapping.docField.type", equalTo("text"));
+	}
 }

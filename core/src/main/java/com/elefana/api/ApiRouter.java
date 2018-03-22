@@ -150,7 +150,7 @@ public class ApiRouter {
 		switch (urlComponents.length) {
 		case 1:
 			return clusterService.prepareClusterInfo();
-		case 2:
+		case 2: {
 			final String target = urlDecode(urlComponents[1]);
 			switch (target.toLowerCase()) {
 			case "health":
@@ -158,6 +158,16 @@ public class ApiRouter {
 			case "settings":
 				return clusterService.prepareClusterSettings();
 			}
+			break;
+		}
+		case 3: {
+			final String target = urlDecode(urlComponents[1]);
+			switch (target.toLowerCase()) {
+			case "health":
+				return clusterService.prepareClusterHealth(urlComponents[2]);
+			}
+			break;
+		}
 		}
 		throw new NoSuchApiException(url);
 	}
@@ -182,7 +192,7 @@ public class ApiRouter {
 				}
 				break;
 			}
-			case 3:
+			case 3: {
 				// INDICES/_mapping/TYPE
 				final String indexPattern = urlDecode(urlComponents[0]);
 				final String typePattern = urlDecode(urlComponents[2]);
@@ -192,6 +202,21 @@ public class ApiRouter {
 				}
 				break;
 			}
+			case 5:
+				// e.g. INDICES/_mapping/TYPE/field/FIELD
+				final String indexPattern = urlDecode(urlComponents[0]);
+				final String typePattern = urlDecode(urlComponents[2]);
+				final String field = urlDecode(urlComponents[4]);
+				switch (urlComponents[1].toLowerCase()) {
+				case "_mapping":
+					switch(urlComponents[3].toLowerCase()) {
+					case "field":
+						return indexFieldMappingService.prepareGetFieldMappings(indexPattern, typePattern, field);
+					}
+				}
+				break;
+			}
+			
 		} else if (isPutMethod(method)) {
 			final String index = urlDecode(urlComponents[0]);
 			return indexFieldMappingService.preparePutFieldMappings(index, requestBody);
@@ -215,6 +240,8 @@ public class ApiRouter {
 			switch (urlComponents[1].toLowerCase()) {
 			case "_mget":
 				return documentService.prepareMultiGet(index, requestBody);
+			case "_mapping":
+				return routeToFieldMappingApi(method, url, urlComponents, requestBody);
 			}
 			final String type = urlDecode(urlComponents[1]);
 
@@ -228,6 +255,11 @@ public class ApiRouter {
 			// 0 = INDEX, 1 = TYPE
 			final String index = urlDecode(urlComponents[0]);
 			final String type = urlDecode(urlComponents[1]);
+			
+			switch (urlComponents[1].toLowerCase()) {
+			case "_mapping":
+				return routeToFieldMappingApi(method, url, urlComponents, requestBody);
+			}
 
 			switch (urlComponents[2].toLowerCase()) {
 			case "_mget":
@@ -243,7 +275,7 @@ public class ApiRouter {
 			break;
 		}
 		case 4: {
-			// 0 = INDEX, 1 = TYPE, 2 = ID
+			// 0 = INDEX, 1 = TYPE, 2 = ID, 3 = OP
 			final String index = urlDecode(urlComponents[0]);
 			final String type = urlDecode(urlComponents[1]);
 			final String id = urlDecode(urlComponents[2]);
@@ -259,6 +291,13 @@ public class ApiRouter {
 							IndexOpType.UPDATE);
 				}
 				}
+			}
+			break;
+		}
+		case 5: {
+			switch (urlComponents[1].toLowerCase()) {
+			case "_mapping":
+				return routeToFieldMappingApi(method, url, urlComponents, requestBody);
 			}
 			break;
 		}

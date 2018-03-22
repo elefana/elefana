@@ -28,6 +28,8 @@ public interface IndexFieldMappingService {
 	
 	public GetFieldMappingsRequest prepareGetFieldMappings(String indexPattern, String typePattern);
 	
+	public GetFieldMappingsRequest prepareGetFieldMappings(String indexPattern, String typePattern, String field);
+	
 	public PutFieldMappingRequest preparePutFieldMappings(String index, String mappings);
 	
 	public PutFieldMappingRequest preparePutFieldMappings(String index, String type, String mappings);
