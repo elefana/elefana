@@ -146,6 +146,16 @@ public class PsqlClusterService implements ClusterService, RequestExecutor {
 	public ClusterHealthRequest prepareClusterHealth() {
 		return new PsqlClusterHealthRequest(this);
 	}
+	
+	@Override
+	public ClusterHealthRequest prepareClusterHealth(String indices) {
+		return new PsqlClusterHealthRequest(this, indices);
+	}
+
+	@Override
+	public ClusterHealthRequest prepareClusterHealth(String... indices) {
+		return new PsqlClusterHealthRequest(this, indices);
+	}
 
 	@Override
 	public ClusterSettingsRequest prepareClusterSettings() {
@@ -156,4 +166,5 @@ public class PsqlClusterService implements ClusterService, RequestExecutor {
 	public <T> Future<T> submit(Callable<T> request) {
 		return executorService.submit(request);
 	}
+
 }

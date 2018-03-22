@@ -24,6 +24,14 @@ public class PsqlClusterHealthRequest extends ClusterHealthRequest implements Ca
 	private final PsqlClusterService clusterService;
 
 	public PsqlClusterHealthRequest(PsqlClusterService clusterService) {
+		this(clusterService, new String [] {});
+	}
+	
+	public PsqlClusterHealthRequest(PsqlClusterService clusterService, String indices) {
+		this(clusterService, indices.split(","));
+	}
+
+	public PsqlClusterHealthRequest(PsqlClusterService clusterService, String [] indices) {
 		super(clusterService);
 		this.clusterService = clusterService;
 	}

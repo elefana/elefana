@@ -19,9 +19,18 @@ import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
 
 public abstract class ClusterHealthRequest extends ApiRequest<ClusterHealthResponse> {
+	protected final String [] indices;
 
 	public ClusterHealthRequest(RequestExecutor requestExecutor) {
-		super(requestExecutor);
+		this(requestExecutor, new String [] {});
+	}
+	
+	public ClusterHealthRequest(RequestExecutor requestExecutor, String indices) {
+		this(requestExecutor, indices.split(","));
 	}
 
+	public ClusterHealthRequest(RequestExecutor requestExecutor, String [] indices) {
+		super(requestExecutor);
+		this.indices = indices;
+	}
 }

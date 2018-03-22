@@ -25,5 +25,9 @@ public interface ClusterService {
 	
 	public ClusterHealthRequest prepareClusterHealth();
 	
+	public ClusterHealthRequest prepareClusterHealth(String indices);
+	
+	public ClusterHealthRequest prepareClusterHealth(String... indices);
+	
 	public ClusterSettingsRequest prepareClusterSettings();
 }
