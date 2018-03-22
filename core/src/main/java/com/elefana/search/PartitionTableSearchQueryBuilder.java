@@ -46,16 +46,22 @@ public class PartitionTableSearchQueryBuilder implements SearchQueryBuilder {
 		
 		queryBuilder.append("SELECT * FROM ");
 		queryBuilder.append(IndexUtils.DATA_TABLE);
-		queryBuilder.append(" WHERE _index IN (");
-		for(int i = 0; i < indices.size(); i++) {
-			if(i > 0) {
-				queryBuilder.append(',');
+		if(indices.isEmpty()) {
+			if (!requestBodySearch.getQuery().isMatchAllQuery() || !IndexUtils.isTypesEmpty(types)) {
+				queryBuilder.append(" WHERE TRUE");
 			}
-			queryBuilder.append("'");
-			queryBuilder.append(indices.get(i));
-			queryBuilder.append("'");
+		} else {
+			queryBuilder.append(" WHERE _index IN (");
+			for(int i = 0; i < indices.size(); i++) {
+				if(i > 0) {
+					queryBuilder.append(',');
+				}
+				queryBuilder.append("'");
+				queryBuilder.append(indices.get(i));
+				queryBuilder.append("'");
+			}
+			queryBuilder.append(") ");
 		}
-		queryBuilder.append(") ");
 		
 		if (!requestBodySearch.getQuery().isMatchAllQuery()) {
 			queryBuilder.append(" AND (");
