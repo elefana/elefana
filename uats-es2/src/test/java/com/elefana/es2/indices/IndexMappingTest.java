@@ -88,5 +88,11 @@ public class IndexMappingTest {
 			.statusCode(200)
 			.log().all()
 			.body(index + ".mappings." + type + ".docField.mapping.docField.type", equalTo("text"));
+		
+		given().when().get("/" + index + "/_mapping/field/docField")
+		.then()
+			.statusCode(200)
+			.log().all()
+			.body(index + ".mappings." + type + ".docField.mapping.docField.type", equalTo("text"));
 	}
 }

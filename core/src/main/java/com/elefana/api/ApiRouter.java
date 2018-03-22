@@ -124,8 +124,22 @@ public class ApiRouter {
 			}
 			break;
 		case 4:
+			switch (urlComponents[1].toLowerCase()) {
+			case "_mapping":
+				switch (urlComponents[2].toLowerCase()) {
+				case "field":
+					return routeToFieldMappingApi(method, url, urlComponents, requestBody);
+				}
+			}
 			break;
 		case 5:
+			switch (urlComponents[1].toLowerCase()) {
+			case "_mapping":
+				switch (urlComponents[3].toLowerCase()) {
+				case "field":
+					return routeToFieldMappingApi(method, url, urlComponents, requestBody);
+				}
+			}
 			break;
 		}
 
@@ -202,7 +216,20 @@ public class ApiRouter {
 				}
 				break;
 			}
-			case 5:
+			case 4: {
+				// e.g. INDICES/_mapping/field/FIELD
+				final String indexPattern = urlDecode(urlComponents[0]);
+				final String field = urlDecode(urlComponents[3]);
+				switch (urlComponents[1].toLowerCase()) {
+				case "_mapping":
+					switch(urlComponents[2].toLowerCase()) {
+					case "field":
+						return indexFieldMappingService.prepareGetFieldMappings(indexPattern, "*", field);
+					}
+				}
+				break;
+			}
+			case 5: {
 				// e.g. INDICES/_mapping/TYPE/field/FIELD
 				final String indexPattern = urlDecode(urlComponents[0]);
 				final String typePattern = urlDecode(urlComponents[2]);
@@ -215,6 +242,7 @@ public class ApiRouter {
 					}
 				}
 				break;
+			}
 			}
 			
 		} else if (isPutMethod(method)) {
