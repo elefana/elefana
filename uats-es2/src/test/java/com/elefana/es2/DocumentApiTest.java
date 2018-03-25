@@ -81,6 +81,45 @@ public class DocumentApiTest extends DocumentedTest {
 		final String message = "This is a test";
 		indexWithId(id, message, System.currentTimeMillis());
 	}
+	
+	@Test
+	public void testIndexWithEscapedJson() {
+		final String message = "This is a test";
+		final String document = "{\"message\" : \"[{\\\"" + message + "\\\"}]\",\"date\" : \"2017-01-14T14:12:12\"}";
+		final String id = UUID.randomUUID().toString();
+
+		given()
+			.request()
+			.contentType(ContentType.JSON)
+			.body(document)
+		.when()
+			.post("/" + INDEX + "/" + TYPE + "/" + id)
+		.then()
+			.statusCode(201)
+			.body("_index", equalTo(INDEX))
+			.body("_type", equalTo(TYPE))
+			.body("_id", notNullValue())
+			.body("_version", equalTo(1))
+			.body("created", equalTo(true));
+		
+		given().when().get("/" + INDEX + "/" + TYPE + "/" + id)
+		.then()
+			.statusCode(200)
+			.body("_source.message", equalTo("[{\\\"" + message + "\\\"}]"));
+		
+		given()
+			.request()
+			.body("{\"docs\" : [{\"_index\": \"" + INDEX + "\",\"_type\" : \"" + TYPE + "\",\"_id\" : \"" + id + "\"}]}")
+		.when()
+			.get("/_mget")
+		.then()
+			.statusCode(200)
+			.body("docs[0]._index", equalTo(INDEX))
+			.body("docs[0]._type", equalTo(TYPE))
+			.body("docs[0]._id", equalTo(id))
+			.body("docs[0]._source.message", equalTo("[{\\\"" + message + "\\\"}]"))
+			.body("docs[0].found", equalTo(true));
+	}
 
 	@Test
 	public void testGet() {

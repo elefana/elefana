@@ -17,31 +17,30 @@ package com.elefana.indices.psql;
 
 import java.util.concurrent.Callable;
 
-import com.elefana.api.indices.GetFieldMappingsRequest;
-import com.elefana.api.indices.GetFieldMappingsResponse;
+import com.elefana.api.indices.RefreshIndexRequest;
+import com.elefana.api.indices.RefreshIndexResponse;
 
-public class PsqlGetFieldMappingsRequest extends GetFieldMappingsRequest implements Callable<GetFieldMappingsResponse> {
+public class PsqlRefreshIndexRequest extends RefreshIndexRequest implements Callable<RefreshIndexResponse> {
 	private final PsqlIndexFieldMappingService indexFieldMappingService;
-
-	public PsqlGetFieldMappingsRequest(PsqlIndexFieldMappingService indexFieldMappingService) {
-		super(indexFieldMappingService);
+	
+	public PsqlRefreshIndexRequest(PsqlIndexFieldMappingService indexFieldMappingService, String index) {
+		super(indexFieldMappingService, index);
 		this.indexFieldMappingService = indexFieldMappingService;
 	}
 
 	@Override
-	protected Callable<GetFieldMappingsResponse> internalExecute() {
+	protected Callable<RefreshIndexResponse> internalExecute() {
 		return this;
 	}
 
 	@Override
-	public GetFieldMappingsResponse call() throws Exception {
-		if(getTypesPattern() != null && getFieldPattern() != null) {
-			return indexFieldMappingService.getFieldMapping(getIndicesPattern(), getTypesPattern(), getFieldPattern());
-		} else if(getTypesPattern() != null) {
-			return indexFieldMappingService.getMapping(getIndicesPattern(), getTypesPattern());
-		} else {
-			return indexFieldMappingService.getMapping(getIndicesPattern());
-		}
+	public RefreshIndexResponse call() throws Exception {
+		indexFieldMappingService.scheduleIndexForMappingAndStats(getIndex());
+		final RefreshIndexResponse result = new RefreshIndexResponse();
+		result.getShards().put("total", 1);
+		result.getShards().put("successful", 1);
+		result.getShards().put("failed", 0);
+		return result;
 	}
 
 }

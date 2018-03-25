@@ -21,12 +21,13 @@ import com.elefana.api.RequestExecutor;
 public abstract class GetFieldMappingsRequest extends ApiRequest<GetFieldMappingsResponse> {
 	private String indicesPattern;
 	private String typesPattern;
-	private String field;
+	private String fieldPattern;
 	
 	public GetFieldMappingsRequest(RequestExecutor requestExecutor) {
 		super(requestExecutor);
 		this.indicesPattern = "*";
 		this.typesPattern = "*";
+		this.fieldPattern = null;
 	}
 
 	public String getIndicesPattern() {
@@ -51,11 +52,12 @@ public abstract class GetFieldMappingsRequest extends ApiRequest<GetFieldMapping
 		this.typesPattern = typesPattern;
 	}
 
-	public String getField() {
-		return field;
+	public String getFieldPattern() {
+		return fieldPattern;
 	}
 
-	public void setField(String field) {
-		this.field = field;
+	public void setFieldPattern(String fieldPattern) {
+		this.fieldPattern = fieldPattern;
 	}
+
 }

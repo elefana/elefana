@@ -201,8 +201,6 @@ public class ApiRouter {
 					return indexFieldMappingService.prepareGetFieldMappings(indexPattern);
 				case "_field_caps":
 					return indexFieldMappingService.prepareGetFieldCapabilities(indexPattern);
-				case "_field_stats":
-					return indexFieldMappingService.prepareGetFieldStats(indexPattern);
 				}
 				break;
 			}
@@ -244,7 +242,20 @@ public class ApiRouter {
 				break;
 			}
 			}
-			
+		} else if (isPostMethod(method)) {
+			switch (urlComponents.length) {
+			case 2: {
+				// INDICES/_mapping or INDICES/_field_caps
+				final String indexPattern = urlDecode(urlComponents[0]);
+				switch (urlComponents[1].toLowerCase()) {
+				case "_field_stats":
+					return indexFieldMappingService.prepareGetFieldStats(indexPattern);
+				case "_refresh":
+					return indexFieldMappingService.prepareRefreshIndex(indexPattern);
+				}
+				break;
+			}
+			}
 		} else if (isPutMethod(method)) {
 			final String index = urlDecode(urlComponents[0]);
 			return indexFieldMappingService.preparePutFieldMappings(index, requestBody);
@@ -269,6 +280,8 @@ public class ApiRouter {
 			case "_mget":
 				return documentService.prepareMultiGet(index, requestBody);
 			case "_mapping":
+			case "_refresh":
+			case "_field_stats":
 				return routeToFieldMappingApi(method, url, urlComponents, requestBody);
 			}
 			final String type = urlDecode(urlComponents[1]);

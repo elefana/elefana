@@ -43,56 +43,140 @@ public class IndexMappingTest {
 	}
 	
 	@Test
-	public void testMappingGeneration() {
-		final String index = UUID.randomUUID().toString();
-		final String type = "test";
-		
-		given()
-			.request()
-			.body("{\"docField\" : \"This is a test\"}")
-		.when()
-			.post("/" + index + "/" + type)
-		.then()
-			.statusCode(201);
-		
-		try {
-			Thread.sleep(1000L);
-		} catch (Exception e) {}
-		
-		given().when().get("/" + index + "/_mapping/" + type)
-		.then()
-			.statusCode(200)
-			.log().all()
-			.body(index + ".mappings." + type + ".docField.mapping.docField.type", equalTo("text"));
-	}
-	
-	@Test
 	public void testFieldMappingGeneration() {
 		final String index = UUID.randomUUID().toString();
 		final String type = "test";
 		
 		given()
 			.request()
-			.body("{\"docField\" : \"This is a test\"}")
+			.body("{\"docField\" : \"This is a test\", \"numField\": 123, \"emptyField\": \"\"}")
+		.when()
+			.post("/" + index + "/" + type)
+		.then()
+			.statusCode(201);
+		
+		given()
+			.request()
+			.body("{\"docField\" : \"This is a test 2\", \"numField\": 124}")
 		.when()
 			.post("/" + index + "/" + type)
 		.then()
 			.statusCode(201);
 		
 		try {
-			Thread.sleep(1000L);
+			Thread.sleep(3000L);
 		} catch (Exception e) {}
+		
+		given().when().get("/" + index + "/_mapping/" + type)
+		.then()
+			.statusCode(200)
+			.body(index + ".mappings." + type + ".docField.mapping.docField.type", equalTo("text"))
+			.body(index + ".mappings." + type + ".emptyField.mapping.emptyField.type", equalTo("string"))
+			.body(index + ".mappings." + type + ".numField.mapping.numField.type", equalTo("long"))
+			.body(index + ".mappings." + type + "._source.full_name", equalTo("_source"));
+		
+		given().when().get("/" + index + "/_mapping/" + type + "/field/*")
+		.then()
+			.statusCode(200)
+			.body(index + ".mappings." + type + ".docField.mapping.docField.type", equalTo("text"))
+			.body(index + ".mappings." + type + ".emptyField.mapping.emptyField.type", equalTo("string"))
+			.body(index + ".mappings." + type + ".numField.mapping.numField.type", equalTo("long"))
+			.body(index + ".mappings." + type + "._source.full_name", equalTo("_source"));
+		
+		given().when().get("/" + index + "/_mapping/" + type + "/field/numField")
+		.then()
+			.statusCode(200)
+			.body(index + ".mappings." + type + ".numField.mapping.numField.type", equalTo("long"));
 		
 		given().when().get("/" + index + "/_mapping/" + type + "/field/docField")
 		.then()
 			.statusCode(200)
-			.log().all()
 			.body(index + ".mappings." + type + ".docField.mapping.docField.type", equalTo("text"));
 		
 		given().when().get("/" + index + "/_mapping/field/docField")
 		.then()
 			.statusCode(200)
-			.log().all()
 			.body(index + ".mappings." + type + ".docField.mapping.docField.type", equalTo("text"));
+		
+		given().when().get("/" + index + "/_mapping/*/field/_source")
+		.then()
+			.statusCode(200)
+			.body(index + ".mappings." + type + "._source.full_name", equalTo("_source"));
+	}
+	
+	@Test
+	public void testIndexRefresh() {
+		final String index = UUID.randomUUID().toString();
+		final String type = "test";
+		
+		given()
+			.request()
+			.body("{\"docField\" : \"This is a test\", \"numField\": 123, \"emptyField\": \"\"}")
+		.when()
+			.post("/" + index + "/" + type)
+		.then()
+			.statusCode(201);
+		
+		given()
+			.request()
+		.when()
+			.post("/" + index + "/_refresh")
+		.then()
+			.log().all()
+			.statusCode(200).body("_shards.successful", equalTo(1));
+	}
+	
+	@Test
+	public void testFieldStatsGeneration() {
+		final String index = UUID.randomUUID().toString();
+		final String type = "test";
+		
+		final int totalDocuments = 100;
+		final int totalEmptyFieldDocuments = 50;
+		
+		for(int i = 0; i < totalDocuments; i++) {
+			final String json;
+			if(i % 2 == 0) {
+				json = "{\"docField\" : \"This is a test\", \"numField\": 123, \"emptyField\": \"\"}";
+			} else {
+				json = "{\"docField\" : \"This is a test\", \"numField\": 123}";
+			}
+			
+			given()
+				.request()
+				.body(json)
+			.when()
+				.post("/" + index + "/" + type)
+			.then()
+				.statusCode(201);
+		}
+		
+		try {
+			Thread.sleep(3000L);
+		} catch (Exception e) {}
+		
+		given()
+			.request()
+			.body("{\"fields\":[\"docField\"]}")
+		.when()
+			.post("/" + index + "/_field_stats")
+		.then()
+			.statusCode(200)
+			.log().all()
+			.body("_shards.successful", equalTo(1))
+			.body("indices." + index + ".fields.docField.max_doc", equalTo(totalDocuments))
+			.body("indices." + index + ".fields.docField.doc_count", equalTo(totalDocuments));
+		
+		given()
+			.request()
+			.body("{\"fields\":[\"emptyField\"]}")
+		.when()
+			.post("/" + index + "/_field_stats")
+		.then()
+			.statusCode(200)
+			.log().all()
+			.body("_shards.successful", equalTo(1))
+			.body("indices." + index + ".fields.emptyField.max_doc", equalTo(totalDocuments))
+			.body("indices." + index + ".fields.emptyField.doc_count", equalTo(totalEmptyFieldDocuments));
 	}
 }

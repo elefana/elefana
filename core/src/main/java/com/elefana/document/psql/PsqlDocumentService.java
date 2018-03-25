@@ -393,6 +393,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 			break;
 		}
 		document = IndexUtils.psqlEscapeString(document);
+		document = IndexUtils.psqlEscapeString(document);
 		
 		final long timestamp = indexUtils.getTimestamp(index, document);
 
@@ -469,7 +470,8 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 			preparedStatement.close();
 			connection.close();
 		} catch (Exception e) {
-			e.printStackTrace();
+			LOGGER.error(document);
+			LOGGER.error(e.getMessage(), e);
 			throw new ShardFailedException(e);
 		}
 

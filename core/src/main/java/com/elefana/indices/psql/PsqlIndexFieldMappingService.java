@@ -53,6 +53,7 @@ import com.elefana.api.indices.GetFieldStatsRequest;
 import com.elefana.api.indices.GetFieldStatsResponse;
 import com.elefana.api.indices.IndexTemplate;
 import com.elefana.api.indices.PutFieldMappingRequest;
+import com.elefana.api.indices.RefreshIndexRequest;
 import com.elefana.indices.FieldMapper;
 import com.elefana.indices.IndexFieldMappingService;
 import com.elefana.indices.V2FieldMapper;
@@ -217,15 +218,33 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 		scheduleIndexForStats(index);
 	}
 	
-	public GetFieldMappingsResponse getFieldMapping(String indexPattern, String type, String field) throws ElefanaException {
-		GetFieldMappingsResponse result = new GetFieldMappingsResponse();
-		for (String index : indexUtils.listIndicesForIndexPattern(indexPattern)) {
-			result.getIndicesMappings().putAll(getMapping(index, type, field));
+	public GetFieldMappingsResponse getFieldMapping(String indexPattern, String typePattern, String fieldPattern) throws ElefanaException {
+		final List<String> matchedIndices = indexUtils.listIndicesForIndexPattern(indexPattern);
+		final List<String> matchedFields = new ArrayList<String>();
+		
+		fieldPattern = fieldPattern.toLowerCase();
+		fieldPattern = fieldPattern.replace("-", "\\-");
+		fieldPattern = fieldPattern.replace("*", "(.*)");
+		fieldPattern = "^" + fieldPattern + "$";
+		
+		final GetFieldMappingsResponse result = new GetFieldMappingsResponse();
+		
+		for (String index : matchedIndices) {
+			for(String type : getTypesForIndex(index, typePattern)) {
+				for(String fieldName : getFieldNames(index, type)) {
+					if (!fieldName.toLowerCase().matches(fieldPattern)) {
+						continue;
+					}
+					matchedFields.add(fieldName);
+				}
+				result.getIndicesMappings().putAll(getMapping(index, type, matchedFields.toArray(new String [matchedFields.size()])));
+				matchedFields.clear();
+			}
 		}
 		return result;
 	}
 
-	public Map<String, Object> getMapping(String index, String typePattern, String field) {
+	public Map<String, Object> getMapping(String index, String typePattern, String... fields) {
 		Map<String, Object> mappings = new HashMap<String, Object>();
 
 		Map<String, Object> indexMapping = new HashMap<String, Object>();
@@ -235,29 +254,28 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 		result.put(index, indexMapping);
 
 		for (String type : getTypesForIndex(index, typePattern)) {
-			Map<String, Object> typeMappings = getIndexTypeMapping(index, type);
+			final Map<String, Object> typeMappings = getIndexTypeMapping(index, type);
+			final Map<String, Object> typeFieldMapping = new HashMap<String, Object>();
+			
+			for(String field : fields) {
+				if (versionInfoService.getApiVersion().isNewerThan(ApiVersion.V_2_4_3)) {
+					Map<String, Object> properties = (Map<String, Object>) typeMappings.get("properties");
 
-			if (versionInfoService.getApiVersion().isNewerThan(ApiVersion.V_2_4_3)) {
-				Map<String, Object> properties = (Map<String, Object>) typeMappings.get("properties");
+					Map<String, Object> mapping = new HashMap<String, Object>();
+					if (properties.containsKey(field)) {
+						mapping.put(field, properties.get(field));
+					}
 
-				Map<String, Object> mapping = new HashMap<String, Object>();
-				if (properties.containsKey(field)) {
-					mapping.put(field, properties.get(field));
+					Map<String, Object> fieldMapping = new HashMap<String, Object>();
+					fieldMapping.put("full_name", field);
+					fieldMapping.put("mapping", mapping);
+
+					typeFieldMapping.put(field, fieldMapping);
+				} else {
+					typeFieldMapping.put(field, typeMappings.get(field));
 				}
-
-				Map<String, Object> fieldMapping = new HashMap<String, Object>();
-				fieldMapping.put("full_name", field);
-				fieldMapping.put("mapping", mapping);
-
-				Map<String, Object> typeFieldMapping = new HashMap<String, Object>();
-				typeFieldMapping.put(field, fieldMapping);
-
-				mappings.put(type, typeFieldMapping);
-			} else {
-				Map<String, Object> typeFieldMapping = new HashMap<String, Object>();
-				typeFieldMapping.put(field, typeMappings.get(field));
-				mappings.put(type, typeFieldMapping);
 			}
+			mappings.put(type, typeFieldMapping);
 		}
 		return result;
 	}
@@ -377,12 +395,11 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 						.queryForRowSet("SELECT _stats FROM elefana_index_field_stats WHERE _index = ? LIMIT 1", index);
 				if (rowSet.next()) {
 					indexResult.put("fields", JsonIterator.deserialize(rowSet.getString("_stats"), new TypeLiteral<Map<String, Object>>(){}));
+					result.getIndices().put(index, indexResult);
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
-
-			result.getIndices().put(index, indexResult);
 		}
 		return result;
 	}
@@ -499,14 +516,7 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 			}
 			Map<String, Object> document = JsonIterator.deserialize(rowSet.getString("_source"), new TypeLiteral<Map<String, Object>>(){});
 			fieldMapper.generateMappings(typeMappings, document);
-
-			PGobject jsonObject = new PGobject();
-			jsonObject.setType("json");
-			jsonObject.setValue(JsonStream.serialize(typeMappings));
-
-			jdbcTemplate.update(
-					"INSERT INTO elefana_index_mapping (_tracking_id, _index, _type, _mapping) VALUES (?, ?, ?, ?) ON CONFLICT (_tracking_id) DO UPDATE SET _mapping = EXCLUDED._mapping",
-					index + "-" + type, index, type, jsonObject);
+			saveMappings(index, type, typeMappings);
 			totalSamples++;
 		}
 		return totalSamples;
@@ -583,9 +593,11 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 			}
 		}
 
+		final String json = JsonStream.serialize(fieldStats);
+		LOGGER.info(json);
 		PGobject jsonObject = new PGobject();
 		jsonObject.setType("json");
-		jsonObject.setValue(JsonStream.serialize(fieldStats));
+		jsonObject.setValue(json);
 
 		jdbcTemplate.update(
 				"INSERT INTO elefana_index_field_stats (_index, _stats) VALUES (?, ?) ON CONFLICT (_index) DO UPDATE SET _stats = EXCLUDED._stats",
@@ -681,9 +693,10 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 
 	private void saveMappings(String index, String type, Map<String, Object> mappings) throws ElefanaException {
 		try {
+			final String json = JsonStream.serialize(mappings);
 			PGobject jsonObject = new PGobject();
 			jsonObject.setType("json");
-			jsonObject.setValue(JsonStream.serialize(mappings));
+			jsonObject.setValue(json);
 
 			jdbcTemplate.update(
 					"INSERT INTO elefana_index_mapping (_tracking_id, _index, _type, _mapping) VALUES (?, ?, ?, ?) ON CONFLICT (_tracking_id) DO UPDATE SET _mapping = EXCLUDED._mapping",
@@ -715,11 +728,11 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 	}
 	
 	@Override
-	public GetFieldMappingsRequest prepareGetFieldMappings(String indexPattern, String typePattern, String field) {
+	public GetFieldMappingsRequest prepareGetFieldMappings(String indexPattern, String typePattern, String fieldPattern) {
 		PsqlGetFieldMappingsRequest result = new PsqlGetFieldMappingsRequest(this);
 		result.setIndicesPattern(indexPattern);
 		result.setTypesPattern(typePattern);
-		result.setField(field);
+		result.setFieldPattern(fieldPattern);
 		return result;
 	}
 	
@@ -746,6 +759,11 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 	@Override
 	public GetFieldStatsRequest prepareGetFieldStats(String indexPattern) {
 		return new PsqlGetFieldStatsRequest(this, indexPattern);
+	}
+	
+	@Override
+	public RefreshIndexRequest prepareRefreshIndex(String index) {
+		return new PsqlRefreshIndexRequest(this, index);
 	}
 
 	@Override

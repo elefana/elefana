@@ -19,6 +19,7 @@ import com.elefana.api.indices.GetFieldCapabilitiesRequest;
 import com.elefana.api.indices.GetFieldMappingsRequest;
 import com.elefana.api.indices.GetFieldStatsRequest;
 import com.elefana.api.indices.PutFieldMappingRequest;
+import com.elefana.api.indices.RefreshIndexRequest;
 
 public interface IndexFieldMappingService {
 	
@@ -28,7 +29,7 @@ public interface IndexFieldMappingService {
 	
 	public GetFieldMappingsRequest prepareGetFieldMappings(String indexPattern, String typePattern);
 	
-	public GetFieldMappingsRequest prepareGetFieldMappings(String indexPattern, String typePattern, String field);
+	public GetFieldMappingsRequest prepareGetFieldMappings(String indexPattern, String typePattern, String fieldPattern);
 	
 	public PutFieldMappingRequest preparePutFieldMappings(String index, String mappings);
 	
@@ -37,4 +38,6 @@ public interface IndexFieldMappingService {
 	public GetFieldCapabilitiesRequest prepareGetFieldCapabilities(String indexPattern);
 	
 	public GetFieldStatsRequest prepareGetFieldStats(String indexPattern);
+	
+	public RefreshIndexRequest prepareRefreshIndex(String index);
 }

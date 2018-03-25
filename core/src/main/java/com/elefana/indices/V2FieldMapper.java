@@ -120,9 +120,24 @@ public class V2FieldMapper extends FieldMapper {
 		}
 		
 		for(String propertyName : document.keySet()) {
-			if(!existingMapping.containsKey(propertyName)) {
-				existingMapping.put(propertyName, newMappings.get(propertyName));
+			if(existingMapping.containsKey(propertyName)) {
+				continue;
 			}
+			if(!newMappings.containsKey(propertyName)) {
+				continue;
+			}
+			Object mapping = newMappings.get(propertyName);
+			if(mapping == null) {
+				continue;
+			}
+			existingMapping.put(propertyName, mapping);
+		}
+		if(!existingMapping.containsKey("_source")) {
+			Map<String, Object> mapping = new HashMap<String, Object>();
+			Map<String, Object> sourceMapping = new HashMap<String, Object>();
+			sourceMapping.put("full_name", "_source");
+			sourceMapping.put("mapping", mapping);
+			existingMapping.put("_source", sourceMapping);
 		}
 	}
 
