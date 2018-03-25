@@ -93,6 +93,7 @@ public class PartitionTableSearchQueryBuilder implements SearchQueryBuilder {
 			queryBuilder.append(requestBodySearch.getFrom());
 		}
 		queryBuilder.append(")");
+		queryBuilder.append(requestBodySearch.getQuerySqlOrderClause());
 		jdbcTemplate.update(queryBuilder.toString());
 		
 		final String query = (requestBodySearch.getSize() == 0 ? "SELECT COUNT(*) " : "SELECT * ") + " FROM " + queryDataTableName;

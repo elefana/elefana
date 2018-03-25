@@ -23,6 +23,7 @@ import com.elefana.search.agg.AggregationsParser;
 import com.elefana.search.agg.RootAggregationContext;
 import com.elefana.search.query.Query;
 import com.elefana.search.query.QueryParser;
+import com.elefana.search.sort.Sort;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
@@ -35,8 +36,10 @@ public class RequestBodySearch {
 	
 	protected final Query query;
 	protected final RootAggregationContext aggregations = new RootAggregationContext();
+	protected final Sort sort = new Sort();
 	
 	protected String querySqlWhereClause;
+	protected String querySqlOrderClause;
 	protected int from;
 	protected int size;
 
@@ -54,6 +57,9 @@ public class RequestBodySearch {
 		
 		if(originalQuery != null && !originalQuery.isEmpty()) {
 			Any context = JsonIterator.deserialize(originalQuery);
+			sort.parse(context);
+			querySqlOrderClause = sort.toSqlClause();
+			
 			if(context.get("size").valueType().equals(ValueType.NUMBER)) {
 				size = context.get("size").toInt();
 			} else {
@@ -66,6 +72,7 @@ public class RequestBodySearch {
 			}
 			this.aggregations.setSubAggregations(AggregationsParser.parseAggregations(originalQuery));
 		} else {
+			querySqlOrderClause = "";
 			size = 10;
 			from = 0;
 		}
@@ -102,6 +109,14 @@ public class RequestBodySearch {
 		return size;
 	}
 	
+	public Sort getSort() {
+		return sort;
+	}
+
+	public String getQuerySqlOrderClause() {
+		return querySqlOrderClause;
+	}
+
 	@Override
 	public int hashCode() {
 		final int prime = 31;

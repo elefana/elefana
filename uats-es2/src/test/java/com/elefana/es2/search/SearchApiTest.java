@@ -16,49 +16,88 @@
 package com.elefana.es2.search;
 
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.equalTo;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
-import org.junit.Before;
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import com.elefana.ElefanaApplication;
+import com.elefana.es2.search.query.AbstractQueryTest;
 
-import io.restassured.RestAssured;
+import io.restassured.response.ValidatableResponse;
+
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = { ElefanaApplication.class })
 @TestPropertySource(locations = "classpath:es2.properties")
-public class SearchApiTest {
-	private static final int DOCUMENT_QUANTITY = 100;
+public class SearchApiTest extends AbstractQueryTest {
 	
-	@Before
-	public void setup() {
-		RestAssured.baseURI = "http://localhost:9201";
-	}
-
 	@Test
-	public void testFieldStats() {
+	public void testSort() {
 		final String index = UUID.randomUUID().toString();
 		final String type = "test";
+		final int totalDocuments = 10;
 		
-		generateDocuments(DOCUMENT_QUANTITY, index, type);
+		generateRangeDocuments(index, type);
+		
+		ValidatableResponse response = given()
+			.request()
+			.body("{\"query\":{\"match_all\":{}}, \"sort\": [{\"value\": \"desc\"}]}")
+		.when()
+			.post("/" + index + "/" + type + "/_search")
+		.then()
+			.log().all()
+			.statusCode(200)
+			.body("hits.total", equalTo(totalDocuments));
+		
+		assertResponseDescending(response);
+		
+		response = given()
+			.request()
+			.body("{\"query\":{\"match_all\":{}}, \"sort\": [{\"value\": {\"order\": \"desc\"}}]}")
+		.when()
+			.post("/" + index + "/" + type + "/_search")
+		.then()
+			.log().all()
+			.statusCode(200)
+			.body("hits.total", equalTo(totalDocuments));
+		
+		assertResponseDescending(response);
+		
+		response = given()
+				.request()
+				.body("{\"query\":{\"match_all\":{}}, \"sort\": [\"value\"]}")
+			.when()
+				.post("/" + index + "/" + type + "/_search")
+			.then()
+				.log().all()
+				.statusCode(200)
+				.body("hits.total", equalTo(totalDocuments));
+		
+		assertResponseAscending(response);
 	}
 	
-	private void generateDocuments(int quantity, String index, String type) {
-		for(int i = 0; i < quantity; i++) {
-			given()
-				.request()
-				.body("{\"message\" : \"This is message " + i + "\",\"date\" : \"2009-11-15T14:12:12\"}")
-			.when()
-				.post("/" + index + "/" + type + "/")
-			.then()
-				.statusCode(201);
+	private void assertResponseDescending(ValidatableResponse response) {
+		for(int i = 1; i < 10; i++) {
+			int previousValue = response.extract().path("hits.hits[" + (i - 1) + "]._source.value");
+			int currentValue = response.extract().path("hits.hits[" + i + "]._source.value");
+			Assert.assertEquals(true, previousValue > currentValue);
+		}
+	}
+	
+	private void assertResponseAscending(ValidatableResponse response) {
+		for(int i = 1; i < 10; i++) {
+			int previousValue = response.extract().path("hits.hits[" + (i - 1) + "]._source.value");
+			int currentValue = response.extract().path("hits.hits[" + i + "]._source.value");
+			Assert.assertEquals(true, currentValue > previousValue);
 		}
 	}
 }

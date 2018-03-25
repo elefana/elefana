@@ -91,6 +91,7 @@ public class CitusSearchQueryBuilder implements SearchQueryBuilder {
 			queryBuilder.append(requestBodySearch.getSize());
 		}
 		queryBuilder.append(')');
+		queryBuilder.append(requestBodySearch.getQuerySqlOrderClause());
 		
 		jdbcTemplate.update(queryBuilder.toString());
 		
