@@ -14,6 +14,7 @@ import java.util.zip.GZIPOutputStream;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.elefana.node.NodeSettingsService;
@@ -100,6 +101,7 @@ public class HttpServerTest extends ChannelInboundHandlerAdapter {
 	}
 	
 	@Test
+	@Ignore
 	public void testHttpPipelinedServer() throws Exception {
 		final int port = 9204;
 		
@@ -134,6 +136,7 @@ public class HttpServerTest extends ChannelInboundHandlerAdapter {
 	}
 	
 	@Test
+	@Ignore
 	public void testGzipHttpPipelinedServer() throws Exception {
 		final int port = 9205;
 		
