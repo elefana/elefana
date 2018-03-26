@@ -51,6 +51,7 @@ import com.elefana.document.BulkTask;
 import com.elefana.document.IndexTarget;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.util.IndexUtils;
+import com.elefana.util.NamedThreadFactory;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
@@ -60,6 +61,9 @@ import com.jsoniter.spi.JsonException;
 public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor {
 	private static final String[] DEFAULT_TABLESPACES = new String[] { "" };
 	private static final Logger LOGGER = LoggerFactory.getLogger(PsqlBulkIngestService.class);
+	private static final String THREAD_PREFIX = BulkIngestService.class.getSimpleName() + "-";
+	private static final String REQUEST_THREAD_PREFIX = THREAD_PREFIX + "requestHandler" + "-";
+	private static final String PROCESSOR_THREAD_PREFIX = THREAD_PREFIX + "processor" + "-";
 
 	private static final String OPERATION_INDEX = "index";
 	private static final String NEW_LINE = "\n";
@@ -81,7 +85,7 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 
 	private final AtomicInteger tablespaceIndex = new AtomicInteger();
 	private String[] tablespaces;
-	private ExecutorService executorService;
+	private ExecutorService bulkRequestExecutorService, bulkProcessingExecutorService;
 
 	private Timer bulkOperationsTotalTimer, bulkOperationsPsqlTimer, bulkOperationsSerializationTimer;
 	private Meter bulkOperationsSuccess, bulkOperationsFailed;
@@ -95,7 +99,8 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 
 		final int totalThreads = environment.getProperty("elefana.service.bulk.threads", Integer.class,
 				Runtime.getRuntime().availableProcessors());
-		executorService = Executors.newFixedThreadPool(totalThreads);
+		bulkRequestExecutorService = Executors.newFixedThreadPool(totalThreads, new NamedThreadFactory(REQUEST_THREAD_PREFIX));
+		bulkProcessingExecutorService = Executors.newFixedThreadPool(totalThreads, new NamedThreadFactory(PROCESSOR_THREAD_PREFIX));
 
 		bulkOperationsTotalTimer = metricRegistry.timer(MetricRegistry.name("bulk", "operations", "duration", "total"));
 		bulkOperationsSerializationTimer = metricRegistry
@@ -107,7 +112,8 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 
 	@PreDestroy
 	public void preDestroy() {
-		executorService.shutdown();
+		bulkRequestExecutorService.shutdown();
+		bulkProcessingExecutorService.shutdown();
 	}
 
 	@Override
@@ -193,7 +199,11 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 			final BulkTask task = new BulkTask(bulkOperationsPsqlTimer, jdbcTemplate, indexOperations, tablespace,
 					index, queryTarget, i, operationSize);
 			bulkTasks.add(task);
-			results.add(executorService.submit(task));
+			try {
+				results.add(bulkProcessingExecutorService.submit(task));
+			} catch (Exception e) {
+				LOGGER.error(e.getMessage(), e);
+			}
 		}
 
 		for (int i = 0; i < results.size(); i++) {
@@ -228,7 +238,7 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 
 	@Override
 	public <T> Future<T> submit(Callable<T> request) {
-		return executorService.submit(request);
+		return bulkRequestExecutorService.submit(request);
 	}
 
 	private boolean isEmptyTablespaceList(String[] tablespaces) {

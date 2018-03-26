@@ -103,10 +103,10 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 	}
 
 	@Override
-	public List<BulkItemResponse> call() throws Exception {
+	public List<BulkItemResponse> call() {
 		final List<BulkItemResponse> results = new ArrayList<BulkItemResponse>(1);
 		Connection connection = null;
-
+		
 		try {
 			connection = jdbcTemplate.getDataSource().getConnection();
 
