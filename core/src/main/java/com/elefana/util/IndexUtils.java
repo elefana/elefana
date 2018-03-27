@@ -73,6 +73,39 @@ public interface IndexUtils {
 	 * @return The escaped JSON string
 	 */
 	public static String psqlEscapeString(String json) {
-		return json.replace("\\\"", "\\\\\"");
+		if(!json.contains("\\\"")) {
+			return json;
+		}
+		for(int i = 0; i < json.length() - 1; i++) {
+			if(json.charAt(i) != '\\') {
+				continue;
+			}
+			switch(json.charAt(i + 1)) {
+			case '\\':
+				if(i + 2 >= json.length()) {
+					continue;
+				}
+				switch(json.charAt(i + 2)) {
+				case '\\':
+					if(i + 3 >= json.length()) {
+						continue;
+					}
+					switch(json.charAt(i + 3)) {
+					case '\"':
+						i += 3;
+						continue;
+					}
+					break;
+				}
+				break;
+			case '\"':
+				json = json.substring(0, i) + "\\\\\\\"" + json.substring(i + 2);
+				i += 3;
+				break;
+			default:
+				continue;
+			}
+		}
+		return json;
 	}
 }

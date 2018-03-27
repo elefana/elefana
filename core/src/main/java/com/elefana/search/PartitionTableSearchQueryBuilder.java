@@ -42,15 +42,15 @@ public class PartitionTableSearchQueryBuilder implements SearchQueryBuilder {
 		final StringBuilder queryBuilder = new StringBuilder();
 		queryBuilder.append("CREATE TEMP TABLE ");
 		queryBuilder.append(queryDataTableName);
-		queryBuilder.append(" AS (");
 		
-		queryBuilder.append("SELECT * FROM ");
-		queryBuilder.append(IndexUtils.DATA_TABLE);
 		if(indices.isEmpty()) {
-			if (!requestBodySearch.getQuery().isMatchAllQuery() || !IndexUtils.isTypesEmpty(types)) {
-				queryBuilder.append(" WHERE TRUE");
-			}
+			queryBuilder.append(" (LIKE ");
+			queryBuilder.append(IndexUtils.DATA_TABLE);
+			queryBuilder.append(") ");
 		} else {
+			queryBuilder.append(" AS (");
+			queryBuilder.append("SELECT * FROM ");
+			queryBuilder.append(IndexUtils.DATA_TABLE);
 			queryBuilder.append(" WHERE _index IN (");
 			for(int i = 0; i < indices.size(); i++) {
 				if(i > 0) {
@@ -61,39 +61,39 @@ public class PartitionTableSearchQueryBuilder implements SearchQueryBuilder {
 				queryBuilder.append("'");
 			}
 			queryBuilder.append(") ");
-		}
-		
-		if (!requestBodySearch.getQuery().isMatchAllQuery()) {
-			queryBuilder.append(" AND (");
-			queryBuilder.append(requestBodySearch.getQuerySqlWhereClause());
-			queryBuilder.append(")");
-		}
-		
-		if (!IndexUtils.isTypesEmpty(types)) {
-			queryBuilder.append(" AND (");
-			for (int j = 0; j < types.length; j++) {
-				if (types[j].length() == 0) {
-					continue;
+			
+			if (!requestBodySearch.getQuery().isMatchAllQuery()) {
+				queryBuilder.append(" AND (");
+				queryBuilder.append(requestBodySearch.getQuerySqlWhereClause());
+				queryBuilder.append(")");
+			}
+			
+			if (!IndexUtils.isTypesEmpty(types)) {
+				queryBuilder.append(" AND (");
+				for (int j = 0; j < types.length; j++) {
+					if (types[j].length() == 0) {
+						continue;
+					}
+					if (j > 0) {
+						queryBuilder.append(" OR ");
+					}
+					queryBuilder.append("_type = '");
+					queryBuilder.append(types[j]);
+					queryBuilder.append("'");
 				}
-				if (j > 0) {
-					queryBuilder.append(" OR ");
-				}
-				queryBuilder.append("_type = '");
-				queryBuilder.append(types[j]);
-				queryBuilder.append("'");
+				queryBuilder.append(")");
+			}
+			if (requestBodySearch.getSize() > 0) {
+				queryBuilder.append(" LIMIT ");
+				queryBuilder.append(requestBodySearch.getSize());
+			}
+			if (requestBodySearch.getFrom() > 0) {
+				queryBuilder.append(" OFFSET ");
+				queryBuilder.append(requestBodySearch.getFrom());
 			}
 			queryBuilder.append(")");
+			queryBuilder.append(requestBodySearch.getQuerySqlOrderClause());
 		}
-		if (requestBodySearch.getSize() > 0) {
-			queryBuilder.append(" LIMIT ");
-			queryBuilder.append(requestBodySearch.getSize());
-		}
-		if (requestBodySearch.getFrom() > 0) {
-			queryBuilder.append(" OFFSET ");
-			queryBuilder.append(requestBodySearch.getFrom());
-		}
-		queryBuilder.append(")");
-		queryBuilder.append(requestBodySearch.getQuerySqlOrderClause());
 		jdbcTemplate.update(queryBuilder.toString());
 		
 		final String query = (requestBodySearch.getSize() == 0 ? "SELECT COUNT(*) " : "SELECT * ") + " FROM " + queryDataTableName;

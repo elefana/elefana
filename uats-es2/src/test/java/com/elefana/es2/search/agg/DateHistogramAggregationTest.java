@@ -21,10 +21,10 @@ import static org.hamcrest.Matchers.equalTo;
 
 import java.util.UUID;
 
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 
@@ -81,5 +81,25 @@ public class DateHistogramAggregationTest extends AbstractAggregationTest {
 			.statusCode(200)
 			.body("aggregations.aggs_result.buckets[0]", notNullValue())
 			.body("aggregations.aggs_result.buckets[" + (DOCUMENT_QUANTITY - 1) + "]", notNullValue());
+	}
+	
+	@Test
+	public void testDateHistogramAggregationWithNoResults() {
+		final String index = UUID.randomUUID().toString();
+		final String type = "test";
+		
+		try {
+			Thread.sleep(1000L);
+		} catch (Exception e) {}
+		
+		given()
+			.request()
+			.body("{\"query\":{\"match_all\":{}}, \"size\":" + DOCUMENT_QUANTITY 
+					+ ", \"aggs\" : {\"aggs_result\" : { \"date_histogram\" : { \"field\" : \"timestamp\", \"interval\": \"day\" }}}}")
+		.when()
+			.post("/" + index + "/_search")
+		.then()
+			.statusCode(200)
+			.body("aggregations.aggs_result.buckets.size()", equalTo(0));
 	}
 }

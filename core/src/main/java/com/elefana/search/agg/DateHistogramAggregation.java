@@ -51,6 +51,15 @@ public class DateHistogramAggregation extends BucketAggregation {
 
 	@Override
 	public void executeSqlQuery(AggregationExec aggregationExec) throws ElefanaException {
+		final Map<String, Object> result = new HashMap<String, Object>();
+		final List<Map<String, Object>> buckets = new ArrayList<Map<String, Object>>();
+		
+		if(aggregationExec.getSearchResponse().getHits().getTotal() == 0) {
+			result.put("buckets", buckets);
+			aggregationExec.getAggregationsResult().put(aggregationExec.getAggregation().getAggregationName(), result);
+			return;
+		}
+		
 		final String fieldType = aggregationExec.getIndexFieldMappingService()
 				.getFirstFieldMappingType(aggregationExec.getIndices(), aggregationExec.getTypes(), fieldName);
 		if (fieldType == null || fieldType.isEmpty()) {
@@ -58,9 +67,6 @@ public class DateHistogramAggregation extends BucketAggregation {
 		}
 		final String fieldFormat = aggregationExec.getIndexFieldMappingService()
 				.getFirstFieldMappingFormat(aggregationExec.getIndices(), aggregationExec.getTypes(), fieldName);
-
-		final Map<String, Object> result = new HashMap<String, Object>();
-		final List<Map<String, Object>> buckets = new ArrayList<Map<String, Object>>();
 
 		final String aggregationTableName = AGGREGATION_TABLE_PREFIX + aggregationExec.getRequestBodySearch().hashCode()
 				+ "_" + fieldName + "_" + interval;
@@ -168,7 +174,7 @@ public class DateHistogramAggregation extends BucketAggregation {
 			bucket.put("doc_count", aggResult.get("count"));
 
 			for (Aggregation aggregation : aggregationExec.getAggregation().getSubAggregations()) {
-				aggregation.executeSqlQuery(aggregationExec, bucket, bucketTableName);
+				aggregation.executeSqlQuery(aggregationExec, aggregationExec.getSearchResponse(), bucket, bucketTableName);
 			}
 			buckets.add(bucket);
 			aggregationExec.getTempTablesCreated().add(bucketTableName);

@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.elefana.api.exception.ElefanaException;
+import com.elefana.api.search.SearchResponse;
 import com.elefana.indices.psql.PsqlIndexFieldMappingService;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.search.RequestBodySearch;
@@ -38,20 +39,20 @@ public class RootAggregationContext extends BucketAggregation {
 	}
 
 	@Override
-	public void executeSqlQuery(AggregationExec parentExec, Map<String, Object> aggregationsResult, String queryTable) throws ElefanaException {
+	public void executeSqlQuery(AggregationExec parentExec, SearchResponse searchResponse, Map<String, Object> aggregationsResult, String queryTable) throws ElefanaException {
 		for (Aggregation aggregation : subaggregations) {
-			aggregation.executeSqlQuery(parentExec, aggregationsResult, queryTable);
+			aggregation.executeSqlQuery(parentExec, searchResponse, aggregationsResult, queryTable);
 		}
 	}
 
 	@Override
 	public void executeSqlQuery(List<String> indices, String[] types, JdbcTemplate jdbcTemplate,
 			NodeSettingsService nodeSettingsService, PsqlIndexFieldMappingService indexFieldMappingService,
-			Map<String, Object> aggregationsResult, List<String> tempTablesCreated, String queryTable,
+			SearchResponse searchResponse, Map<String, Object> aggregationsResult, List<String> tempTablesCreated, String queryTable,
 			RequestBodySearch requestBodySearch) throws ElefanaException {
 		for (Aggregation aggregation : subaggregations) {
 			aggregation.executeSqlQuery(indices, types, jdbcTemplate, nodeSettingsService, indexFieldMappingService,
-					aggregationsResult, tempTablesCreated, queryTable, requestBodySearch);
+					searchResponse, aggregationsResult, tempTablesCreated, queryTable, requestBodySearch);
 		}
 	}
 

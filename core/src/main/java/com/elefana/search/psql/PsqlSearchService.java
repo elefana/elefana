@@ -180,7 +180,7 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 		final Map<String, Object> aggregationsResult = new HashMap<String, Object>();
 
 		requestBodySearch.getAggregations().executeSqlQuery(indices, types, jdbcTemplate, nodeSettingsService,
-				indexFieldMappingService, aggregationsResult, temporaryTablesCreated, searchQuery.getResultTable(),
+				indexFieldMappingService, result, aggregationsResult, temporaryTablesCreated, searchQuery.getResultTable(),
 				requestBodySearch);
 		result.setAggregations(aggregationsResult);
 		

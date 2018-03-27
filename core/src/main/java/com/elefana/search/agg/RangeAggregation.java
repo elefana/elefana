@@ -79,6 +79,12 @@ public class RangeAggregation extends BucketAggregation {
 		final Map<String, Object> result = new HashMap<String, Object>();
 		final List<Map<String, Object>> buckets = new ArrayList<Map<String, Object>>();
 		
+		if(aggregationExec.getSearchResponse().getHits().getTotal() == 0) {
+			result.put("buckets", buckets);
+			aggregationExec.getAggregationsResult().put(aggregationExec.getAggregation().getAggregationName(), result);
+			return;
+		}
+		
 		for(Range range : ranges) {
 			final String rangeTableName = AGGREGATION_TABLE_PREFIX + aggregationExec.getRequestBodySearch().hashCode() + "_" + fieldName + "_" + range.toString();
 			final Map<String, Object> bucket = new HashMap<String, Object>();
@@ -152,7 +158,7 @@ public class RangeAggregation extends BucketAggregation {
 				bucket.put("doc_count", aggResult.get("count"));
 				
 				for(Aggregation aggregation : aggregationExec.getAggregation().getSubAggregations()) {
-					aggregation.executeSqlQuery(aggregationExec, bucket, rangeTableName);
+					aggregation.executeSqlQuery(aggregationExec, aggregationExec.getSearchResponse(), bucket, rangeTableName);
 				}
 			} else {
 				Map<String, Object> aggResult = aggregationExec.getJdbcTemplate().queryForMap(queryBuilder.toString());

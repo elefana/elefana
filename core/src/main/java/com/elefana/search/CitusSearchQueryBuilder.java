@@ -33,69 +33,75 @@ public class CitusSearchQueryBuilder implements SearchQueryBuilder {
 		this.jdbcTemplate = jdbcTemplate;
 		this.indexUtils = indexUtils;
 	}
-	
+
 	@Override
-	public SearchQuery buildQuery(List<String> indices, String[] types,
-			RequestBodySearch requestBodySearch) {
+	public SearchQuery buildQuery(List<String> indices, String[] types, RequestBodySearch requestBodySearch) {
 		final String queryDataTableName = SEARCH_TABLE_PREFIX + requestBodySearch.hashCode();
 
 		final StringBuilder queryBuilder = new StringBuilder();
 		queryBuilder.append("CREATE TEMP TABLE ");
 		queryBuilder.append(queryDataTableName);
-		queryBuilder.append(" AS (");
-		
-		queryBuilder.append("SELECT * FROM (");
-		for(int i = 0; i < indices.size(); i++) {
-			if(i > 0) {
-				queryBuilder.append(" UNION ALL");
-			}
-			queryBuilder.append('(');
-			queryBuilder.append("SELECT * FROM ");
-			queryBuilder.append(indexUtils.getQueryTarget(indices.get(i)));
-			
-			if (!requestBodySearch.getQuery().isMatchAllQuery()) {
-				queryBuilder.append(" WHERE (");
-				queryBuilder.append(requestBodySearch.getQuerySqlWhereClause());
-				queryBuilder.append(")");
-			}
-			
-			if (!IndexUtils.isTypesEmpty(types)) {
-				if (requestBodySearch.getQuery().isMatchAllQuery()) {
+
+		if (indices.isEmpty()) {
+			queryBuilder.append(
+					" (_index VARCHAR(255) NOT NULL, _type VARCHAR(255) NOT NULL, _id VARCHAR(255) NOT NULL, _timestamp BIGINT, _source jsonb)");
+		} else {
+			queryBuilder.append(" AS (");
+
+			queryBuilder.append("SELECT * FROM (");
+			for (int i = 0; i < indices.size(); i++) {
+				if (i > 0) {
+					queryBuilder.append(" UNION ALL");
+				}
+				queryBuilder.append('(');
+				queryBuilder.append("SELECT * FROM ");
+				queryBuilder.append(indexUtils.getQueryTarget(indices.get(i)));
+
+				if (!requestBodySearch.getQuery().isMatchAllQuery()) {
 					queryBuilder.append(" WHERE (");
-				} else {
-					queryBuilder.append(" AND (");
+					queryBuilder.append(requestBodySearch.getQuerySqlWhereClause());
+					queryBuilder.append(")");
 				}
-				for (int j = 0; j < types.length; j++) {
-					if (types[j].length() == 0) {
-						continue;
+
+				if (!IndexUtils.isTypesEmpty(types)) {
+					if (requestBodySearch.getQuery().isMatchAllQuery()) {
+						queryBuilder.append(" WHERE (");
+					} else {
+						queryBuilder.append(" AND (");
 					}
-					if (j > 0) {
-						queryBuilder.append(" OR ");
+					for (int j = 0; j < types.length; j++) {
+						if (types[j].length() == 0) {
+							continue;
+						}
+						if (j > 0) {
+							queryBuilder.append(" OR ");
+						}
+						queryBuilder.append("_type = '");
+						queryBuilder.append(types[j]);
+						queryBuilder.append("'");
 					}
-					queryBuilder.append("_type = '");
-					queryBuilder.append(types[j]);
-					queryBuilder.append("'");
+					queryBuilder.append(")");
 				}
-				queryBuilder.append(")");
+
+				queryBuilder.append(')');
 			}
-			
+			queryBuilder.append(") AS entries");
+			if (requestBodySearch.getFrom() > 0) {
+				queryBuilder.append(" OFFSET ");
+				queryBuilder.append(requestBodySearch.getFrom());
+			}
+			if (requestBodySearch.getSize() > 0) {
+				queryBuilder.append(" LIMIT ");
+				queryBuilder.append(requestBodySearch.getSize());
+			}
 			queryBuilder.append(')');
+			queryBuilder.append(requestBodySearch.getQuerySqlOrderClause());
 		}
-		queryBuilder.append(") AS entries");
-		if (requestBodySearch.getFrom() > 0) {
-			queryBuilder.append(" OFFSET ");
-			queryBuilder.append(requestBodySearch.getFrom());
-		}
-		if (requestBodySearch.getSize() > 0) {
-			queryBuilder.append(" LIMIT ");
-			queryBuilder.append(requestBodySearch.getSize());
-		}
-		queryBuilder.append(')');
-		queryBuilder.append(requestBodySearch.getQuerySqlOrderClause());
-		
+
 		jdbcTemplate.update(queryBuilder.toString());
-		
-		final String query = (requestBodySearch.getSize() == 0 ? "SELECT COUNT(*) " : "SELECT * ") + " FROM " + queryDataTableName;
+
+		final String query = (requestBodySearch.getSize() == 0 ? "SELECT COUNT(*) " : "SELECT * ") + " FROM "
+				+ queryDataTableName;
 		final SearchQuery result = new SearchQuery(queryDataTableName, query);
 		result.getTemporaryTables().add(queryDataTableName);
 		return result;
