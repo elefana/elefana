@@ -85,9 +85,10 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 
 	@PostConstruct
 	public void postConstruct() {
-		final int totalThreads = environment.getProperty("elefana.service.search.threads", Integer.class, Runtime.getRuntime().availableProcessors());
+		final int totalThreads = environment.getProperty("elefana.service.search.threads", Integer.class,
+				Runtime.getRuntime().availableProcessors());
 		executorService = Executors.newFixedThreadPool(totalThreads);
-		
+
 		searchTime = metricRegistry.histogram(MetricRegistry.name("search", "time"));
 		searchHits = metricRegistry.histogram(MetricRegistry.name("search", "hits"));
 
@@ -97,19 +98,17 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 			searchQueryBuilder = new PartitionTableSearchQueryBuilder(jdbcTemplate, indexUtils);
 		}
 	}
-	
+
 	@PreDestroy
 	public void preDestroy() {
 		executorService.shutdown();
 	}
-	
-	public MultiSearchResponse multiSearch(String httpRequest)
-			throws ElefanaException {
+
+	public MultiSearchResponse multiSearch(String httpRequest) throws ElefanaException {
 		return multiSearch(null, null, httpRequest);
 	}
-	
-	public MultiSearchResponse multiSearch(String fallbackIndex, String httpRequest)
-			throws ElefanaException {
+
+	public MultiSearchResponse multiSearch(String fallbackIndex, String httpRequest) throws ElefanaException {
 		return multiSearch(fallbackIndex, null, httpRequest);
 	}
 
@@ -118,9 +117,11 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 		String[] lines = httpRequest.split("\n");
 
 		final MultiSearchResponse result = new MultiSearchResponse();
-		
+
 		for (int i = 0; i < lines.length; i += 2) {
-			Map<String, Object> indexTypeInfo = JsonIterator.deserialize(lines[i], new TypeLiteral<Map<String, Object>>(){});
+			Map<String, Object> indexTypeInfo = JsonIterator.deserialize(lines[i],
+					new TypeLiteral<Map<String, Object>>() {
+					});
 			indexTypeInfo.putIfAbsent("index", fallbackIndex);
 			indexTypeInfo.putIfAbsent("type", fallbackType);
 
@@ -153,8 +154,7 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 		return search(indexPattern, null, httpRequest);
 	}
 
-	public SearchResponse search(String indexPattern, String typesPattern, String httpRequest)
-			throws ElefanaException {
+	public SearchResponse search(String indexPattern, String typesPattern, String httpRequest) throws ElefanaException {
 		List<String> indices = indexPattern == null || indexPattern.isEmpty() ? indexUtils.listIndices()
 				: indexUtils.listIndicesForIndexPattern(indexPattern);
 		String[] types = typesPattern == null ? EMPTY_TYPES_LIST : typesPattern.split(",");
@@ -180,10 +180,10 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 		final Map<String, Object> aggregationsResult = new HashMap<String, Object>();
 
 		requestBodySearch.getAggregations().executeSqlQuery(indices, types, jdbcTemplate, nodeSettingsService,
-				indexFieldMappingService, result, aggregationsResult, temporaryTablesCreated, searchQuery.getResultTable(),
-				requestBodySearch);
+				indexFieldMappingService, result, aggregationsResult, temporaryTablesCreated,
+				searchQuery.getResultTable(), requestBodySearch);
 		result.setAggregations(aggregationsResult);
-		
+
 		tableGarbageCollector.queueTemporaryTablesForDeletion(temporaryTablesCreated);
 		return result;
 	}
@@ -211,7 +211,7 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 	private SearchResponse convertSqlQueryResultToSearchResult(SqlRowSet rowSet, long startTime, int size)
 			throws ElefanaException {
 		final SearchResponse result = new SearchResponse();
-		
+
 		result.getShards().put("total", 1);
 		result.getShards().put("successful", 1);
 		result.getShards().put("failed", 0);
@@ -226,7 +226,9 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 				searchHit._type = rowSet.getString("_type");
 				searchHit._id = rowSet.getString("_id");
 				searchHit._score = 1.0;
-				searchHit._source = JsonIterator.deserialize(rowSet.getString("_source"), new TypeLiteral<Map<String, Object>>(){});
+				searchHit._source = JsonIterator.deserialize(IndexUtils.psqlUnescapeString(rowSet.getString("_source")),
+						new TypeLiteral<Map<String, Object>>() {
+						});
 				result.getHits().getHits().add(searchHit);
 				count++;
 			}
@@ -302,7 +304,7 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 		result.setTypePattern(typesPattern);
 		return result;
 	}
-	
+
 	@Override
 	public <T> Future<T> submit(Callable<T> request) {
 		return executorService.submit(request);

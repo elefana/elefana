@@ -19,30 +19,26 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 
-import static org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessRequest;
-import static org.springframework.restdocs.restassured3.RestAssuredRestDocumentation.document;
-import static org.springframework.restdocs.restassured3.RestAssuredRestDocumentation.documentationConfiguration;
-import static org.springframework.restdocs.restassured3.operation.preprocess.RestAssuredPreprocessors.modifyUris;
-
+import java.io.IOException;
+import java.util.Scanner;
 import java.util.UUID;
 
+import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.restdocs.JUnitRestDocumentation;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import com.elefana.DocumentedTest;
 import com.elefana.ElefanaApplication;
+import com.jsoniter.JsonIterator;
+import com.jsoniter.any.Any;
 
 import io.restassured.RestAssured;
-import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.http.ContentType;
-import io.restassured.specification.RequestSpecification;
+import io.restassured.response.ValidatableResponse;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = { ElefanaApplication.class })
@@ -83,9 +79,8 @@ public class DocumentApiTest extends DocumentedTest {
 	}
 	
 	@Test
-	public void testIndexWithEscapedJson() {
-		final String message = "This is a test";
-		final String document = "{\"message\" : \"[{\\\"" + message + "\\\"}]\",\"date\" : \"2017-01-14T14:12:12\"}";
+	public void testIndexWithEscapedJson() throws IOException {
+		final String document = new Scanner(DocumentApiTest.class.getResource("/escapedSample.json").openStream()).nextLine();
 		final String id = UUID.randomUUID().toString();
 
 		given()
@@ -102,10 +97,15 @@ public class DocumentApiTest extends DocumentedTest {
 			.body("_version", equalTo(1))
 			.body("created", equalTo(true));
 		
-		given().when().get("/" + INDEX + "/" + TYPE + "/" + id)
+		ValidatableResponse response = given().when().get("/" + INDEX + "/" + TYPE + "/" + id)
 		.then()
 			.statusCode(200)
-			.body("_source.message", equalTo("[{\\\"" + message + "\\\"}]"));
+			.log().all();
+		
+		Any expectedAny = JsonIterator.deserialize(document);
+		Any resultAny = JsonIterator.deserialize(response.extract().asString()).get("_source");
+		Assert.assertEquals(expectedAny, resultAny);
+		Assert.assertEquals(expectedAny.get("message").toString(), resultAny.get("message").toString());
 		
 		given()
 			.request()
@@ -119,19 +119,18 @@ public class DocumentApiTest extends DocumentedTest {
 			.body("_type", equalTo(TYPE))
 			.body("_id", notNullValue());		
 		
-		given()
+		response = given()
 			.request()
 			.body("{\"docs\" : [{\"_index\": \"" + INDEX + "\",\"_type\" : \"" + TYPE + "\",\"_id\" : \"" + id + "\"}]}")
 		.when()
-			.get("/_mget")
+			.post("/_mget")
 		.then()
 			.log().all()
-			.statusCode(200)
-			.body("docs[0]._index", equalTo(INDEX))
-			.body("docs[0]._type", equalTo(TYPE))
-			.body("docs[0]._id", equalTo(id))
-			.body("docs[0]._source.message", equalTo("[{\\\"" + message + "\\\"}]"))
-			.body("docs[0].found", equalTo(true));
+			.statusCode(200);
+		
+		resultAny = JsonIterator.deserialize(response.extract().asString()).get("docs").get(0).get("_source");
+		Assert.assertEquals(expectedAny, resultAny);
+		Assert.assertEquals(expectedAny.get("message").toString(), resultAny.get("message").toString());
 	}
 
 	@Test

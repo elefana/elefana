@@ -40,6 +40,7 @@ subprojects {
 	ext {
 		codecVersion = '1.10'
 		commonsMathVersion = '3.6.1'
+		commonsTextVersion = '1.3'
 		commonsValidatorVersion = '1.6'
 		esCompatVersion = '1.0.1'
 		esQueryStringVersion = '1.0.1'
@@ -209,6 +210,7 @@ project(":" + rootProject.name + "-core") {
 		
 		testCompile('org.springframework.boot:spring-boot-starter-test')
 		testCompile "io.rest-assured:rest-assured:$restAssuredVersion"
+		testCompile "org.apache.commons:commons-text:$commonsTextVersion"
 	}
 	
 	processResources {
@@ -271,6 +273,7 @@ project(":" + rootProject.name + "-uats-es2") {
 		testCompile "io.rest-assured:rest-assured:$restAssuredVersion"
 		testCompile "com.zaxxer:HikariCP:$hikariVersion"
 		testCompile "org.apache.commons:commons-math3:$commonsMathVersion"
+		testCompile "org.apache.commons:commons-text:$commonsTextVersion"
 		testCompile project(path: ":" + rootProject.name + "-core")
 		
 		asciidoctor "org.springframework.restdocs:spring-restdocs-asciidoctor:${project.ext['spring-restdocs.version']}"
@@ -301,6 +304,7 @@ project(":" + rootProject.name + "-uats-es2-citus") {
 		testCompile "io.rest-assured:rest-assured:$restAssuredVersion"
 		testCompile "com.zaxxer:HikariCP:$hikariVersion"
 		testCompile "org.apache.commons:commons-math3:$commonsMathVersion"
+		testCompile "org.apache.commons:commons-text:$commonsTextVersion"
 		testCompile project(path: ":" + rootProject.name + "-core")
 		
 		asciidoctor "org.springframework.restdocs:spring-restdocs-asciidoctor:${project.ext['spring-restdocs.version']}"
@@ -345,6 +349,7 @@ project(":" + rootProject.name + "-uats-es5") {
 		testCompile "io.rest-assured:rest-assured:$restAssuredVersion"
 		testCompile "com.zaxxer:HikariCP:$hikariVersion"
 		testCompile "org.apache.commons:commons-math3:$commonsMathVersion"
+		testCompile "org.apache.commons:commons-text:$commonsTextVersion"
 		testCompile project(path: ":" + rootProject.name + "-core")
 		
 		asciidoctor "org.springframework.restdocs:spring-restdocs-asciidoctor:${project.ext['spring-restdocs.version']}"

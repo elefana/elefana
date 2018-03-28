@@ -74,20 +74,21 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 	private VersionInfoService versionInfoService;
 	@Autowired
 	private PsqlIndexFieldMappingService indexFieldMappingService;
-	
+
 	private ExecutorService executorService;
-	
+
 	@PostConstruct
 	public void postConstruct() {
-		final int totalThreads = environment.getProperty("elefana.service.document.threads", Integer.class, Runtime.getRuntime().availableProcessors());
+		final int totalThreads = environment.getProperty("elefana.service.document.threads", Integer.class,
+				Runtime.getRuntime().availableProcessors());
 		executorService = Executors.newFixedThreadPool(totalThreads);
 	}
-	
+
 	@PreDestroy
 	public void preDestroy() {
 		executorService.shutdown();
 	}
-	
+
 	@Override
 	public GetRequest prepareGet(String index, String type, String id) {
 		return new PsqlGetRequest(this, index, type, id);
@@ -129,23 +130,25 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 		result.setIndex(index);
 		result.setType(type);
 		result.setId(id);
-		
+
 		try {
 			final String queryTarget = indexUtils.getQueryTarget(index);
-			
+
 			SqlRowSet resultSet;
-			if(nodeSettingsService.isUsingCitus()) {
+			if (nodeSettingsService.isUsingCitus()) {
 				String query = "SELECT * FROM " + queryTarget + " WHERE _type = ? AND _id = ?";
 				resultSet = jdbcTemplate.queryForRowSet(query, type, id);
 			} else {
 				String query = "SELECT * FROM " + queryTarget + " WHERE _index = ? AND _type = ? AND _id = ?";
 				resultSet = jdbcTemplate.queryForRowSet(query, index, type, id);
 			}
-			
-			if(resultSet.next()) {
+
+			if (resultSet.next()) {
 				result.setVersion(1);
 				result.setFound(true);
-				result.setSource(JsonIterator.deserialize(resultSet.getString("_source"), new TypeLiteral<Map<String, Object>>(){}));
+				result.setSource(JsonIterator.deserialize(IndexUtils.psqlUnescapeString(resultSet.getString("_source")),
+						new TypeLiteral<Map<String, Object>>() {
+						}));
 			} else {
 				result.setFound(false);
 			}
@@ -157,13 +160,14 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 	}
 
 	public MultiGetResponse multiGet(String requestBody) throws ElefanaException {
-		Map<String, Object> request = JsonIterator.deserialize(requestBody, new TypeLiteral<Map<String, Object>>(){});
+		Map<String, Object> request = JsonIterator.deserialize(requestBody, new TypeLiteral<Map<String, Object>>() {
+		});
 		List<Object> requestItems = (List<Object>) request.get("docs");
 
 		MultiGetResponse result = new MultiGetResponse();
 		for (Object tmpRequestItem : requestItems) {
 			Map<String, Object> requestItem = (Map<String, Object>) tmpRequestItem;
-				
+
 			final String index = (String) requestItem.get("_index");
 			final String type = requestItem.containsKey("_type") ? (String) requestItem.get("_type") : null;
 			final String id = requestItem.containsKey("_id") ? (String) requestItem.get("_id") : null;
@@ -209,9 +213,10 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 						getResponse.setIndex(resultSet.getString("_index"));
 						getResponse.setType(resultSet.getString("_type"));
 						getResponse.setId(resultSet.getString("_id"));
-						getResponse.setSource(JsonIterator.deserialize(resultSet.getString("_source"),
-								new TypeLiteral<Map<String, Object>>() {
-								}));
+						getResponse.setSource(
+								JsonIterator.deserialize(IndexUtils.psqlUnescapeString(resultSet.getString("_source")),
+										new TypeLiteral<Map<String, Object>>() {
+										}));
 						result.getDocs().add(getResponse);
 					}
 				} catch (Exception e) {
@@ -231,26 +236,27 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 	}
 
 	public MultiGetResponse multiGet(String indexPattern, String requestBody) throws ElefanaException {
-		Map<String, Object> request = JsonIterator.deserialize(requestBody, new TypeLiteral<Map<String, Object>>(){});
+		Map<String, Object> request = JsonIterator.deserialize(requestBody, new TypeLiteral<Map<String, Object>>() {
+		});
 		List<Object> requestItems = (List<Object>) request.get("docs");
 
 		MultiGetResponse result = new MultiGetResponse();
 		try {
 			for (String index : indexUtils.listIndicesForIndexPattern(indexPattern)) {
 				final String queryTarget = indexUtils.getQueryTarget(index);
-				
+
 				for (Object tmpRequestItem : requestItems) {
 					Map<String, Object> requestItem = (Map<String, Object>) tmpRequestItem;
 					StringBuilder queryBuilder = new StringBuilder();
 					queryBuilder.append("SELECT * FROM ");
 					queryBuilder.append(queryTarget);
 					queryBuilder.append(" WHERE ");
-					
-					if(!nodeSettingsService.isUsingCitus()) {
+
+					if (!nodeSettingsService.isUsingCitus()) {
 						queryBuilder.append("_index='");
 						queryBuilder.append(index);
 						queryBuilder.append("'");
-						
+
 						if (requestItem.containsKey("_type") || requestItem.containsKey("_id")) {
 							queryBuilder.append(" AND ");
 						}
@@ -278,7 +284,10 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 							getResponse.setIndex(resultSet.getString("_index"));
 							getResponse.setType(resultSet.getString("_type"));
 							getResponse.setId(resultSet.getString("_id"));
-							getResponse.setSource(JsonIterator.deserialize(resultSet.getString("_source"), new TypeLiteral<Map<String, Object>>(){}));
+							getResponse.setSource(JsonIterator.deserialize(
+									IndexUtils.psqlUnescapeString(resultSet.getString("_source")),
+									new TypeLiteral<Map<String, Object>>() {
+									}));
 							result.getDocs().add(getResponse);
 						}
 					} catch (Exception e) {
@@ -298,28 +307,30 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 		return result;
 	}
 
-	public MultiGetResponse multiGet(String indexPattern, String typePattern, String requestBody) throws ElefanaException {
-		Map<String, Object> request = JsonIterator.deserialize(requestBody, new TypeLiteral<Map<String, Object>>(){});
+	public MultiGetResponse multiGet(String indexPattern, String typePattern, String requestBody)
+			throws ElefanaException {
+		Map<String, Object> request = JsonIterator.deserialize(requestBody, new TypeLiteral<Map<String, Object>>() {
+		});
 		List<Object> requestItems = (List<Object>) request.get("docs");
 
 		MultiGetResponse result = new MultiGetResponse();
 		try {
 			for (String index : indexUtils.listIndicesForIndexPattern(indexPattern)) {
 				final String queryTarget = indexUtils.getQueryTarget(index);
-				
-				for(String type : indexFieldMappingService.getTypesForIndex(index, typePattern)) {
+
+				for (String type : indexFieldMappingService.getTypesForIndex(index, typePattern)) {
 					for (Object tmpRequestItem : requestItems) {
 						Map<String, Object> requestItem = (Map<String, Object>) tmpRequestItem;
 						StringBuilder queryBuilder = new StringBuilder();
 						queryBuilder.append("SELECT * FROM ");
 						queryBuilder.append(queryTarget);
 						queryBuilder.append(" WHERE ");
-						
-						if(!nodeSettingsService.isUsingCitus()) {
+
+						if (!nodeSettingsService.isUsingCitus()) {
 							queryBuilder.append("_index = '");
 							queryBuilder.append(index);
 							queryBuilder.append("'");
-							
+
 							if (!type.isEmpty() || requestItem.containsKey("_id")) {
 								queryBuilder.append(" AND ");
 							}
@@ -347,7 +358,10 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 								getResponse.setIndex(resultSet.getString("_index"));
 								getResponse.setType(resultSet.getString("_type"));
 								getResponse.setId(resultSet.getString("_id"));
-								getResponse.setSource(JsonIterator.deserialize(resultSet.getString("_source"), new TypeLiteral<Map<String, Object>>(){}));
+								getResponse.setSource(JsonIterator.deserialize(
+										IndexUtils.psqlUnescapeString(resultSet.getString("_source")),
+										new TypeLiteral<Map<String, Object>>() {
+										}));
 								result.getDocs().add(getResponse);
 							}
 						} catch (Exception e) {
@@ -371,12 +385,12 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 	public IndexResponse index(String index, String type, String id, String document, IndexOpType opType)
 			throws ElefanaException {
 		indexUtils.ensureIndexExists(index);
-		
-		if(id == null) {
+
+		if (id == null) {
 			id = indexUtils.generateDocumentId(index, type, document);
 		}
 
-		switch(versionInfoService.getApiVersion()) {
+		switch (versionInfoService.getApiVersion()) {
 		case V_2_4_3:
 			switch (opType) {
 			case UPDATE:
@@ -394,7 +408,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 		}
 		document = IndexUtils.psqlEscapeString(document);
 		document = IndexUtils.psqlEscapeString(document);
-		
+
 		final long timestamp = indexUtils.getTimestamp(index, document);
 
 		PGobject jsonObject = new PGobject();
@@ -406,27 +420,27 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 		}
 
 		final StringBuilder queryBuilder = new StringBuilder();
-		
-		if(nodeSettingsService.isUsingCitus()) {
+
+		if (nodeSettingsService.isUsingCitus()) {
 			queryBuilder.append("INSERT INTO ");
 			queryBuilder.append(indexUtils.getQueryTarget(index));
 			queryBuilder.append(" AS i");
 			queryBuilder.append(" (_index, _type, _id, _timestamp, _source) VALUES (?, ?, ?, ?, ?)");
-			
+
 			switch (opType) {
-	  		case CREATE:
-	  			queryBuilder.append(" ON CONFLICT DO NOTHING");
-	  			break;
-	  		case UPDATE:
-	  			queryBuilder.append(
-	  					" ON CONFLICT (_id) DO UPDATE SET _timestamp = EXCLUDED._timestamp, _source = i._source || EXCLUDED._source");
-	  			break;
-	  		case OVERWRITE:
-	  		default:
-	  			queryBuilder.append(
-	  					" ON CONFLICT (_id) DO UPDATE SET _timestamp = EXCLUDED._timestamp, _source = EXCLUDED._source");
-	  			break;
-	  		}
+			case CREATE:
+				queryBuilder.append(" ON CONFLICT DO NOTHING");
+				break;
+			case UPDATE:
+				queryBuilder.append(
+						" ON CONFLICT (_id) DO UPDATE SET _timestamp = EXCLUDED._timestamp, _source = i._source || EXCLUDED._source");
+				break;
+			case OVERWRITE:
+			default:
+				queryBuilder.append(
+						" ON CONFLICT (_id) DO UPDATE SET _timestamp = EXCLUDED._timestamp, _source = EXCLUDED._source");
+				break;
+			}
 		} else {
 			queryBuilder.append("SELECT ");
 			switch (opType) {
@@ -453,8 +467,8 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 			preparedStatement.setString(3, id);
 			preparedStatement.setLong(4, timestamp);
 			preparedStatement.setObject(5, jsonObject);
-			
-			if(nodeSettingsService.isUsingCitus()) {
+
+			if (nodeSettingsService.isUsingCitus()) {
 				rows = preparedStatement.executeUpdate();
 			} else {
 				ResultSet resultSet = preparedStatement.executeQuery();
@@ -466,7 +480,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 				rows = resultSet.getInt(1);
 				resultSet.close();
 			}
-			
+
 			preparedStatement.close();
 			connection.close();
 		} catch (Exception e) {
@@ -481,12 +495,12 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 			result.setType(type);
 			result.setId(id);
 			result.setVersion(1);
-			if(opType == IndexOpType.UPDATE) {
+			if (opType == IndexOpType.UPDATE) {
 				result.setCreated(false);
 			} else {
 				result.setCreated(true);
 			}
-			
+
 			indexFieldMappingService.scheduleIndexForMappingAndStats(index);
 			return result;
 		} else {

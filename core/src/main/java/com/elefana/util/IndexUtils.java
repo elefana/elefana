@@ -108,4 +108,37 @@ public interface IndexUtils {
 		}
 		return json;
 	}
+	
+	public static String psqlUnescapeString(String json) {
+		if(!json.contains("\\\"")) {
+			return json;
+		}
+		for(int i = 0; i < json.length() - 1; i++) {
+			if(json.charAt(i) != '\\') {
+				continue;
+			}
+			switch(json.charAt(i + 1)) {
+			case '\\':
+				if(i + 2 >= json.length()) {
+					continue;
+				}
+				switch(json.charAt(i + 2)) {
+				case '\\':
+					if(i + 3 >= json.length()) {
+						continue;
+					}
+					switch(json.charAt(i + 3)) {
+					case '\"':
+						json = json.substring(0, i) + json.substring(i + 2);
+						continue;
+					}
+					break;
+				}
+				break;
+			default:
+				continue;
+			}
+		}
+		return json;
+	}
 }
