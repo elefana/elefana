@@ -1,5 +1,7 @@
-CREATE SEQUENCE IF NOT EXISTS elefana_stg_table_id MINVALUE -9223372036854775807 START -9223372036854775807 CYCLE;
+CREATE SEQUENCE IF NOT EXISTS elefana_bulk_ingest_table_id MINVALUE -9223372036854775807 START -9223372036854775807 CYCLE;
 
+CREATE TABLE IF NOT EXISTS elefana_bulk_index_queue (_tableName VARCHAR(255));
+ 
 CREATE OR REPLACE FUNCTION select_shard(_distributedTable VARCHAR) RETURNS bigint AS $$
 DECLARE
   shard_id bigint;
@@ -21,7 +23,7 @@ CREATE OR REPLACE FUNCTION elefana_delete_tmp_file(_filepath text) RETURNS INT A
 DECLARE
 	_command text;
 BEGIN
-	_command := CONCAT('COPY (SELECT 1) TO PROGRAM ', '''rm ', _filepath, '''');
+	_command := CONCAT('COPY (SELECT 1) TO PROGRAM ', '''rm -f ', _filepath, '''');
 	EXECUTE _command;
 	RETURN 0;
 END;
@@ -33,12 +35,12 @@ CREATE OR REPLACE FUNCTION elefana_json_field(_json_column jsonb, _json_field te
 $$
 LANGUAGE SQL IMMUTABLE PARALLEL SAFE;
 
-CREATE OR REPLACE FUNCTION elefana_next_staging_table() RETURNS text AS
+CREATE OR REPLACE FUNCTION elefana_next_bulk_ingest_table() RETURNS text AS
 $$
 DECLARE
 	table_name text;
 BEGIN
-	SELECT CONCAT('elefana_stg_', nextval('elefana_stg_table_id')) INTO table_name;
+	SELECT CONCAT('elefana_bulk_stg_', nextval('elefana_bulk_ingest_table_id')) INTO table_name;
 	RETURN table_name;
 END;
 $$

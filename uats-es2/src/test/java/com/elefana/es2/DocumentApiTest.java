@@ -109,10 +109,23 @@ public class DocumentApiTest extends DocumentedTest {
 		
 		given()
 			.request()
+			.contentType(ContentType.JSON)
+			.body("{ \"doc\": " + document + "}")
+		.when()
+			.post("/" + INDEX + "/" + TYPE + "/" + id + "/_update")
+		.then()
+			.statusCode(202)
+			.body("_index", equalTo(INDEX))
+			.body("_type", equalTo(TYPE))
+			.body("_id", notNullValue());		
+		
+		given()
+			.request()
 			.body("{\"docs\" : [{\"_index\": \"" + INDEX + "\",\"_type\" : \"" + TYPE + "\",\"_id\" : \"" + id + "\"}]}")
 		.when()
 			.get("/_mget")
 		.then()
+			.log().all()
 			.statusCode(200)
 			.body("docs[0]._index", equalTo(INDEX))
 			.body("docs[0]._type", equalTo(TYPE))

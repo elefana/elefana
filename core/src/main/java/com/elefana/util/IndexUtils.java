@@ -23,7 +23,7 @@ public interface IndexUtils {
 	public List<String> listIndicesForIndexPattern(List<String> indexPatterns) throws ElefanaException;
 
 	public List<String> listIndicesForIndexPattern(String indexPattern) throws ElefanaException;
-
+	
 	public String getQueryTarget(String indexName);
 	
 	public long getTimestamp(String index, String document) throws ElefanaException;

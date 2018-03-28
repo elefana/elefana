@@ -85,7 +85,7 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 		this.from = from;
 		this.size = size;
 		
-		List<Map<String, Object>> nextTableResults = jdbcTemplate.queryForList("SELECT elefana_next_staging_table()");
+		List<Map<String, Object>> nextTableResults = jdbcTemplate.queryForList("SELECT elefana_next_bulk_ingest_table()");
 		if (nextTableResults.isEmpty()) {
 			LOGGER.error("Could not get next staging table ID from elefana_next_staging_table(), using fallback table");
 			stagingTable = FALLBACK_STAGING_TABLE_PREFIX + FALLBACK_STAGING_TABLE_ID++;
@@ -93,8 +93,8 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 			Map<String, Object> row = nextTableResults.get(0);
 			if(row.containsKey("table_name")) {
 				stagingTable = ((String) row.get("table_name")).replace('-', '_');
-			} else if(row.containsKey("elefana_next_staging_table")) {
-				stagingTable = ((String) row.get("elefana_next_staging_table")).replace('-', '_');
+			} else if(row.containsKey("elefana_next_bulk_ingest_table")) {
+				stagingTable = ((String) row.get("elefana_next_bulk_ingest_table")).replace('-', '_');
 			} else {
 				LOGGER.error("Could not get next staging table ID from elefana_next_staging_table(), using fallback table");
 				stagingTable = FALLBACK_STAGING_TABLE_PREFIX + FALLBACK_STAGING_TABLE_ID++;

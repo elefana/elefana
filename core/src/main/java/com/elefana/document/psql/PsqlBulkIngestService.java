@@ -48,7 +48,6 @@ import com.elefana.api.exception.ElefanaException;
 import com.elefana.document.BulkIndexOperation;
 import com.elefana.document.BulkIngestService;
 import com.elefana.document.BulkTask;
-import com.elefana.document.IndexTarget;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.util.IndexUtils;
 import com.elefana.util.NamedThreadFactory;
@@ -226,8 +225,8 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 					}
 					
 					bulkApiResponse.getItems().addAll(nextResult);
+					jdbcTemplate.execute("INSERT INTO elefana_bulk_index_queue (_tableName) VALUES ('" + task.getStagingTable() + "')");
 				}
-				bulkIndexService.queue(new IndexTarget(index, queryTarget, task.getStagingTable()));
 			} catch (InterruptedException e) {
 				LOGGER.error(e.getMessage(), e);
 			} catch (ExecutionException e) {
