@@ -45,7 +45,7 @@ public class MatchAllQueryTest extends AbstractQueryTest {
 			.post("/_search")
 		.then()
 			.statusCode(200)
-			.body("hits.total", equalTo(10));
+			.body("hits.hits.size()", equalTo(10));
 	}
 	
 	@Test
@@ -59,7 +59,7 @@ public class MatchAllQueryTest extends AbstractQueryTest {
 			.get("/_search")
 		.then()
 			.statusCode(200)
-			.body("hits.total", equalTo(10));
+			.body("hits.hits.size()", equalTo(10));
 	}
 	
 	@Test
@@ -71,22 +71,14 @@ public class MatchAllQueryTest extends AbstractQueryTest {
 		
 		given()
 			.request()
-			.body("{\"query\":{\"match_all\":{}}, \"size\":100}")
-		.when()
-			.post("/_search")
-		.then()
-			.statusCode(200)
-			.body("hits.total", equalTo(100));
-		
-		given()
-			.request()
 			.body("{\"query\":{\"match_all\":{}}, \"size\":10}")
 		.when()
 			.post("/" + index + "/" + type + "/_search")
 		.then()
 			.log().all()
 			.statusCode(200)
-			.body("hits.total", equalTo(10));
+			.body("hits.total", equalTo(DOCUMENT_QUANTITY))
+			.body("hits.hits.size()", equalTo(10));
 		
 		given()
 			.request()
@@ -95,6 +87,7 @@ public class MatchAllQueryTest extends AbstractQueryTest {
 			.post("/" + index + "/" + type + "/_search")
 		.then()
 			.statusCode(200)
-			.body("hits.total", equalTo(100));
+			.body("hits.total", equalTo(DOCUMENT_QUANTITY))
+			.body("hits.hits.size()", equalTo(100));
 	}
 }

@@ -53,6 +53,40 @@ public class QueryStringQueryTest extends AbstractQueryTest {
 	}
 	
 	@Test
+	public void testBasicQueryStringNoDefaultField() {
+		final String index = UUID.randomUUID().toString();
+		final String type = "test";
+		
+		generatePhraseDocuments(index, type);
+		
+		given()
+			.request()
+			.body("{\"query\":{\"query_string\":{\"query\":\"message:fox\"}}}")
+		.when()
+			.post("/" + index + "/_search")
+		.then()
+			.statusCode(200)
+			.body("hits.total", equalTo(6));
+	}
+	
+	@Test
+	public void testBasicQueryStringNoDefaultFieldWithWildcard() {
+		final String index = UUID.randomUUID().toString();
+		final String type = "test";
+		
+		generatePhraseDocuments(index, type);
+		
+		given()
+			.request()
+			.body("{\"query\":{\"query_string\":{\"analyze_wildcard\":true,\"query\":\"*\"}}}")
+		.when()
+			.post("/" + index + "/_search")
+		.then()
+			.statusCode(200)
+			.body("hits.total", equalTo(13));
+	}
+	
+	@Test
 	public void testPhraseQueryString() {
 		final String index = UUID.randomUUID().toString();
 		final String type = "test";

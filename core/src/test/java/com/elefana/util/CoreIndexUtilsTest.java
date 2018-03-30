@@ -44,6 +44,20 @@ public class CoreIndexUtilsTest {
 	}
 	
 	@Test
+	public void testGenerateDocumentId() {
+		final String index = "message-logs-2018-03-15t23:00:00";
+		final String type = "message";
+		final String source1 = "{\"message\":\"This is message 1\"}";
+		final String source2 = "{\"message\":\"This is message 1\"}";
+		
+		for(int i = 0; i < 1000; i++) {
+			final String result1 = indexUtils.generateDocumentId(index, type, source1);
+			final String result2 = indexUtils.generateDocumentId(index, type, source2);
+			Assert.assertNotEquals(result1, result2);
+		}
+	}
+	
+	@Test
 	public void testListIndicesForIndexPattern() throws ElefanaException {
 		final List<String> indices = new ArrayList<String>();
 		indices.add("message-logs-2018-03-15t23:00:00");

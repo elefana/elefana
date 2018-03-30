@@ -96,6 +96,9 @@ public class QueryStringQuery extends Query implements EsQueryStringWalker {
 		if(sqlQuery.equalsIgnoreCase("()")) {
 			return true;
 		}
+		if(sqlQuery.equalsIgnoreCase("_source->>'null' ILIKE '%%%'")) {
+			return true;
+		}
 		return false;
 	}
 
@@ -148,6 +151,7 @@ public class QueryStringQuery extends Query implements EsQueryStringWalker {
 
 	@Override
 	public void append(EsFieldQuery field, boolean phraseQuery, String term) {
+		LOGGER.info(field.isDefaultField() + " " + defaultField + " " + field.getFieldName());
 		String fieldName = field.isDefaultField() ? defaultField : field.getFieldName();
 		String queryValue = term.replace("?", "_").replace("*", "%");
 		queryBuilder.append("_source->>'" + fieldName + "' ILIKE '%" + queryValue + "%'");

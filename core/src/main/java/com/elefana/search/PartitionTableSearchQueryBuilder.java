@@ -37,13 +37,71 @@ public class PartitionTableSearchQueryBuilder implements SearchQueryBuilder {
 	@Override
 	public SearchQuery buildQuery(List<String> indices, String[] types,
 			RequestBodySearch requestBodySearch) {
-		final String queryDataTableName = SEARCH_TABLE_PREFIX + requestBodySearch.hashCode();
+		if(requestBodySearch.getQuery().isMatchAllQuery()) {
+			return buildQueryUsingOriginalTable(indices, types, requestBodySearch);
+		} else {
+			return buildQueryUsingFilteredTable(indices, types, requestBodySearch);
+		}
+	}
 
+	private SearchQuery buildQueryUsingOriginalTable(List<String> indices, String[] types,
+			RequestBodySearch requestBodySearch) {
+		final StringBuilder queryBuilder = new StringBuilder();
+		if (requestBodySearch.getSize() == 0) {
+			queryBuilder.append("SELECT COUNT(*)");
+		} else {
+			queryBuilder.append("SELECT *");
+		}
+		queryBuilder.append(" FROM ");
+		queryBuilder.append(IndexUtils.DATA_TABLE);
+		
+		queryBuilder.append(" WHERE ");
+		
+		if(indices.isEmpty()) {
+			if (IndexUtils.isTypesEmpty(types)) {
+				queryBuilder.append("FALSE");
+			}
+		} else {
+			queryBuilder.append("_index IN (");
+			for (int i = 0; i < indices.size(); i++) {
+				if (i > 0) {
+					queryBuilder.append(',');
+				}
+				queryBuilder.append("'");
+				queryBuilder.append(indices.get(i));
+				queryBuilder.append("'");
+			}
+			queryBuilder.append(") ");
+		}
+
+		if (!IndexUtils.isTypesEmpty(types)) {
+			queryBuilder.append(" AND (");
+			for (int j = 0; j < types.length; j++) {
+				if (types[j].length() == 0) {
+					continue;
+				}
+				if (j > 0) {
+					queryBuilder.append(" OR ");
+				}
+				queryBuilder.append("_type = '");
+				queryBuilder.append(types[j]);
+				queryBuilder.append("'");
+			}
+			queryBuilder.append(")");
+		}
+		queryBuilder.append(requestBodySearch.getQuerySqlOrderClause());
+
+		return new SearchQuery(IndexUtils.DATA_TABLE, queryBuilder.toString());
+	}
+
+	private SearchQuery buildQueryUsingFilteredTable(List<String> indices, String[] types,
+			RequestBodySearch requestBodySearch) {
+		final String queryDataTableName = SEARCH_TABLE_PREFIX + requestBodySearch.hashCode();
 		final StringBuilder queryBuilder = new StringBuilder();
 		queryBuilder.append("CREATE TEMP TABLE ");
 		queryBuilder.append(queryDataTableName);
-		
-		if(indices.isEmpty()) {
+
+		if (indices.isEmpty()) {
 			queryBuilder.append(" (LIKE ");
 			queryBuilder.append(IndexUtils.DATA_TABLE);
 			queryBuilder.append(") ");
@@ -52,8 +110,8 @@ public class PartitionTableSearchQueryBuilder implements SearchQueryBuilder {
 			queryBuilder.append("SELECT * FROM ");
 			queryBuilder.append(IndexUtils.DATA_TABLE);
 			queryBuilder.append(" WHERE _index IN (");
-			for(int i = 0; i < indices.size(); i++) {
-				if(i > 0) {
+			for (int i = 0; i < indices.size(); i++) {
+				if (i > 0) {
 					queryBuilder.append(',');
 				}
 				queryBuilder.append("'");
@@ -61,13 +119,11 @@ public class PartitionTableSearchQueryBuilder implements SearchQueryBuilder {
 				queryBuilder.append("'");
 			}
 			queryBuilder.append(") ");
-			
-			if (!requestBodySearch.getQuery().isMatchAllQuery()) {
-				queryBuilder.append(" AND (");
-				queryBuilder.append(requestBodySearch.getQuerySqlWhereClause());
-				queryBuilder.append(")");
-			}
-			
+
+			queryBuilder.append(" AND (");
+			queryBuilder.append(requestBodySearch.getQuerySqlWhereClause());
+			queryBuilder.append(")");
+
 			if (!IndexUtils.isTypesEmpty(types)) {
 				queryBuilder.append(" AND (");
 				for (int j = 0; j < types.length; j++) {
@@ -83,20 +139,13 @@ public class PartitionTableSearchQueryBuilder implements SearchQueryBuilder {
 				}
 				queryBuilder.append(")");
 			}
-			if (requestBodySearch.getSize() > 0) {
-				queryBuilder.append(" LIMIT ");
-				queryBuilder.append(requestBodySearch.getSize());
-			}
-			if (requestBodySearch.getFrom() > 0) {
-				queryBuilder.append(" OFFSET ");
-				queryBuilder.append(requestBodySearch.getFrom());
-			}
 			queryBuilder.append(")");
 			queryBuilder.append(requestBodySearch.getQuerySqlOrderClause());
 		}
 		jdbcTemplate.update(queryBuilder.toString());
-		
-		final String query = (requestBodySearch.getSize() == 0 ? "SELECT COUNT(*) " : "SELECT * ") + " FROM " + queryDataTableName;
+
+		final String query = (requestBodySearch.getSize() == 0 ? "SELECT COUNT(*) " : "SELECT * ") + " FROM "
+				+ queryDataTableName;
 		final SearchQuery result = new SearchQuery(queryDataTableName, query);
 		result.getTemporaryTables().add(queryDataTableName);
 		return result;

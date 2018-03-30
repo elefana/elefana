@@ -176,7 +176,8 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 		final SearchQuery searchQuery = searchQueryBuilder.buildQuery(indices, types, requestBodySearch);
 		final List<String> temporaryTablesCreated = searchQuery.getTemporaryTables();
 
-		final SearchResponse result = executeQuery(searchQuery.getQuery(), startTime, requestBodySearch.getSize());
+		final SearchResponse result = executeQuery(searchQuery.getQuery(), startTime, requestBodySearch.getFrom(),
+				requestBodySearch.getSize());
 		final Map<String, Object> aggregationsResult = new HashMap<String, Object>();
 
 		requestBodySearch.getAggregations().executeSqlQuery(indices, types, jdbcTemplate, nodeSettingsService,
@@ -191,24 +192,25 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 	private SearchResponse searchWithoutAggregation(List<String> indices, String[] types,
 			RequestBodySearch requestBodySearch, long startTime) throws ElefanaException {
 		final SearchQuery searchQuery = searchQueryBuilder.buildQuery(indices, types, requestBodySearch);
-		return executeQuery(searchQuery.getQuery(), startTime, requestBodySearch.getSize());
+		return executeQuery(searchQuery.getQuery(), startTime, requestBodySearch.getFrom(),
+				requestBodySearch.getSize());
 	}
 
-	private SearchResponse executeQuery(String query, long startTime, int size) throws ElefanaException {
+	private SearchResponse executeQuery(String query, long startTime, int from, int size) throws ElefanaException {
 		SqlRowSet sqlRowSet = null;
 		try {
 			sqlRowSet = jdbcTemplate.queryForRowSet(query);
-			return convertSqlQueryResultToSearchResult(sqlRowSet, startTime, size);
+			return convertSqlQueryResultToSearchResult(sqlRowSet, startTime, from, size);
 		} catch (Exception e) {
 			e.printStackTrace();
 			if (e.getMessage().contains("No results")) {
-				return convertSqlQueryResultToSearchResult(null, startTime, size);
+				return convertSqlQueryResultToSearchResult(null, startTime, from, size);
 			}
 			throw e;
 		}
 	}
 
-	private SearchResponse convertSqlQueryResultToSearchResult(SqlRowSet rowSet, long startTime, int size)
+	private SearchResponse convertSqlQueryResultToSearchResult(SqlRowSet rowSet, long startTime, int from, int size)
 			throws ElefanaException {
 		final SearchResponse result = new SearchResponse();
 
@@ -220,17 +222,30 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 			result.getHits().setTotal(0);
 		} else if (size > 0) {
 			int count = 0;
-			while (rowSet.next() && count < size) {
-				SearchHit searchHit = new SearchHit();
-				searchHit._index = rowSet.getString("_index");
-				searchHit._type = rowSet.getString("_type");
-				searchHit._id = rowSet.getString("_id");
-				searchHit._score = 1.0;
-				searchHit._source = JsonIterator.deserialize(IndexUtils.psqlUnescapeString(rowSet.getString("_source")),
-						new TypeLiteral<Map<String, Object>>() {
-						});
-				result.getHits().getHits().add(searchHit);
+			int hitOffset = 0;
+			boolean lastRowValid = true;
+			while (hitOffset < from && (lastRowValid = rowSet.next())) {
+				hitOffset++;
 				count++;
+			}
+			if(lastRowValid) {
+				while ((count - hitOffset) < size && (lastRowValid = rowSet.next())) {
+					SearchHit searchHit = new SearchHit();
+					searchHit._index = rowSet.getString("_index");
+					searchHit._type = rowSet.getString("_type");
+					searchHit._id = rowSet.getString("_id");
+					searchHit._score = 1.0;
+					searchHit._source = JsonIterator.deserialize(IndexUtils.psqlUnescapeString(rowSet.getString("_source")),
+							new TypeLiteral<Map<String, Object>>() {
+							});
+					result.getHits().getHits().add(searchHit);
+					count++;
+				}
+			}
+			if(lastRowValid) {
+				while (rowSet.next()) {
+					count++;
+				}
 			}
 			result.getHits().setTotal(count);
 		} else {
@@ -261,8 +276,8 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 		return result;
 	}
 
-	private SearchResponse getEmptySearchResult(long startTime, int size) throws ElefanaException {
-		return convertSqlQueryResultToSearchResult(null, startTime, size);
+	private SearchResponse getEmptySearchResult(long startTime, int from, int size) throws ElefanaException {
+		return convertSqlQueryResultToSearchResult(null, startTime, from, size);
 	}
 
 	@Override

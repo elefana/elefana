@@ -96,7 +96,7 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 			tablespaces = DEFAULT_TABLESPACES;
 		}
 
-		final int totalThreads = environment.getProperty("elefana.service.bulk.threads", Integer.class,
+		final int totalThreads = environment.getProperty("elefana.service.bulk.ingest.threads", Integer.class,
 				Runtime.getRuntime().availableProcessors());
 		bulkRequestExecutorService = Executors.newFixedThreadPool(totalThreads, new NamedThreadFactory(REQUEST_THREAD_PREFIX));
 		bulkProcessingExecutorService = Executors.newFixedThreadPool(totalThreads, new NamedThreadFactory(PROCESSOR_THREAD_PREFIX));
