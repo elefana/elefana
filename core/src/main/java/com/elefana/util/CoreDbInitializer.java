@@ -139,7 +139,7 @@ public class CoreDbInitializer implements DbInitializer {
 		}
 
 		jdbcTemplate.execute(
-				"CREATE TABLE IF NOT EXISTS elefana_index_template (_template_id VARCHAR(255) PRIMARY KEY, _index_pattern VARCHAR(255), _timestamp_path VARCHAR(255), _mappings jsonb);");
+				"CREATE TABLE IF NOT EXISTS elefana_index_template (_template_id VARCHAR(255) PRIMARY KEY, _index_pattern VARCHAR(255), _storage jsonb, _mappings jsonb);");
 
 		if (nodeSettingsService.isUsingCitus() && !isTableDistributed("elefana_index_template")) {
 			jdbcTemplate.execute("SELECT create_distributed_table('elefana_index_template', '_template_id');");

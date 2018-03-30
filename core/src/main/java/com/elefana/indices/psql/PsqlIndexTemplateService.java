@@ -43,6 +43,7 @@ import com.elefana.api.exception.NoSuchTemplateException;
 import com.elefana.api.exception.ShardFailedException;
 import com.elefana.api.indices.GetIndexTemplateForIndexRequest;
 import com.elefana.api.indices.GetIndexTemplateRequest;
+import com.elefana.api.indices.IndexStorageSettings;
 import com.elefana.api.indices.IndexTemplate;
 import com.elefana.api.indices.ListIndexTemplatesRequest;
 import com.elefana.api.indices.PutIndexTemplateRequest;
@@ -105,7 +106,7 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 			while (rowSet.next()) {
 				IndexTemplate indexTemplate = new IndexTemplate(rowSet.getString("_template_id"));
 				indexTemplate.setTemplate(rowSet.getString("_index_pattern"));
-				indexTemplate.setTimestamp_path(rowSet.getString("_timestamp_path"));
+				indexTemplate.setStorage(JsonIterator.deserialize(rowSet.getString("_storage"), IndexStorageSettings.class));
 				indexTemplate.setMappings(
 						JsonIterator.deserialize(rowSet.getString("_mappings"), new TypeLiteral<Map<String, Object>>() {
 						}));
@@ -126,7 +127,7 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 		try {
 			IndexTemplate result = new IndexTemplate(templateId);
 			result.setTemplate(rowSet.getString("_index_pattern"));
-			result.setTimestamp_path(rowSet.getString("_timestamp_path"));
+			result.setStorage(JsonIterator.deserialize(rowSet.getString("_storage"), IndexStorageSettings.class));
 			result.setMappings(
 					JsonIterator.deserialize(rowSet.getString("_mappings"), new TypeLiteral<Map<String, Object>>() {
 					}));
@@ -177,19 +178,21 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 		try {
 			final String indexPattern = templateData.get("template").toString();
 
-			String timestampPath = null;
-
-			if (templateData.get("timestamp_path").valueType().equals(ValueType.STRING)) {
-				timestampPath = templateData.get("timestamp_path").toString();
+			PGobject storageObject = new PGobject();
+			storageObject.setType("json");
+			if(templateData.get("storage").valueType().equals(ValueType.OBJECT)) {
+				storageObject.setValue(templateData.get("storage").toString());
+			} else {
+				storageObject.setValue("{}");
 			}
-
-			PGobject jsonObject = new PGobject();
-			jsonObject.setType("json");
-			jsonObject.setValue(templateData.get("mappings").toString());
+			
+			PGobject mappingsObject = new PGobject();
+			mappingsObject.setType("json");
+			mappingsObject.setValue(templateData.get("mappings").toString());
 
 			jdbcTemplate.update(
-					"INSERT INTO elefana_index_template (_template_id, _index_pattern, _timestamp_path, _mappings) VALUES (?, ?, ?, ?) ON CONFLICT (_template_id) DO UPDATE SET _mappings = EXCLUDED._mappings, _index_pattern = EXCLUDED._index_pattern",
-					templateId, indexPattern, timestampPath, jsonObject);
+					"INSERT INTO elefana_index_template (_template_id, _index_pattern, _storage, _mappings) VALUES (?, ?, ?, ?) ON CONFLICT (_template_id) DO UPDATE SET _mappings = EXCLUDED._mappings, _storage = EXCLUDED._storage, _index_pattern = EXCLUDED._index_pattern",
+					templateId, indexPattern, storageObject, mappingsObject);
 
 			indexToIndexTemplateNullCache.clear();
 			indexToIndexTemplateCache.clear();

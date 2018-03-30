@@ -24,7 +24,7 @@ public class IndexTemplate {
 	private final Map<String, Object> settings = new HashMap<String, Object>();
 	
 	private String template;
-	private String timestamp_path;
+	private IndexStorageSettings storage = new IndexStorageSettings();
 	private Map<String, Object> mappings;
 	
 	@JsonIgnore
@@ -52,16 +52,11 @@ public class IndexTemplate {
 		this.template = template;
 	}
 
-	public String getTimestamp_path() {
-		return timestamp_path;
-	}
-
-	public void setTimestamp_path(String timestamp_path) {
-		this.timestamp_path = timestamp_path;
-	}
-
 	public boolean isTimeSeries() {
-		return timestamp_path != null;
+		if(storage == null) {
+			return false;
+		}
+		return storage.getDistributionMode().equals(DistributionMode.TIME);
 	}
 
 	public Map<String, Object> getSettings() {
@@ -76,6 +71,14 @@ public class IndexTemplate {
 		this.mappings = mappings;
 	}
 
+	public IndexStorageSettings getStorage() {
+		return storage;
+	}
+
+	public void setStorage(IndexStorageSettings storage) {
+		this.storage = storage;
+	}
+
 	@Override
 	public String toString() {
 		return "IndexTemplate [settings=" + settings + ", template=" + template + ", mappings=" + mappings + "]";
@@ -87,9 +90,9 @@ public class IndexTemplate {
 		int result = 1;
 		result = prime * result + ((mappings == null) ? 0 : mappings.hashCode());
 		result = prime * result + ((settings == null) ? 0 : settings.hashCode());
+		result = prime * result + ((storage == null) ? 0 : storage.hashCode());
 		result = prime * result + ((template == null) ? 0 : template.hashCode());
 		result = prime * result + ((templateId == null) ? 0 : templateId.hashCode());
-		result = prime * result + ((timestamp_path == null) ? 0 : timestamp_path.hashCode());
 		return result;
 	}
 
@@ -112,6 +115,11 @@ public class IndexTemplate {
 				return false;
 		} else if (!settings.equals(other.settings))
 			return false;
+		if (storage == null) {
+			if (other.storage != null)
+				return false;
+		} else if (!storage.equals(other.storage))
+			return false;
 		if (template == null) {
 			if (other.template != null)
 				return false;
@@ -121,11 +129,6 @@ public class IndexTemplate {
 			if (other.templateId != null)
 				return false;
 		} else if (!templateId.equals(other.templateId))
-			return false;
-		if (timestamp_path == null) {
-			if (other.timestamp_path != null)
-				return false;
-		} else if (!timestamp_path.equals(other.timestamp_path))
 			return false;
 		return true;
 	}

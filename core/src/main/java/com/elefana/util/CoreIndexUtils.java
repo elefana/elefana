@@ -191,10 +191,15 @@ public class CoreIndexUtils implements IndexUtils {
 		if(!indexTemplate.isTimeSeries()) {
 			return System.currentTimeMillis();
 		}
-		String [] path = jsonPathCache.get(indexTemplate.getTimestamp_path());
+		String timestampPath = indexTemplate.getStorage().getTimestampPath();
+		if(timestampPath == null) {
+			return System.currentTimeMillis();
+		}
+		
+		String [] path = jsonPathCache.get(timestampPath);
 		if(path == null) {
-			path = indexTemplate.getTimestamp_path().split("\\.");
-			jsonPathCache.put(indexTemplate.getTimestamp_path(), path);
+			path = timestampPath.split("\\.");
+			jsonPathCache.put(timestampPath, path);
 		}
 		Any json = JsonIterator.deserialize(document);
 		for(int i = 0; i < path.length; i++) {

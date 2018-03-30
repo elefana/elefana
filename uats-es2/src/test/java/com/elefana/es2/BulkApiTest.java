@@ -86,7 +86,7 @@ public class BulkApiTest {
 		
 		given()
 			.request()
-			.body("{\"template\": \"" + index + "\",\"timestamp_path\": \"timestamp\" ,\"mappings\": {}}")
+			.body("{\"template\": \"" + index + "\",\"storage\": { \"timestamp_path\": \"timestamp\" },\"mappings\": {}}")
 		.when()
 			.put("/_template/bulkIndexingTimeSeries")
 		.then()
