@@ -72,7 +72,9 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 	
 	@Override
 	public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-		httpConnections.dec();
+		if(httpConnections != null) {
+			httpConnections.dec();
+		}
 		super.channelInactive(ctx);
 	}
 	
@@ -91,11 +93,12 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 	}
 
 	public HttpResponse route(FullHttpRequest httpRequest) {
+		final String uri = httpRequest.uri();
+		final String requestContent = getRequestBody(httpRequest);
 		try {
 			httpRequests.mark();
 
-			final String uri = httpRequest.uri();
-			final ApiRequest<?> apiRequest = apiRouter.route(httpRequest.getMethod(), uri, getRequestBody(httpRequest));
+			final ApiRequest<?> apiRequest = apiRouter.route(httpRequest.getMethod(), uri, requestContent);
 			if(apiRequest == null) {
 				throw new NoSuchApiException(uri);
 			}
@@ -107,9 +110,13 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 		} catch (NoSuchDocumentException e) {
 			return createResponse(httpRequest, HttpResponseStatus.NOT_FOUND, e.getMessage());
 		} catch (ElefanaException e) {
+			LOGGER.error(uri);
+			LOGGER.error(requestContent);
 			LOGGER.error(e.getMessage(), e);
 			return createErrorResponse(httpRequest, e);
 		} catch (Exception e) {
+			LOGGER.error(uri);
+			LOGGER.error(requestContent);
 			LOGGER.error(e.getMessage(), e);
 			return createResponse(httpRequest, HttpResponseStatus.INTERNAL_SERVER_ERROR);
 		}
@@ -141,7 +148,9 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 	}
 
 	private String getRequestBody(FullHttpRequest request) {
-		httpRequestSize.update(request.content().readableBytes());
+		if(httpRequestSize != null) {
+			httpRequestSize.update(request.content().readableBytes());
+		}
 		String charset = request.headers().contains("charset") ? request.headers().get("charset").toUpperCase() : "UTF-8";
 		String result = request.content().toString(Charset.forName(charset));
 //		for(Entry<String, String> header : request.headers().entries()) {

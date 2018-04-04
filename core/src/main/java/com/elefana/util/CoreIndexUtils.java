@@ -45,6 +45,7 @@ import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.ShardFailedException;
 import com.elefana.api.indices.GetIndexTemplateForIndexRequest;
 import com.elefana.api.indices.GetIndexTemplateForIndexResponse;
+import com.elefana.api.indices.IndexGenerationSettings;
 import com.elefana.api.indices.IndexTemplate;
 import com.elefana.indices.IndexTemplateService;
 import com.elefana.node.NodeSettingsService;
@@ -216,6 +217,13 @@ public class CoreIndexUtils implements IndexUtils {
 	
 	@Override
 	public void ensureJsonFieldIndexExist(String indexName, List<String> fieldNames) throws ElefanaException {
+		final IndexTemplate indexTemplate;
+		final GetIndexTemplateForIndexResponse indexTemplateForIndexResponse = indexTemplateService.prepareGetIndexTemplateForIndex(indexName).get();
+		if(indexTemplateForIndexResponse.getIndexTemplate() == null) {
+			indexTemplate = indexTemplateForIndexResponse.getIndexTemplate();
+		} else {
+			indexTemplate = null;
+		}
 		final String tableName = convertIndexNameToTableName(indexName);
 		
 		Connection connection = null;
@@ -224,6 +232,30 @@ public class CoreIndexUtils implements IndexUtils {
 			PreparedStatement preparedStatement;
 			
 			for(String fieldName : fieldNames) {
+				if(indexTemplate != null) {
+					final IndexGenerationSettings indexGenerationSettings = indexTemplate.getStorage().getIndexGenerationSettings();
+					switch(indexGenerationSettings.getMode()) {
+					case ALL:
+						break;
+					case PRESET:
+						boolean matchedPresetField = false;
+						for(String presetFieldName : indexGenerationSettings.getPresetFields()) {
+							if(presetFieldName.equalsIgnoreCase(fieldName)) {
+								matchedPresetField = true;
+								break;
+							}
+						}
+						if(!matchedPresetField) {
+							continue;
+						}
+						break;
+					case DYNAMIC:
+					default:
+						
+						break;
+					}
+				}
+				
 				final String jsonIndexName = JSON_INDEX_PREFIX + tableName + "_" + fieldName;
 				
 				final StringBuilder createJsonFilterQuery = new StringBuilder();
@@ -285,6 +317,7 @@ public class CoreIndexUtils implements IndexUtils {
 			timeSeries = true;
 		}
 
+		final String timestampIndexName = TIMESTAMP_INDEX_PREFIX + tableName;
 		final String ginIndexName = GIN_INDEX_PREFIX + tableName;
 		final String constraintName = PRIMARY_KEY_PREFIX + tableName;
 
@@ -337,6 +370,13 @@ public class CoreIndexUtils implements IndexUtils {
 					+ " USING GIN (_source jsonb_ops)";
 			LOGGER.info(createGinIndexQuery);
 			preparedStatement = connection.prepareStatement(createGinIndexQuery);
+			preparedStatement.execute();
+			preparedStatement.close();
+			
+			final String createTimestampIndexQuery = "CREATE INDEX IF NOT EXISTS " + timestampIndexName + " ON " + tableName
+					+ " (_timestamp)";
+			LOGGER.info(createTimestampIndexQuery);
+			preparedStatement = connection.prepareStatement(createTimestampIndexQuery);
 			preparedStatement.execute();
 			preparedStatement.close();
 

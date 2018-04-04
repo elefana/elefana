@@ -65,6 +65,27 @@ public class IndexTemplateTest {
 	}
 	
 	@Test
+	public void testIndexTemplateWithStorageSettings() {
+		final String index = UUID.randomUUID().toString();
+		final String type = "test";
+		
+		given()
+			.request()
+			.body("{\"template\": \"" + index + "\",\"storage\":{\"timestamp_path\":\"timeField\" }}")
+		.when()
+			.put("/_template/testIndexTemplate")
+		.then()
+			.statusCode(200);
+		
+		given().when().get("/_template/testIndexTemplate")
+			.then()
+			.log().all()
+			.statusCode(200)
+			.body("testIndexTemplate.template", equalTo(index))
+			.body("testIndexTemplate.storage.timestamp_path", equalTo("timeField"));
+	}
+	
+	@Test
 	public void testIndexTemplateMappingGeneration() {
 		final String index = UUID.randomUUID().toString();
 		final String type = "test";

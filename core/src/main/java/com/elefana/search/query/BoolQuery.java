@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.elefana.api.exception.ElefanaException;
+import com.elefana.api.indices.IndexTemplate;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
 
@@ -90,17 +91,22 @@ public class BoolQuery extends Query {
 	}
 
 	@Override
-	public String toSqlWhereClause() {
+	public String toSqlWhereClause(IndexTemplate indexTemplate) {
 		StringBuilder result = new StringBuilder();
 		result.append('(');
 		
 		if(!mustClauses.isEmpty()) {
 			result.append('(');
+			int totalClauses = 0;
 			for(int i = 0; i < mustClauses.size(); i++) {
-				if(i > 0) {
+				if(mustClauses.get(i).isMatchAllQuery()) {
+					continue;
+				}
+				if(totalClauses > 0) {
 					result.append(" AND ");
 				}
-				result.append(mustClauses.get(i).toSqlWhereClause());
+				result.append(mustClauses.get(i).toSqlWhereClause(indexTemplate));
+				totalClauses++;
 			}
 			result.append(')');
 			
@@ -110,11 +116,16 @@ public class BoolQuery extends Query {
 		}
 		if(!filterClauses.isEmpty()) {
 			result.append('(');
+			int totalClauses = 0;
 			for(int i = 0; i < filterClauses.size(); i++) {
-				if(i > 0) {
+				if(filterClauses.get(i).isMatchAllQuery()) {
+					continue;
+				}
+				if(totalClauses > 0) {
 					result.append(" AND ");
 				}
-				result.append(filterClauses.get(i).toSqlWhereClause());
+				result.append(filterClauses.get(i).toSqlWhereClause(indexTemplate));
+				totalClauses++;
 			}
 			result.append(')');
 			
@@ -124,11 +135,16 @@ public class BoolQuery extends Query {
 		}
 		if(!mustNotClauses.isEmpty()) {
 			result.append("NOT (");
+			int totalClauses = 0;
 			for(int i = 0; i < mustNotClauses.size(); i++) {
-				if(i > 0) {
+				if(mustNotClauses.get(i).isMatchAllQuery()) {
+					continue;
+				}
+				if(totalClauses > 0) {
 					result.append(" AND ");
 				}
-				result.append(mustNotClauses.get(i).toSqlWhereClause());
+				result.append(mustNotClauses.get(i).toSqlWhereClause(indexTemplate));
+				totalClauses++;
 			}
 			result.append(')');
 			
@@ -139,6 +155,7 @@ public class BoolQuery extends Query {
 		if(!shouldClauses.isEmpty()) {
 			result.append('(');
 			
+			int totalClauses = 0;
 			int minimumShouldMatch = 1;
 			if(this.minimumShouldMatch.contains("%")) {
 				float percentage = Float.parseFloat(this.minimumShouldMatch.replace("%", ""));
@@ -153,10 +170,14 @@ public class BoolQuery extends Query {
 			switch(minimumShouldMatch) {
 			case 1:
 				for(int i = 0; i < shouldClauses.size(); i++) {
-					if(i > 0) {
+					if(shouldClauses.get(i).isMatchAllQuery()) {
+						continue;
+					}
+					if(totalClauses > 0) {
 						result.append(" OR ");
 					}
-					result.append(shouldClauses.get(i).toSqlWhereClause());
+					result.append(shouldClauses.get(i).toSqlWhereClause(indexTemplate));
+					totalClauses++;
 				}
 				break;
 			default:

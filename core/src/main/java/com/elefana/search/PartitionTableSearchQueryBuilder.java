@@ -17,14 +17,19 @@ package com.elefana.search;
 
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import com.elefana.api.indices.IndexTemplate;
 import com.elefana.util.IndexUtils;
 
 /**
  *
  */
 public class PartitionTableSearchQueryBuilder implements SearchQueryBuilder {
+	private static final Logger LOGGER = LoggerFactory.getLogger(SearchQueryBuilder.class);
+	
 	private final JdbcTemplate jdbcTemplate;
 	private final IndexUtils indexUtils;
 
@@ -35,119 +40,52 @@ public class PartitionTableSearchQueryBuilder implements SearchQueryBuilder {
 	}
 
 	@Override
-	public SearchQuery buildQuery(List<String> indices, String[] types,
+	public PsqlQueryComponents buildQuery(IndexTemplate matchedIndexTemplate,List<String> indices, String[] types,
 			RequestBodySearch requestBodySearch) {
-		if(requestBodySearch.getQuery().isMatchAllQuery()) {
-			return buildQueryUsingOriginalTable(indices, types, requestBodySearch);
-		} else {
-			return buildQueryUsingFilteredTable(indices, types, requestBodySearch);
+		if(indices.isEmpty() && IndexUtils.isTypesEmpty(types)) {
+			return new PsqlQueryComponents("", "", "", "LIMIT 0");
 		}
-	}
-
-	private SearchQuery buildQueryUsingOriginalTable(List<String> indices, String[] types,
-			RequestBodySearch requestBodySearch) {
-		final StringBuilder queryBuilder = new StringBuilder();
-		if (requestBodySearch.getSize() == 0) {
-			queryBuilder.append("SELECT COUNT(*)");
-		} else {
-			queryBuilder.append("SELECT *");
-		}
-		queryBuilder.append(" FROM ");
-		queryBuilder.append(IndexUtils.DATA_TABLE);
 		
-		queryBuilder.append(" WHERE ");
+		final StringBuilder whereClause = new StringBuilder();
 		
-		if(indices.isEmpty()) {
-			if (IndexUtils.isTypesEmpty(types)) {
-				queryBuilder.append("FALSE");
-			}
-		} else {
-			queryBuilder.append("_index IN (");
+		if(!indices.isEmpty()) {
+			whereClause.append("_index IN (");
 			for (int i = 0; i < indices.size(); i++) {
 				if (i > 0) {
-					queryBuilder.append(',');
+					whereClause.append(',');
 				}
-				queryBuilder.append("'");
-				queryBuilder.append(indices.get(i));
-				queryBuilder.append("'");
+				whereClause.append("'");
+				whereClause.append(indices.get(i));
+				whereClause.append("'");
 			}
-			queryBuilder.append(") ");
+			whereClause.append(") ");
 		}
-
+		
 		if (!IndexUtils.isTypesEmpty(types)) {
-			queryBuilder.append(" AND (");
+			if(!indices.isEmpty()) {
+				whereClause.append(" AND ");
+			}
+			whereClause.append("(");
 			for (int j = 0; j < types.length; j++) {
 				if (types[j].length() == 0) {
 					continue;
 				}
 				if (j > 0) {
-					queryBuilder.append(" OR ");
+					whereClause.append(" OR ");
 				}
-				queryBuilder.append("_type = '");
-				queryBuilder.append(types[j]);
-				queryBuilder.append("'");
+				whereClause.append("_type = '");
+				whereClause.append(types[j]);
+				whereClause.append("'");
 			}
-			queryBuilder.append(")");
+			whereClause.append(")");
 		}
-		queryBuilder.append(requestBodySearch.getQuerySqlOrderClause());
-
-		return new SearchQuery(IndexUtils.DATA_TABLE, queryBuilder.toString());
-	}
-
-	private SearchQuery buildQueryUsingFilteredTable(List<String> indices, String[] types,
-			RequestBodySearch requestBodySearch) {
-		final String queryDataTableName = SEARCH_TABLE_PREFIX + requestBodySearch.hashCode();
-		final StringBuilder queryBuilder = new StringBuilder();
-		queryBuilder.append("CREATE TEMP TABLE ");
-		queryBuilder.append(queryDataTableName);
-
-		if (indices.isEmpty()) {
-			queryBuilder.append(" (LIKE ");
-			queryBuilder.append(IndexUtils.DATA_TABLE);
-			queryBuilder.append(") ");
-		} else {
-			queryBuilder.append(" AS (");
-			queryBuilder.append("SELECT * FROM ");
-			queryBuilder.append(IndexUtils.DATA_TABLE);
-			queryBuilder.append(" WHERE _index IN (");
-			for (int i = 0; i < indices.size(); i++) {
-				if (i > 0) {
-					queryBuilder.append(',');
-				}
-				queryBuilder.append("'");
-				queryBuilder.append(indices.get(i));
-				queryBuilder.append("'");
-			}
-			queryBuilder.append(") ");
-
-			queryBuilder.append(" AND (");
-			queryBuilder.append(requestBodySearch.getQuerySqlWhereClause());
-			queryBuilder.append(")");
-
-			if (!IndexUtils.isTypesEmpty(types)) {
-				queryBuilder.append(" AND (");
-				for (int j = 0; j < types.length; j++) {
-					if (types[j].length() == 0) {
-						continue;
-					}
-					if (j > 0) {
-						queryBuilder.append(" OR ");
-					}
-					queryBuilder.append("_type = '");
-					queryBuilder.append(types[j]);
-					queryBuilder.append("'");
-				}
-				queryBuilder.append(")");
-			}
-			queryBuilder.append(")");
-			queryBuilder.append(requestBodySearch.getQuerySqlOrderClause());
+		
+		if(!requestBodySearch.getQuery().isMatchAllQuery()) {
+			whereClause.append(" AND (");
+			whereClause.append(requestBodySearch.getQuerySqlWhereClause(matchedIndexTemplate));
+			whereClause.append(")");
 		}
-		jdbcTemplate.update(queryBuilder.toString());
-
-		final String query = (requestBodySearch.getSize() == 0 ? "SELECT COUNT(*) " : "SELECT * ") + " FROM "
-				+ queryDataTableName;
-		final SearchQuery result = new SearchQuery(queryDataTableName, query);
-		result.getTemporaryTables().add(queryDataTableName);
-		return result;
+		
+		return new PsqlQueryComponents(IndexUtils.DATA_TABLE, whereClause.toString(), "", requestBodySearch.getQuerySqlOrderClause());
 	}
 }

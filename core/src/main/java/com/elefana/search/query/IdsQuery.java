@@ -18,6 +18,7 @@ package com.elefana.search.query;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.elefana.api.indices.IndexTemplate;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
 
@@ -57,7 +58,7 @@ public class IdsQuery extends Query {
 	}
 	
 	@Override
-	public String toSqlWhereClause() {
+	public String toSqlWhereClause(IndexTemplate indexTemplate) {
 		StringBuilder result = new StringBuilder();
 		if(!types.isEmpty()) {
 			result.append('(');

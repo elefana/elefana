@@ -13,34 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package com.elefana.search;
+package com.elefana.api.indices;
 
-import java.util.ArrayList;
-import java.util.List;
-
-/**
- *
- */
-public class SearchQuery {
-	private final String resultTable;
-	private final String query;
-	private final List<String> temporaryTables = new ArrayList<String>(1);
-	
-	public SearchQuery(String resultTable, String query) {
-		super();
-		this.resultTable = resultTable;
-		this.query = query;
-	}
-
-	public String getResultTable() {
-		return resultTable;
-	}
-
-	public String getQuery() {
-		return query;
-	}
-
-	public List<String> getTemporaryTables() {
-		return temporaryTables;
-	}
+public enum IndexGenerationMode {
+	/**
+	 * Generates a PSQL index for all JSON fields
+	 */
+	ALL,
+	/**
+	 * Generates a PSQL index for a JSON fields once it is queried at least once
+	 */
+	DYNAMIC,
+	/**
+	 * Only generates a PSQL index for pre-specified JSON fields
+	 */
+	PRESET
 }

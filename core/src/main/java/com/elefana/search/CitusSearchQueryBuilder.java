@@ -19,11 +19,9 @@ import java.util.List;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import com.elefana.api.indices.IndexTemplate;
 import com.elefana.util.IndexUtils;
 
-/**
- *
- */
 public class CitusSearchQueryBuilder implements SearchQueryBuilder {
 	private final JdbcTemplate jdbcTemplate;
 	private final IndexUtils indexUtils;
@@ -35,68 +33,68 @@ public class CitusSearchQueryBuilder implements SearchQueryBuilder {
 	}
 
 	@Override
-	public SearchQuery buildQuery(List<String> indices, String[] types, RequestBodySearch requestBodySearch) {
-		final String queryDataTableName = SEARCH_TABLE_PREFIX + requestBodySearch.hashCode();
-
-		final StringBuilder queryBuilder = new StringBuilder();
-		queryBuilder.append("CREATE TEMP TABLE ");
-		queryBuilder.append(queryDataTableName);
-
-		if (indices.isEmpty()) {
-			queryBuilder.append(
+	public PsqlQueryComponents buildQuery(IndexTemplate matchedIndexTemplate, List<String> indices, String[] types, RequestBodySearch requestBodySearch) {
+		if(indices.isEmpty()) {
+			final String emptyDataTableName = SEARCH_TABLE_PREFIX + requestBodySearch.hashCode();
+			
+			final StringBuilder emptyTableQuery = new StringBuilder();
+			emptyTableQuery.append("CREATE TEMP TABLE ");
+			emptyTableQuery.append(emptyDataTableName);
+			emptyTableQuery.append(
 					" (_index VARCHAR(255) NOT NULL, _type VARCHAR(255) NOT NULL, _id VARCHAR(255) NOT NULL, _timestamp BIGINT, _source jsonb)");
-		} else {
-			queryBuilder.append(" AS (");
-
-			queryBuilder.append("SELECT * FROM (");
-			for (int i = 0; i < indices.size(); i++) {
-				if (i > 0) {
-					queryBuilder.append(" UNION ALL");
-				}
-				queryBuilder.append('(');
-				queryBuilder.append("SELECT * FROM ");
-				queryBuilder.append(indexUtils.getQueryTarget(indices.get(i)));
-
-				if (!requestBodySearch.getQuery().isMatchAllQuery()) {
-					queryBuilder.append(" WHERE (");
-					queryBuilder.append(requestBodySearch.getQuerySqlWhereClause());
-					queryBuilder.append(")");
-				}
-
-				if (!IndexUtils.isTypesEmpty(types)) {
-					if (requestBodySearch.getQuery().isMatchAllQuery()) {
-						queryBuilder.append(" WHERE (");
-					} else {
-						queryBuilder.append(" AND (");
-					}
-					for (int j = 0; j < types.length; j++) {
-						if (types[j].length() == 0) {
-							continue;
-						}
-						if (j > 0) {
-							queryBuilder.append(" OR ");
-						}
-						queryBuilder.append("_type = '");
-						queryBuilder.append(types[j]);
-						queryBuilder.append("'");
-					}
-					queryBuilder.append(")");
-				}
-
-				queryBuilder.append(')');
-			}
-			queryBuilder.append(") AS entries");
-			queryBuilder.append(')');
-			queryBuilder.append(requestBodySearch.getQuerySqlOrderClause());
+			jdbcTemplate.update(emptyTableQuery.toString());
+			
+			final PsqlQueryComponents result = new PsqlQueryComponents(emptyDataTableName, "", "", "", "");
+			result.getTemporaryTables().add(emptyDataTableName);
+			return result;
+		}
+		
+		final StringBuilder whereClause = new StringBuilder();
+		if (!requestBodySearch.getQuery().isMatchAllQuery()) {
+			whereClause.append("(");
+			whereClause.append(requestBodySearch.getQuerySqlWhereClause(matchedIndexTemplate));
+			whereClause.append(")");
 		}
 
-		jdbcTemplate.update(queryBuilder.toString());
-
-		final String query = (requestBodySearch.getSize() == 0 ? "SELECT COUNT(*) " : "SELECT * ") + " FROM "
-				+ queryDataTableName;
-		final SearchQuery result = new SearchQuery(queryDataTableName, query);
-		result.getTemporaryTables().add(queryDataTableName);
-		return result;
+		if (!IndexUtils.isTypesEmpty(types)) {
+			if (!requestBodySearch.getQuery().isMatchAllQuery()) {
+				whereClause.append(" AND (");
+			} else {
+				whereClause.append("(");
+			}
+			for (int j = 0; j < types.length; j++) {
+				if (types[j].length() == 0) {
+					continue;
+				}
+				if (j > 0) {
+					whereClause.append(" OR ");
+				}
+				whereClause.append("_type = '");
+				whereClause.append(types[j]);
+				whereClause.append("'");
+			}
+			whereClause.append(")");
+		}
+		
+		final StringBuilder fromComponent = new StringBuilder();
+		fromComponent.append('(');
+		final String whereResult = whereClause.toString();
+		for (int i = 0; i < indices.size(); i++) {
+			if (i > 0) {
+				fromComponent.append(" UNION ALL");
+			}
+			fromComponent.append('(');
+			fromComponent.append("SELECT * FROM ");
+			fromComponent.append(indexUtils.getQueryTarget(indices.get(i)));
+			if(!whereResult.isEmpty()) {
+				fromComponent.append(" WHERE ");
+				fromComponent.append(whereResult);
+			}
+			fromComponent.append(')');
+		}
+		fromComponent.append(')');
+		
+		return new PsqlQueryComponents(fromComponent.toString(), whereClause.toString(), "", requestBodySearch.getQuerySqlOrderClause(), "");
 	}
 
 }

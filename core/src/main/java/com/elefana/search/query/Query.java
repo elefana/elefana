@@ -15,11 +15,13 @@
  ******************************************************************************/
 package com.elefana.search.query;
 
+import com.elefana.api.indices.IndexTemplate;
+
 public abstract class Query {
 
 	public boolean isMatchAllQuery() {
 		return false;
 	}
 	
-	public abstract String toSqlWhereClause();
+	public abstract String toSqlWhereClause(IndexTemplate indexTemplate);
 }

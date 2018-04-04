@@ -26,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.elefana.api.exception.ElefanaException;
+import com.elefana.search.PsqlQueryComponents;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
 
@@ -98,9 +99,18 @@ public class RangeAggregation extends BucketAggregation {
 				queryBuilder.append(" AS (");
 				queryBuilder.append("SELECT * FROM ");
 			}
-			queryBuilder.append(aggregationExec.getQueryTable());
-			appendIndicesWhereClause(aggregationExec, queryBuilder);
-			queryBuilder.append(" AND ");
+			queryBuilder.append(aggregationExec.getQueryComponents().getFromComponent());
+			if (!aggregationExec.getNodeSettingsService().isUsingCitus()) {
+				if(aggregationExec.getQueryComponents().appendWhere(queryBuilder)) {
+					queryBuilder.append(" AND ");
+				} else {
+					queryBuilder.append(" WHERE ");
+				}
+			} else if(aggregationExec.getQueryComponents().getWhereComponent().isEmpty()) {
+				queryBuilder.append(" WHERE ");
+			} else {
+				queryBuilder.append(" AND ");
+			}
 			
 			if(range.doubleFrom != null) {
 				bucket.put("from", range.doubleFrom);
@@ -158,7 +168,8 @@ public class RangeAggregation extends BucketAggregation {
 				bucket.put("doc_count", aggResult.get("count"));
 				
 				for(Aggregation aggregation : aggregationExec.getAggregation().getSubAggregations()) {
-					aggregation.executeSqlQuery(aggregationExec, aggregationExec.getSearchResponse(), bucket, rangeTableName);
+					PsqlQueryComponents queryComponents = new PsqlQueryComponents(rangeTableName, "", "", "");
+					aggregation.executeSqlQuery(aggregationExec, queryComponents, aggregationExec.getSearchResponse(), bucket);
 				}
 			} else {
 				Map<String, Object> aggResult = aggregationExec.getJdbcTemplate().queryForMap(queryBuilder.toString());

@@ -28,6 +28,7 @@ import org.springframework.jdbc.support.rowset.SqlRowSet;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.InvalidAggregationFieldType;
 import com.elefana.api.exception.NoSuchMappingException;
+import com.elefana.search.PsqlQueryComponents;
 import com.jsoniter.any.Any;
 
 public class DateHistogramAggregation extends BucketAggregation {
@@ -146,8 +147,13 @@ public class DateHistogramAggregation extends BucketAggregation {
 		}
 		queryBuilder.append(") AS elefana_agg_bucket");
 		queryBuilder.append(", * FROM ");
-		queryBuilder.append(aggregationExec.getQueryTable());
-		appendIndicesWhereClause(aggregationExec, queryBuilder);
+		queryBuilder.append(aggregationExec.getQueryComponents().getFromComponent());
+		if (!aggregationExec.getNodeSettingsService().isUsingCitus()) {
+			aggregationExec.getQueryComponents().appendWhere(queryBuilder);
+		} else {
+			queryBuilder.append(" AS ");
+			queryBuilder.append("hit_results");
+		}
 		queryBuilder.append(")");
 
 		aggregationExec.getJdbcTemplate().execute(queryBuilder.toString());
@@ -174,15 +180,16 @@ public class DateHistogramAggregation extends BucketAggregation {
 			bucket.put("doc_count", aggResult.get("count"));
 
 			for (Aggregation aggregation : aggregationExec.getAggregation().getSubAggregations()) {
-				aggregation.executeSqlQuery(aggregationExec, aggregationExec.getSearchResponse(), bucket, bucketTableName);
+				PsqlQueryComponents queryComponents = new PsqlQueryComponents(bucketTableName, "", "", "");
+				aggregation.executeSqlQuery(aggregationExec, queryComponents, aggregationExec.getSearchResponse(), bucket);
 			}
 			buckets.add(bucket);
-			aggregationExec.getTempTablesCreated().add(bucketTableName);
+			aggregationExec.getQueryComponents().getTemporaryTables().add(bucketTableName);
 		}
 		result.put("buckets", buckets);
 		aggregationExec.getAggregationsResult().put(aggregationExec.getAggregation().getAggregationName(), result);
 
-		aggregationExec.getTempTablesCreated().add(aggregationTableName);
+		aggregationExec.getQueryComponents().getTemporaryTables().add(aggregationTableName);
 	}
 
 	@Override

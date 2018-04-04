@@ -22,6 +22,8 @@ public class IndexStorageSettings {
 	private DistributionMode distributionMode;
 	@JsonProperty("timestamp_path")
 	private String timestampPath;
+	@JsonProperty("index_generation")
+	private IndexGenerationSettings indexGenerationSettings;
 	
 	public DistributionMode getDistributionMode() {
 		if(distributionMode == null) {
@@ -42,11 +44,23 @@ public class IndexStorageSettings {
 		this.timestampPath = timestampPath;
 	}
 
+	public IndexGenerationSettings getIndexGenerationSettings() {
+		if(indexGenerationSettings == null) {
+			indexGenerationSettings = new IndexGenerationSettings();
+		}
+		return indexGenerationSettings;
+	}
+
+	public void setIndexGenerationSettings(IndexGenerationSettings indexGenerationSettings) {
+		this.indexGenerationSettings = indexGenerationSettings;
+	}
+
 	@Override
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
 		result = prime * result + ((distributionMode == null) ? 0 : distributionMode.hashCode());
+		result = prime * result + ((indexGenerationSettings == null) ? 0 : indexGenerationSettings.hashCode());
 		result = prime * result + ((timestampPath == null) ? 0 : timestampPath.hashCode());
 		return result;
 	}
@@ -61,6 +75,11 @@ public class IndexStorageSettings {
 			return false;
 		IndexStorageSettings other = (IndexStorageSettings) obj;
 		if (distributionMode != other.distributionMode)
+			return false;
+		if (indexGenerationSettings == null) {
+			if (other.indexGenerationSettings != null)
+				return false;
+		} else if (!indexGenerationSettings.equals(other.indexGenerationSettings))
 			return false;
 		if (timestampPath == null) {
 			if (other.timestampPath != null)

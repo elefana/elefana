@@ -39,17 +39,23 @@ import com.codahale.metrics.Histogram;
 import com.codahale.metrics.MetricRegistry;
 import com.elefana.api.RequestExecutor;
 import com.elefana.api.exception.ElefanaException;
+import com.elefana.api.indices.IndexTemplate;
 import com.elefana.api.search.MultiSearchRequest;
 import com.elefana.api.search.MultiSearchResponse;
 import com.elefana.api.search.SearchHit;
 import com.elefana.api.search.SearchRequest;
 import com.elefana.api.search.SearchResponse;
+import com.elefana.indices.IndexTemplateService;
 import com.elefana.indices.psql.PsqlIndexFieldMappingService;
+import com.elefana.indices.psql.PsqlIndexTemplateService;
 import com.elefana.node.NodeSettingsService;
+import com.elefana.search.CitusSearchHitsQueryExecutor;
 import com.elefana.search.CitusSearchQueryBuilder;
+import com.elefana.search.PartitionTableSearchHitsQueryExecutor;
 import com.elefana.search.PartitionTableSearchQueryBuilder;
 import com.elefana.search.RequestBodySearch;
-import com.elefana.search.SearchQuery;
+import com.elefana.search.SearchHitsQueryExecutor;
+import com.elefana.search.PsqlQueryComponents;
 import com.elefana.search.SearchQueryBuilder;
 import com.elefana.search.SearchService;
 import com.elefana.util.IndexUtils;
@@ -73,6 +79,8 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 	@Autowired
 	private PsqlIndexFieldMappingService indexFieldMappingService;
 	@Autowired
+	private PsqlIndexTemplateService indexTemplateService;
+	@Autowired
 	private TableGarbageCollector tableGarbageCollector;
 	@Autowired
 	private IndexUtils indexUtils;
@@ -81,6 +89,7 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 
 	private ExecutorService executorService;
 	private SearchQueryBuilder searchQueryBuilder;
+	private SearchHitsQueryExecutor searchHitsQueryExecutor;
 	private Histogram searchTime, searchHits;
 
 	@PostConstruct
@@ -94,8 +103,10 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 
 		if (nodeSettingsService.isUsingCitus()) {
 			searchQueryBuilder = new CitusSearchQueryBuilder(jdbcTemplate, indexUtils);
+			searchHitsQueryExecutor = new CitusSearchHitsQueryExecutor(jdbcTemplate, searchTime, searchHits);
 		} else {
 			searchQueryBuilder = new PartitionTableSearchQueryBuilder(jdbcTemplate, indexUtils);
+			searchHitsQueryExecutor = new PartitionTableSearchHitsQueryExecutor(jdbcTemplate, searchTime, searchHits);
 		}
 	}
 
@@ -173,16 +184,16 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 
 	private SearchResponse searchWithAggregation(List<String> indices, String[] types,
 			RequestBodySearch requestBodySearch, long startTime) throws ElefanaException {
-		final SearchQuery searchQuery = searchQueryBuilder.buildQuery(indices, types, requestBodySearch);
-		final List<String> temporaryTablesCreated = searchQuery.getTemporaryTables();
+		final IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndices(indices);
+		final PsqlQueryComponents queryComponents = searchQueryBuilder.buildQuery(indexTemplate, indices, types, requestBodySearch);
+		final List<String> temporaryTablesCreated = queryComponents.getTemporaryTables();
 
-		final SearchResponse result = executeQuery(searchQuery.getQuery(), startTime, requestBodySearch.getFrom(),
+		final SearchResponse result = executeQuery(queryComponents, startTime, requestBodySearch.getFrom(),
 				requestBodySearch.getSize());
 		final Map<String, Object> aggregationsResult = new HashMap<String, Object>();
 
 		requestBodySearch.getAggregations().executeSqlQuery(indices, types, jdbcTemplate, nodeSettingsService,
-				indexFieldMappingService, result, aggregationsResult, temporaryTablesCreated,
-				searchQuery.getResultTable(), requestBodySearch);
+				indexFieldMappingService, queryComponents, result, aggregationsResult, requestBodySearch);
 		result.setAggregations(aggregationsResult);
 
 		tableGarbageCollector.queueTemporaryTablesForDeletion(temporaryTablesCreated);
@@ -191,93 +202,14 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 
 	private SearchResponse searchWithoutAggregation(List<String> indices, String[] types,
 			RequestBodySearch requestBodySearch, long startTime) throws ElefanaException {
-		final SearchQuery searchQuery = searchQueryBuilder.buildQuery(indices, types, requestBodySearch);
-		return executeQuery(searchQuery.getQuery(), startTime, requestBodySearch.getFrom(),
+		final IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndices(indices);
+		final PsqlQueryComponents queryComponents = searchQueryBuilder.buildQuery(indexTemplate, indices, types, requestBodySearch);
+		return executeQuery(queryComponents, startTime, requestBodySearch.getFrom(),
 				requestBodySearch.getSize());
 	}
 
-	private SearchResponse executeQuery(String query, long startTime, int from, int size) throws ElefanaException {
-		SqlRowSet sqlRowSet = null;
-		try {
-			sqlRowSet = jdbcTemplate.queryForRowSet(query);
-			return convertSqlQueryResultToSearchResult(sqlRowSet, startTime, from, size);
-		} catch (Exception e) {
-			e.printStackTrace();
-			if (e.getMessage().contains("No results")) {
-				return convertSqlQueryResultToSearchResult(null, startTime, from, size);
-			}
-			throw e;
-		}
-	}
-
-	private SearchResponse convertSqlQueryResultToSearchResult(SqlRowSet rowSet, long startTime, int from, int size)
-			throws ElefanaException {
-		final SearchResponse result = new SearchResponse();
-
-		result.getShards().put("total", 1);
-		result.getShards().put("successful", 1);
-		result.getShards().put("failed", 0);
-
-		if (rowSet == null) {
-			result.getHits().setTotal(0);
-		} else if (size > 0) {
-			int count = 0;
-			int hitOffset = 0;
-			boolean lastRowValid = true;
-			while (hitOffset < from && (lastRowValid = rowSet.next())) {
-				hitOffset++;
-				count++;
-			}
-			if(lastRowValid) {
-				while ((count - hitOffset) < size && (lastRowValid = rowSet.next())) {
-					SearchHit searchHit = new SearchHit();
-					searchHit._index = rowSet.getString("_index");
-					searchHit._type = rowSet.getString("_type");
-					searchHit._id = rowSet.getString("_id");
-					searchHit._score = 1.0;
-					searchHit._source = JsonIterator.deserialize(IndexUtils.psqlUnescapeString(rowSet.getString("_source")),
-							new TypeLiteral<Map<String, Object>>() {
-							});
-					result.getHits().getHits().add(searchHit);
-					count++;
-				}
-			}
-			if(lastRowValid) {
-				while (rowSet.next()) {
-					count++;
-				}
-			}
-			result.getHits().setTotal(count);
-		} else {
-			int totalHits = 0;
-			boolean hasCountColumn = true;
-			while (rowSet.next()) {
-				if (hasCountColumn) {
-					try {
-						totalHits += rowSet.getInt("count");
-					} catch (Exception e) {
-						hasCountColumn = false;
-					}
-				}
-				if (!hasCountColumn) {
-					totalHits++;
-				}
-			}
-			result.getHits().setTotal(totalHits);
-		}
-		result.getHits().setMaxScore(1.0);
-
-		final long took = System.currentTimeMillis() - startTime;
-		result.setTook(took);
-		result.setTimedOut(false);
-
-		searchHits.update(result.getHits().getTotal());
-		searchTime.update(took);
-		return result;
-	}
-
-	private SearchResponse getEmptySearchResult(long startTime, int from, int size) throws ElefanaException {
-		return convertSqlQueryResultToSearchResult(null, startTime, from, size);
+	private SearchResponse executeQuery(PsqlQueryComponents queryComponents, long startTime, int from, int size) throws ElefanaException {
+		return searchHitsQueryExecutor.executeQuery(queryComponents, startTime, from, size);
 	}
 
 	@Override

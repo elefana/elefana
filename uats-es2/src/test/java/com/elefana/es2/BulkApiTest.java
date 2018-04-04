@@ -195,7 +195,6 @@ public class BulkApiTest {
 		.when()
 			.post("/" + index + "/_search")
 		.then()
-			.log().all()
 			.statusCode(200)
 			.body("hits.total", equalTo(totalDocuments));
 	}

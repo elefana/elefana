@@ -15,6 +15,7 @@
  ******************************************************************************/
 package com.elefana.search.query;
 
+import com.elefana.api.indices.IndexTemplate;
 import com.jsoniter.any.Any;
 
 public class ExistsQuery extends Query {
@@ -28,7 +29,7 @@ public class ExistsQuery extends Query {
 	}
 	
 	@Override
-	public String toSqlWhereClause() {
+	public String toSqlWhereClause(IndexTemplate indexTemplate) {
 		return "_source ? '" + fieldName + "'";
 	}
 }

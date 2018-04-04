@@ -15,10 +15,17 @@
  ******************************************************************************/
 package com.elefana.search.query;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.elefana.api.indices.IndexTemplate;
+import com.elefana.search.SearchQueryBuilder;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
 
 public class RangeQuery extends Query {
+	private static final Logger LOGGER = LoggerFactory.getLogger(RangeQuery.class);
+	
 	private static final String KEY_GTE = "gte";
 	private static final String KEY_GT = "gt";
 	private static final String KEY_LTE = "lte";
@@ -63,16 +70,33 @@ public class RangeQuery extends Query {
 	}
 
 	@Override
-	public String toSqlWhereClause() {
+	public String toSqlWhereClause(IndexTemplate indexTemplate) {
 		StringBuilder result = new StringBuilder();
+		
+		final String column;
+		
+		if(indexTemplate != null && indexTemplate.getStorage().getTimestampPath() != null) {
+			if(indexTemplate.getStorage().getTimestampPath().equalsIgnoreCase(fieldName)) {
+				column = "_timestamp";
+			} else {
+				column = "elefana_json_field(_source, '" + fieldName + "')::numeric";
+			}
+		} else {
+			column = "elefana_json_field(_source, '" + fieldName + "')::numeric";
+		}
+		
 		if (from != null) {
-			result.append("elefana_json_field(_source, '" + fieldName + "')::numeric " + (includeLower ? ">=" : ">") + " " + from);
+			result.append(column);
+			result.append(' ');
+			result.append((includeLower ? ">=" : ">") + " " + from);
 		}
 		if (to != null) {
 			if (from != null) {
 				result.append(" AND ");
 			}
-			result.append("elefana_json_field(_source, '" + fieldName + "')::numeric " + (includeUpper ? "<=" : "<") + " " + to);
+			result.append(column);
+			result.append(' ');
+			result.append((includeUpper ? "<=" : "<") + " " + to);
 		}
 		return result.toString();
 	}

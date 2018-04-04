@@ -26,6 +26,7 @@ import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.search.SearchResponse;
 import com.elefana.indices.psql.PsqlIndexFieldMappingService;
 import com.elefana.node.NodeSettingsService;
+import com.elefana.search.PsqlQueryComponents;
 import com.elefana.search.RequestBodySearch;
 
 public abstract class Aggregation {
@@ -37,11 +38,11 @@ public abstract class Aggregation {
 
 	protected static void appendIndicesWhereClause(final AggregationExec aggregationExec,
 			final StringBuilder queryBuilder) {
-		if(aggregationExec.getNodeSettingsService().isUsingCitus()) {
+		if (aggregationExec.getNodeSettingsService().isUsingCitus()) {
 			queryBuilder.append(" WHERE TRUE");
 			return;
 		}
-		
+
 		queryBuilder.append(" WHERE _index IN (");
 		for (int i = 0; i < aggregationExec.getIndices().size(); i++) {
 			if (i > 0) {
@@ -54,19 +55,21 @@ public abstract class Aggregation {
 		queryBuilder.append(")");
 	}
 
-	public void executeSqlQuery(AggregationExec parentExec, SearchResponse searchResponse, Map<String, Object> aggregationsResult, String queryTable) throws ElefanaException {
-		executeSqlQuery(new AggregationExec(parentExec.getIndices(), parentExec.getTypes(),
-				parentExec.getJdbcTemplate(), parentExec.getNodeSettingsService(),
-				parentExec.getIndexFieldMappingService(), searchResponse, aggregationsResult, parentExec.getTempTablesCreated(),
-				queryTable, parentExec.getRequestBodySearch(), this));
+	public void executeSqlQuery(AggregationExec parentExec, PsqlQueryComponents queryComponents,
+			SearchResponse searchResponse, Map<String, Object> aggregationsResult) throws ElefanaException {
+		executeSqlQuery(
+				new AggregationExec(parentExec.getIndices(), parentExec.getTypes(), parentExec.getJdbcTemplate(),
+						parentExec.getNodeSettingsService(), parentExec.getIndexFieldMappingService(), queryComponents,
+						searchResponse, aggregationsResult, parentExec.getRequestBodySearch(), this));
 	}
 
-	public void executeSqlQuery(List<String> tableNames, String[] types, JdbcTemplate jdbcTemplate,
+	public void executeSqlQuery(List<String> indices, String[] types, JdbcTemplate jdbcTemplate,
 			NodeSettingsService nodeSettingsService, PsqlIndexFieldMappingService indexFieldMappingService,
-			SearchResponse searchResponse, Map<String, Object> aggregationsResult, List<String> tempTablesCreated, String queryTable,
+			PsqlQueryComponents queryComponents, SearchResponse searchResponse, Map<String, Object> aggregationsResult,
 			RequestBodySearch requestBodySearch) throws ElefanaException {
-		executeSqlQuery(new AggregationExec(tableNames, types, jdbcTemplate, nodeSettingsService,
-				indexFieldMappingService, searchResponse, aggregationsResult, tempTablesCreated, queryTable, requestBodySearch, this));
+		executeSqlQuery(
+				new AggregationExec(indices, types, jdbcTemplate, nodeSettingsService, indexFieldMappingService,
+						queryComponents, searchResponse, aggregationsResult, requestBodySearch, this));
 	}
 
 	public abstract String getAggregationName();

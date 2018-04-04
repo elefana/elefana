@@ -560,13 +560,13 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 		final List<String> types = getTypesForIndex(indexName);
 
 		final String totalDocsQuery = nodeSettingsService.isUsingCitus()
-				? "SELECT COUNT(*) FROM " + indexUtils.getQueryTarget(indexName)
+				? "SELECT COUNT(_id) FROM " + indexUtils.getQueryTarget(indexName)
 				: "SELECT COUNT(*) FROM " + IndexUtils.DATA_TABLE + " WHERE _index='" + indexName + "'";
 
 		long totalDocs = (long) jdbcTemplate.queryForList(totalDocsQuery).get(0).get("count");
 
 		for (String type : types) {
-			List<String> fieldNames = getFieldNames(indexName, type);
+			final List<String> fieldNames = getFieldNames(indexName, type);
 			indexUtils.ensureJsonFieldIndexExist(indexName, fieldNames);
 
 			for (String fieldName : fieldNames) {
@@ -594,7 +594,6 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 		}
 
 		final String json = JsonStream.serialize(fieldStats);
-		LOGGER.info(json);
 		PGobject jsonObject = new PGobject();
 		jsonObject.setType("json");
 		jsonObject.setValue(json);

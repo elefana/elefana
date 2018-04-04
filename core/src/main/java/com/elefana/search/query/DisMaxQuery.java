@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.elefana.api.exception.ElefanaException;
+import com.elefana.api.indices.IndexTemplate;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
 
@@ -48,7 +49,7 @@ public class DisMaxQuery extends Query {
 	}
 
 	@Override
-	public String toSqlWhereClause() {
+	public String toSqlWhereClause(IndexTemplate indexTemplate) {
 		//TODO: Handle scoring/sorting
 		StringBuilder result = new StringBuilder();
 		for(int i = 0; i < queries.size(); i++) {
@@ -56,7 +57,7 @@ public class DisMaxQuery extends Query {
 				result.append(" OR ");
 			}
 			result.append('(');
-			result.append(queries.get(i).toSqlWhereClause());
+			result.append(queries.get(i).toSqlWhereClause(indexTemplate));
 			result.append(')');
 		}
 		return result.toString();

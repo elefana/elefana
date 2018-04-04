@@ -237,6 +237,10 @@ public class DocumentApiTest extends DocumentedTest {
 		indexWithId(id1, message1, System.currentTimeMillis());
 		indexWithId(id2, message2, System.currentTimeMillis());
 		
+		try {
+			Thread.sleep(2000L);
+		} catch (Exception e) {}
+		
 		given()
 			.request()
 			.body("{\"docs\" : [{\"_type\" : \"" + TYPE + "\",\"_id\" : \"" + id1 + "\"}," +
@@ -267,7 +271,7 @@ public class DocumentApiTest extends DocumentedTest {
 		indexWithId(id2, message2, System.currentTimeMillis());
 		
 		try {
-			Thread.sleep(1000L);
+			Thread.sleep(2000L);
 		} catch (Exception e) {}
 		
 		given()
@@ -277,6 +281,7 @@ public class DocumentApiTest extends DocumentedTest {
 		.when()
 			.get("/" + INDEX + "/" + TYPE + "/_mget")
 		.then()
+			.log().all()
 			.statusCode(200)
 			.body("docs[0]._index", equalTo(INDEX))
 			.body("docs[0]._type", equalTo(TYPE))

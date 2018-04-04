@@ -49,6 +49,18 @@ public class SearchApiTest extends AbstractQueryTest {
 		generateRangeDocuments(index, type);
 		
 		ValidatableResponse response = given()
+				.request()
+				.body("{\"sort\": [{\"value\": \"desc\"}]}")
+			.when()
+				.post("/" + index + "/" + type + "/_search")
+			.then()
+				.log().all()
+				.statusCode(200)
+				.body("hits.hits.size()", equalTo(totalDocuments));
+		
+		assertResponseDescending(response);
+		
+		response = given()
 			.request()
 			.body("{\"query\":{\"match_all\":{}}, \"sort\": [{\"value\": \"desc\"}]}")
 		.when()
@@ -89,7 +101,6 @@ public class SearchApiTest extends AbstractQueryTest {
 		for(int i = 1; i < 10; i++) {
 			int previousValue = response.extract().path("hits.hits[" + (i - 1) + "]._source.value");
 			int currentValue = response.extract().path("hits.hits[" + i + "]._source.value");
-			System.out.println(previousValue + " " + currentValue);
 			Assert.assertEquals(true, previousValue > currentValue);
 		}
 	}

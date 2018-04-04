@@ -15,6 +15,7 @@
  ******************************************************************************/
 package com.elefana.search.query;
 
+import com.elefana.api.indices.IndexTemplate;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
 
@@ -36,7 +37,7 @@ public class TypeQuery extends Query {
 	}
 
 	@Override
-	public String toSqlWhereClause() {
+	public String toSqlWhereClause(IndexTemplate indexTemplate) {
 		return "type = '" + value + "'";
 	}
 

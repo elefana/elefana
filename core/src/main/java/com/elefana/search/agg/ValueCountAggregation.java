@@ -49,8 +49,13 @@ public class ValueCountAggregation extends Aggregation {
 		queryBuilder.append("SELECT COUNT(_source->>'" + fieldName + "') AS ");
 		queryBuilder.append(aggregationExec.getAggregation().getAggregationName());
 		queryBuilder.append(" FROM ");
-		queryBuilder.append(aggregationExec.getQueryTable());
-		appendIndicesWhereClause(aggregationExec, queryBuilder);
+		queryBuilder.append(aggregationExec.getQueryComponents().getFromComponent());
+		if (!aggregationExec.getNodeSettingsService().isUsingCitus()) {
+			aggregationExec.getQueryComponents().appendWhere(queryBuilder);
+		} else {
+			queryBuilder.append(" AS ");
+			queryBuilder.append("hit_results");
+		}
 		
 		List<Map<String, Object>> resultSet = aggregationExec.getJdbcTemplate()
 				.queryForList(queryBuilder.toString());

@@ -21,6 +21,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.elefana.api.indices.IndexTemplate;
 import com.elefana.esqs.EsFieldQuery;
 import com.elefana.esqs.EsQueryOperator;
 import com.elefana.esqs.EsQueryString;
@@ -103,8 +104,7 @@ public class QueryStringQuery extends Query implements EsQueryStringWalker {
 	}
 
 	@Override
-	public String toSqlWhereClause() {
-		LOGGER.info(sqlQuery);
+	public String toSqlWhereClause(IndexTemplate indexTemplate) {
 		return sqlQuery;
 	}
 

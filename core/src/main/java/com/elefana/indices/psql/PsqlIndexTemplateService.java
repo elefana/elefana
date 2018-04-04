@@ -137,6 +137,23 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 		}
 		throw new ShardFailedException();
 	}
+	
+	public IndexTemplate getIndexTemplateForIndices(List<String> indices) {
+		if(indices.isEmpty()) {
+			return null;
+		}
+		IndexTemplate result = getIndexTemplateForIndex(indices.get(0));
+		if(result == null) {
+			return null;
+		}
+		for(int i = 1; i < indices.size(); i++) {
+			IndexTemplate nextIndexTemplate = getIndexTemplateForIndex(indices.get(i));
+			if(!nextIndexTemplate.getTemplateId().equalsIgnoreCase(result.getTemplateId())) {
+				return null;
+			}
+		}
+		return result;
+	}
 
 	public IndexTemplate getIndexTemplateForIndex(String index) {
 		if (indexToIndexTemplateNullCache.containsKey(index)) {
@@ -171,9 +188,6 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 		if (templateData.get("template").valueType().equals(ValueType.INVALID)) {
 			throw new BadRequestException();
 		}
-		if (templateData.get("mappings").valueType().equals(ValueType.INVALID)) {
-			throw new BadRequestException();
-		}
 
 		try {
 			final String indexPattern = templateData.get("template").toString();
@@ -188,7 +202,11 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 			
 			PGobject mappingsObject = new PGobject();
 			mappingsObject.setType("json");
-			mappingsObject.setValue(templateData.get("mappings").toString());
+			if (templateData.get("mappings").valueType().equals(ValueType.OBJECT)) {
+				mappingsObject.setValue(templateData.get("mappings").toString());
+			} else {
+				mappingsObject.setValue("{}");
+			}
 
 			jdbcTemplate.update(
 					"INSERT INTO elefana_index_template (_template_id, _index_pattern, _storage, _mappings) VALUES (?, ?, ?, ?) ON CONFLICT (_template_id) DO UPDATE SET _mappings = EXCLUDED._mappings, _storage = EXCLUDED._storage, _index_pattern = EXCLUDED._index_pattern",

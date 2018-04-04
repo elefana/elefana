@@ -16,6 +16,7 @@
 package com.elefana.search.query;
 
 import com.elefana.api.exception.ElefanaException;
+import com.elefana.api.indices.IndexTemplate;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
 
@@ -46,19 +47,19 @@ public class FilteredQuery extends Query {
 	}
 
 	@Override
-	public String toSqlWhereClause() {
+	public String toSqlWhereClause(IndexTemplate indexTemplate) {
 		if(!query.isMatchAllQuery() && !filter.isMatchAllQuery()) {
 			StringBuilder result = new StringBuilder();
 			result.append('(');
-			result.append(query.toSqlWhereClause());
+			result.append(query.toSqlWhereClause(indexTemplate));
 			result.append(" AND ");
-			result.append(filter.toSqlWhereClause());
+			result.append(filter.toSqlWhereClause(indexTemplate));
 			result.append(')');
 			return result.toString();
 		} else if(query.isMatchAllQuery()) {
-			return filter.toSqlWhereClause();
+			return filter.toSqlWhereClause(indexTemplate);
 		} else {
-			return query.toSqlWhereClause();
+			return query.toSqlWhereClause(indexTemplate);
 		}
 	}
 

@@ -23,6 +23,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import com.elefana.api.search.SearchResponse;
 import com.elefana.indices.psql.PsqlIndexFieldMappingService;
 import com.elefana.node.NodeSettingsService;
+import com.elefana.search.PsqlQueryComponents;
 import com.elefana.search.RequestBodySearch;
 
 public class AggregationExec {
@@ -31,16 +32,15 @@ public class AggregationExec {
 	private final JdbcTemplate jdbcTemplate;
 	private final NodeSettingsService nodeSettingsService;
 	private final PsqlIndexFieldMappingService indexFieldMappingService;
+	private final PsqlQueryComponents queryComponents;
 	private final SearchResponse searchResponse;
 	private final Map<String, Object> aggregationsResult;
-	private final List<String> tempTablesCreated;
-	private final String queryTable;
 	private final RequestBodySearch requestBodySearch;
 	private final Aggregation aggregation;
 
 	public AggregationExec(List<String> indices, String[] types, JdbcTemplate jdbcTemplate,
 			NodeSettingsService nodeSettingsService, PsqlIndexFieldMappingService indexFieldMappingService,
-			SearchResponse searchResponse, Map<String, Object> aggregationsResult, List<String> tempTablesCreated, String queryTable,
+			PsqlQueryComponents queryComponents, SearchResponse searchResponse, Map<String, Object> aggregationsResult,
 			RequestBodySearch requestBodySearch, Aggregation aggregation) {
 		super();
 		this.indices = indices;
@@ -49,9 +49,8 @@ public class AggregationExec {
 		this.nodeSettingsService = nodeSettingsService;
 		this.indexFieldMappingService = indexFieldMappingService;
 		this.searchResponse = searchResponse;
+		this.queryComponents = queryComponents;
 		this.aggregationsResult = aggregationsResult;
-		this.tempTablesCreated = tempTablesCreated;
-		this.queryTable = queryTable;
 		this.requestBodySearch = requestBodySearch;
 		this.aggregation = aggregation;
 	}
@@ -80,16 +79,12 @@ public class AggregationExec {
 		return searchResponse;
 	}
 
+	public PsqlQueryComponents getQueryComponents() {
+		return queryComponents;
+	}
+
 	public Map<String, Object> getAggregationsResult() {
 		return aggregationsResult;
-	}
-
-	public List<String> getTempTablesCreated() {
-		return tempTablesCreated;
-	}
-
-	public String getQueryTable() {
-		return queryTable;
 	}
 
 	public RequestBodySearch getRequestBodySearch() {

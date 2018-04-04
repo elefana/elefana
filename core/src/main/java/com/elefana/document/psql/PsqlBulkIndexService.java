@@ -16,8 +16,10 @@
 package com.elefana.document.psql;
 
 import java.io.IOException;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
@@ -66,42 +68,39 @@ public class PsqlBulkIndexService implements Runnable {
 
 	private final AtomicBoolean running = new AtomicBoolean(true);
 	private BlockingQueue<String> indexQueue;
-	private String previousIndexTable = "";
 	private ExecutorService executorService;
 
 	@PostConstruct
 	public void postConstruct() {
 		final int totalThreads = Math.max(2, environment.getProperty("elefana.service.bulk.index.threads",
 				Integer.class, Runtime.getRuntime().availableProcessors()));
-		
+
 		indexQueue = new ArrayBlockingQueue<String>(totalThreads);
 		executorService = Executors.newFixedThreadPool(totalThreads);
-		
+
 		executorService.submit(new Runnable() {
-			
+
 			@Override
 			public void run() {
 				try {
-					String nextIndexTable = getNextIndexTable();
-					while (running.get() && !previousIndexTable.equals(nextIndexTable)) {
-						try {
+					while (running.get()) {
+						final Queue<String> nextIndexTables = getNextIndexTables();
+
+						while (!nextIndexTables.isEmpty()) {
+							String nextIndexTable = nextIndexTables.poll();
 							indexQueue.put(nextIndexTable);
-							previousIndexTable = nextIndexTable;
-							nextIndexTable = getNextIndexTable();
-						} catch (Exception e) {
-							LOGGER.error(e.getMessage(), e);
 						}
 					}
 				} catch (Exception e) {
 					LOGGER.error(e.getMessage(), e);
 				}
-				if(!running.get()) {
+				if (!running.get()) {
 					return;
 				}
 				executorService.submit(this);
 			}
 		});
-		
+
 		for (int i = 0; i < totalThreads - 1; i++) {
 			executorService.submit(this);
 		}
@@ -119,6 +118,10 @@ public class PsqlBulkIndexService implements Runnable {
 			while (running.get()) {
 				try {
 					final String nextIndexTable = indexQueue.take();
+
+					jdbcTemplate
+							.execute("DELETE FROM elefana_bulk_index_queue WHERE _tableName='" + nextIndexTable + "'");
+
 					final String index = getIndexName(nextIndexTable);
 					final String targetTable = indexUtils.getQueryTarget(index);
 
@@ -129,8 +132,6 @@ public class PsqlBulkIndexService implements Runnable {
 					}
 
 					jdbcTemplate.execute("DROP TABLE IF EXISTS " + nextIndexTable);
-					jdbcTemplate
-							.execute("DELETE FROM elefana_bulk_index_queue WHERE _tablename='" + nextIndexTable + "'");
 					indexFieldMappingService.scheduleIndexForMappingAndStats(index);
 				} catch (Exception e) {
 					LOGGER.error(e.getMessage(), e);
@@ -139,22 +140,23 @@ public class PsqlBulkIndexService implements Runnable {
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
 		}
-		if(!running.get()) {
+		if (!running.get()) {
 			return;
 		}
 		executorService.submit(this);
 	}
 
-	private String getNextIndexTable() {
+	private Queue<String> getNextIndexTables() {
 		final List<Map<String, Object>> nextTableResults = jdbcTemplate
-				.queryForList("SELECT * FROM elefana_bulk_index_queue LIMIT 1");
-		if (!nextTableResults.isEmpty()) {
-			final Map<String, Object> row = nextTableResults.get(0);
+				.queryForList("SELECT * FROM elefana_bulk_index_queue");
+		final Queue<String> results = new LinkedList<String>();
+
+		for (Map<String, Object> row : nextTableResults) {
 			if (row.containsKey("_tableName")) {
-				return ((String) row.get("_tableName")).replace('-', '_');
+				results.offer(((String) row.get("_tableName")).replace('-', '_'));
 			}
 		}
-		return previousIndexTable;
+		return results;
 	}
 
 	private String getIndexName(String nextIndexTable) {

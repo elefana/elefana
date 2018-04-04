@@ -15,6 +15,8 @@
  ******************************************************************************/
 package com.elefana.search.query;
 
+import com.elefana.api.indices.IndexTemplate;
+
 public class MatchAllQuery extends Query {
 	
 	@Override
@@ -23,7 +25,7 @@ public class MatchAllQuery extends Query {
 	}
 
 	@Override
-	public String toSqlWhereClause() {
+	public String toSqlWhereClause(IndexTemplate indexTemplate) {
 		return "";
 	}
 

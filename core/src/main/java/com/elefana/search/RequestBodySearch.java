@@ -19,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.elefana.api.exception.ElefanaException;
+import com.elefana.api.indices.IndexTemplate;
 import com.elefana.search.agg.AggregationsParser;
 import com.elefana.search.agg.RootAggregationContext;
 import com.elefana.search.query.Query;
@@ -53,7 +54,6 @@ public class RequestBodySearch {
 		this.timestamp = System.currentTimeMillis();
 		
 		this.query = QueryParser.parseQuery(originalQuery);
-		this.querySqlWhereClause = query.toSqlWhereClause();
 		
 		if(originalQuery != null && !originalQuery.isEmpty()) {
 			Any context = JsonIterator.deserialize(originalQuery);
@@ -89,7 +89,10 @@ public class RequestBodySearch {
 		return originalQuery;
 	}
 
-	public String getQuerySqlWhereClause() {
+	public String getQuerySqlWhereClause(IndexTemplate indexTemplate) {
+		if(querySqlWhereClause == null) {
+			querySqlWhereClause = query.toSqlWhereClause(indexTemplate);
+		}
 		return querySqlWhereClause;
 	}
 	

@@ -35,7 +35,6 @@ public class Sort {
 		}
 		
 		final StringBuilder result = new StringBuilder();
-		result.append(" ORDER BY ");
 		for(int i = 0; i < clauses.size(); i++) {
 			result.append(clauses.get(i).toSqlClause());
 			if(i < clauses.size() - 1) {
