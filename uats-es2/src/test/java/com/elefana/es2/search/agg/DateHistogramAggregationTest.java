@@ -53,6 +53,7 @@ public class DateHistogramAggregationTest extends AbstractAggregationTest {
 		.when()
 			.post("/" + index + "/_search")
 		.then()
+			.log().all()
 			.statusCode(200)
 			.body("aggregations.aggs_result.buckets[0]", notNullValue())
 			.body("aggregations.aggs_result.buckets[" + (DOCUMENT_QUANTITY - 1) + "]", notNullValue());

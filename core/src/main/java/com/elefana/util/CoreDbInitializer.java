@@ -80,7 +80,8 @@ public class CoreDbInitializer implements DbInitializer {
 		PreparedStatement preparedStatement;
 
 		final String createMasterTableQuery = "CREATE TABLE IF NOT EXISTS " + IndexUtils.DATA_TABLE
-				+ " (_index VARCHAR(255) NOT NULL, _type VARCHAR(255) NOT NULL, _id VARCHAR(255) NOT NULL, _timestamp BIGINT, _source jsonb) PARTITION BY LIST (_index);";
+				+ " (_index VARCHAR(255) NOT NULL, _type VARCHAR(255) NOT NULL, _id VARCHAR(255) NOT NULL, _timestamp BIGINT, "
+				+ "_bucket1s BIGINT, _bucket1m BIGINT, _bucket1h BIGINT, _bucket1d BIGINT, _source jsonb) PARTITION BY LIST (_index);";
 		preparedStatement = connection.prepareStatement(createMasterTableQuery);
 		preparedStatement.execute();
 		preparedStatement.close();

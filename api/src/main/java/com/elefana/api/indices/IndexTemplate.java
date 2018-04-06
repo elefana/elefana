@@ -52,11 +52,23 @@ public class IndexTemplate {
 		this.template = template;
 	}
 
+	@JsonIgnore
 	public boolean isTimeSeries() {
 		if(storage == null) {
 			return false;
 		}
 		return storage.getDistributionMode().equals(DistributionMode.TIME);
+	}
+	
+	@JsonIgnore
+	public boolean isTimestampField(String fieldName) {
+		if(storage == null) {
+			return false;
+		}
+		if(storage.getTimestampPath() == null) {
+			return false;
+		}
+		return storage.getTimestampPath().equalsIgnoreCase(fieldName);
 	}
 
 	public Map<String, Object> getSettings() {

@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.elefana.api.exception.ElefanaException;
+import com.elefana.api.indices.IndexTemplate;
 import com.elefana.api.search.SearchResponse;
 import com.elefana.indices.psql.PsqlIndexFieldMappingService;
 import com.elefana.node.NodeSettingsService;
@@ -48,12 +49,12 @@ public class RootAggregationContext extends BucketAggregation {
 	}
 
 	@Override
-	public void executeSqlQuery(List<String> indices, String[] types, JdbcTemplate jdbcTemplate,
+	public void executeSqlQuery(IndexTemplate indexTemplate, List<String> indices, String[] types, JdbcTemplate jdbcTemplate,
 			NodeSettingsService nodeSettingsService, PsqlIndexFieldMappingService indexFieldMappingService,
 			PsqlQueryComponents queryComponents, SearchResponse searchResponse, Map<String, Object> aggregationsResult,
 			RequestBodySearch requestBodySearch) throws ElefanaException {
 		for (Aggregation aggregation : subaggregations) {
-			aggregation.executeSqlQuery(indices, types, jdbcTemplate, nodeSettingsService, indexFieldMappingService,
+			aggregation.executeSqlQuery(indexTemplate, indices, types, jdbcTemplate, nodeSettingsService, indexFieldMappingService,
 					queryComponents, searchResponse, aggregationsResult, requestBodySearch);
 		}
 	}

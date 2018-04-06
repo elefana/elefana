@@ -62,14 +62,14 @@ import net.openhft.hashing.LongHashFunction;
 @Service
 @DependsOn("nodeSettingsService")
 public class CoreIndexUtils implements IndexUtils {
-	private static final String [] DEFAULT_TABLESPACES = new String [] { "" };
+	private static final String[] DEFAULT_TABLESPACES = new String[] { "" };
 	private static final Logger LOGGER = LoggerFactory.getLogger(CoreIndexUtils.class);
-	
-	private final Map<String, String []> jsonPathCache = new ConcurrentHashMap<String, String []>();
+
+	private final Map<String, String[]> jsonPathCache = new ConcurrentHashMap<String, String[]>();
 	private final Set<String> knownTables = new ConcurrentSkipListSet<String>();
 	private final Lock tableCreationLock = new ReentrantLock();
 	private final LongHashFunction xxHash = LongHashFunction.xx();
-	
+
 	@Autowired
 	private Environment environment;
 	@Autowired
@@ -82,17 +82,18 @@ public class CoreIndexUtils implements IndexUtils {
 	private MetricRegistry metricRegistry;
 	@Autowired
 	private DbInitializer dbInitializer;
-	
+
+	private final ThreadLocalInteger documentIdCounter = new ThreadLocalInteger();
 	private final AtomicInteger tablespaceIndex = new AtomicInteger();
-	private String [] tablespaces;
+	private String[] tablespaces;
 
 	@PostConstruct
 	public void postConstruct() throws SQLException {
 		tablespaces = environment.getProperty("elefana.service.document.tablespaces", "").split(",");
-		if(isEmptyTablespaceList(tablespaces)) {
+		if (isEmptyTablespaceList(tablespaces)) {
 			tablespaces = DEFAULT_TABLESPACES;
 		}
-		
+
 		dbInitializer.initialiseDatabase();
 
 		if (jdbcTemplate.getDataSource() instanceof HikariDataSource) {
@@ -101,26 +102,31 @@ public class CoreIndexUtils implements IndexUtils {
 
 		addAllKnownTables(listTables());
 	}
-	
+
 	protected boolean addAllKnownTables(List<String> tableNames) {
 		return knownTables.addAll(tableNames);
 	}
-	
+
 	protected boolean addKnownTable(String tableName) {
 		return knownTables.add(tableName);
 	}
-	
+
 	protected boolean removeKnownTable(String tableName) {
 		return knownTables.remove(tableName);
 	}
-	
+
 	protected boolean isKnownTable(String tableName) {
 		return knownTables.contains(tableName);
 	}
-	
+
 	@Override
 	public String generateDocumentId(String index, String type, String source) {
-		return Long.toHexString(xxHash.hashChars(System.nanoTime() + index + type + source));
+		final long timestamp = System.currentTimeMillis();
+		final StringBuilder result = new StringBuilder();
+		result.append(Long.toHexString(xxHash.hashChars(source)));
+		result.append(timestamp);
+		result.append(documentIdCounter.getThreadIdAndNextValue());
+		return result.toString();
 	}
 
 	public List<String> listIndices() throws ElefanaException {
@@ -176,108 +182,111 @@ public class CoreIndexUtils implements IndexUtils {
 	}
 
 	public String getQueryTarget(String indexName) {
-		if(!nodeSettingsService.isUsingCitus()) {
+		if (!nodeSettingsService.isUsingCitus()) {
 			return DATA_TABLE;
 		}
 		return getPartitionTableForIndex(indexName);
 	}
-	
+
 	public long getTimestamp(String index, String document) throws ElefanaException {
-		final GetIndexTemplateForIndexRequest indexTemplateForIndexRequest = indexTemplateService.prepareGetIndexTemplateForIndex(index);
+		final GetIndexTemplateForIndexRequest indexTemplateForIndexRequest = indexTemplateService
+				.prepareGetIndexTemplateForIndex(index);
 		final GetIndexTemplateForIndexResponse indexTemplateForIndexResponse = indexTemplateForIndexRequest.get();
 		final IndexTemplate indexTemplate = indexTemplateForIndexResponse.getIndexTemplate();
-		if(indexTemplate == null) {
+		if (indexTemplate == null) {
 			return System.currentTimeMillis();
 		}
-		if(!indexTemplate.isTimeSeries()) {
+		if (!indexTemplate.isTimeSeries()) {
 			return System.currentTimeMillis();
 		}
 		String timestampPath = indexTemplate.getStorage().getTimestampPath();
-		if(timestampPath == null) {
+		if (timestampPath == null) {
 			return System.currentTimeMillis();
 		}
-		
-		String [] path = jsonPathCache.get(timestampPath);
-		if(path == null) {
+
+		String[] path = jsonPathCache.get(timestampPath);
+		if (path == null) {
 			path = timestampPath.split("\\.");
 			jsonPathCache.put(timestampPath, path);
 		}
 		Any json = JsonIterator.deserialize(document);
-		for(int i = 0; i < path.length; i++) {
-			if(json.valueType().equals(ValueType.INVALID)) {
+		for (int i = 0; i < path.length; i++) {
+			if (json.valueType().equals(ValueType.INVALID)) {
 				return System.currentTimeMillis();
 			}
 			json = json.get(path[i]);
 		}
-		if(!json.valueType().equals(ValueType.NUMBER)) {
+		if (!json.valueType().equals(ValueType.NUMBER)) {
 			return System.currentTimeMillis();
 		}
 		return json.toLong();
 	}
-	
+
 	@Override
 	public void ensureJsonFieldIndexExist(String indexName, List<String> fieldNames) throws ElefanaException {
 		final IndexTemplate indexTemplate;
-		final GetIndexTemplateForIndexResponse indexTemplateForIndexResponse = indexTemplateService.prepareGetIndexTemplateForIndex(indexName).get();
-		if(indexTemplateForIndexResponse.getIndexTemplate() == null) {
+		final GetIndexTemplateForIndexResponse indexTemplateForIndexResponse = indexTemplateService
+				.prepareGetIndexTemplateForIndex(indexName).get();
+		if (indexTemplateForIndexResponse.getIndexTemplate() == null) {
 			indexTemplate = indexTemplateForIndexResponse.getIndexTemplate();
 		} else {
 			indexTemplate = null;
 		}
 		final String tableName = convertIndexNameToTableName(indexName);
-		
+
 		Connection connection = null;
 		try {
 			connection = jdbcTemplate.getDataSource().getConnection();
 			PreparedStatement preparedStatement;
-			
-			for(String fieldName : fieldNames) {
-				if(indexTemplate != null) {
-					final IndexGenerationSettings indexGenerationSettings = indexTemplate.getStorage().getIndexGenerationSettings();
-					switch(indexGenerationSettings.getMode()) {
+
+			for (String fieldName : fieldNames) {
+				if (indexTemplate != null) {
+					final IndexGenerationSettings indexGenerationSettings = indexTemplate.getStorage()
+							.getIndexGenerationSettings();
+					switch (indexGenerationSettings.getMode()) {
 					case ALL:
 						break;
 					case PRESET:
 						boolean matchedPresetField = false;
-						for(String presetFieldName : indexGenerationSettings.getPresetFields()) {
-							if(presetFieldName.equalsIgnoreCase(fieldName)) {
+						for (String presetFieldName : indexGenerationSettings.getPresetFields()) {
+							if (presetFieldName.equalsIgnoreCase(fieldName)) {
 								matchedPresetField = true;
 								break;
 							}
 						}
-						if(!matchedPresetField) {
+						if (!matchedPresetField) {
 							continue;
 						}
 						break;
 					case DYNAMIC:
 					default:
-						
+
 						break;
 					}
 				}
-				
-				final String jsonIndexName = JSON_INDEX_PREFIX + tableName + "_" + fieldName;
-				
-				final StringBuilder createJsonFilterQuery = new StringBuilder();
-				createJsonFilterQuery.append("CREATE INDEX IF NOT EXISTS ");
-				createJsonFilterQuery.append(jsonIndexName);
-				createJsonFilterQuery.append(" ON ");
-				if (nodeSettingsService.isUsingCitus()) {
-					createJsonFilterQuery.append(tableName);
-				} else {
-					createJsonFilterQuery.append(getPartitionTableForIndex(indexName));
-				}
-				createJsonFilterQuery.append("(elefana_json_field(_source,'");
-				createJsonFilterQuery.append(fieldName);
-				createJsonFilterQuery.append("'))");
-				
-				preparedStatement = connection.prepareStatement(createJsonFilterQuery.toString());
-				preparedStatement.execute();
-				preparedStatement.close();
+
+//				final String jsonIndexName = JSON_INDEX_PREFIX + tableName + "_" + fieldName;
+//
+//				final StringBuilder createJsonFilterQuery = new StringBuilder();
+//				createJsonFilterQuery.append("CREATE INDEX IF NOT EXISTS ");
+//				createJsonFilterQuery.append(jsonIndexName);
+//				createJsonFilterQuery.append(" ON ");
+//				if (nodeSettingsService.isUsingCitus()) {
+//					createJsonFilterQuery.append(tableName);
+//				} else {
+//					createJsonFilterQuery.append(getPartitionTableForIndex(indexName));
+//				}
+//				createJsonFilterQuery.append("(elefana_json_field(_source,'");
+//				createJsonFilterQuery.append(fieldName);
+//				createJsonFilterQuery.append("'))");
+//
+//				preparedStatement = connection.prepareStatement(createJsonFilterQuery.toString());
+//				preparedStatement.execute();
+//				preparedStatement.close();
 			}
-			
+
 		} catch (Exception e) {
-			if(connection != null) {
+			if (connection != null) {
 				try {
 					connection.close();
 				} catch (SQLException e1) {
@@ -287,7 +296,7 @@ public class CoreIndexUtils implements IndexUtils {
 			e.printStackTrace();
 			throw new ShardFailedException(e);
 		}
-		if(connection != null) {
+		if (connection != null) {
 			try {
 				connection.close();
 			} catch (SQLException e) {
@@ -307,8 +316,9 @@ public class CoreIndexUtils implements IndexUtils {
 			tableCreationLock.unlock();
 			return;
 		}
-		
-		final GetIndexTemplateForIndexRequest indexTemplateForIndexRequest = indexTemplateService.prepareGetIndexTemplateForIndex(indexName);
+
+		final GetIndexTemplateForIndexRequest indexTemplateForIndexRequest = indexTemplateService
+				.prepareGetIndexTemplateForIndex(indexName);
 		final GetIndexTemplateForIndexResponse indexTemplateForIndexResponse = indexTemplateForIndexRequest.get();
 		final IndexTemplate indexTemplate = indexTemplateForIndexResponse.getIndexTemplate();
 		boolean timeSeries = false;
@@ -318,6 +328,10 @@ public class CoreIndexUtils implements IndexUtils {
 		}
 
 		final String timestampIndexName = TIMESTAMP_INDEX_PREFIX + tableName;
+		final String bucket1sIndexName = SECOND_INDEX_PREFIX + tableName;
+		final String bucket1mIndexName = MINUTE_INDEX_PREFIX + tableName;
+		final String bucket1hIndexName = HOUR_INDEX_PREFIX + tableName;
+		final String bucket1dIndexName = DAY_INDEX_PREFIX + tableName;
 		final String ginIndexName = GIN_INDEX_PREFIX + tableName;
 		final String constraintName = PRIMARY_KEY_PREFIX + tableName;
 
@@ -329,9 +343,11 @@ public class CoreIndexUtils implements IndexUtils {
 			final StringBuilder createTableQuery = new StringBuilder();
 			createTableQuery.append("CREATE TABLE IF NOT EXISTS ");
 			createTableQuery.append(tableName);
-			
+
 			if (nodeSettingsService.isUsingCitus()) {
-				createTableQuery.append(" (_index VARCHAR(255) NOT NULL, _type VARCHAR(255) NOT NULL, _id VARCHAR(255) NOT NULL, _timestamp BIGINT, _source jsonb)");
+				createTableQuery.append(
+						" (_index VARCHAR(255) NOT NULL, _type VARCHAR(255) NOT NULL, _id VARCHAR(255) NOT NULL, _timestamp BIGINT, "
+						+ "_bucket1s BIGINT, _bucket1m BIGINT, _bucket1h BIGINT, _bucket1d BIGINT, _source jsonb)");
 			} else {
 				createTableQuery.append(" PARTITION OF ");
 				createTableQuery.append(DATA_TABLE);
@@ -340,16 +356,16 @@ public class CoreIndexUtils implements IndexUtils {
 				createTableQuery.append("')");
 			}
 			final String tablespace = tablespaces[tablespaceIndex.incrementAndGet() % tablespaces.length];
-			if(tablespace != null && !tablespace.isEmpty()) {
+			if (tablespace != null && !tablespace.isEmpty()) {
 				createTableQuery.append(" TABLESPACE ");
 				createTableQuery.append(tablespace);
 			}
-			
+
 			LOGGER.info(createTableQuery.toString());
 			preparedStatement = connection.prepareStatement(createTableQuery.toString());
 			preparedStatement.execute();
 			preparedStatement.close();
-			
+
 			if (nodeSettingsService.isUsingCitus() && timeSeries) {
 				final String createPrimaryKeyQuery = "ALTER TABLE " + tableName + " ADD CONSTRAINT " + constraintName
 						+ " PRIMARY KEY (_timestamp, _id);";
@@ -372,13 +388,41 @@ public class CoreIndexUtils implements IndexUtils {
 			preparedStatement = connection.prepareStatement(createGinIndexQuery);
 			preparedStatement.execute();
 			preparedStatement.close();
-			
-			final String createTimestampIndexQuery = "CREATE INDEX IF NOT EXISTS " + timestampIndexName + " ON " + tableName
-					+ " (_timestamp)";
+
+			final String createTimestampIndexQuery = "CREATE INDEX IF NOT EXISTS " + timestampIndexName + " ON "
+					+ tableName + " (_timestamp)";
 			LOGGER.info(createTimestampIndexQuery);
 			preparedStatement = connection.prepareStatement(createTimestampIndexQuery);
 			preparedStatement.execute();
 			preparedStatement.close();
+			
+//			final String createBucket1sIndexQuery = "CREATE INDEX IF NOT EXISTS " + bucket1sIndexName + " ON "
+//					+ tableName + " (_bucket1s)";
+//			LOGGER.info(createBucket1sIndexQuery);
+//			preparedStatement = connection.prepareStatement(createBucket1sIndexQuery);
+//			preparedStatement.execute();
+//			preparedStatement.close();
+//			
+//			final String createBucket1mIndexQuery = "CREATE INDEX IF NOT EXISTS " + bucket1mIndexName + " ON "
+//					+ tableName + " (_bucket1m)";
+//			LOGGER.info(createBucket1mIndexQuery);
+//			preparedStatement = connection.prepareStatement(createBucket1mIndexQuery);
+//			preparedStatement.execute();
+//			preparedStatement.close();
+//			
+//			final String createBucket1hIndexQuery = "CREATE INDEX IF NOT EXISTS " + bucket1hIndexName + " ON "
+//					+ tableName + " (_bucket1h)";
+//			LOGGER.info(createBucket1hIndexQuery);
+//			preparedStatement = connection.prepareStatement(createBucket1hIndexQuery);
+//			preparedStatement.execute();
+//			preparedStatement.close();
+//			
+//			final String createBucket1dIndexQuery = "CREATE INDEX IF NOT EXISTS " + bucket1dIndexName + " ON "
+//					+ tableName + " (_bucket1d)";
+//			LOGGER.info(createBucket1dIndexQuery);
+//			preparedStatement = connection.prepareStatement(createBucket1dIndexQuery);
+//			preparedStatement.execute();
+//			preparedStatement.close();
 
 			final String createPartitionTrackingEntry = "INSERT INTO " + PARTITION_TRACKING_TABLE
 					+ " (_index, _partitionTable) VALUES (?, ?) ON CONFLICT DO NOTHING";
@@ -406,7 +450,7 @@ public class CoreIndexUtils implements IndexUtils {
 			addKnownTable(tableName);
 			tableCreationLock.unlock();
 		} catch (Exception e) {
-			if(connection != null) {
+			if (connection != null) {
 				try {
 					connection.close();
 				} catch (SQLException e1) {
@@ -427,7 +471,7 @@ public class CoreIndexUtils implements IndexUtils {
 		jdbcTemplate.update("DROP TABLE IF EXISTS " + tableName + " CASCADE;");
 		removeKnownTable(tableName);
 	}
-	
+
 	@Override
 	public void deleteTemporaryTable(String tableName) {
 		jdbcTemplate.update("DROP TABLE IF EXISTS " + tableName + " CASCADE;");
@@ -506,16 +550,16 @@ public class CoreIndexUtils implements IndexUtils {
 		}
 		return true;
 	}
-	
-	private boolean isEmptyTablespaceList(String [] tablespaces) {
-		if(tablespaces == null) {
+
+	private boolean isEmptyTablespaceList(String[] tablespaces) {
+		if (tablespaces == null) {
 			return true;
 		}
-		for(int i = 0; i < tablespaces.length; i++) {
-			if(tablespaces[i] == null) {
+		for (int i = 0; i < tablespaces.length; i++) {
+			if (tablespaces[i] == null) {
 				continue;
 			}
-			if(tablespaces[i].isEmpty()) {
+			if (tablespaces[i].isEmpty()) {
 				continue;
 			}
 			return false;

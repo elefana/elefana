@@ -15,6 +15,7 @@
  ******************************************************************************/
 package com.elefana.search;
 
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -37,6 +38,8 @@ public abstract class SearchHitsQueryExecutor {
 		this.searchTime = searchTime;
 		this.searchHits = searchHits;
 	}
+	
+	protected abstract SqlRowSet queryHitsCount(PsqlQueryComponents queryComponents, long startTime, int from, int size);
 
 	protected abstract SqlRowSet queryHits(PsqlQueryComponents queryComponents, long startTime, int from, int size);
 
@@ -46,64 +49,34 @@ public abstract class SearchHitsQueryExecutor {
 		result.getShards().put("successful", 1);
 		result.getShards().put("failed", 0);
 		
-		SqlRowSet rowSet = null;
+		SqlRowSet countRowSet = null;
+		SqlRowSet hitsRowSet = null;
 		try {
-			rowSet = queryHits(queryComponents, startTime, from, size);
+			countRowSet = queryHitsCount(queryComponents, startTime, from, size);
 		} catch (Exception e) {
 			e.printStackTrace();
 			if (!e.getMessage().contains("No results")) {
 				throw e;
 			}
-			rowSet = null;
+			countRowSet = null;
+		}
+		try {
+			hitsRowSet = queryHits(queryComponents, startTime, from, size);
+		} catch (Exception e) {
+			e.printStackTrace();
+			if (!e.getMessage().contains("No results")) {
+				throw e;
+			}
+			hitsRowSet = null;
 		}
 
-		if (rowSet == null) {
+		if (countRowSet == null) {
 			result.getHits().setTotal(0);
-		} else if (size > 0) {
-			int count = 0;
-			int hitOffset = 0;
-			boolean lastRowValid = true;
-			while (hitOffset < from && (lastRowValid = rowSet.next())) {
-				hitOffset++;
-				count++;
-			}
-			if(lastRowValid) {
-				while ((count - hitOffset) < size && (lastRowValid = rowSet.next())) {
-					SearchHit searchHit = new SearchHit();
-					searchHit._index = rowSet.getString("_index");
-					searchHit._type = rowSet.getString("_type");
-					searchHit._id = rowSet.getString("_id");
-					searchHit._score = 1.0;
-					searchHit._source = JsonIterator.deserialize(IndexUtils.psqlUnescapeString(rowSet.getString("_source")),
-							new TypeLiteral<Map<String, Object>>() {
-							});
-					result.getHits().getHits().add(searchHit);
-					count++;
-				}
-			}
-			if(lastRowValid) {
-				while (rowSet.next()) {
-					count++;
-				}
-			}
-			result.getHits().setTotal(count);
 		} else {
-			int totalHits = 0;
-			boolean hasCountColumn = true;
-			while (rowSet.next()) {
-				if (hasCountColumn) {
-					try {
-						totalHits += rowSet.getInt("count");
-					} catch (Exception e) {
-						hasCountColumn = false;
-					}
-				}
-				if (!hasCountColumn) {
-					totalHits++;
-				}
-			}
-			result.getHits().setTotal(totalHits);
+			result.getHits().setTotal(getTotalHits(countRowSet));
+			populateHits(result.getHits().getHits(), hitsRowSet);
 		}
+		
 		result.getHits().setMaxScore(1.0);
 
 		final long took = System.currentTimeMillis() - startTime;
@@ -113,5 +86,37 @@ public abstract class SearchHitsQueryExecutor {
 		searchHits.update(result.getHits().getTotal());
 		searchTime.update(took);
 		return result;
+	}
+	
+	private int getTotalHits(SqlRowSet countsRowSet) {
+		int totalHits = 0;
+		boolean hasCountColumn = true;
+		while (countsRowSet.next()) {
+			if (hasCountColumn) {
+				try {
+					totalHits += countsRowSet.getInt("count");
+				} catch (Exception e) {
+					hasCountColumn = false;
+				}
+			}
+			if (!hasCountColumn) {
+				totalHits++;
+			}
+		}
+		return totalHits;
+	}
+	
+	private void populateHits(List<SearchHit> results, SqlRowSet hitsRowSet) {
+		while (hitsRowSet.next()) {
+			SearchHit searchHit = new SearchHit();
+			searchHit._index = hitsRowSet.getString("_index");
+			searchHit._type = hitsRowSet.getString("_type");
+			searchHit._id = hitsRowSet.getString("_id");
+			searchHit._score = 1.0;
+			searchHit._source = JsonIterator.deserialize(IndexUtils.psqlUnescapeString(hitsRowSet.getString("_source")),
+					new TypeLiteral<Map<String, Object>>() {
+					});
+			results.add(searchHit);
+		}
 	}
 }

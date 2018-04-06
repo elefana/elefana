@@ -26,6 +26,10 @@ public interface IndexUtils {
 	public static final String TRIGGERS_PREFIX = "elefana_triggers_";
 	public static final String GIN_INDEX_PREFIX = "elefana_gin_idx_";
 	public static final String TIMESTAMP_INDEX_PREFIX = "elefana_ts_idx_";
+	public static final String SECOND_INDEX_PREFIX = "elefana_1s_idx_";
+	public static final String MINUTE_INDEX_PREFIX = "elefana_1m_idx_";
+	public static final String HOUR_INDEX_PREFIX = "elefana_1h_idx_";
+	public static final String DAY_INDEX_PREFIX = "elefana_1d_idx_";
 	public static final String JSON_INDEX_PREFIX = "elefana_json_idx_";
 	public static final String PRIMARY_KEY_PREFIX = "elefana_pkey_";
 	

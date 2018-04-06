@@ -34,11 +34,7 @@ public class CitusSearchHitsQueryExecutor extends SearchHitsQueryExecutor {
 	protected SqlRowSet queryHits(PsqlQueryComponents queryComponents, long startTime, int from, int size) {
 		final StringBuilder queryBuilder = new StringBuilder();
 		queryBuilder.append("SELECT ");
-		if(size == 0) {
-			queryBuilder.append("COUNT(_id)");
-		} else {
-			queryBuilder.append("*");
-		}
+		queryBuilder.append("*");
 		queryBuilder.append(" FROM ");
 		queryBuilder.append(queryComponents.getFromComponent());
 		queryBuilder.append(" AS ");
@@ -48,6 +44,27 @@ public class CitusSearchHitsQueryExecutor extends SearchHitsQueryExecutor {
 			queryBuilder.append(" ORDER BY ");
 			queryBuilder.append(queryComponents.getOrderByComponent());
 		}
+		if(size > 0) {
+			queryBuilder.append(" LIMIT ");
+			queryBuilder.append(size);
+		}
+		if(from > 0) {
+			queryBuilder.append(" OFFSET ");
+			queryBuilder.append(from);
+		}
+		LOGGER.info(queryBuilder.toString());
+		return jdbcTemplate.queryForRowSet(queryBuilder.toString());
+	}
+
+	@Override
+	protected SqlRowSet queryHitsCount(PsqlQueryComponents queryComponents, long startTime, int from, int size) {
+		final StringBuilder queryBuilder = new StringBuilder();
+		queryBuilder.append("SELECT ");
+		queryBuilder.append("COUNT(_id)");
+		queryBuilder.append(" FROM ");
+		queryBuilder.append(queryComponents.getFromComponent());
+		queryBuilder.append(" AS ");
+		queryBuilder.append("hit_results");
 		LOGGER.info(queryBuilder.toString());
 		return jdbcTemplate.queryForRowSet(queryBuilder.toString());
 	}

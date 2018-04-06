@@ -62,6 +62,11 @@ import com.jsoniter.spi.TypeLiteral;
 public class PsqlDocumentService implements DocumentService, RequestExecutor {
 	private static final Logger LOGGER = LoggerFactory.getLogger(PsqlDocumentService.class);
 
+	private static final long ONE_SECOND_IN_MILLIS = 1000L;
+	private static final long ONE_MINUTE_IN_MILLIS = ONE_SECOND_IN_MILLIS * 60L;
+	private static final long ONE_HOUR_IN_MILLIS = ONE_MINUTE_IN_MILLIS * 60L;
+	private static final long ONE_DAY_IN_MILLIS = ONE_HOUR_IN_MILLIS * 24L;
+
 	@Autowired
 	private Environment environment;
 	@Autowired
@@ -410,6 +415,10 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 		document = IndexUtils.psqlEscapeString(document);
 
 		final long timestamp = indexUtils.getTimestamp(index, document);
+		final long bucket1s = timestamp - (timestamp % ONE_SECOND_IN_MILLIS);
+		final long bucket1m = timestamp - (timestamp % ONE_MINUTE_IN_MILLIS);
+		final long bucket1h = timestamp - (timestamp % ONE_HOUR_IN_MILLIS);
+		final long bucket1d = timestamp - (timestamp % ONE_DAY_IN_MILLIS);
 
 		PGobject jsonObject = new PGobject();
 		jsonObject.setType("json");
@@ -425,7 +434,8 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 			queryBuilder.append("INSERT INTO ");
 			queryBuilder.append(indexUtils.getQueryTarget(index));
 			queryBuilder.append(" AS i");
-			queryBuilder.append(" (_index, _type, _id, _timestamp, _source) VALUES (?, ?, ?, ?, ?)");
+			queryBuilder.append(
+					" (_index, _type, _id, _timestamp, _bucket1s, _bucket1m, _bucket1h, _bucket1d, _source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
 			switch (opType) {
 			case CREATE:
@@ -433,12 +443,18 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 				break;
 			case UPDATE:
 				queryBuilder.append(
-						" ON CONFLICT (_id) DO UPDATE SET _timestamp = EXCLUDED._timestamp, _source = i._source || EXCLUDED._source");
+						" ON CONFLICT (_id) DO UPDATE SET _timestamp = EXCLUDED._timestamp, "
+						+ "_bucket1s = EXCLUDED._bucket1s, _bucket1m = EXCLUDED._bucket1m,"
+						+ " _bucket1h = EXCLUDED._bucket1h, _bucket1d = EXCLUDED._bucket1d, "
+						+ "_source = i._source || EXCLUDED._source");
 				break;
 			case OVERWRITE:
 			default:
 				queryBuilder.append(
-						" ON CONFLICT (_id) DO UPDATE SET _timestamp = EXCLUDED._timestamp, _source = EXCLUDED._source");
+						" ON CONFLICT (_id) DO UPDATE SET _timestamp = EXCLUDED._timestamp, "
+						+ "_bucket1s = EXCLUDED._bucket1s, _bucket1m = EXCLUDED._bucket1m, "
+						+ "_bucket1h = EXCLUDED._bucket1h, _bucket1d = EXCLUDED._bucket1d, "
+						+ "_source = EXCLUDED._source");
 				break;
 			}
 		} else {
@@ -455,7 +471,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 				queryBuilder.append("elefana_overwrite");
 				break;
 			}
-			queryBuilder.append("(?, ?, ?, ?, ?);");
+			queryBuilder.append("(?, ?, ?, ?, ?, ?, ?, ?, ?);");
 		}
 
 		int rows = 0;
@@ -466,7 +482,11 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 			preparedStatement.setString(2, type);
 			preparedStatement.setString(3, id);
 			preparedStatement.setLong(4, timestamp);
-			preparedStatement.setObject(5, jsonObject);
+			preparedStatement.setLong(5, bucket1s);
+			preparedStatement.setLong(6, bucket1m);
+			preparedStatement.setLong(7, bucket1h);
+			preparedStatement.setLong(8, bucket1d);
+			preparedStatement.setObject(9, jsonObject);
 
 			if (nodeSettingsService.isUsingCitus()) {
 				rows = preparedStatement.executeUpdate();

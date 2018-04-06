@@ -60,6 +60,11 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 	public static final String KEY_STATUS = "status";
 	public static final int VALUE_STATUS_CREATED = 201;
 
+	private static final long ONE_SECOND_IN_MILLIS = 1000L;
+	private static final long ONE_MINUTE_IN_MILLIS = ONE_SECOND_IN_MILLIS * 60L;
+	private static final long ONE_HOUR_IN_MILLIS = ONE_MINUTE_IN_MILLIS * 60L;
+	private static final long ONE_DAY_IN_MILLIS = ONE_HOUR_IN_MILLIS * 24L;
+
 	private static final DocumentShardInfo SHARDS = new DocumentShardInfo();
 
 	private final Timer psqlTimer;
@@ -84,19 +89,21 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 		this.queryTarget = queryTarget;
 		this.from = from;
 		this.size = size;
-		
-		List<Map<String, Object>> nextTableResults = jdbcTemplate.queryForList("SELECT elefana_next_bulk_ingest_table()");
+
+		List<Map<String, Object>> nextTableResults = jdbcTemplate
+				.queryForList("SELECT elefana_next_bulk_ingest_table()");
 		if (nextTableResults.isEmpty()) {
 			LOGGER.error("Could not get next staging table ID from elefana_next_staging_table(), using fallback table");
 			stagingTable = FALLBACK_STAGING_TABLE_PREFIX + FALLBACK_STAGING_TABLE_ID++;
 		} else {
 			Map<String, Object> row = nextTableResults.get(0);
-			if(row.containsKey("table_name")) {
+			if (row.containsKey("table_name")) {
 				stagingTable = ((String) row.get("table_name")).replace('-', '_');
-			} else if(row.containsKey("elefana_next_bulk_ingest_table")) {
+			} else if (row.containsKey("elefana_next_bulk_ingest_table")) {
 				stagingTable = ((String) row.get("elefana_next_bulk_ingest_table")).replace('-', '_');
 			} else {
-				LOGGER.error("Could not get next staging table ID from elefana_next_staging_table(), using fallback table");
+				LOGGER.error(
+						"Could not get next staging table ID from elefana_next_staging_table(), using fallback table");
 				stagingTable = FALLBACK_STAGING_TABLE_PREFIX + FALLBACK_STAGING_TABLE_ID++;
 			}
 		}
@@ -106,7 +113,7 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 	public List<BulkItemResponse> call() {
 		final List<BulkItemResponse> results = new ArrayList<BulkItemResponse>(1);
 		Connection connection = null;
-		
+
 		try {
 			connection = jdbcTemplate.getDataSource().getConnection();
 
@@ -135,8 +142,18 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 
 				for (int i = from; i < from + size && i < indexOperations.size(); i++) {
 					BulkIndexOperation indexOperation = indexOperations.get(i);
+					final long bucket1s = indexOperation.getTimestamp()
+							- (indexOperation.getTimestamp() % ONE_SECOND_IN_MILLIS);
+					final long bucket1m = indexOperation.getTimestamp()
+							- (indexOperation.getTimestamp() % ONE_MINUTE_IN_MILLIS);
+					final long bucket1h = indexOperation.getTimestamp()
+							- (indexOperation.getTimestamp() % ONE_HOUR_IN_MILLIS);
+					final long bucket1d = indexOperation.getTimestamp()
+							- (indexOperation.getTimestamp() % ONE_DAY_IN_MILLIS);
+
 					final String row = indexOperation.getIndex() + DELIMITER + indexOperation.getType() + DELIMITER
-							+ indexOperation.getId() + DELIMITER + System.currentTimeMillis() + DELIMITER
+							+ indexOperation.getId() + DELIMITER + indexOperation.getTimestamp() + DELIMITER + bucket1s
+							+ DELIMITER + bucket1m + DELIMITER + bucket1h + DELIMITER + bucket1d + DELIMITER
 							+ IndexUtils.psqlEscapeString(indexOperation.getSource()) + NEW_LINE;
 					final byte[] rowBytes = row.getBytes();
 					copyIn.writeToCopy(rowBytes, 0, rowBytes.length);
@@ -159,8 +176,8 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 			boolean foundBadEntry = false;
 			for (int i = from; i < from + size && i < indexOperations.size(); i++) {
 				BulkIndexOperation indexOperation = indexOperations.get(i);
-		
-				if(!foundBadEntry) {
+
+				if (!foundBadEntry) {
 					try {
 						JsonIterator.deserialize(indexOperation.getSource()).toString();
 					} catch (JsonException ex) {
@@ -168,20 +185,20 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 						foundBadEntry = true;
 					}
 				}
-				
+
 				BulkItemResponse responseEntry = null;
-				if(foundBadEntry) {
-					responseEntry = createEntry(i, "index", indexOperation.getIndex(),
-							indexOperation.getType(), indexOperation.getId(), BulkItemResponse.STATUS_FAILED);
+				if (foundBadEntry) {
+					responseEntry = createEntry(i, "index", indexOperation.getIndex(), indexOperation.getType(),
+							indexOperation.getId(), BulkItemResponse.STATUS_FAILED);
 				} else {
-					responseEntry = createEntry(i, "index", indexOperation.getIndex(),
-							indexOperation.getType(), indexOperation.getId(), BulkItemResponse.STATUS_CREATED);
+					responseEntry = createEntry(i, "index", indexOperation.getIndex(), indexOperation.getType(),
+							indexOperation.getId(), BulkItemResponse.STATUS_CREATED);
 				}
 				results.add(responseEntry);
-				
+
 				indexOperation.release();
 			}
-			if(!foundBadEntry) {
+			if (!foundBadEntry) {
 				LOGGER.error(e.getMessage(), e);
 			}
 		}
@@ -195,7 +212,8 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 		return results;
 	}
 
-	public BulkItemResponse createEntry(int operationIndex, String operation, String index, String type, String id, String resultStatus) {
+	public BulkItemResponse createEntry(int operationIndex, String operation, String index, String type, String id,
+			String resultStatus) {
 		BulkOpType opType = BulkOpType.valueOf(operation.toUpperCase());
 		BulkItemResponse result = new BulkItemResponse(operationIndex, opType);
 		result.setIndex(index);

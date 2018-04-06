@@ -15,11 +15,12 @@
  ******************************************************************************/
 package com.elefana.search.agg;
 
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,12 +34,18 @@ import com.jsoniter.any.Any;
 
 public class DateHistogramAggregation extends BucketAggregation {
 	private static final Logger LOGGER = LoggerFactory.getLogger(DateHistogramAggregation.class);
-	
+
 	private static final String KEY_FIELD = "field";
 	private static final String KEY_INTERVAL = "interval";
-	
-	private static final String [] EXPECTED_FIELD_TYPES = new String [] {"long", "date"};
-	
+
+	private static final String[] EXPECTED_FIELD_TYPES = new String[] { "long", "date" };
+
+	private static final long ONE_SECOND_IN_MILLIS = 1000L;
+	private static final long ONE_MINUTE_IN_MILLIS = ONE_SECOND_IN_MILLIS * 60L;
+	private static final long ONE_HOUR_IN_MILLIS = ONE_MINUTE_IN_MILLIS * 60L;
+	private static final long ONE_DAY_IN_MILLIS = ONE_HOUR_IN_MILLIS * 24L;
+	private static final long ONE_YEAR_IN_MILLIS = ONE_DAY_IN_MILLIS * 365L;
+
 	private final String aggregationName;
 	private final String fieldName;
 	private final String interval;
@@ -54,13 +61,15 @@ public class DateHistogramAggregation extends BucketAggregation {
 	public void executeSqlQuery(AggregationExec aggregationExec) throws ElefanaException {
 		final Map<String, Object> result = new HashMap<String, Object>();
 		final List<Map<String, Object>> buckets = new ArrayList<Map<String, Object>>();
-		
-		if(aggregationExec.getSearchResponse().getHits().getTotal() == 0) {
+
+		if (aggregationExec.getSearchResponse().getHits().getTotal() == 0) {
 			result.put("buckets", buckets);
 			aggregationExec.getAggregationsResult().put(aggregationExec.getAggregation().getAggregationName(), result);
 			return;
 		}
-		
+
+		final boolean isTimestampColumn = aggregationExec.getIndexTemplate() != null
+				&& aggregationExec.getIndexTemplate().isTimestampField(fieldName);
 		final String fieldType = aggregationExec.getIndexFieldMappingService()
 				.getFirstFieldMappingType(aggregationExec.getIndices(), aggregationExec.getTypes(), fieldName);
 		if (fieldType == null || fieldType.isEmpty()) {
@@ -69,127 +78,263 @@ public class DateHistogramAggregation extends BucketAggregation {
 		final String fieldFormat = aggregationExec.getIndexFieldMappingService()
 				.getFirstFieldMappingFormat(aggregationExec.getIndices(), aggregationExec.getTypes(), fieldName);
 
-		final String aggregationTableName = AGGREGATION_TABLE_PREFIX + aggregationExec.getRequestBodySearch().hashCode()
-				+ "_" + fieldName + "_" + interval;
+		final PsqlQueryComponents queryComponents = aggregationExec.getQueryComponents();
 
-		final StringBuilder queryBuilder = new StringBuilder();
-		queryBuilder.append("CREATE TEMP TABLE ");
-		queryBuilder.append(aggregationTableName);
-		queryBuilder.append(" AS (");
-		queryBuilder.append("SELECT ");
+		final StringBuilder distinctBucketQueryBuilder = new StringBuilder();
+		if (isTimestampColumn) {
+			generateDistinctBucketQueryUsingTimestampField(aggregationExec, distinctBucketQueryBuilder);
+		} else {
+			generateDistinctBucketQueryUsingActualField(aggregationExec, distinctBucketQueryBuilder, fieldType,
+					fieldFormat);
+		}
 
+		LOGGER.info(distinctBucketQueryBuilder.toString());
+		SqlRowSet bucketResultSet = aggregationExec.getJdbcTemplate()
+				.queryForRowSet(distinctBucketQueryBuilder.toString());
+
+		final List<Long> distinctBuckets = getDistinctBuckets(aggregationExec, isTimestampColumn, bucketResultSet);
+		final long bucketInterval = getBucketInterval();
+		
+		for (long bucketTimestamp : distinctBuckets) {
+			final Map<String, Object> bucket = new HashMap<String, Object>();
+			bucket.put("key", bucketTimestamp);
+
+			final StringBuilder bucketCountQueryBuilder = new StringBuilder();
+			bucketCountQueryBuilder.append("SELECT COUNT(");
+			bucketCountQueryBuilder.append("_id");
+			bucketCountQueryBuilder.append(") FROM ");
+			bucketCountQueryBuilder.append(queryComponents.getFromComponent());
+			
+			if (aggregationExec.getNodeSettingsService().isUsingCitus()) {
+				bucketCountQueryBuilder.append(" AS bucketCount ");
+			}
+
+			final StringBuilder appendedWhereClause = new StringBuilder();
+
+			if (!aggregationExec.getNodeSettingsService().isUsingCitus()) {
+				if(queryComponents.getWhereComponent() != null && !queryComponents.getWhereComponent().isEmpty()) {
+					appendedWhereClause.append(queryComponents.getWhereComponent());
+					appendedWhereClause.append(" AND (");
+				} else {
+					appendedWhereClause.append("(");
+				}
+			} else {
+				appendedWhereClause.append("(");
+			}
+
+			if (isTimestampColumn) {
+				appendedWhereClause.append(getBucketColumn());
+			} else {
+				appendedWhereClause.append(getActualColumn(fieldType, fieldFormat));
+			}
+			appendedWhereClause.append(" >= ");
+			appendedWhereClause.append(bucketTimestamp);
+
+			appendedWhereClause.append(" AND ");
+
+			if (isTimestampColumn) {
+				appendedWhereClause.append(getBucketColumn());
+			} else {
+				appendedWhereClause.append(getActualColumn(fieldType, fieldFormat));
+			}
+			appendedWhereClause.append(" < ");
+			appendedWhereClause.append((bucketTimestamp + bucketInterval));
+
+			appendedWhereClause.append(')');
+
+			bucketCountQueryBuilder.append(" WHERE ");
+			bucketCountQueryBuilder.append(appendedWhereClause.toString());
+
+			Map<String, Object> aggResult = aggregationExec.getJdbcTemplate()
+					.queryForMap(bucketCountQueryBuilder.toString());
+			bucket.put("doc_count", aggResult.get("count"));
+
+			for (Aggregation aggregation : aggregationExec.getAggregation().getSubAggregations()) {
+				PsqlQueryComponents subAggregationQueryComponents = new PsqlQueryComponents(
+						new String(queryComponents.getFromComponent()), appendedWhereClause.toString(),
+						new String(queryComponents.getGroupByComponent()),
+						new String(queryComponents.getLimitComponent()));
+				aggregation.executeSqlQuery(aggregationExec, subAggregationQueryComponents,
+						aggregationExec.getSearchResponse(), bucket);
+				queryComponents.getTemporaryTables().addAll(subAggregationQueryComponents.getTemporaryTables());
+			}
+			buckets.add(bucket);
+		}
+		result.put("buckets", buckets);
+		aggregationExec.getAggregationsResult().put(aggregationExec.getAggregation().getAggregationName(), result);
+	}
+
+	private List<Long> getDistinctBuckets(AggregationExec aggregationExec, boolean isTimestampColumn,
+			SqlRowSet bucketResultSet) {
+		final Set<Long> results = new HashSet<Long>();
+		final String resultColumn = isTimestampColumn ? getBucketColumn() : "elefana_agg_bucket";
+		while (bucketResultSet.next()) {
+			results.add(bucketResultSet.getLong(resultColumn));
+		}
+		
+		if (isTimestampColumn) {
+			final long bucketInterval = getBucketInterval();
+			final Set<Long> bucketedResults = new HashSet<Long>();
+			for(long bucket : results) {
+				bucketedResults.add(bucket - (bucket % bucketInterval));
+			}
+			return new ArrayList<Long>(bucketedResults);
+		}
+		return new ArrayList<Long>(results);
+	}
+
+	private String getBucketColumn() {
+		final String bucketColumn;
 		switch (interval) {
 		case "year":
-			queryBuilder.append("date_trunc('year',");
-			break;
 		case "quarter":
-			queryBuilder.append("date_trunc('quarter',");
-			break;
 		case "month":
-			queryBuilder.append("date_trunc('month',");
-			break;
 		case "week":
-			queryBuilder.append("date_trunc('week',");
-			break;
 		case "day":
-			queryBuilder.append("date_trunc('day',");
+			bucketColumn = "_bucket1d";
 			break;
 		case "hour":
-			queryBuilder.append("date_trunc('hour',");
+			bucketColumn = "_bucket1h";
 			break;
 		case "minute":
-			queryBuilder.append("date_trunc('minute',");
+			bucketColumn = "_bucket1m";
 			break;
 		case "second":
-			queryBuilder.append("date_trunc('second',");
+			bucketColumn = "_bucket1s";
 			break;
 		default:
-			if(interval.indexOf("micros") > 0) {
-				queryBuilder.append("date_trunc('microseconds',");
-			} else if(interval.indexOf("ms") > 0) {
-				queryBuilder.append("date_trunc('milliseconds',");
-			} else if(interval.indexOf('s') > 0) {
-				queryBuilder.append("date_trunc('second',");
-			} else if(interval.indexOf('m') > 0) {
-				queryBuilder.append("date_trunc('minute',");
-			} else if(interval.indexOf('h') > 0) {
-				queryBuilder.append("date_trunc('hour',");
-			} else if(interval.indexOf('d') > 0) {
-				queryBuilder.append("date_trunc('day',");
+			if (interval.indexOf("micros") > 0) {
+				bucketColumn = "_bucket1s";
+			} else if (interval.indexOf("ms") > 0) {
+				bucketColumn = "_bucket1s";
+			} else if (interval.indexOf('s') > 0) {
+				bucketColumn = "_bucket1s";
+			} else if (interval.indexOf('m') > 0) {
+				bucketColumn = "_bucket1m";
+			} else if (interval.indexOf('h') > 0) {
+				bucketColumn = "_bucket1h";
+			} else if (interval.indexOf('d') > 0) {
+				bucketColumn = "_bucket1d";
 			} else {
-				queryBuilder.append("date_trunc('second',");
+				bucketColumn = "_bucket1s";
 			}
 			break;
 		}
-
+		return bucketColumn;
+	}
+	
+	private String getActualColumn(final String fieldType, final String fieldFormat) throws InvalidAggregationFieldType {
+		final StringBuilder result = new StringBuilder();
 		switch (fieldType) {
 		case "date":
-			switch(fieldFormat) {
+			switch (fieldFormat) {
 			case "epoch_millis":
-				queryBuilder.append("to_timestamp((_source->>'");
-				queryBuilder.append(fieldName);
-				queryBuilder.append("')::numeric / 1000)");
+				result.append("(_source->>'");
+				result.append(fieldName);
+				result.append("')::bigint");
 				break;
 			default:
-				queryBuilder.append("cast(_source->>'");
-				queryBuilder.append(fieldName);
-				queryBuilder.append("' as TIMESTAMP)");
+				result.append("EXTRACT(EPOCH FROM TIMESTAMP ");
+				result.append("cast(_source->>'");
+				result.append(fieldName);
+				result.append("' as TIMESTAMP)");
+				result.append(") * 1000");
 				break;
 			}
 			break;
 		case "long":
-			queryBuilder.append("to_timestamp((_source->>'");
-			queryBuilder.append(fieldName);
-			queryBuilder.append("')::numeric / 1000)");
+			result.append("(_source->>'");
+			result.append(fieldName);
+			result.append("')::bigint");
 			break;
 		default:
 			throw new InvalidAggregationFieldType(EXPECTED_FIELD_TYPES, fieldType);
 		}
-		queryBuilder.append(") AS elefana_agg_bucket");
-		queryBuilder.append(", * FROM ");
-		queryBuilder.append(aggregationExec.getQueryComponents().getFromComponent());
-		if (!aggregationExec.getNodeSettingsService().isUsingCitus()) {
-			aggregationExec.getQueryComponents().appendWhere(queryBuilder);
-		} else {
-			queryBuilder.append(" AS ");
-			queryBuilder.append("hit_results");
-		}
-		queryBuilder.append(")");
+		return result.toString();
+	}
 
-		aggregationExec.getJdbcTemplate().execute(queryBuilder.toString());
-
-		final String distinctBucketsQuery = "SELECT DISTINCT elefana_agg_bucket FROM " + aggregationTableName;
-		SqlRowSet resultSet = aggregationExec.getJdbcTemplate().queryForRowSet(distinctBucketsQuery);
-
-		final List<Timestamp> uniqueBuckets = new ArrayList<Timestamp>();
-		while (resultSet.next()) {
-			uniqueBuckets.add(resultSet.getTimestamp("elefana_agg_bucket"));
-		}
-
-		for (Timestamp bucketTimestamp : uniqueBuckets) {
-			final Map<String, Object> bucket = new HashMap<String, Object>();
-			bucket.put("key", bucketTimestamp.getTime());
-
-			final String bucketTableName = aggregationTableName + "_" + bucketTimestamp.getTime();
-			final String bucketQuery = "SELECT * INTO " + bucketTableName + " FROM " + aggregationTableName
-					+ " WHERE elefana_agg_bucket = to_timestamp(" + bucketTimestamp.getTime() / 1000L + ")";
-			aggregationExec.getJdbcTemplate().execute(bucketQuery);
-
-			final String bucketCountQuery = "SELECT COUNT(*) FROM " + bucketTableName;
-			Map<String, Object> aggResult = aggregationExec.getJdbcTemplate().queryForMap(bucketCountQuery);
-			bucket.put("doc_count", aggResult.get("count"));
-
-			for (Aggregation aggregation : aggregationExec.getAggregation().getSubAggregations()) {
-				PsqlQueryComponents queryComponents = new PsqlQueryComponents(bucketTableName, "", "", "");
-				aggregation.executeSqlQuery(aggregationExec, queryComponents, aggregationExec.getSearchResponse(), bucket);
+	private long getBucketInterval() {
+		final long bucketInterval;
+		switch (interval) {
+		case "year":
+			bucketInterval = ONE_YEAR_IN_MILLIS;
+			break;
+		case "quarter":
+		case "month":
+		case "week":
+		case "day":
+			bucketInterval = ONE_DAY_IN_MILLIS;
+			break;
+		case "hour":
+			bucketInterval = ONE_HOUR_IN_MILLIS;
+			break;
+		case "minute":
+			bucketInterval = ONE_MINUTE_IN_MILLIS;
+			break;
+		case "second":
+			bucketInterval = ONE_SECOND_IN_MILLIS;
+			break;
+		default:
+			if (interval.indexOf("micros") > 0) {
+				bucketInterval = ONE_SECOND_IN_MILLIS;
+			} else if (interval.indexOf("ms") > 0) {
+				bucketInterval = ONE_SECOND_IN_MILLIS;
+			} else if (interval.indexOf('s') > 0) {
+				bucketInterval = ONE_SECOND_IN_MILLIS * (Long.parseLong(interval.substring(0, interval.indexOf('s'))));
+			} else if (interval.indexOf('m') > 0) {
+				bucketInterval = ONE_MINUTE_IN_MILLIS * (Long.parseLong(interval.substring(0, interval.indexOf('m'))));
+			} else if (interval.indexOf('h') > 0) {
+				bucketInterval = ONE_HOUR_IN_MILLIS * (Long.parseLong(interval.substring(0, interval.indexOf('h'))));
+			} else if (interval.indexOf('d') > 0) {
+				bucketInterval = ONE_DAY_IN_MILLIS * (Long.parseLong(interval.substring(0, interval.indexOf('d'))));
+			} else {
+				bucketInterval = ONE_SECOND_IN_MILLIS;
 			}
-			buckets.add(bucket);
-			aggregationExec.getQueryComponents().getTemporaryTables().add(bucketTableName);
+			break;
 		}
-		result.put("buckets", buckets);
-		aggregationExec.getAggregationsResult().put(aggregationExec.getAggregation().getAggregationName(), result);
+		return bucketInterval;
+	}
 
-		aggregationExec.getQueryComponents().getTemporaryTables().add(aggregationTableName);
+	private void generateDistinctBucketQueryUsingTimestampField(AggregationExec aggregationExec,
+			StringBuilder distinctBucketQueryBuilder) {
+		final PsqlQueryComponents queryComponents = aggregationExec.getQueryComponents();
+		distinctBucketQueryBuilder.append("SELECT DISTINCT(");
+
+		distinctBucketQueryBuilder.append(getBucketColumn());
+		distinctBucketQueryBuilder.append(')');
+		distinctBucketQueryBuilder.append(" FROM ");
+		distinctBucketQueryBuilder.append(queryComponents.getFromComponent());
+
+		if (!aggregationExec.getNodeSettingsService().isUsingCitus()) {
+			queryComponents.appendWhere(distinctBucketQueryBuilder);
+		} else {
+			distinctBucketQueryBuilder.append(" AS ");
+			distinctBucketQueryBuilder.append("hit_results");
+		}
+	}
+
+	private void generateDistinctBucketQueryUsingActualField(AggregationExec aggregationExec,
+			StringBuilder distinctBucketQueryBuilder, final String fieldType, final String fieldFormat)
+			throws InvalidAggregationFieldType {
+		final PsqlQueryComponents queryComponents = aggregationExec.getQueryComponents();
+		distinctBucketQueryBuilder.append("SELECT DISTINCT(elefana_agg_bucket) FROM (");
+
+		final long bucketInterval = getBucketInterval();
+
+		distinctBucketQueryBuilder
+				.append("SELECT (bucketValue - (bucketValue % " + bucketInterval + ")) AS elefana_agg_bucket FROM (");
+		distinctBucketQueryBuilder.append("SELECT ");
+		distinctBucketQueryBuilder.append(getActualColumn(fieldType, fieldFormat));
+		distinctBucketQueryBuilder.append(" AS bucketValue FROM ");
+		distinctBucketQueryBuilder.append(queryComponents.getFromComponent());
+		if (!aggregationExec.getNodeSettingsService().isUsingCitus()) {
+			aggregationExec.getQueryComponents().appendWhere(distinctBucketQueryBuilder);
+		} else {
+			distinctBucketQueryBuilder.append(" AS ");
+			distinctBucketQueryBuilder.append("hit_results");
+		}
+		distinctBucketQueryBuilder.append(") AS bucketResults");
+		distinctBucketQueryBuilder.append(") AS aggResults");
 	}
 
 	@Override

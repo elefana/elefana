@@ -20,6 +20,7 @@ import java.util.Map;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import com.elefana.api.indices.IndexTemplate;
 import com.elefana.api.search.SearchResponse;
 import com.elefana.indices.psql.PsqlIndexFieldMappingService;
 import com.elefana.node.NodeSettingsService;
@@ -27,6 +28,7 @@ import com.elefana.search.PsqlQueryComponents;
 import com.elefana.search.RequestBodySearch;
 
 public class AggregationExec {
+	private final IndexTemplate indexTemplate;
 	private final List<String> indices;
 	private final String[] types;
 	private final JdbcTemplate jdbcTemplate;
@@ -38,11 +40,12 @@ public class AggregationExec {
 	private final RequestBodySearch requestBodySearch;
 	private final Aggregation aggregation;
 
-	public AggregationExec(List<String> indices, String[] types, JdbcTemplate jdbcTemplate,
+	public AggregationExec(IndexTemplate indexTemplate, List<String> indices, String[] types, JdbcTemplate jdbcTemplate,
 			NodeSettingsService nodeSettingsService, PsqlIndexFieldMappingService indexFieldMappingService,
 			PsqlQueryComponents queryComponents, SearchResponse searchResponse, Map<String, Object> aggregationsResult,
 			RequestBodySearch requestBodySearch, Aggregation aggregation) {
 		super();
+		this.indexTemplate = indexTemplate;
 		this.indices = indices;
 		this.types = types;
 		this.jdbcTemplate = jdbcTemplate;
@@ -53,6 +56,10 @@ public class AggregationExec {
 		this.aggregationsResult = aggregationsResult;
 		this.requestBodySearch = requestBodySearch;
 		this.aggregation = aggregation;
+	}
+
+	public IndexTemplate getIndexTemplate() {
+		return indexTemplate;
 	}
 
 	public List<String> getIndices() {

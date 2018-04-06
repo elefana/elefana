@@ -192,7 +192,7 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 				requestBodySearch.getSize());
 		final Map<String, Object> aggregationsResult = new HashMap<String, Object>();
 
-		requestBodySearch.getAggregations().executeSqlQuery(indices, types, jdbcTemplate, nodeSettingsService,
+		requestBodySearch.getAggregations().executeSqlQuery(indexTemplate, indices, types, jdbcTemplate, nodeSettingsService,
 				indexFieldMappingService, queryComponents, result, aggregationsResult, requestBodySearch);
 		result.setAggregations(aggregationsResult);
 

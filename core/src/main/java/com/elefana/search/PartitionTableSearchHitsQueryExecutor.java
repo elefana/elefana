@@ -35,11 +35,7 @@ public class PartitionTableSearchHitsQueryExecutor extends SearchHitsQueryExecut
 		}
 
 		queryBuilder.append("SELECT ");
-		if (size == 0) {
-			queryBuilder.append("COUNT(_id)");
-		} else {
-			queryBuilder.append("*");
-		}
+		queryBuilder.append("*");
 		queryBuilder.append(" FROM ");
 		queryBuilder.append(queryComponents.getFromComponent());
 
@@ -50,6 +46,33 @@ public class PartitionTableSearchHitsQueryExecutor extends SearchHitsQueryExecut
 		if (!queryComponents.getOrderByComponent().isEmpty()) {
 			queryBuilder.append(" ORDER BY ");
 			queryBuilder.append(queryComponents.getOrderByComponent());
+		}
+		if(size > 0) {
+			queryBuilder.append(" LIMIT ");
+			queryBuilder.append(size);
+		}
+		if(from > 0) {
+			queryBuilder.append(" OFFSET ");
+			queryBuilder.append(from);
+		}
+		return jdbcTemplate.queryForRowSet(queryBuilder.toString());
+	}
+
+	@Override
+	protected SqlRowSet queryHitsCount(PsqlQueryComponents queryComponents, long startTime, int from, int size) {
+		final StringBuilder queryBuilder = new StringBuilder();
+		if (queryComponents.getFromComponent().isEmpty()) {
+			return null;
+		}
+
+		queryBuilder.append("SELECT ");
+		queryBuilder.append("COUNT(_id)");
+		queryBuilder.append(" FROM ");
+		queryBuilder.append(queryComponents.getFromComponent());
+
+		if (!queryComponents.getWhereComponent().isEmpty()) {
+			queryBuilder.append(" WHERE ");
+			queryBuilder.append(queryComponents.getWhereComponent());
 		}
 		return jdbcTemplate.queryForRowSet(queryBuilder.toString());
 	}

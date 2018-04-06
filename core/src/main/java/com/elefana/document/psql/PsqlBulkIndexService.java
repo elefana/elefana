@@ -36,6 +36,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.indices.IndexTemplate;
@@ -67,11 +68,14 @@ public class PsqlBulkIndexService implements Runnable {
 	private MetricRegistry metricRegistry;
 
 	private final AtomicBoolean running = new AtomicBoolean(true);
+	private Counter duplicateKeyCounter;
 	private BlockingQueue<String> indexQueue;
 	private ExecutorService executorService;
 
 	@PostConstruct
 	public void postConstruct() {
+		duplicateKeyCounter = metricRegistry.counter(MetricRegistry.name("bulk", "key", "duplicates"));
+		
 		final int totalThreads = Math.max(2, environment.getProperty("elefana.service.bulk.index.threads",
 				Integer.class, Runtime.getRuntime().availableProcessors()));
 
@@ -116,9 +120,8 @@ public class PsqlBulkIndexService implements Runnable {
 	public void run() {
 		try {
 			while (running.get()) {
+				final String nextIndexTable = indexQueue.take();
 				try {
-					final String nextIndexTable = indexQueue.take();
-
 					jdbcTemplate
 							.execute("DELETE FROM elefana_bulk_index_queue WHERE _tableName='" + nextIndexTable + "'");
 
@@ -131,11 +134,16 @@ public class PsqlBulkIndexService implements Runnable {
 						mergeStagingTableIntoPartitionTable(nextIndexTable, targetTable);
 					}
 
-					jdbcTemplate.execute("DROP TABLE IF EXISTS " + nextIndexTable);
 					indexFieldMappingService.scheduleIndexForMappingAndStats(index);
 				} catch (Exception e) {
-					LOGGER.error(e.getMessage(), e);
+					if(e.getMessage().contains("duplicate key")) {
+						LOGGER.error("Duplicate key in bulk staging table: " + nextIndexTable);
+						duplicateKeyCounter.inc();
+					} else {
+						LOGGER.error(e.getMessage(), e);
+					}
 				}
+				jdbcTemplate.execute("DROP TABLE IF EXISTS " + nextIndexTable);
 			}
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
