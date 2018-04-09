@@ -101,6 +101,6 @@ public class QueryParser {
 		}
 		
 		LOGGER.error("Unsupported query type requested: " + queryContext.toString());
-		throw new UnsupportedQueryTypeException();
+		throw new UnsupportedQueryTypeException(queryContext.toString());
 	}
 }

@@ -19,7 +19,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.elefana.api.exception.ElefanaException;
@@ -34,6 +40,7 @@ public abstract class Aggregation {
 	public static final String AGGREGATION_TABLE_PREFIX = "elefana_agg_";
 	public static final List<Aggregation> EMPTY_AGGREGATION_LIST = Collections
 			.unmodifiableList(new ArrayList<Aggregation>(1));
+	private static final Logger LOGGER = LoggerFactory.getLogger(Aggregation.class);
 
 	public abstract void executeSqlQuery(final AggregationExec aggregationExec) throws ElefanaException;
 
@@ -58,20 +65,41 @@ public abstract class Aggregation {
 
 	public void executeSqlQuery(AggregationExec parentExec, PsqlQueryComponents queryComponents,
 			SearchResponse searchResponse, Map<String, Object> aggregationsResult) throws ElefanaException {
-		executeSqlQuery(new AggregationExec(parentExec.getIndexTemplate(), parentExec.getIndices(),
-				parentExec.getTypes(), parentExec.getJdbcTemplate(), parentExec.getNodeSettingsService(),
-				parentExec.getIndexFieldMappingService(), queryComponents, searchResponse, aggregationsResult,
-				parentExec.getRequestBodySearch(), this));
+		parentExec.getQueryFutures().offer(parentExec.getExecutorService().submit(new Callable<SearchResponse>() {
+
+			@Override
+			public SearchResponse call() throws Exception {
+				LOGGER.info("Executing aggregation " + getAggregationName());
+				executeSqlQuery(new AggregationExec(parentExec.getExecutorService(), parentExec.getQueryFutures(),
+						parentExec.getIndexTemplate(), parentExec.getIndices(), parentExec.getTypes(),
+						parentExec.getJdbcTemplate(), parentExec.getNodeSettingsService(),
+						parentExec.getIndexFieldMappingService(), queryComponents, searchResponse, aggregationsResult,
+						parentExec.getRequestBodySearch(), Aggregation.this));
+				LOGGER.info("Finished aggregation " + getAggregationName());
+				return searchResponse;
+			}
+
+		}));
 	}
 
-	public void executeSqlQuery(IndexTemplate indexTemplate, List<String> indices, String[] types,
-			JdbcTemplate jdbcTemplate, NodeSettingsService nodeSettingsService,
-			PsqlIndexFieldMappingService indexFieldMappingService, PsqlQueryComponents queryComponents,
-			SearchResponse searchResponse, Map<String, Object> aggregationsResult, RequestBodySearch requestBodySearch)
-			throws ElefanaException {
-		executeSqlQuery(new AggregationExec(indexTemplate, indices, types, jdbcTemplate, nodeSettingsService,
-				indexFieldMappingService, queryComponents, searchResponse, aggregationsResult, requestBodySearch,
-				this));
+	public void executeSqlQuery(ExecutorService executorService, Queue<Future<SearchResponse>> queryFutures,
+			IndexTemplate indexTemplate, List<String> indices, String[] types, JdbcTemplate jdbcTemplate,
+			NodeSettingsService nodeSettingsService, PsqlIndexFieldMappingService indexFieldMappingService,
+			PsqlQueryComponents queryComponents, SearchResponse searchResponse, Map<String, Object> aggregationsResult,
+			RequestBodySearch requestBodySearch) throws ElefanaException {
+		queryFutures.offer(executorService.submit(new Callable<SearchResponse>() {
+
+			@Override
+			public SearchResponse call() throws Exception {
+				LOGGER.info("Executing aggregation " + getAggregationName());
+				executeSqlQuery(new AggregationExec(executorService, queryFutures, indexTemplate, indices, types,
+						jdbcTemplate, nodeSettingsService, indexFieldMappingService, queryComponents, searchResponse,
+						aggregationsResult, requestBodySearch, Aggregation.this));
+				LOGGER.info("Finished aggregation " + getAggregationName());
+				return searchResponse;
+			}
+
+		}));
 	}
 
 	public abstract String getAggregationName();

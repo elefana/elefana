@@ -17,6 +17,9 @@ package com.elefana.search.agg;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -28,6 +31,8 @@ import com.elefana.search.PsqlQueryComponents;
 import com.elefana.search.RequestBodySearch;
 
 public class AggregationExec {
+	private final ExecutorService executorService;
+	private final Queue<Future<SearchResponse>> queryFutures;
 	private final IndexTemplate indexTemplate;
 	private final List<String> indices;
 	private final String[] types;
@@ -40,11 +45,14 @@ public class AggregationExec {
 	private final RequestBodySearch requestBodySearch;
 	private final Aggregation aggregation;
 
-	public AggregationExec(IndexTemplate indexTemplate, List<String> indices, String[] types, JdbcTemplate jdbcTemplate,
+	public AggregationExec(ExecutorService executorService, Queue<Future<SearchResponse>> queryFutures,
+			IndexTemplate indexTemplate, List<String> indices, String[] types, JdbcTemplate jdbcTemplate,
 			NodeSettingsService nodeSettingsService, PsqlIndexFieldMappingService indexFieldMappingService,
 			PsqlQueryComponents queryComponents, SearchResponse searchResponse, Map<String, Object> aggregationsResult,
 			RequestBodySearch requestBodySearch, Aggregation aggregation) {
 		super();
+		this.executorService = executorService;
+		this.queryFutures = queryFutures;
 		this.indexTemplate = indexTemplate;
 		this.indices = indices;
 		this.types = types;
@@ -56,6 +64,14 @@ public class AggregationExec {
 		this.aggregationsResult = aggregationsResult;
 		this.requestBodySearch = requestBodySearch;
 		this.aggregation = aggregation;
+	}
+
+	public ExecutorService getExecutorService() {
+		return executorService;
+	}
+
+	public Queue<Future<SearchResponse>> getQueryFutures() {
+		return queryFutures;
 	}
 
 	public IndexTemplate getIndexTemplate() {

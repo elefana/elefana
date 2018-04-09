@@ -29,9 +29,9 @@ public class SearchResponse extends ApiResponse {
 	@JsonProperty("_shards")
 	private final Map<String, Object> shards = new HashMap<String, Object>();
 	private Map<String, Object> aggregations;
-	private long took;
+	private volatile long took;
 	@JsonProperty("timed_out")
-	private boolean timedOut;
+	private volatile boolean timedOut;
 
 	public SearchResponse() {
 		super(HttpResponseStatus.OK.code());

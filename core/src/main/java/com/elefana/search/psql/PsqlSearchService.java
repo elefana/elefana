@@ -15,10 +15,13 @@
  ******************************************************************************/
 package com.elefana.search.psql;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -32,20 +35,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.stereotype.Service;
 
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.MetricRegistry;
 import com.elefana.api.RequestExecutor;
 import com.elefana.api.exception.ElefanaException;
+import com.elefana.api.exception.ShardFailedException;
 import com.elefana.api.indices.IndexTemplate;
 import com.elefana.api.search.MultiSearchRequest;
 import com.elefana.api.search.MultiSearchResponse;
-import com.elefana.api.search.SearchHit;
 import com.elefana.api.search.SearchRequest;
 import com.elefana.api.search.SearchResponse;
-import com.elefana.indices.IndexTemplateService;
 import com.elefana.indices.psql.PsqlIndexFieldMappingService;
 import com.elefana.indices.psql.PsqlIndexTemplateService;
 import com.elefana.node.NodeSettingsService;
@@ -53,9 +54,9 @@ import com.elefana.search.CitusSearchHitsQueryExecutor;
 import com.elefana.search.CitusSearchQueryBuilder;
 import com.elefana.search.PartitionTableSearchHitsQueryExecutor;
 import com.elefana.search.PartitionTableSearchQueryBuilder;
+import com.elefana.search.PsqlQueryComponents;
 import com.elefana.search.RequestBodySearch;
 import com.elefana.search.SearchHitsQueryExecutor;
-import com.elefana.search.PsqlQueryComponents;
 import com.elefana.search.SearchQueryBuilder;
 import com.elefana.search.SearchService;
 import com.elefana.util.IndexUtils;
@@ -87,32 +88,43 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 	@Autowired
 	private MetricRegistry metricRegistry;
 
-	private ExecutorService executorService;
+	private ExecutorService searchCountExecutorService;
+	private ExecutorService searchHitsExecutorService;
+	private ExecutorService searchAggregationsExecutorService;
 	private SearchQueryBuilder searchQueryBuilder;
 	private SearchHitsQueryExecutor searchHitsQueryExecutor;
-	private Histogram searchTime, searchHits;
+	private Histogram searchHitsTime, searchHitsSize, searchAggregationTime, searchTotalTime;
 
 	@PostConstruct
 	public void postConstruct() {
-		final int totalThreads = environment.getProperty("elefana.service.search.threads", Integer.class,
+		final int totalRequestThreads = environment.getProperty("elefana.service.search.count.threads", Integer.class,
 				Runtime.getRuntime().availableProcessors());
-		executorService = Executors.newFixedThreadPool(totalThreads);
+		final int totalHitsThreads = environment.getProperty("elefana.service.search.hits.threads", Integer.class,
+				Runtime.getRuntime().availableProcessors());
+		final int totalAggregationThreads = environment.getProperty("elefana.service.search.aggregation.threads",
+				Integer.class, Runtime.getRuntime().availableProcessors());
+		searchCountExecutorService = Executors.newFixedThreadPool(totalRequestThreads);
+		searchHitsExecutorService = Executors.newFixedThreadPool(totalHitsThreads);
+		searchAggregationsExecutorService = Executors.newFixedThreadPool(totalAggregationThreads);
 
-		searchTime = metricRegistry.histogram(MetricRegistry.name("search", "time"));
-		searchHits = metricRegistry.histogram(MetricRegistry.name("search", "hits"));
+		searchHitsTime = metricRegistry.histogram(MetricRegistry.name("search", "hits", "time"));
+		searchHitsSize = metricRegistry.histogram(MetricRegistry.name("search", "hits", "size"));
+		searchAggregationTime = metricRegistry.histogram(MetricRegistry.name("search", "aggregation", "time"));
+		searchTotalTime = metricRegistry.histogram(MetricRegistry.name("search", "time"));
 
 		if (nodeSettingsService.isUsingCitus()) {
 			searchQueryBuilder = new CitusSearchQueryBuilder(jdbcTemplate, indexUtils);
-			searchHitsQueryExecutor = new CitusSearchHitsQueryExecutor(jdbcTemplate, searchTime, searchHits);
+			searchHitsQueryExecutor = new CitusSearchHitsQueryExecutor(jdbcTemplate, searchHitsTime, searchHitsSize);
 		} else {
 			searchQueryBuilder = new PartitionTableSearchQueryBuilder(jdbcTemplate, indexUtils);
-			searchHitsQueryExecutor = new PartitionTableSearchHitsQueryExecutor(jdbcTemplate, searchTime, searchHits);
+			searchHitsQueryExecutor = new PartitionTableSearchHitsQueryExecutor(jdbcTemplate, searchHitsTime,
+					searchHitsSize);
 		}
 	}
 
 	@PreDestroy
 	public void preDestroy() {
-		executorService.shutdown();
+		searchCountExecutorService.shutdown();
 	}
 
 	public MultiSearchResponse multiSearch(String httpRequest) throws ElefanaException {
@@ -184,32 +196,91 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 
 	private SearchResponse searchWithAggregation(List<String> indices, String[] types,
 			RequestBodySearch requestBodySearch, long startTime) throws ElefanaException {
+		final SearchResponse result = new SearchResponse();
 		final IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndices(indices);
-		final PsqlQueryComponents queryComponents = searchQueryBuilder.buildQuery(indexTemplate, indices, types, requestBodySearch);
+		final PsqlQueryComponents queryComponents = searchQueryBuilder.buildQuery(indexTemplate, indices, types,
+				requestBodySearch);
 		final List<String> temporaryTablesCreated = queryComponents.getTemporaryTables();
 
-		final SearchResponse result = executeQuery(queryComponents, startTime, requestBodySearch.getFrom(),
-				requestBodySearch.getSize());
-		final Map<String, Object> aggregationsResult = new HashMap<String, Object>();
+		final Queue<Future<SearchResponse>> queryFutures = new ConcurrentLinkedQueue<>();
+		final Future<SearchResponse> countFuture = executeCountQuery(result, queryComponents, startTime,
+				requestBodySearch.getFrom(), requestBodySearch.getSize());
 
-		requestBodySearch.getAggregations().executeSqlQuery(indexTemplate, indices, types, jdbcTemplate, nodeSettingsService,
-				indexFieldMappingService, queryComponents, result, aggregationsResult, requestBodySearch);
+		queryFutures.offer(executeHitsQuery(result, queryComponents, startTime, requestBodySearch.getFrom(),
+				requestBodySearch.getSize()));
+		final Map<String, Object> aggregationsResult = new ConcurrentHashMap<String, Object>();
+
+		try {
+			countFuture.get();
+		} catch (InterruptedException e) {
+			LOGGER.error(e.getMessage(), e);
+			throw new ShardFailedException(e);
+		} catch (ExecutionException e) {
+			LOGGER.error(e.getMessage(), e);
+			throw new ShardFailedException(e);
+		}
+
+		requestBodySearch.getAggregations().executeSqlQuery(searchAggregationsExecutorService, queryFutures,
+				indexTemplate, indices, types, jdbcTemplate, nodeSettingsService, indexFieldMappingService,
+				queryComponents, result, aggregationsResult, requestBodySearch);
 		result.setAggregations(aggregationsResult);
 
+		try {
+			while (!queryFutures.isEmpty()) {
+				queryFutures.poll().get();
+			}
+		} catch (InterruptedException e) {
+			LOGGER.error(e.getMessage(), e);
+			throw new ShardFailedException(e);
+		} catch (ExecutionException e) {
+			LOGGER.error(e.getMessage(), e);
+			throw new ShardFailedException(e);
+		}
+		final long took = System.currentTimeMillis() - startTime;
+		searchTotalTime.update(took);
+		result.setTook(took);
+		result.setTimedOut(false);
 		tableGarbageCollector.queueTemporaryTablesForDeletion(temporaryTablesCreated);
 		return result;
 	}
 
 	private SearchResponse searchWithoutAggregation(List<String> indices, String[] types,
 			RequestBodySearch requestBodySearch, long startTime) throws ElefanaException {
+		final SearchResponse result = new SearchResponse();
 		final IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndices(indices);
-		final PsqlQueryComponents queryComponents = searchQueryBuilder.buildQuery(indexTemplate, indices, types, requestBodySearch);
-		return executeQuery(queryComponents, startTime, requestBodySearch.getFrom(),
-				requestBodySearch.getSize());
+		final PsqlQueryComponents queryComponents = searchQueryBuilder.buildQuery(indexTemplate, indices, types,
+				requestBodySearch);
+		final Future<SearchResponse> countQueryFuture = executeCountQuery(result, queryComponents, startTime,
+				requestBodySearch.getFrom(), requestBodySearch.getSize());
+		final Future<SearchResponse> hitsQueryFuture = executeHitsQuery(result, queryComponents, startTime,
+				requestBodySearch.getFrom(), requestBodySearch.getSize());
+		try {
+			countQueryFuture.get();
+			hitsQueryFuture.get();
+		} catch (InterruptedException e) {
+			LOGGER.error(e.getMessage(), e);
+			throw new ShardFailedException(e);
+		} catch (ExecutionException e) {
+			LOGGER.error(e.getMessage(), e);
+			throw new ShardFailedException(e);
+		}
+		final long took = System.currentTimeMillis() - startTime;
+		searchTotalTime.update(took);
+		result.setTook(took);
+		result.setTimedOut(false);
+		return result;
 	}
 
-	private SearchResponse executeQuery(PsqlQueryComponents queryComponents, long startTime, int from, int size) throws ElefanaException {
-		return searchHitsQueryExecutor.executeQuery(queryComponents, startTime, from, size);
+	private Future<SearchResponse> executeCountQuery(SearchResponse response, PsqlQueryComponents queryComponents,
+			long startTime, int from, int size) throws ElefanaException {
+		return searchHitsExecutorService
+				.submit(searchHitsQueryExecutor.executeCountQuery(response, queryComponents, startTime, from, size));
+	}
+
+	private Future<SearchResponse> executeHitsQuery(SearchResponse response, PsqlQueryComponents queryComponents,
+			long startTime, int from, int size) throws ElefanaException {
+		return searchHitsExecutorService
+				.submit(searchHitsQueryExecutor.executeHitsQuery(response, queryComponents, startTime, from, size));
 	}
 
 	@Override
@@ -254,6 +325,14 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 
 	@Override
 	public <T> Future<T> submit(Callable<T> request) {
-		return executorService.submit(request);
+		return searchCountExecutorService.submit(request);
+	}
+
+	private SearchResponse createSearchResponse() {
+		final SearchResponse result = new SearchResponse();
+		result.getShards().put("total", 1);
+		result.getShards().put("successful", 1);
+		result.getShards().put("failed", 0);
+		return result;
 	}
 }

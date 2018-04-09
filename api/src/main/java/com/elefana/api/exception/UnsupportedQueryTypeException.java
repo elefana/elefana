@@ -20,7 +20,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 public class UnsupportedQueryTypeException extends ElefanaException {
 	private static final long serialVersionUID = -8997220380930473443L;
 
-	public UnsupportedQueryTypeException() {
-		super(HttpResponseStatus.UNSUPPORTED_MEDIA_TYPE, "Unsupported query type");
+	public UnsupportedQueryTypeException(String queryType) {
+		super(HttpResponseStatus.UNSUPPORTED_MEDIA_TYPE, "Unsupported query type: " + queryType);
 	}
 }

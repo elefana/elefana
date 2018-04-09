@@ -17,6 +17,7 @@ package com.elefana.search;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
@@ -30,62 +31,70 @@ import com.jsoniter.spi.TypeLiteral;
 
 public abstract class SearchHitsQueryExecutor {
 	protected final JdbcTemplate jdbcTemplate;
-	protected final Histogram searchTime, searchHits;
+	protected final Histogram searchHitsTime, searchHits;
 	
-	public SearchHitsQueryExecutor(JdbcTemplate jdbcTemplate, Histogram searchTime, Histogram searchHits) {
+	public SearchHitsQueryExecutor(JdbcTemplate jdbcTemplate, Histogram searchHitsTime, Histogram searchHits) {
 		super();
 		this.jdbcTemplate = jdbcTemplate;
-		this.searchTime = searchTime;
+		this.searchHitsTime = searchHitsTime;
 		this.searchHits = searchHits;
 	}
 	
 	protected abstract SqlRowSet queryHitsCount(PsqlQueryComponents queryComponents, long startTime, int from, int size);
 
 	protected abstract SqlRowSet queryHits(PsqlQueryComponents queryComponents, long startTime, int from, int size);
-
-	public SearchResponse executeQuery(PsqlQueryComponents queryComponents, long startTime, int from, int size) {
-		final SearchResponse result = new SearchResponse();
-		result.getShards().put("total", 1);
-		result.getShards().put("successful", 1);
-		result.getShards().put("failed", 0);
-		
-		SqlRowSet countRowSet = null;
-		SqlRowSet hitsRowSet = null;
-		try {
-			countRowSet = queryHitsCount(queryComponents, startTime, from, size);
-		} catch (Exception e) {
-			e.printStackTrace();
-			if (!e.getMessage().contains("No results")) {
-				throw e;
+	
+	public Callable<SearchResponse> executeCountQuery(final SearchResponse searchResponse, PsqlQueryComponents queryComponents, long startTime, int from, int size) {
+		return new Callable<SearchResponse>() {
+			@Override
+			public SearchResponse call() throws Exception {
+				SqlRowSet countRowSet = null;
+				try {
+					countRowSet = queryHitsCount(queryComponents, startTime, from, size);
+				} catch (Exception e) {
+					e.printStackTrace();
+					if (!e.getMessage().contains("No results")) {
+						throw e;
+					}
+					countRowSet = null;
+				}
+				if (countRowSet == null) {
+					searchResponse.getHits().setTotal(0);
+				} else {
+					searchResponse.getHits().setTotal(getTotalHits(countRowSet));
+				}
+				searchHits.update(searchResponse.getHits().getTotal());
+				return searchResponse;
 			}
-			countRowSet = null;
-		}
-		try {
-			hitsRowSet = queryHits(queryComponents, startTime, from, size);
-		} catch (Exception e) {
-			e.printStackTrace();
-			if (!e.getMessage().contains("No results")) {
-				throw e;
+		};
+	}
+
+	public Callable<SearchResponse> executeHitsQuery(final SearchResponse searchResponse, PsqlQueryComponents queryComponents, long startTime, int from, int size) {
+		return new Callable<SearchResponse>() {
+			@Override
+			public SearchResponse call() throws Exception {
+				if(size > 0) {
+					SqlRowSet hitsRowSet = null;
+					try {
+						hitsRowSet = queryHits(queryComponents, startTime, from, size);
+					} catch (Exception e) {
+						e.printStackTrace();
+						if (!e.getMessage().contains("No results")) {
+							throw e;
+						}
+						hitsRowSet = null;
+					}
+	
+					if (hitsRowSet != null) {
+						populateHits(searchResponse.getHits().getHits(), hitsRowSet);
+					}
+					searchResponse.getHits().setMaxScore(1.0);
+	
+					searchHitsTime.update(System.currentTimeMillis() - startTime);
+				}
+				return searchResponse;
 			}
-			hitsRowSet = null;
-		}
-
-		if (countRowSet == null) {
-			result.getHits().setTotal(0);
-		} else {
-			result.getHits().setTotal(getTotalHits(countRowSet));
-			populateHits(result.getHits().getHits(), hitsRowSet);
-		}
-		
-		result.getHits().setMaxScore(1.0);
-
-		final long took = System.currentTimeMillis() - startTime;
-		result.setTook(took);
-		result.setTimedOut(false);
-
-		searchHits.update(result.getHits().getTotal());
-		searchTime.update(took);
-		return result;
+		};
 	}
 	
 	private int getTotalHits(SqlRowSet countsRowSet) {

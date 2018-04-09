@@ -21,6 +21,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +31,7 @@ import org.springframework.jdbc.support.rowset.SqlRowSet;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.InvalidAggregationFieldType;
 import com.elefana.api.exception.NoSuchMappingException;
+import com.elefana.api.search.SearchResponse;
 import com.elefana.search.PsqlQueryComponents;
 import com.jsoniter.any.Any;
 
@@ -94,71 +97,80 @@ public class DateHistogramAggregation extends BucketAggregation {
 
 		final List<Long> distinctBuckets = getDistinctBuckets(aggregationExec, isTimestampColumn, bucketResultSet);
 		final long bucketInterval = getBucketInterval();
-		
+
 		for (long bucketTimestamp : distinctBuckets) {
-			final Map<String, Object> bucket = new HashMap<String, Object>();
+			final Map<String, Object> bucket = new ConcurrentHashMap<String, Object>();
 			bucket.put("key", bucketTimestamp);
-
-			final StringBuilder bucketCountQueryBuilder = new StringBuilder();
-			bucketCountQueryBuilder.append("SELECT COUNT(");
-			bucketCountQueryBuilder.append("_id");
-			bucketCountQueryBuilder.append(") FROM ");
-			bucketCountQueryBuilder.append(queryComponents.getFromComponent());
-			
-			if (aggregationExec.getNodeSettingsService().isUsingCitus()) {
-				bucketCountQueryBuilder.append(" AS bucketCount ");
-			}
-
-			final StringBuilder appendedWhereClause = new StringBuilder();
-
-			if (!aggregationExec.getNodeSettingsService().isUsingCitus()) {
-				if(queryComponents.getWhereComponent() != null && !queryComponents.getWhereComponent().isEmpty()) {
-					appendedWhereClause.append(queryComponents.getWhereComponent());
-					appendedWhereClause.append(" AND (");
-				} else {
-					appendedWhereClause.append("(");
-				}
-			} else {
-				appendedWhereClause.append("(");
-			}
-
-			if (isTimestampColumn) {
-				appendedWhereClause.append(getBucketColumn());
-			} else {
-				appendedWhereClause.append(getActualColumn(fieldType, fieldFormat));
-			}
-			appendedWhereClause.append(" >= ");
-			appendedWhereClause.append(bucketTimestamp);
-
-			appendedWhereClause.append(" AND ");
-
-			if (isTimestampColumn) {
-				appendedWhereClause.append(getBucketColumn());
-			} else {
-				appendedWhereClause.append(getActualColumn(fieldType, fieldFormat));
-			}
-			appendedWhereClause.append(" < ");
-			appendedWhereClause.append((bucketTimestamp + bucketInterval));
-
-			appendedWhereClause.append(')');
-
-			bucketCountQueryBuilder.append(" WHERE ");
-			bucketCountQueryBuilder.append(appendedWhereClause.toString());
-
-			Map<String, Object> aggResult = aggregationExec.getJdbcTemplate()
-					.queryForMap(bucketCountQueryBuilder.toString());
-			bucket.put("doc_count", aggResult.get("count"));
-
-			for (Aggregation aggregation : aggregationExec.getAggregation().getSubAggregations()) {
-				PsqlQueryComponents subAggregationQueryComponents = new PsqlQueryComponents(
-						new String(queryComponents.getFromComponent()), appendedWhereClause.toString(),
-						new String(queryComponents.getGroupByComponent()),
-						new String(queryComponents.getLimitComponent()));
-				aggregation.executeSqlQuery(aggregationExec, subAggregationQueryComponents,
-						aggregationExec.getSearchResponse(), bucket);
-				queryComponents.getTemporaryTables().addAll(subAggregationQueryComponents.getTemporaryTables());
-			}
 			buckets.add(bucket);
+
+			aggregationExec.getQueryFutures()
+					.offer(aggregationExec.getExecutorService().submit(new Callable<SearchResponse>() {
+
+						@Override
+						public SearchResponse call() throws Exception {
+							final StringBuilder bucketCountQueryBuilder = new StringBuilder();
+							bucketCountQueryBuilder.append("SELECT COUNT(");
+							bucketCountQueryBuilder.append("_id");
+							bucketCountQueryBuilder.append(") FROM ");
+							bucketCountQueryBuilder.append(queryComponents.getFromComponent());
+
+							if (aggregationExec.getNodeSettingsService().isUsingCitus()) {
+								bucketCountQueryBuilder.append(" AS bucketCount ");
+							}
+
+							final StringBuilder appendedWhereClause = new StringBuilder();
+
+							if (!aggregationExec.getNodeSettingsService().isUsingCitus()) {
+								if (queryComponents.getWhereComponent() != null
+										&& !queryComponents.getWhereComponent().isEmpty()) {
+									appendedWhereClause.append(queryComponents.getWhereComponent());
+									appendedWhereClause.append(" AND (");
+								} else {
+									appendedWhereClause.append("(");
+								}
+							} else {
+								appendedWhereClause.append("(");
+							}
+
+							if (isTimestampColumn) {
+								appendedWhereClause.append(getBucketColumn());
+							} else {
+								appendedWhereClause.append(getActualColumn(fieldType, fieldFormat));
+							}
+							appendedWhereClause.append(" >= ");
+							appendedWhereClause.append(bucketTimestamp);
+
+							appendedWhereClause.append(" AND ");
+
+							if (isTimestampColumn) {
+								appendedWhereClause.append(getBucketColumn());
+							} else {
+								appendedWhereClause.append(getActualColumn(fieldType, fieldFormat));
+							}
+							appendedWhereClause.append(" < ");
+							appendedWhereClause.append((bucketTimestamp + bucketInterval));
+
+							appendedWhereClause.append(')');
+
+							bucketCountQueryBuilder.append(" WHERE ");
+							bucketCountQueryBuilder.append(appendedWhereClause.toString());
+
+							final Map<String, Object> aggResult = aggregationExec.getJdbcTemplate()
+									.queryForMap(bucketCountQueryBuilder.toString());
+							bucket.put("doc_count", aggResult.get("count"));
+
+							for (Aggregation aggregation : aggregationExec.getAggregation().getSubAggregations()) {
+								PsqlQueryComponents subAggregationQueryComponents = new PsqlQueryComponents(
+										new String(queryComponents.getFromComponent()), appendedWhereClause.toString(),
+										new String(queryComponents.getGroupByComponent()), "",
+										new String(queryComponents.getLimitComponent()),
+										queryComponents.getTemporaryTables());
+								aggregation.executeSqlQuery(aggregationExec, subAggregationQueryComponents,
+										aggregationExec.getSearchResponse(), bucket);
+							}
+							return aggregationExec.getSearchResponse();
+						}
+					}));
 		}
 		result.put("buckets", buckets);
 		aggregationExec.getAggregationsResult().put(aggregationExec.getAggregation().getAggregationName(), result);
@@ -171,11 +183,11 @@ public class DateHistogramAggregation extends BucketAggregation {
 		while (bucketResultSet.next()) {
 			results.add(bucketResultSet.getLong(resultColumn));
 		}
-		
+
 		if (isTimestampColumn) {
 			final long bucketInterval = getBucketInterval();
 			final Set<Long> bucketedResults = new HashSet<Long>();
-			for(long bucket : results) {
+			for (long bucket : results) {
 				bucketedResults.add(bucket - (bucket % bucketInterval));
 			}
 			return new ArrayList<Long>(bucketedResults);
@@ -222,8 +234,9 @@ public class DateHistogramAggregation extends BucketAggregation {
 		}
 		return bucketColumn;
 	}
-	
-	private String getActualColumn(final String fieldType, final String fieldFormat) throws InvalidAggregationFieldType {
+
+	private String getActualColumn(final String fieldType, final String fieldFormat)
+			throws InvalidAggregationFieldType {
 		final StringBuilder result = new StringBuilder();
 		switch (fieldType) {
 		case "date":

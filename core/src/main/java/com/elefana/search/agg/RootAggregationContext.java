@@ -17,6 +17,9 @@ package com.elefana.search.agg;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,13 +52,15 @@ public class RootAggregationContext extends BucketAggregation {
 	}
 
 	@Override
-	public void executeSqlQuery(IndexTemplate indexTemplate, List<String> indices, String[] types, JdbcTemplate jdbcTemplate,
+	public void executeSqlQuery(ExecutorService executorService, Queue<Future<SearchResponse>> queryFutures,
+			IndexTemplate indexTemplate, List<String> indices, String[] types, JdbcTemplate jdbcTemplate,
 			NodeSettingsService nodeSettingsService, PsqlIndexFieldMappingService indexFieldMappingService,
 			PsqlQueryComponents queryComponents, SearchResponse searchResponse, Map<String, Object> aggregationsResult,
 			RequestBodySearch requestBodySearch) throws ElefanaException {
 		for (Aggregation aggregation : subaggregations) {
-			aggregation.executeSqlQuery(indexTemplate, indices, types, jdbcTemplate, nodeSettingsService, indexFieldMappingService,
-					queryComponents, searchResponse, aggregationsResult, requestBodySearch);
+			aggregation.executeSqlQuery(executorService, queryFutures, indexTemplate, indices, types, jdbcTemplate,
+					nodeSettingsService, indexFieldMappingService, queryComponents, searchResponse, aggregationsResult,
+					requestBodySearch);
 		}
 	}
 
