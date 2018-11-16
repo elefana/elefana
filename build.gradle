@@ -3,10 +3,10 @@ import org.apache.tools.ant.taskdefs.condition.Os
 buildscript {
 	ext {
 		asciiDoctorVersion = '1.5.7'
-		dockerComposeVersion = '0.6.9'
+		dockerComposeVersion = '0.8.12'
 		dockerRunVersion = '0.17.2'
 		nexusStagingVersion = '0.9.0'
-		springBootVersion = '1.5.10.RELEASE'
+		springBootVersion = '2.1.0.RELEASE'
 	}
 	repositories {
 		mavenLocal()
@@ -44,19 +44,19 @@ subprojects {
 		commonsValidatorVersion = '1.6'
 		esCompatVersion = '1.0.1'
 		esQueryStringVersion = '1.0.1'
-		hikariVersion = '2.7.4'
+		hikariVersion = '3.2.0'
 		jodaVersion = '2.9.9'
 		jsoniterVersion = '0.9.21'
-		metricsVersion = '4.0.2'
+		metricsVersion = '4.0.3'
 		nativesLoaderVersion = '1.0.0'
-		nettyVersion = '4.1.22.Final'
+		nettyVersion = '4.1.31.Final'
 		restAssuredVersion = '3.0.6'
 		stringSearchVersion = '2.2.0'
 		zeroAllocationHashingVersion = '0.8'
 	}
-	ext['postgresql.version'] = '42.1.4'
-	ext['tomcat.version'] = '8.5.24'
-	ext['spring-restdocs.version'] = '2.0.0.RELEASE'
+	ext['postgresql.version'] = '42.2.5'
+	ext['tomcat.version'] = '8.5.35'
+	ext['spring-restdocs.version'] = '2.0.2.RELEASE'
 
 	repositories {
 		mavenLocal()
@@ -77,11 +77,6 @@ subprojects {
 		classifier = 'sources'
 		from sourceSets.main.allSource
 	}
-
-	task bootJar(type: Jar, dependsOn: classes) {
-		classifier = 'boot'
-		from sourceSets.main.output
-	}
 	
 	task testJar(type: Jar, dependsOn: testClasses) {
 		classifier = 'test'
@@ -89,11 +84,31 @@ subprojects {
 		include '**/*UAT.class'
 	}
 
-	artifacts {
-		archives javadocJar, sourcesJar, testJar, bootJar
-		testOutput testJar
+	jar {
+		enabled = true
 	}
-	
+
+	if(project.name.contains("core")) {
+		bootJar {
+			enabled = true
+			classifier = 'boot'
+		}
+
+		artifacts {
+			archives javadocJar, sourcesJar, testJar, bootJar
+			testOutput testJar
+		}
+	} else {
+		bootJar {
+			enabled = false
+		}
+
+		artifacts {
+			archives javadocJar, sourcesJar, testJar
+			testOutput testJar
+		}
+	}
+
 	test {
 		testLogging {
 			events "failed"
@@ -167,8 +182,6 @@ subprojects {
 project(":" + rootProject.name + "-api") {
 	description = 'Elefana API classes'
 	
-	bootRepackage.enabled = false
-	
 	dependencies {
 		compile "com.jsoniter:jsoniter:$jsoniterVersion"
 		compile "io.netty:netty-codec-http:$nettyVersion"
@@ -179,8 +192,6 @@ project(":" + rootProject.name + "-api") {
 
 project(":" + rootProject.name + "-core") {
 	description = 'Elastic HTTP API for PostgreSQL'
-	
-	bootRepackage.withJarTask = bootJar
 	
 	dependencies {
 		compile project(path: ":" + rootProject.name + "-api")
@@ -217,7 +228,7 @@ project(":" + rootProject.name + "-core") {
 		exclude('application.properties')
 	}
 	
-	task copyToRelease(type: Copy, dependsOn: bootRepackage) {
+	task copyToRelease(type: Copy, dependsOn: bootJar) {
 		from "build/libs/elefana-core-" + project.version + "-boot.jar"
 		into "build/release/"
 		rename { String fileName ->
@@ -255,13 +266,12 @@ project(":" + rootProject.name + "-core") {
 project(":" + rootProject.name + "-uats-es2") {
 	apply plugin: "com.palantir.docker-run"
 	apply plugin: "org.asciidoctor.convert"
-	
-	bootRepackage.enabled = false
+
 	ext['snippetsDir'] = file('build/generated-snippets')
 	
 	dockerRun {
 		name rootProject.name + "-uats-es2"
-		image 'postgres:10'
+		image 'postgres:11'
 		daemonize true
 		clean true
 		ports '5433:5432'
@@ -290,12 +300,12 @@ project(":" + rootProject.name + "-uats-es2") {
 project(":" + rootProject.name + "-uats-es2-citus") {
 	apply plugin: 'docker-compose'
 	apply plugin: "org.asciidoctor.convert"
-	
-	bootRepackage.enabled = false
+
 	ext['snippetsDir'] = file('build/generated-snippets')
 
 	dockerCompose {
 		forceRecreate = true
+		environment.put 'COMPOSE_CONVERT_WINDOWS_PATHS', (Os.isFamily(Os.FAMILY_WINDOWS) ? '1' : '0' )
 	}
 	
 	dependencies {
@@ -331,13 +341,12 @@ project(":" + rootProject.name + "-uats-es2-citus") {
 project(":" + rootProject.name + "-uats-es5") {
 	apply plugin: "com.palantir.docker-run"
 	apply plugin: "org.asciidoctor.convert"
-	
-	bootRepackage.enabled = false
+
 	ext['snippetsDir'] = file('build/generated-snippets')
 	
 	dockerRun {
 		name rootProject.name + "-uats-es2"
-		image 'postgres:10'
+		image 'postgres:11'
 		daemonize true
 		clean true
 		ports '5434:5432'
@@ -365,8 +374,7 @@ project(":" + rootProject.name + "-uats-es5") {
 
 project(":" + rootProject.name + "-docs") {
 	apply plugin: "org.asciidoctor.convert"
-	
-	bootRepackage.enabled = false
+
 	ext['snippetsDir'] = file('build/generated-snippets')
 	
 	asciidoctor {
