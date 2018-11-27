@@ -69,13 +69,11 @@ public abstract class Aggregation {
 
 			@Override
 			public SearchResponse call() throws Exception {
-				LOGGER.info("Executing aggregation " + getAggregationName());
 				executeSqlQuery(new AggregationExec(parentExec.getExecutorService(), parentExec.getQueryFutures(),
 						parentExec.getIndexTemplate(), parentExec.getIndices(), parentExec.getTypes(),
 						parentExec.getJdbcTemplate(), parentExec.getNodeSettingsService(),
 						parentExec.getIndexFieldMappingService(), queryComponents, searchResponse, aggregationsResult,
 						parentExec.getRequestBodySearch(), Aggregation.this));
-				LOGGER.info("Finished aggregation " + getAggregationName());
 				return searchResponse;
 			}
 
@@ -91,11 +89,9 @@ public abstract class Aggregation {
 
 			@Override
 			public SearchResponse call() throws Exception {
-				LOGGER.info("Executing aggregation " + getAggregationName());
 				executeSqlQuery(new AggregationExec(executorService, queryFutures, indexTemplate, indices, types,
 						jdbcTemplate, nodeSettingsService, indexFieldMappingService, queryComponents, searchResponse,
 						aggregationsResult, requestBodySearch, Aggregation.this));
-				LOGGER.info("Finished aggregation " + getAggregationName());
 				return searchResponse;
 			}
 

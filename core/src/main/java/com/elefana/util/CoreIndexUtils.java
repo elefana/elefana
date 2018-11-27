@@ -17,6 +17,7 @@ package com.elefana.util;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -63,6 +64,7 @@ import net.openhft.hashing.LongHashFunction;
 @DependsOn("nodeSettingsService")
 public class CoreIndexUtils implements IndexUtils {
 	private static final String[] DEFAULT_TABLESPACES = new String[] { "" };
+	private static final String DEFAULT_BRIN_PAGES_PER_RANGE = "128";
 	private static final Logger LOGGER = LoggerFactory.getLogger(CoreIndexUtils.class);
 
 	private final Map<String, String[]> jsonPathCache = new ConcurrentHashMap<String, String[]>();
@@ -86,9 +88,12 @@ public class CoreIndexUtils implements IndexUtils {
 	private final ThreadLocalInteger documentIdCounter = new ThreadLocalInteger();
 	private final AtomicInteger tablespaceIndex = new AtomicInteger();
 	private String[] tablespaces;
+	private int brinPagesPerRange;
 
 	@PostConstruct
 	public void postConstruct() throws SQLException {
+		brinPagesPerRange = Integer.parseInt(environment.getProperty("elefana.brinPagesPerRange", DEFAULT_BRIN_PAGES_PER_RANGE));
+
 		tablespaces = environment.getProperty("elefana.service.document.tablespaces", "").split(",");
 		if (isEmptyTablespaceList(tablespaces)) {
 			tablespaces = DEFAULT_TABLESPACES;
@@ -170,8 +175,10 @@ public class CoreIndexUtils implements IndexUtils {
 			for (int j = 0; j < patterns.length; j++) {
 				if (results.get(i).toLowerCase().matches(patterns[j])) {
 					matchesPattern = true;
+					LOGGER.info(results.get(i) + " matched " + patterns[j]);
 					break;
 				}
+				LOGGER.info(results.get(i) + " did not match " + patterns[j]);
 			}
 			if (matchesPattern) {
 				continue;
@@ -179,6 +186,14 @@ public class CoreIndexUtils implements IndexUtils {
 			results.remove(i);
 		}
 		return results;
+	}
+
+	@Override
+	public String getQueryTarget(Connection connection, String indexName) throws SQLException {
+		if (!nodeSettingsService.isUsingCitus()) {
+			return DATA_TABLE;
+		}
+		return getPartitionTableForIndex(connection, indexName);
 	}
 
 	public String getQueryTarget(String indexName) {
@@ -264,25 +279,6 @@ public class CoreIndexUtils implements IndexUtils {
 						break;
 					}
 				}
-
-//				final String jsonIndexName = JSON_INDEX_PREFIX + tableName + "_" + fieldName;
-//
-//				final StringBuilder createJsonFilterQuery = new StringBuilder();
-//				createJsonFilterQuery.append("CREATE INDEX IF NOT EXISTS ");
-//				createJsonFilterQuery.append(jsonIndexName);
-//				createJsonFilterQuery.append(" ON ");
-//				if (nodeSettingsService.isUsingCitus()) {
-//					createJsonFilterQuery.append(tableName);
-//				} else {
-//					createJsonFilterQuery.append(getPartitionTableForIndex(indexName));
-//				}
-//				createJsonFilterQuery.append("(elefana_json_field(_source,'");
-//				createJsonFilterQuery.append(fieldName);
-//				createJsonFilterQuery.append("'))");
-//
-//				preparedStatement = connection.prepareStatement(createJsonFilterQuery.toString());
-//				preparedStatement.execute();
-//				preparedStatement.close();
 			}
 
 		} catch (Exception e) {
@@ -382,15 +378,15 @@ public class CoreIndexUtils implements IndexUtils {
 				preparedStatement.close();
 			}
 
-			final String createGinIndexQuery = "CREATE INDEX IF NOT EXISTS " + ginIndexName + " ON " + tableName
-					+ " USING GIN (_source jsonb_ops)";
-			LOGGER.info(createGinIndexQuery);
-			preparedStatement = connection.prepareStatement(createGinIndexQuery);
-			preparedStatement.execute();
-			preparedStatement.close();
+//			final String createGinIndexQuery = "CREATE INDEX IF NOT EXISTS " + ginIndexName + " ON " + tableName
+//					+ " USING GIN (_source jsonb_ops)";
+//			LOGGER.info(createGinIndexQuery);
+//			preparedStatement = connection.prepareStatement(createGinIndexQuery);
+//			preparedStatement.execute();
+//			preparedStatement.close();
 
 			final String createTimestampIndexQuery = "CREATE INDEX IF NOT EXISTS " + timestampIndexName + " ON "
-					+ tableName + " (_timestamp)";
+					+ tableName + " USING BRIN (_timestamp) WITH (pages_per_range = " + brinPagesPerRange + ")";
 			LOGGER.info(createTimestampIndexQuery);
 			preparedStatement = connection.prepareStatement(createTimestampIndexQuery);
 			preparedStatement.execute();
@@ -487,12 +483,42 @@ public class CoreIndexUtils implements IndexUtils {
 		return results;
 	}
 
+	public String getIndexForPartitionTable(Connection connection, String partitionTable) throws SQLException {
+		final String query = "SELECT _index FROM " + PARTITION_TRACKING_TABLE + " WHERE _partitionTable = ?";
+
+		final PreparedStatement preparedStatement = connection.prepareStatement(query);
+		preparedStatement.setString(1, partitionTable);
+
+		final ResultSet resultSet = preparedStatement.executeQuery();
+		String result = null;
+		if(resultSet.next()) {
+			result = resultSet.getString("_index");
+		}
+		preparedStatement.close();
+		return result;
+	}
+
 	public String getIndexForPartitionTable(String partitionTable) {
 		final String query = "SELECT _index FROM " + PARTITION_TRACKING_TABLE + " WHERE _partitionTable = ?";
 		for (Map<String, Object> row : jdbcTemplate.queryForList(query, partitionTable)) {
 			return (String) row.get("_index");
 		}
 		return null;
+	}
+
+	public String getPartitionTableForIndex(Connection connection, String index) throws SQLException {
+		final String query = "SELECT _partitionTable FROM " + PARTITION_TRACKING_TABLE + " WHERE _index = ?";
+
+		final PreparedStatement preparedStatement = connection.prepareStatement(query);
+		preparedStatement.setString(1, index);
+
+		final ResultSet resultSet = preparedStatement.executeQuery();
+		String result = null;
+		if(resultSet.next()) {
+			result = resultSet.getString("_partitionTable");
+		}
+		preparedStatement.close();
+		return result;
 	}
 
 	public String getPartitionTableForIndex(String index) {

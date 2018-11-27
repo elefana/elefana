@@ -16,6 +16,10 @@
 package com.elefana.document.psql;
 
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -121,29 +125,52 @@ public class PsqlBulkIndexService implements Runnable {
 		try {
 			while (running.get()) {
 				final String nextIndexTable = indexQueue.take();
+
+				Connection connection = null;
 				try {
-					jdbcTemplate
-							.execute("DELETE FROM elefana_bulk_index_queue WHERE _tableName='" + nextIndexTable + "'");
+					connection = jdbcTemplate.getDataSource().getConnection();
 
-					final String index = getIndexName(nextIndexTable);
-					final String targetTable = indexUtils.getQueryTarget(index);
+					try {
+						PreparedStatement preparedStatement = connection.prepareStatement("DELETE FROM elefana_bulk_index_queue WHERE _tableName='" + nextIndexTable + "'");
+						preparedStatement.execute();
+						preparedStatement.close();
 
-					if (nodeSettingsService.isUsingCitus()) {
-						mergeStagingTableIntoDistributedTable(index, nextIndexTable, targetTable);
-					} else {
-						mergeStagingTableIntoPartitionTable(nextIndexTable, targetTable);
+						final String index = getIndexName(connection, nextIndexTable);
+						final String targetTable = indexUtils.getQueryTarget(connection, index);
+
+						if (nodeSettingsService.isUsingCitus()) {
+							mergeStagingTableIntoDistributedTable(connection, index, nextIndexTable, targetTable);
+						} else {
+							mergeStagingTableIntoPartitionTable(connection, nextIndexTable, targetTable);
+						}
+
+						indexFieldMappingService.scheduleIndexForMappingAndStats(index);
+					} catch (Exception e) {
+						if(e.getMessage() != null && e.getMessage().contains("duplicate key")) {
+							LOGGER.error("Duplicate key in bulk staging table: " + nextIndexTable);
+							duplicateKeyCounter.inc();
+						} else {
+							LOGGER.error(e.getMessage(), e);
+						}
 					}
 
-					indexFieldMappingService.scheduleIndexForMappingAndStats(index);
+					PreparedStatement dropTableStatement = connection.prepareStatement("DROP TABLE IF EXISTS " + nextIndexTable);
+					dropTableStatement.execute();
+					dropTableStatement.close();
+
+					connection.close();
+					connection = null;
 				} catch (Exception e) {
-					if(e.getMessage().contains("duplicate key")) {
-						LOGGER.error("Duplicate key in bulk staging table: " + nextIndexTable);
-						duplicateKeyCounter.inc();
-					} else {
-						LOGGER.error(e.getMessage(), e);
+					if (connection != null) {
+						try {
+							connection.close();
+							connection = null;
+						} catch (SQLException e1) {
+							e1.printStackTrace();
+						}
 					}
+					e.printStackTrace();
 				}
-				jdbcTemplate.execute("DROP TABLE IF EXISTS " + nextIndexTable);
 			}
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
@@ -167,38 +194,42 @@ public class PsqlBulkIndexService implements Runnable {
 		return results;
 	}
 
-	private String getIndexName(String nextIndexTable) {
-		final List<Map<String, Object>> tableResults = jdbcTemplate
-				.queryForList("SELECT _index FROM " + nextIndexTable + " LIMIT 1");
-		if (!tableResults.isEmpty()) {
-			final Map<String, Object> row = tableResults.get(0);
-			if (row.containsKey("_index")) {
-				return ((String) row.get("_index"));
-			}
+	private String getIndexName(Connection connection, String nextIndexTable) throws SQLException {
+		final PreparedStatement preparedStatement = connection.prepareStatement("SELECT _index FROM " + nextIndexTable + " LIMIT 1");
+		final ResultSet resultSet = preparedStatement.executeQuery();
+		String result = null;
+		if(resultSet.next()) {
+			result = resultSet.getString("_index");
 		}
-		return null;
+		preparedStatement.close();
+		return result;
 	}
 
-	private boolean mergeStagingTableIntoDistributedTable(String index, String bulkIngestTable, String targetTable)
-			throws ElefanaException, IOException {
+	private boolean mergeStagingTableIntoDistributedTable(Connection connection, String index, String bulkIngestTable, String targetTable)
+			throws ElefanaException, IOException, SQLException {
 		final IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndex(index);
 
 		if (indexTemplate != null && indexTemplate.isTimeSeries()) {
-			List<Map<String, Object>> shardResultSet = jdbcTemplate
-					.queryForList("SELECT select_shard('" + targetTable + "')");
-			if (shardResultSet.isEmpty()) {
+			PreparedStatement preparedStatement = connection.prepareStatement("SELECT select_shard('" + targetTable + "')");
+			final ResultSet shardResultSet = preparedStatement.executeQuery();
+			preparedStatement.close();
+
+			if (!shardResultSet.next()) {
 				return false;
 			}
-			long shardId = (long) shardResultSet.get(0).get("select_shard");
+			final long shardId = shardResultSet.getLong("select_shard");
 
 			long timer = 0L;
 			Exception lastException = null;
 			while (timer < SHARD_TIMEOUT) {
 				long startTime = System.currentTimeMillis();
 				try {
-					jdbcTemplate.queryForList("SELECT master_append_table_to_shard(" + shardId + ", '" + bulkIngestTable
+					PreparedStatement appendShardStatement = connection.prepareStatement(
+							"SELECT master_append_table_to_shard(" + shardId + ", '" + bulkIngestTable
 							+ "', '" + nodeSettingsService.getCitusCoordinatorHost() + "', "
 							+ nodeSettingsService.getCitusCoordinatorPort() + ");");
+					preparedStatement.execute();
+					preparedStatement.close();
 					return true;
 				} catch (Exception e) {
 					lastException = e;
@@ -212,15 +243,24 @@ public class PsqlBulkIndexService implements Runnable {
 			lastException.printStackTrace();
 			return false;
 		} else {
-			mergeStagingTableIntoPartitionTable(bulkIngestTable, targetTable);
+			mergeStagingTableIntoPartitionTable(connection, bulkIngestTable, targetTable);
 		}
 		return true;
 	}
 
-	private void mergeStagingTableIntoPartitionTable(String bulkIngestTable, String targetTable) throws IOException {
+	private void mergeStagingTableIntoPartitionTable(Connection connection, String bulkIngestTable, String targetTable) throws IOException, SQLException {
 		String tmpFile = "/tmp/elefana-idx-" + targetTable + "-" + System.nanoTime() + ".tmp";
-		jdbcTemplate.execute("COPY " + bulkIngestTable + " TO '" + tmpFile + "' WITH BINARY");
-		jdbcTemplate.execute("COPY " + targetTable + " FROM '" + tmpFile + "' WITH BINARY");
-		jdbcTemplate.queryForList("SELECT elefana_delete_tmp_file('" + tmpFile + "')");
+
+		PreparedStatement preparedStatement = connection.prepareStatement("COPY " + bulkIngestTable + " TO '" + tmpFile + "' WITH BINARY");
+		preparedStatement.execute();
+		preparedStatement.close();
+
+		preparedStatement = connection.prepareStatement("COPY " + targetTable + " FROM '" + tmpFile + "' WITH BINARY");
+		preparedStatement.execute();
+		preparedStatement.close();
+
+		preparedStatement = connection.prepareStatement("SELECT elefana_delete_tmp_file('" + tmpFile + "')");
+		preparedStatement.execute();
+		preparedStatement.close();
 	}
 }

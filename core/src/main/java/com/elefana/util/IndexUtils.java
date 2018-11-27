@@ -15,6 +15,8 @@
  ******************************************************************************/
 package com.elefana.util;
 
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.List;
 
 import com.elefana.api.exception.ElefanaException;
@@ -40,7 +42,9 @@ public interface IndexUtils {
 	public List<String> listIndicesForIndexPattern(List<String> indexPatterns) throws ElefanaException;
 
 	public List<String> listIndicesForIndexPattern(String indexPattern) throws ElefanaException;
-	
+
+	public String getQueryTarget(Connection connection, String indexName) throws SQLException;
+
 	public String getQueryTarget(String indexName);
 	
 	public long getTimestamp(String index, String document) throws ElefanaException;
@@ -53,7 +57,11 @@ public interface IndexUtils {
 	
 	public void deleteTemporaryTable(String tableName);
 
+	public String getIndexForPartitionTable(Connection connection, String partitionTable) throws SQLException;
+
 	public String getIndexForPartitionTable(String partitionTable);
+
+	public String getPartitionTableForIndex(Connection connection, String index) throws SQLException;
 
 	public String getPartitionTableForIndex(String index);
 
