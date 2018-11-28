@@ -15,8 +15,12 @@
  ******************************************************************************/
 package com.elefana.search;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.util.List;
 
+import com.elefana.api.exception.ShardFailedException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.elefana.api.indices.IndexTemplate;
@@ -33,17 +37,45 @@ public class CitusSearchQueryBuilder implements SearchQueryBuilder {
 	}
 
 	@Override
-	public PsqlQueryComponents buildQuery(IndexTemplate matchedIndexTemplate, List<String> indices, String[] types, RequestBodySearch requestBodySearch) {
+	public PsqlQueryComponents buildQuery(IndexTemplate matchedIndexTemplate, List<String> indices, String[] types, RequestBodySearch requestBodySearch) throws ShardFailedException {
 		if(indices.isEmpty()) {
 			final String emptyDataTableName = SEARCH_TABLE_PREFIX + requestBodySearch.hashCode();
-			
-			final StringBuilder emptyTableQuery = new StringBuilder();
-			emptyTableQuery.append("CREATE TEMP TABLE ");
-			emptyTableQuery.append(emptyDataTableName);
-			emptyTableQuery.append(
-					" (_index VARCHAR(255) NOT NULL, _type VARCHAR(255) NOT NULL, _id VARCHAR(255) NOT NULL, _timestamp BIGINT, _source jsonb)");
-			jdbcTemplate.update(emptyTableQuery.toString());
-			
+
+			//TODO: Creating table is ineffecient - is there a better way to return an empty set with correct column names?
+			Connection connection = null;
+			try {
+				connection = jdbcTemplate.getDataSource().getConnection();
+
+				final StringBuilder emptyTableQuery = new StringBuilder();
+				emptyTableQuery.append("CREATE TABLE ");
+				emptyTableQuery.append(emptyDataTableName);
+				emptyTableQuery.append(
+						" (_index VARCHAR(255) NOT NULL, _type VARCHAR(255) NOT NULL, _id VARCHAR(255) NOT NULL, _timestamp BIGINT, "
+								+ "_bucket1s BIGINT, _bucket1m BIGINT, _bucket1h BIGINT, _bucket1d BIGINT, _source jsonb)");
+
+				PreparedStatement preparedStatement = connection
+						.prepareStatement(emptyTableQuery.toString());
+				preparedStatement.execute();
+				preparedStatement.close();
+
+				preparedStatement = connection
+						.prepareStatement("SELECT create_distributed_table('" + emptyDataTableName + "', '_id');");
+				preparedStatement.execute();
+				preparedStatement.close();
+
+				connection.close();
+			} catch (Exception e) {
+				if (connection != null) {
+					try {
+						connection.close();
+					} catch (SQLException e1) {
+						e1.printStackTrace();
+					}
+				}
+				e.printStackTrace();
+				throw new ShardFailedException(e);
+			}
+
 			final PsqlQueryComponents result = new PsqlQueryComponents(emptyDataTableName, "", "", "", "");
 			result.getTemporaryTables().add(emptyDataTableName);
 			return result;

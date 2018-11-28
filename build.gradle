@@ -334,6 +334,7 @@ project(":" + rootProject.name + "-uats-es2-citus") {
 	dockerCompose.isRequiredBy(test)
 	
 	test {
+		exclude '**/*PercentilesAggregationTest*'
 		outputs.dir snippetsDir
 	}
 }

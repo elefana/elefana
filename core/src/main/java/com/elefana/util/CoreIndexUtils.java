@@ -393,28 +393,28 @@ public class CoreIndexUtils implements IndexUtils {
 			preparedStatement.close();
 			
 //			final String createBucket1sIndexQuery = "CREATE INDEX IF NOT EXISTS " + bucket1sIndexName + " ON "
-//					+ tableName + " (_bucket1s)";
+//					+ tableName + " USING BRIN (_bucket1s)";
 //			LOGGER.info(createBucket1sIndexQuery);
 //			preparedStatement = connection.prepareStatement(createBucket1sIndexQuery);
 //			preparedStatement.execute();
 //			preparedStatement.close();
 //			
 //			final String createBucket1mIndexQuery = "CREATE INDEX IF NOT EXISTS " + bucket1mIndexName + " ON "
-//					+ tableName + " (_bucket1m)";
+//					+ tableName + " USING BRIN (_bucket1m)";
 //			LOGGER.info(createBucket1mIndexQuery);
 //			preparedStatement = connection.prepareStatement(createBucket1mIndexQuery);
 //			preparedStatement.execute();
 //			preparedStatement.close();
 //			
 //			final String createBucket1hIndexQuery = "CREATE INDEX IF NOT EXISTS " + bucket1hIndexName + " ON "
-//					+ tableName + " (_bucket1h)";
+//					+ tableName + " USING BRIN (_bucket1h)";
 //			LOGGER.info(createBucket1hIndexQuery);
 //			preparedStatement = connection.prepareStatement(createBucket1hIndexQuery);
 //			preparedStatement.execute();
 //			preparedStatement.close();
 //			
 //			final String createBucket1dIndexQuery = "CREATE INDEX IF NOT EXISTS " + bucket1dIndexName + " ON "
-//					+ tableName + " (_bucket1d)";
+//					+ tableName + " USING BRIN (_bucket1d)";
 //			LOGGER.info(createBucket1dIndexQuery);
 //			preparedStatement = connection.prepareStatement(createBucket1dIndexQuery);
 //			preparedStatement.execute();

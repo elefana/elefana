@@ -17,6 +17,7 @@ package com.elefana.search;
 
 import java.util.List;
 
+import com.elefana.api.exception.ShardFailedException;
 import com.elefana.api.indices.IndexTemplate;
 
 /**
@@ -26,5 +27,5 @@ public interface SearchQueryBuilder {
 	public static final String SEARCH_TABLE_PREFIX = "elefana_search_";
 
 	public PsqlQueryComponents buildQuery(IndexTemplate matchedIndexTemplate, List<String> indices, String[] types,
-			RequestBodySearch requestBodySearch);
+			RequestBodySearch requestBodySearch) throws ShardFailedException;
 }
