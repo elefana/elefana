@@ -64,7 +64,7 @@ import net.openhft.hashing.LongHashFunction;
 @DependsOn("nodeSettingsService")
 public class CoreIndexUtils implements IndexUtils {
 	private static final String[] DEFAULT_TABLESPACES = new String[] { "" };
-	private static final String DEFAULT_BRIN_PAGES_PER_RANGE = "128";
+	private static final IndexGenerationSettings DEFAULT_INDEX_GENERATION_SETTINGS = new IndexGenerationSettings();
 	private static final Logger LOGGER = LoggerFactory.getLogger(CoreIndexUtils.class);
 
 	private final Map<String, String[]> jsonPathCache = new ConcurrentHashMap<String, String[]>();
@@ -79,6 +79,8 @@ public class CoreIndexUtils implements IndexUtils {
 	@Autowired
 	private IndexTemplateService indexTemplateService;
 	@Autowired
+	private TableIndexCreator tableIndexCreator;
+	@Autowired
 	private JdbcTemplate jdbcTemplate;
 	@Autowired
 	private MetricRegistry metricRegistry;
@@ -88,12 +90,9 @@ public class CoreIndexUtils implements IndexUtils {
 	private final ThreadLocalInteger documentIdCounter = new ThreadLocalInteger();
 	private final AtomicInteger tablespaceIndex = new AtomicInteger();
 	private String[] tablespaces;
-	private int brinPagesPerRange;
 
 	@PostConstruct
 	public void postConstruct() throws SQLException {
-		brinPagesPerRange = Integer.parseInt(environment.getProperty("elefana.brinPagesPerRange", DEFAULT_BRIN_PAGES_PER_RANGE));
-
 		tablespaces = environment.getProperty("elefana.service.document.tablespaces", "").split(",");
 		if (isEmptyTablespaceList(tablespaces)) {
 			tablespaces = DEFAULT_TABLESPACES;
@@ -242,10 +241,10 @@ public class CoreIndexUtils implements IndexUtils {
 		final IndexTemplate indexTemplate;
 		final GetIndexTemplateForIndexResponse indexTemplateForIndexResponse = indexTemplateService
 				.prepareGetIndexTemplateForIndex(indexName).get();
-		if (indexTemplateForIndexResponse.getIndexTemplate() == null) {
+		if (indexTemplateForIndexResponse.getIndexTemplate() != null) {
 			indexTemplate = indexTemplateForIndexResponse.getIndexTemplate();
 		} else {
-			indexTemplate = null;
+			return;
 		}
 		final String tableName = convertIndexNameToTableName(indexName);
 
@@ -254,33 +253,33 @@ public class CoreIndexUtils implements IndexUtils {
 			connection = jdbcTemplate.getDataSource().getConnection();
 			PreparedStatement preparedStatement;
 
+			boolean indexCreated = false;
 			for (String fieldName : fieldNames) {
-				if (indexTemplate != null) {
-					final IndexGenerationSettings indexGenerationSettings = indexTemplate.getStorage()
-							.getIndexGenerationSettings();
-					switch (indexGenerationSettings.getMode()) {
-					case ALL:
-						break;
-					case PRESET:
-						boolean matchedPresetField = false;
-						for (String presetFieldName : indexGenerationSettings.getPresetFields()) {
-							if (presetFieldName.equalsIgnoreCase(fieldName)) {
-								matchedPresetField = true;
-								break;
-							}
+				final IndexGenerationSettings indexGenerationSettings = indexTemplate.getStorage()
+						.getIndexGenerationSettings();
+				switch (indexGenerationSettings.getMode()) {
+				case ALL:
+					indexCreated = true;
+					break;
+				case PRESET:
+					boolean matchedPresetField = false;
+					for (String presetFieldName : indexGenerationSettings.getPresetFields()) {
+						if (presetFieldName.equalsIgnoreCase(fieldName)) {
+							matchedPresetField = true;
+							break;
 						}
-						if (!matchedPresetField) {
-							continue;
-						}
-						break;
-					case DYNAMIC:
-					default:
-
-						break;
 					}
+					if (!matchedPresetField) {
+						continue;
+					}
+					tableIndexCreator.createPsqlIndex(connection, tableName, fieldName, indexGenerationSettings);
+					break;
+				case DYNAMIC:
+				default:
+					//TODO: Implement metric-driven index creation
+					break;
 				}
 			}
-
 		} catch (Exception e) {
 			if (connection != null) {
 				try {
@@ -323,12 +322,6 @@ public class CoreIndexUtils implements IndexUtils {
 			timeSeries = true;
 		}
 
-		final String timestampIndexName = TIMESTAMP_INDEX_PREFIX + tableName;
-		final String bucket1sIndexName = SECOND_INDEX_PREFIX + tableName;
-		final String bucket1mIndexName = MINUTE_INDEX_PREFIX + tableName;
-		final String bucket1hIndexName = HOUR_INDEX_PREFIX + tableName;
-		final String bucket1dIndexName = DAY_INDEX_PREFIX + tableName;
-		final String ginIndexName = GIN_INDEX_PREFIX + tableName;
 		final String constraintName = PRIMARY_KEY_PREFIX + tableName;
 
 		Connection connection = null;
@@ -362,6 +355,12 @@ public class CoreIndexUtils implements IndexUtils {
 			preparedStatement.execute();
 			preparedStatement.close();
 
+			if(indexTemplate != null && indexTemplate.getStorage() != null && indexTemplate.getStorage().getIndexGenerationSettings() != null) {
+				tableIndexCreator.createPsqlIndices(connection, tableName, indexTemplate.getStorage().getIndexGenerationSettings());
+			} else {
+				tableIndexCreator.createPsqlIndices(connection, tableName, DEFAULT_INDEX_GENERATION_SETTINGS);
+			}
+
 			if (nodeSettingsService.isUsingCitus() && timeSeries) {
 				final String createPrimaryKeyQuery = "ALTER TABLE " + tableName + " ADD CONSTRAINT " + constraintName
 						+ " PRIMARY KEY (_timestamp, _id);";
@@ -377,48 +376,6 @@ public class CoreIndexUtils implements IndexUtils {
 				preparedStatement.execute();
 				preparedStatement.close();
 			}
-
-//			final String createGinIndexQuery = "CREATE INDEX IF NOT EXISTS " + ginIndexName + " ON " + tableName
-//					+ " USING GIN (_source jsonb_ops)";
-//			LOGGER.info(createGinIndexQuery);
-//			preparedStatement = connection.prepareStatement(createGinIndexQuery);
-//			preparedStatement.execute();
-//			preparedStatement.close();
-
-			final String createTimestampIndexQuery = "CREATE INDEX IF NOT EXISTS " + timestampIndexName + " ON "
-					+ tableName + " USING BRIN (_timestamp) WITH (pages_per_range = " + brinPagesPerRange + ")";
-			LOGGER.info(createTimestampIndexQuery);
-			preparedStatement = connection.prepareStatement(createTimestampIndexQuery);
-			preparedStatement.execute();
-			preparedStatement.close();
-			
-//			final String createBucket1sIndexQuery = "CREATE INDEX IF NOT EXISTS " + bucket1sIndexName + " ON "
-//					+ tableName + " USING BRIN (_bucket1s)";
-//			LOGGER.info(createBucket1sIndexQuery);
-//			preparedStatement = connection.prepareStatement(createBucket1sIndexQuery);
-//			preparedStatement.execute();
-//			preparedStatement.close();
-//			
-//			final String createBucket1mIndexQuery = "CREATE INDEX IF NOT EXISTS " + bucket1mIndexName + " ON "
-//					+ tableName + " USING BRIN (_bucket1m)";
-//			LOGGER.info(createBucket1mIndexQuery);
-//			preparedStatement = connection.prepareStatement(createBucket1mIndexQuery);
-//			preparedStatement.execute();
-//			preparedStatement.close();
-//			
-//			final String createBucket1hIndexQuery = "CREATE INDEX IF NOT EXISTS " + bucket1hIndexName + " ON "
-//					+ tableName + " USING BRIN (_bucket1h)";
-//			LOGGER.info(createBucket1hIndexQuery);
-//			preparedStatement = connection.prepareStatement(createBucket1hIndexQuery);
-//			preparedStatement.execute();
-//			preparedStatement.close();
-//			
-//			final String createBucket1dIndexQuery = "CREATE INDEX IF NOT EXISTS " + bucket1dIndexName + " ON "
-//					+ tableName + " USING BRIN (_bucket1d)";
-//			LOGGER.info(createBucket1dIndexQuery);
-//			preparedStatement = connection.prepareStatement(createBucket1dIndexQuery);
-//			preparedStatement.execute();
-//			preparedStatement.close();
 
 			final String createPartitionTrackingEntry = "INSERT INTO " + PARTITION_TRACKING_TABLE
 					+ " (_index, _partitionTable) VALUES (?, ?) ON CONFLICT DO NOTHING";

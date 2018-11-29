@@ -22,13 +22,13 @@ import com.jsoniter.annotation.JsonProperty;
 
 public class IndexGenerationSettings {
 	@JsonProperty("mode")
-	private IndexGenerationMode mode = IndexGenerationMode.DYNAMIC;
+	private IndexGenerationMode mode = IndexGenerationMode.ALL;
 	@JsonProperty("preset_fields")
 	private List<String> presetFields;
 
 	public IndexGenerationMode getMode() {
 		if(mode == null) {
-			mode = IndexGenerationMode.DYNAMIC;
+			mode = IndexGenerationMode.ALL;
 		}
 		return mode;
 	}

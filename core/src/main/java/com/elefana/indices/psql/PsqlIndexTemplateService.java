@@ -148,6 +148,9 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 		}
 		for(int i = 1; i < indices.size(); i++) {
 			IndexTemplate nextIndexTemplate = getIndexTemplateForIndex(indices.get(i));
+			if(nextIndexTemplate == null) {
+				return null;
+			}
 			if(!nextIndexTemplate.getTemplateId().equalsIgnoreCase(result.getTemplateId())) {
 				return null;
 			}
