@@ -174,10 +174,8 @@ public class CoreIndexUtils implements IndexUtils {
 			for (int j = 0; j < patterns.length; j++) {
 				if (results.get(i).toLowerCase().matches(patterns[j])) {
 					matchesPattern = true;
-					LOGGER.info(results.get(i) + " matched " + patterns[j]);
 					break;
 				}
-				LOGGER.info(results.get(i) + " did not match " + patterns[j]);
 			}
 			if (matchesPattern) {
 				continue;

@@ -20,6 +20,8 @@ import static org.hamcrest.Matchers.equalTo;
 
 import java.util.UUID;
 
+import io.restassured.response.Response;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -36,6 +38,7 @@ import io.restassured.RestAssured;
 @SpringBootTest(classes = { ElefanaApplication.class })
 @TestPropertySource(locations = "classpath:es2.properties")
 public class IndexMappingTest {
+	private static final long TEST_TIMEOUT = 10000L;
 
 	@Before
 	public void setup() {
@@ -150,33 +153,50 @@ public class IndexMappingTest {
 			.then()
 				.statusCode(201);
 		}
-		
-		try {
-			Thread.sleep(3000L);
-		} catch (Exception e) {}
-		
-		given()
-			.request()
-			.body("{\"fields\":[\"docField\"]}")
-		.when()
-			.post("/" + index + "/_field_stats")
-		.then()
-			.statusCode(200)
-			.log().all()
-			.body("_shards.successful", equalTo(1))
-			.body("indices." + index + ".fields.docField.max_doc", equalTo(totalDocuments))
-			.body("indices." + index + ".fields.docField.doc_count", equalTo(totalDocuments));
-		
-		given()
-			.request()
-			.body("{\"fields\":[\"emptyField\"]}")
-		.when()
-			.post("/" + index + "/_field_stats")
-		.then()
-			.statusCode(200)
-			.log().all()
-			.body("_shards.successful", equalTo(1))
-			.body("indices." + index + ".fields.emptyField.max_doc", equalTo(totalDocuments))
-			.body("indices." + index + ".fields.emptyField.doc_count", equalTo(totalEmptyFieldDocuments));
+
+		final long startTime = System.currentTimeMillis();
+
+		while(System.currentTimeMillis() - startTime < TEST_TIMEOUT) {
+			final Response response = given()
+					.request()
+					.body("{\"fields\":[\"docField\"]}")
+					.when()
+					.post("/" + index + "/_field_stats")
+					.then().log().all().extract().response();
+			final Integer maxDocValue = response.path("indices." + index + ".fields.docField.max_doc");
+			if(maxDocValue == null || maxDocValue < totalDocuments) {
+				try {
+					Thread.sleep(100);
+				} catch (Exception e) {}
+				continue;
+			}
+
+			given()
+					.request()
+					.body("{\"fields\":[\"docField\"]}")
+					.when()
+					.post("/" + index + "/_field_stats")
+					.then()
+					.statusCode(200)
+					.log().all()
+					.body("_shards.successful", equalTo(1))
+					.body("indices." + index + ".fields.docField.max_doc", equalTo(totalDocuments))
+					.body("indices." + index + ".fields.docField.doc_count", equalTo(totalDocuments));
+
+			given()
+					.request()
+					.body("{\"fields\":[\"emptyField\"]}")
+					.when()
+					.post("/" + index + "/_field_stats")
+					.then()
+					.statusCode(200)
+					.log().all()
+					.body("_shards.successful", equalTo(1))
+					.body("indices." + index + ".fields.emptyField.max_doc", equalTo(totalDocuments))
+					.body("indices." + index + ".fields.emptyField.doc_count", equalTo(totalEmptyFieldDocuments));
+			return;
+		}
+
+		Assert.fail("Failed to generate stats for " + totalDocuments + " documents");
 	}
 }

@@ -15,21 +15,18 @@
  ******************************************************************************/
 package com.elefana.indices.psql;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.SortedSet;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledFuture;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
-
+import com.elefana.ApiVersion;
+import com.elefana.api.RequestExecutor;
+import com.elefana.api.exception.ElefanaException;
+import com.elefana.api.exception.ShardFailedException;
+import com.elefana.api.indices.*;
+import com.elefana.indices.*;
+import com.elefana.node.NodeSettingsService;
+import com.elefana.node.VersionInfoService;
+import com.elefana.util.IndexUtils;
+import com.jsoniter.JsonIterator;
+import com.jsoniter.output.JsonStream;
+import com.jsoniter.spi.TypeLiteral;
 import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,31 +38,10 @@ import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 
-import com.elefana.ApiVersion;
-import com.elefana.api.RequestExecutor;
-import com.elefana.api.exception.ElefanaException;
-import com.elefana.api.exception.ShardFailedException;
-import com.elefana.api.indices.GetFieldCapabilitiesRequest;
-import com.elefana.api.indices.GetFieldCapabilitiesResponse;
-import com.elefana.api.indices.GetFieldMappingsRequest;
-import com.elefana.api.indices.GetFieldMappingsResponse;
-import com.elefana.api.indices.GetFieldStatsRequest;
-import com.elefana.api.indices.GetFieldStatsResponse;
-import com.elefana.api.indices.IndexTemplate;
-import com.elefana.api.indices.PutFieldMappingRequest;
-import com.elefana.api.indices.RefreshIndexRequest;
-import com.elefana.indices.FieldMapper;
-import com.elefana.indices.IndexFieldMappingService;
-import com.elefana.indices.V2FieldMapper;
-import com.elefana.indices.V2FieldStats;
-import com.elefana.indices.V5FieldMapper;
-import com.elefana.indices.V5FieldStats;
-import com.elefana.node.NodeSettingsService;
-import com.elefana.node.VersionInfoService;
-import com.elefana.util.IndexUtils;
-import com.jsoniter.JsonIterator;
-import com.jsoniter.output.JsonStream;
-import com.jsoniter.spi.TypeLiteral;
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+import java.util.*;
+import java.util.concurrent.*;
 
 @Service
 @DependsOn("nodeSettingsService")
@@ -74,6 +50,9 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 
 	private final SortedSet<String> mappingQueue = new ConcurrentSkipListSet<String>();
 	private final SortedSet<String> fieldStatsQueue = new ConcurrentSkipListSet<String>();
+	private final SortedSet<String> delayedMappingQueue = new ConcurrentSkipListSet<String>();
+	private final SortedSet<String> delayedFieldStatsQueue = new ConcurrentSkipListSet<String>();
+
 	private long lastMapping = -1L;
 	private long lastFieldStats = -1L;
 
@@ -496,6 +475,11 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
 		}
+		while(!delayedMappingQueue.isEmpty()) {
+			final String nextIndex = delayedMappingQueue.first();
+			mappingQueue.add(nextIndex);
+			delayedMappingQueue.remove(nextIndex);
+		}
 	}
 
 	private int generateMappingsForAllTypes(IndexTemplate indexTemplate, Map<String, Object> mapping, String index,
@@ -550,6 +534,12 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 				fieldStatsQueue.remove(nextIndex);
 			}
 			lastFieldStats = System.currentTimeMillis();
+
+			while(!delayedFieldStatsQueue.isEmpty()) {
+				final String nextIndex = delayedFieldStatsQueue.first();
+				fieldStatsQueue.add(nextIndex);
+				delayedFieldStatsQueue.remove(nextIndex);
+			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -561,9 +551,9 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 
 		final String totalDocsQuery = nodeSettingsService.isUsingCitus()
 				? "SELECT COUNT(_id) FROM " + indexUtils.getQueryTarget(indexName)
-				: "SELECT COUNT(*) FROM " + IndexUtils.DATA_TABLE + " WHERE _index='" + indexName + "'";
+				: "SELECT COUNT(_id) FROM " + IndexUtils.DATA_TABLE + " WHERE _index='" + indexName + "'";
 
-		long totalDocs = (long) jdbcTemplate.queryForList(totalDocsQuery).get(0).get("count");
+		final long totalDocs = (long) jdbcTemplate.queryForList(totalDocsQuery).get(0).get("count");
 
 		for (String type : types) {
 			final List<String> fieldNames = getFieldNames(indexName, type);
@@ -579,7 +569,7 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 						: "SELECT COUNT(*) FROM " + IndexUtils.DATA_TABLE + " WHERE _index='" + indexName
 								+ "' AND _source ? '" + fieldName + "'";
 
-				long totalDocsWithField = (long) jdbcTemplate.queryForList(totalDocsWithFieldQuery).get(0).get("count");
+				final long totalDocsWithField = (long) jdbcTemplate.queryForList(totalDocsWithFieldQuery).get(0).get("count");
 
 				V2FieldStats stats = versionInfoService.getApiVersion().isNewerThan(ApiVersion.V_2_4_3)
 						? new V5FieldStats() : new V2FieldStats();
@@ -678,14 +668,27 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 	}
 
 	public void scheduleIndexForStats(String index) {
-		fieldStatsQueue.add(index);
+		if(nodeSettingsService.isUsingCitus()) {
+			delayedFieldStatsQueue.add(index);
+		} else {
+			fieldStatsQueue.add(index);
+		}
 	}
 
 	public void scheduleIndexForMapping(String index) {
-		mappingQueue.add(index);
+		if(nodeSettingsService.isUsingCitus()) {
+			delayedMappingQueue.add(index);
+		} else {
+			mappingQueue.add(index);
+		}
 	}
 
 	public void scheduleIndexForMappingAndStats(String index) {
+		if(nodeSettingsService.isUsingCitus()) {
+			delayedMappingQueue.add(index);
+			delayedFieldStatsQueue.add(index);
+		}
+
 		mappingQueue.add(index);
 		fieldStatsQueue.add(index);
 	}

@@ -43,7 +43,7 @@ public class TableIndexCreator implements Runnable {
 	private static final String DEFAULT_BRIN_PAGES_PER_RANGE = "128";
 	private static final Logger LOGGER = LoggerFactory.getLogger(TableIndexCreator.class);
 
-	private final PriorityBlockingQueue<DelayedIndexCreation> indexCreationQueue = new PriorityBlockingQueue<DelayedIndexCreation>();
+	private final DelayQueue<DelayedIndexCreation> indexCreationQueue = new DelayQueue<DelayedIndexCreation>();
 	private final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
 	private final AtomicBoolean running = new AtomicBoolean(true);
 
@@ -88,11 +88,8 @@ public class TableIndexCreator implements Runnable {
 	@Override
 	public void run() {
 		while(running.get()) {
-			if(indexCreationQueue.isEmpty()) {
-				return;
-			}
-			final DelayedIndexCreation nextIndexCreation = indexCreationQueue.peek();
-			if(nextIndexCreation.targetTimestamp > System.currentTimeMillis()) {
+			final DelayedIndexCreation nextIndexCreation = indexCreationQueue.poll();
+			if(nextIndexCreation == null) {
 				return;
 			}
 
@@ -124,7 +121,7 @@ public class TableIndexCreator implements Runnable {
 			DelayedIndexCreation delayedIndexCreation = new DelayedIndexCreation();
 			delayedIndexCreation.indexGenerationSettings = indexGenerationSettings;
 			delayedIndexCreation.tableName = tableName;
-			delayedIndexCreation.targetTimestamp = System.currentTimeMillis() + delayPeriodMillis;
+			delayedIndexCreation.delayMillis = delayPeriodMillis;
 			indexCreationQueue.offer(delayedIndexCreation);
 		}
 	}
@@ -200,14 +197,19 @@ public class TableIndexCreator implements Runnable {
 		preparedStatement.close();
 	}
 
-	private class DelayedIndexCreation implements Comparable<DelayedIndexCreation> {
+	private class DelayedIndexCreation implements Delayed {
 		public String tableName;
 		public IndexGenerationSettings indexGenerationSettings;
-		public long targetTimestamp;
+		public long delayMillis;
 
 		@Override
-		public int compareTo(DelayedIndexCreation o) {
-			return Long.compare(targetTimestamp, o.targetTimestamp);
+		public long getDelay(TimeUnit unit) {
+			return unit.convert(delayMillis, TimeUnit.MILLISECONDS);
+		}
+
+		@Override
+		public int compareTo(Delayed o) {
+			return Long.compare(delayMillis, o.getDelay(TimeUnit.MILLISECONDS));
 		}
 	}
 }

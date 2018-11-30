@@ -125,6 +125,7 @@ public class PsqlBulkIndexService implements Runnable {
 		try {
 			while (running.get()) {
 				final String nextIndexTable = indexQueue.take();
+				String index = null;
 
 				Connection connection = null;
 				try {
@@ -135,7 +136,7 @@ public class PsqlBulkIndexService implements Runnable {
 						preparedStatement.execute();
 						preparedStatement.close();
 
-						final String index = getIndexName(connection, nextIndexTable);
+						index = getIndexName(connection, nextIndexTable);
 						final String targetTable = indexUtils.getQueryTarget(connection, index);
 
 						if (nodeSettingsService.isUsingCitus()) {
@@ -143,8 +144,6 @@ public class PsqlBulkIndexService implements Runnable {
 						} else {
 							mergeStagingTableIntoPartitionTable(connection, nextIndexTable, targetTable);
 						}
-
-						indexFieldMappingService.scheduleIndexForMappingAndStats(index);
 					} catch (Exception e) {
 						if(e.getMessage() != null && e.getMessage().contains("duplicate key")) {
 							LOGGER.error("Duplicate key in bulk staging table: " + nextIndexTable);
@@ -160,6 +159,10 @@ public class PsqlBulkIndexService implements Runnable {
 
 					connection.close();
 					connection = null;
+
+					if(index != null) {
+						indexFieldMappingService.scheduleIndexForMappingAndStats(index);
+					}
 				} catch (Exception e) {
 					if (connection != null) {
 						try {
