@@ -19,8 +19,11 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.Matchers.equalTo;
 
+import java.util.List;
 import java.util.UUID;
 
+import io.restassured.response.ValidatableResponse;
+import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -41,22 +44,37 @@ public class DateHistogramAggregationTest extends AbstractAggregationTest {
 		final String type = "test";
 		
 		generateDocuments(index, type);
-		
-		try {
-			Thread.sleep(1000L);
-		} catch (Exception e) {}
-		
-		given()
-			.request()
-			.body("{\"query\":{\"match_all\":{}}, \"size\":" + DOCUMENT_QUANTITY 
-					+ ", \"aggs\" : {\"aggs_result\" : { \"date_histogram\" : { \"field\" : \"timestamp\", \"interval\": \"day\" }}}}")
-		.when()
-			.post("/" + index + "/_search")
-		.then()
-			.log().all()
-			.statusCode(200)
-			.body("aggregations.aggs_result.buckets[0]", notNullValue())
-			.body("aggregations.aggs_result.buckets[" + (DOCUMENT_QUANTITY - 1) + "]", notNullValue());
+
+		final long startTime = System.currentTimeMillis();
+		List result = null;
+		while(System.currentTimeMillis() - startTime < TIMEOUT) {
+			final ValidatableResponse response = given()
+					.request()
+					.body("{\"query\":{\"match_all\":{}}, \"size\":" + DOCUMENT_QUANTITY
+							+ ", \"aggs\" : {\"aggs_result\" : { \"date_histogram\" : { \"field\" : \"timestamp\", \"interval\": \"day\" }}}}")
+					.when()
+					.post("/" + index + "/_search")
+					.then()
+					.log().all()
+					.statusCode(200);
+
+			result = response.extract().body().jsonPath().getList("aggregations.aggs_result.buckets");
+			if(result != null && result.size() == DOCUMENT_QUANTITY) {
+				Assert.assertNotNull(result.get(0));
+				Assert.assertNotNull(result.get(DOCUMENT_QUANTITY - 1));
+				return;
+			}
+
+			try {
+				Thread.sleep(100);
+			} catch (Exception e) {}
+		}
+
+		if(result == null) {
+			Assert.fail("Expected " + DOCUMENT_QUANTITY + " results but got null list");
+		} else {
+			Assert.fail("Expected " + DOCUMENT_QUANTITY + " results but got " + result.size());
+		}
 	}
 	
 	@Test
@@ -65,23 +83,38 @@ public class DateHistogramAggregationTest extends AbstractAggregationTest {
 		final String type = "test";
 		
 		generateDocuments(index, type);
-		
-		try {
-			Thread.sleep(1000L);
-		} catch (Exception e) {}
-		
-		given()
-			.request()
-			.body("{\"query\":{\"match_all\":{}}, \"size\":" + DOCUMENT_QUANTITY 
-					+ ", \"aggs\" : {\"aggs_result\" : { \"date_histogram\" : { \"field\" : \"timestamp\", \"interval\": \"day\" }, " 
-					+ "\"aggregations\": {\"subaggs_result\" : { \"sum\" : { \"field\" : \"value\" }}}}}}")
-		.when()
-			.post("/" + index + "/_search")
-		.then()
-			.log().all()
-			.statusCode(200)
-			.body("aggregations.aggs_result.buckets[0]", notNullValue())
-			.body("aggregations.aggs_result.buckets[" + (DOCUMENT_QUANTITY - 1) + "]", notNullValue());
+
+		final long startTime = System.currentTimeMillis();
+		List result = null;
+		while(System.currentTimeMillis() - startTime < TIMEOUT) {
+			final ValidatableResponse response = given()
+					.request()
+					.body("{\"query\":{\"match_all\":{}}, \"size\":" + DOCUMENT_QUANTITY
+							+ ", \"aggs\" : {\"aggs_result\" : { \"date_histogram\" : { \"field\" : \"timestamp\", \"interval\": \"day\" }, "
+							+ "\"aggregations\": {\"subaggs_result\" : { \"sum\" : { \"field\" : \"value\" }}}}}}")
+					.when()
+					.post("/" + index + "/_search")
+					.then()
+					.log().all()
+					.statusCode(200);
+
+			result = response.extract().body().jsonPath().getList("aggregations.aggs_result.buckets");
+			if(result != null && result.size() == DOCUMENT_QUANTITY) {
+				Assert.assertNotNull(result.get(0));
+				Assert.assertNotNull(result.get(DOCUMENT_QUANTITY - 1));
+				return;
+			}
+
+			try {
+				Thread.sleep(100);
+			} catch (Exception e) {}
+		}
+
+		if(result == null) {
+			Assert.fail("Expected " + DOCUMENT_QUANTITY + " results but got null list");
+		} else {
+			Assert.fail("Expected " + DOCUMENT_QUANTITY + " results but got " + result.size());
+		}
 	}
 	
 	@Test
