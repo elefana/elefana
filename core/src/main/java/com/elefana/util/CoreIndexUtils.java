@@ -24,7 +24,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -261,7 +260,7 @@ public class CoreIndexUtils implements IndexUtils {
 					break;
 				case PRESET:
 					boolean matchedPresetField = false;
-					for (String presetFieldName : indexGenerationSettings.getPresetFields()) {
+					for (String presetFieldName : indexGenerationSettings.getPresetIndexFields()) {
 						if (presetFieldName.equalsIgnoreCase(fieldName)) {
 							matchedPresetField = true;
 							break;

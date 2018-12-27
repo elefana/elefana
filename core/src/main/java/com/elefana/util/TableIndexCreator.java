@@ -18,6 +18,7 @@ package com.elefana.util;
 import com.elefana.api.indices.IndexGenerationMode;
 import com.elefana.api.indices.IndexGenerationSettings;
 import com.elefana.node.NodeInfoService;
+import com.elefana.node.NodeSettingsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,21 +32,16 @@ import javax.annotation.PreDestroy;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.util.PriorityQueue;
-import java.util.Queue;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
 @DependsOn("nodeInfoService")
 public class TableIndexCreator implements Runnable {
-	private static final String DEFAULT_INDEX_CREATION_DELAY = "0";
-	private static final String DEFAULT_BRIN_PAGES_PER_RANGE = "128";
 	private static final Logger LOGGER = LoggerFactory.getLogger(TableIndexCreator.class);
 
-	private final DelayQueue<DelayedIndexCreation> indexCreationQueue = new DelayQueue<DelayedIndexCreation>();
+	private final DelayQueue<DelayedTableIndexCreation> tableIndexCreationQueue = new DelayQueue<DelayedTableIndexCreation>();
+	private final DelayQueue<DelayedFieldIndexCreation> fieldIndexCreationQueue = new DelayQueue<DelayedFieldIndexCreation>();
 	private final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
-	private final AtomicBoolean running = new AtomicBoolean(true);
 
 	@Autowired
 	private Environment environment;
@@ -53,33 +49,23 @@ public class TableIndexCreator implements Runnable {
 	private JdbcTemplate jdbcTemplate;
 	@Autowired
 	private NodeInfoService nodeInfoService;
-
-	private long delayPeriodMillis;
-	private int brinPagesPerRange;
+	@Autowired
+	private NodeSettingsService nodeSettingsService;
 
 	@PostConstruct
 	public void postConstruct() throws SQLException {
-		brinPagesPerRange = Integer.parseInt(environment.getProperty("elefana.brinPagesPerRange", DEFAULT_BRIN_PAGES_PER_RANGE));
-
 		if(!nodeInfoService.isMasterNode()) {
 			//Only master node can create indices
 			scheduledExecutorService.shutdown();
 			return;
 		}
-
-		delayPeriodMillis = Integer.parseInt(environment.getProperty("elefana.psqlIndexCreationDelay", DEFAULT_INDEX_CREATION_DELAY));
-		if(delayPeriodMillis <= 0) {
-			scheduledExecutorService.shutdown();
-			return;
-		}
-		scheduledExecutorService.scheduleAtFixedRate(this, 1L, delayPeriodMillis, TimeUnit.MILLISECONDS);
+		final long interval = Math.min(nodeSettingsService.getFieldStatsInterval(), nodeSettingsService.getMappingInterval());
+		scheduledExecutorService.scheduleAtFixedRate(this, 1L, Math.max(1000, interval), TimeUnit.MILLISECONDS);
 	}
 
 	@PreDestroy
 	public void preDestroy() {
-		running.set(false);
-
-		if(delayPeriodMillis <= 0) {
+		if(!nodeInfoService.isMasterNode()) {
 			return;
 		}
 		scheduledExecutorService.shutdown();
@@ -87,53 +73,93 @@ public class TableIndexCreator implements Runnable {
 
 	@Override
 	public void run() {
-		while(running.get()) {
-			final DelayedIndexCreation nextIndexCreation = indexCreationQueue.poll();
-			if(nextIndexCreation == null) {
-				return;
-			}
+		runTableIndexCreation();
+		runFieldIndexCreation();
+	}
 
-			Connection connection = null;
-			try {
-				connection = jdbcTemplate.getDataSource().getConnection();
+	private void runTableIndexCreation() {
+		final DelayedTableIndexCreation nextIndexCreation = tableIndexCreationQueue.poll();
+		if(nextIndexCreation == null) {
+			return;
+		}
 
-				internalCreatePsqlIndices(connection, nextIndexCreation.tableName, nextIndexCreation.indexGenerationSettings);
-				indexCreationQueue.poll();
+		Connection connection = null;
+		try {
+			connection = jdbcTemplate.getDataSource().getConnection();
 
-				connection.close();
-			} catch (Exception e) {
-				if (connection != null) {
-					try {
-						connection.close();
-					} catch (SQLException e1) {
-						e1.printStackTrace();
-					}
+			internalCreatePsqlIndices(connection, nextIndexCreation.tableName, nextIndexCreation.indexGenerationSettings);
+
+			connection.close();
+		} catch (Exception e) {
+			if (connection != null) {
+				try {
+					connection.close();
+				} catch (SQLException e1) {
+					e1.printStackTrace();
 				}
-				e.printStackTrace();
 			}
+			e.printStackTrace();
+		}
+	}
+
+	private void runFieldIndexCreation() {
+		final DelayedFieldIndexCreation nextIndexCreation = fieldIndexCreationQueue.poll();
+		if(nextIndexCreation == null) {
+			return;
+		}
+
+		Connection connection = null;
+		try {
+			connection = jdbcTemplate.getDataSource().getConnection();
+
+			internalCreatePsqlIndex(connection, nextIndexCreation.tableName, nextIndexCreation.fieldName, nextIndexCreation.indexGenerationSettings);
+
+			connection.close();
+		} catch (Exception e) {
+			if (connection != null) {
+				try {
+					connection.close();
+				} catch (SQLException e1) {
+					e1.printStackTrace();
+				}
+			}
+			e.printStackTrace();
 		}
 	}
 
 	public void createPsqlIndices(Connection connection, String tableName, IndexGenerationSettings indexGenerationSettings) throws SQLException {
-		if(delayPeriodMillis <= 0) {
+		if(indexGenerationSettings.getIndexDelaySeconds() <= 0) {
 			internalCreatePsqlIndices(connection, tableName, indexGenerationSettings);
 		} else {
-			DelayedIndexCreation delayedIndexCreation = new DelayedIndexCreation();
-			delayedIndexCreation.indexGenerationSettings = indexGenerationSettings;
-			delayedIndexCreation.tableName = tableName;
-			delayedIndexCreation.delayMillis = delayPeriodMillis;
-			indexCreationQueue.offer(delayedIndexCreation);
+			final DelayedTableIndexCreation delayedTableIndexCreation = new DelayedTableIndexCreation();
+			delayedTableIndexCreation.indexGenerationSettings = indexGenerationSettings;
+			delayedTableIndexCreation.tableName = tableName;
+			delayedTableIndexCreation.delayMillis = TimeUnit.SECONDS.toMillis(indexGenerationSettings.getIndexDelaySeconds());
+			tableIndexCreationQueue.offer(delayedTableIndexCreation);
 		}
 	}
 
 	public void createPsqlIndex(Connection connection, String tableName, String fieldName, IndexGenerationSettings indexGenerationSettings) throws SQLException {
+		if(indexGenerationSettings.getIndexDelaySeconds() <= 0) {
+			internalCreatePsqlIndex(connection, tableName, fieldName, indexGenerationSettings);
+		} else {
+			final DelayedFieldIndexCreation delayedFieldIndexCreation = new DelayedFieldIndexCreation();
+			delayedFieldIndexCreation.indexGenerationSettings = indexGenerationSettings;
+			delayedFieldIndexCreation.tableName = tableName;
+			delayedFieldIndexCreation.fieldName = fieldName;
+			delayedFieldIndexCreation.delayMillis = TimeUnit.SECONDS.toMillis(indexGenerationSettings.getIndexDelaySeconds());
+			fieldIndexCreationQueue.offer(delayedFieldIndexCreation);
+		}
+	}
+
+	private void internalCreatePsqlIndex(Connection connection, String tableName, String fieldName, IndexGenerationSettings indexGenerationSettings) throws SQLException {
 		switch(indexGenerationSettings.getMode()) {
 		case ALL:
 			return;
 		case PRESET:
 		case DYNAMIC:
-			final String ginIndexName = IndexUtils.GIN_INDEX_PREFIX + tableName + "_" + fieldName;
-			final String createGinFieldIndexQuery = "CREATE INDEX IF NOT EXISTS " + ginIndexName + " ON " + tableName + " USING BTREE ((_source->>'" + fieldName + "'));";
+			final String btreeIndexName = IndexUtils.BTREE_INDEX_PREFIX + tableName + "_" + fieldName;
+			final String createGinFieldIndexQuery = "CREATE INDEX IF NOT EXISTS " + btreeIndexName + " ON " + tableName + " USING BTREE ((_source->>'" + fieldName + "'));";
 			LOGGER.info(createGinFieldIndexQuery);
 			PreparedStatement preparedStatement = connection.prepareStatement(createGinFieldIndexQuery);
 			preparedStatement.execute();
@@ -162,43 +188,60 @@ public class TableIndexCreator implements Runnable {
 		}
 
 		final String createTimestampIndexQuery = "CREATE INDEX IF NOT EXISTS " + timestampIndexName + " ON "
-				+ tableName + " USING BRIN (_timestamp) WITH (pages_per_range = " + brinPagesPerRange + ")";
+				+ tableName + " USING BRIN (_timestamp) WITH (pages_per_range = " + nodeSettingsService.getBrinPagesPerRange() + ")";
 		LOGGER.info(createTimestampIndexQuery);
 		preparedStatement = connection.prepareStatement(createTimestampIndexQuery);
 		preparedStatement.execute();
 		preparedStatement.close();
 
 		final String createBucket1sIndexQuery = "CREATE INDEX IF NOT EXISTS " + bucket1sIndexName + " ON "
-				+ tableName + " USING BRIN (_bucket1s) WITH (pages_per_range = " + brinPagesPerRange + ")";
+				+ tableName + " USING BRIN (_bucket1s) WITH (pages_per_range = " + nodeSettingsService.getBrinPagesPerRange() + ")";
 		LOGGER.info(createBucket1sIndexQuery);
 		preparedStatement = connection.prepareStatement(createBucket1sIndexQuery);
 		preparedStatement.execute();
 		preparedStatement.close();
 
 		final String createBucket1mIndexQuery = "CREATE INDEX IF NOT EXISTS " + bucket1mIndexName + " ON "
-				+ tableName + " USING BRIN (_bucket1m) WITH (pages_per_range = " + brinPagesPerRange + ")";
+				+ tableName + " USING BRIN (_bucket1m) WITH (pages_per_range = " + nodeSettingsService.getBrinPagesPerRange() + ")";
 		LOGGER.info(createBucket1mIndexQuery);
 		preparedStatement = connection.prepareStatement(createBucket1mIndexQuery);
 		preparedStatement.execute();
 		preparedStatement.close();
 
 		final String createBucket1hIndexQuery = "CREATE INDEX IF NOT EXISTS " + bucket1hIndexName + " ON "
-				+ tableName + " USING BRIN (_bucket1h) WITH (pages_per_range = " + brinPagesPerRange + ")";
+				+ tableName + " USING BRIN (_bucket1h) WITH (pages_per_range = " + nodeSettingsService.getBrinPagesPerRange() + ")";
 		LOGGER.info(createBucket1hIndexQuery);
 		preparedStatement = connection.prepareStatement(createBucket1hIndexQuery);
 		preparedStatement.execute();
 		preparedStatement.close();
 
 		final String createBucket1dIndexQuery = "CREATE INDEX IF NOT EXISTS " + bucket1dIndexName + " ON "
-				+ tableName + " USING BRIN (_bucket1d) WITH (pages_per_range = " + brinPagesPerRange + ")";
+				+ tableName + " USING BRIN (_bucket1d) WITH (pages_per_range = " + nodeSettingsService.getBrinPagesPerRange() + ")";
 		LOGGER.info(createBucket1dIndexQuery);
 		preparedStatement = connection.prepareStatement(createBucket1dIndexQuery);
 		preparedStatement.execute();
 		preparedStatement.close();
 	}
 
-	private class DelayedIndexCreation implements Delayed {
+	private class DelayedTableIndexCreation implements Delayed {
 		public String tableName;
+		public IndexGenerationSettings indexGenerationSettings;
+		public long delayMillis;
+
+		@Override
+		public long getDelay(TimeUnit unit) {
+			return unit.convert(delayMillis, TimeUnit.MILLISECONDS);
+		}
+
+		@Override
+		public int compareTo(Delayed o) {
+			return Long.compare(delayMillis, o.getDelay(TimeUnit.MILLISECONDS));
+		}
+	}
+
+	private class DelayedFieldIndexCreation implements Delayed {
+		public String tableName;
+		public String fieldName;
 		public IndexGenerationSettings indexGenerationSettings;
 		public long delayMillis;
 

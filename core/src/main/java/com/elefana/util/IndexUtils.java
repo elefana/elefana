@@ -26,6 +26,7 @@ public interface IndexUtils {
 	public static final String PARTITION_TRACKING_TABLE = "elefana_partition_tracking";
 
 	public static final String TRIGGERS_PREFIX = "elefana_triggers_";
+	public static final String BTREE_INDEX_PREFIX = "elefana_btree_idx_";
 	public static final String GIN_INDEX_PREFIX = "elefana_gin_idx_";
 	public static final String TIMESTAMP_INDEX_PREFIX = "elefana_ts_idx_";
 	public static final String SECOND_INDEX_PREFIX = "elefana_1s_idx_";

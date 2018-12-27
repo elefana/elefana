@@ -17,14 +17,17 @@ package com.elefana.api.indices;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import com.jsoniter.annotation.JsonProperty;
 
 public class IndexGenerationSettings {
 	@JsonProperty("mode")
 	private IndexGenerationMode mode = IndexGenerationMode.ALL;
-	@JsonProperty("preset_fields")
-	private List<String> presetFields;
+	@JsonProperty("preset_index_fields")
+	private List<String> presetIndexFields;
+	@JsonProperty("index_delay_seconds")
+	private long indexDelaySeconds;
 
 	public IndexGenerationMode getMode() {
 		if(mode == null) {
@@ -37,42 +40,38 @@ public class IndexGenerationSettings {
 		this.mode = mode;
 	}
 
-	public List<String> getPresetFields() {
-		if(presetFields == null) {
-			presetFields = new ArrayList<String>();
+	public List<String> getPresetIndexFields() {
+		if(presetIndexFields == null) {
+			presetIndexFields = new ArrayList<String>();
 		}
-		return presetFields;
+		return presetIndexFields;
 	}
 
-	public void setPresetFields(List<String> presetFields) {
-		this.presetFields = presetFields;
+	public void setPresetIndexFields(List<String> presetIndexFields) {
+		this.presetIndexFields = presetIndexFields;
+	}
+
+	public long getIndexDelaySeconds() {
+		return indexDelaySeconds;
+	}
+
+	public void setIndexDelaySeconds(long indexDelaySeconds) {
+		this.indexDelaySeconds = indexDelaySeconds;
+	}
+
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (!(o instanceof IndexGenerationSettings)) return false;
+		IndexGenerationSettings that = (IndexGenerationSettings) o;
+		return indexDelaySeconds == that.indexDelaySeconds &&
+				mode == that.mode &&
+				Objects.equals(presetIndexFields, that.presetIndexFields);
 	}
 
 	@Override
 	public int hashCode() {
-		final int prime = 31;
-		int result = 1;
-		result = prime * result + ((mode == null) ? 0 : mode.hashCode());
-		result = prime * result + ((presetFields == null) ? 0 : presetFields.hashCode());
-		return result;
-	}
-
-	@Override
-	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		IndexGenerationSettings other = (IndexGenerationSettings) obj;
-		if (mode != other.mode)
-			return false;
-		if (presetFields == null) {
-			if (other.presetFields != null)
-				return false;
-		} else if (!presetFields.equals(other.presetFields))
-			return false;
-		return true;
+		return Objects.hash(mode, presetIndexFields, indexDelaySeconds);
 	}
 }

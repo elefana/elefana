@@ -38,6 +38,8 @@ import org.springframework.stereotype.Component;
 public class NodeSettingsService {
 	private static final Logger LOGGER = LoggerFactory.getLogger(NodeSettingsService.class);
 
+	private static final String DEFAULT_BRIN_PAGES_PER_RANGE = "128";
+
 	@Autowired
 	Environment environment;
 
@@ -75,6 +77,7 @@ public class NodeSettingsService {
 	private double mappingSampleSize;
 	private int fallbackMappingSampleSize;
 	private long garbageCollectionInterval;
+	private int brinPagesPerRange;
 
 	@PostConstruct
 	public void postConstruct() {
@@ -116,6 +119,7 @@ public class NodeSettingsService {
 		mappingSampleSize = environment.getRequiredProperty("elefana.mappingSampleSize", Double.class);
 		fallbackMappingSampleSize = environment.getRequiredProperty("elefana.fallbackMappingSampleSize", Integer.class);
 		garbageCollectionInterval = environment.getRequiredProperty("elefana.gcInterval", Long.class);
+		brinPagesPerRange = Integer.parseInt(environment.getProperty("elefana.brinPagesPerRange", DEFAULT_BRIN_PAGES_PER_RANGE));
 
 		masterNode = checkIfMasterNode();
 		dataNode = checkIfDataNode();
@@ -312,6 +316,10 @@ public class NodeSettingsService {
 
 	public long getGarbageCollectionInterval() {
 		return garbageCollectionInterval;
+	}
+
+	public int getBrinPagesPerRange() {
+		return brinPagesPerRange;
 	}
 
 	public boolean isMasterNode() {
