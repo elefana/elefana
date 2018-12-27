@@ -22,6 +22,8 @@ import static org.mockito.Mockito.when;
 import java.util.Random;
 import java.util.UUID;
 
+import io.restassured.response.ValidatableResponse;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -42,6 +44,7 @@ import io.restassured.http.ContentType;
 public class BulkApiTest {
 	private static final int RANDOM_SEED = 12947357;
 	private static final Random RANDOM = new Random(RANDOM_SEED);
+	private static final long BULK_INDEX_TIMEOUT = 20000L;
 	
 	@Before
 	public void setup() {
@@ -63,19 +66,24 @@ public class BulkApiTest {
 			.statusCode(200)
 			.body("errors", equalTo(false))
 			.body("items.size()", equalTo(totalDocuments));
-		
-		try {
-			Thread.sleep(5000L);
-		} catch (Exception e) {}
-		
-		given()
-			.request()
-			.body("{\"query\":{\"match_all\":{}}, \"size\":" + totalDocuments + "}")
-		.when()
-			.post("/" + index + "/_search")
-		.then()
-			.statusCode(200)
-			.body("hits.total", equalTo(totalDocuments));
+
+		final long startTime = System.currentTimeMillis();
+		int result = 0;
+
+		while(System.currentTimeMillis() - startTime < BULK_INDEX_TIMEOUT) {
+			ValidatableResponse response = given()
+					.request()
+					.body("{\"query\":{\"match_all\":{}}, \"size\":" + totalDocuments + "}")
+					.when()
+					.post("/" + index + "/_search")
+					.then()
+					.statusCode(200);
+			result = response.extract().body().jsonPath().getInt("hits.total");
+			if(result == totalDocuments) {
+				return;
+			}
+		}
+		Assert.fail("Expected " + totalDocuments + " documents, found " + result);
 	}
 
 	@Test
@@ -101,19 +109,24 @@ public class BulkApiTest {
 			.statusCode(200)
 			.body("errors", equalTo(false))
 			.body("items.size()", equalTo(totalDocuments));
-		
-		try {
-			Thread.sleep(5000L);
-		} catch (Exception e) {}
-		
-		given()
-			.request()
-			.body("{\"query\":{\"match_all\":{}}, \"size\":" + totalDocuments + "}")
-		.when()
-			.post("/" + index + "/_search")
-		.then()
-			.statusCode(200)
-			.body("hits.total", equalTo(totalDocuments));
+
+		final long startTime = System.currentTimeMillis();
+		int result = 0;
+
+		while(System.currentTimeMillis() - startTime < BULK_INDEX_TIMEOUT) {
+			ValidatableResponse response = given()
+					.request()
+					.body("{\"query\":{\"match_all\":{}}, \"size\":" + totalDocuments + "}")
+					.when()
+					.post("/" + index + "/_search")
+					.then()
+					.statusCode(200);
+			result = response.extract().body().jsonPath().getInt("hits.total");
+			if(result == totalDocuments) {
+				return;
+			}
+		}
+		Assert.fail("Expected " + totalDocuments + " documents, found " + result);
 	}
 	
 	@Test
@@ -154,19 +167,24 @@ public class BulkApiTest {
 			.statusCode(200)
 			.body("errors", equalTo(false))
 			.body("items.size()", equalTo(totalDocuments));
-		
-		try {
-			Thread.sleep(5000L);
-		} catch (Exception e) {}
-		
-		given()
-			.request()
-			.body("{\"query\":{\"match_all\":{}}, \"size\":" + totalDocuments + "}")
-		.when()
-			.post("/" + index + "/_search")
-		.then()
-			.statusCode(200)
-			.body("hits.total", equalTo(totalDocuments));
+
+		final long startTime = System.currentTimeMillis();
+		int result = 0;
+
+		while(System.currentTimeMillis() - startTime < BULK_INDEX_TIMEOUT) {
+			ValidatableResponse response = given()
+					.request()
+					.body("{\"query\":{\"match_all\":{}}, \"size\":" + totalDocuments + "}")
+					.when()
+					.post("/" + index + "/_search")
+					.then()
+					.statusCode(200);
+			result = response.extract().body().jsonPath().getInt("hits.total");
+			if(result == totalDocuments) {
+				return;
+			}
+		}
+		Assert.fail("Expected " + totalDocuments + " documents, found " + result);
 	}
 	
 	@Test
@@ -184,19 +202,24 @@ public class BulkApiTest {
 			.statusCode(200)
 			.body("errors", equalTo(false))
 			.body("items.size()", equalTo(totalDocuments));
-		
-		try {
-			Thread.sleep(5000L);
-		} catch (Exception e) {}
-		
-		given()
-			.request()
-			.body("{\"query\":{\"match_all\":{}}, \"size\":" + totalDocuments + "}")
-		.when()
-			.post("/" + index + "/_search")
-		.then()
-			.statusCode(200)
-			.body("hits.total", equalTo(totalDocuments));
+
+		final long startTime = System.currentTimeMillis();
+		int result = 0;
+
+		while(System.currentTimeMillis() - startTime < BULK_INDEX_TIMEOUT) {
+			ValidatableResponse response = given()
+					.request()
+					.body("{\"query\":{\"match_all\":{}}, \"size\":" + totalDocuments + "}")
+					.when()
+					.post("/" + index + "/_search")
+					.then()
+					.statusCode(200);
+			result = response.extract().body().jsonPath().getInt("hits.total");
+			if(result == totalDocuments) {
+				return;
+			}
+		}
+		Assert.fail("Expected " + totalDocuments + " documents, found " + result);
 	}
 	
 	private String generateBulkRequest(String index, String type, int totalDocuments) {
