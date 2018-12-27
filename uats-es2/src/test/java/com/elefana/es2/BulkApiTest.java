@@ -82,6 +82,10 @@ public class BulkApiTest {
 			if(result == totalDocuments) {
 				return;
 			}
+
+			try {
+				Thread.sleep(100);
+			} catch (Exception e) {}
 		}
 		Assert.fail("Expected " + totalDocuments + " documents, found " + result);
 	}
@@ -125,6 +129,10 @@ public class BulkApiTest {
 			if(result == totalDocuments) {
 				return;
 			}
+
+			try {
+				Thread.sleep(100);
+			} catch (Exception e) {}
 		}
 		Assert.fail("Expected " + totalDocuments + " documents, found " + result);
 	}
@@ -183,6 +191,10 @@ public class BulkApiTest {
 			if(result == totalDocuments) {
 				return;
 			}
+
+			try {
+				Thread.sleep(100);
+			} catch (Exception e) {}
 		}
 		Assert.fail("Expected " + totalDocuments + " documents, found " + result);
 	}
@@ -218,6 +230,10 @@ public class BulkApiTest {
 			if(result == totalDocuments) {
 				return;
 			}
+
+			try {
+				Thread.sleep(100);
+			} catch (Exception e) {}
 		}
 		Assert.fail("Expected " + totalDocuments + " documents, found " + result);
 	}
