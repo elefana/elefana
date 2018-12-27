@@ -55,11 +55,11 @@ public class DateHistogramAggregationTest extends AbstractAggregationTest {
 					.when()
 					.post("/" + index + "/_search")
 					.then()
-					.log().all()
-					.statusCode(200);
+					.log().all();
 
 			result = response.extract().body().jsonPath().getList("aggregations.aggs_result.buckets");
 			if(result != null && result.size() == DOCUMENT_QUANTITY) {
+				response.statusCode(200);
 				Assert.assertNotNull(result.get(0));
 				Assert.assertNotNull(result.get(DOCUMENT_QUANTITY - 1));
 				return;
@@ -95,11 +95,11 @@ public class DateHistogramAggregationTest extends AbstractAggregationTest {
 					.when()
 					.post("/" + index + "/_search")
 					.then()
-					.log().all()
-					.statusCode(200);
+					.log().all();
 
 			result = response.extract().body().jsonPath().getList("aggregations.aggs_result.buckets");
 			if(result != null && result.size() == DOCUMENT_QUANTITY) {
+				response.statusCode(200);
 				Assert.assertNotNull(result.get(0));
 				Assert.assertNotNull(result.get(DOCUMENT_QUANTITY - 1));
 				return;
