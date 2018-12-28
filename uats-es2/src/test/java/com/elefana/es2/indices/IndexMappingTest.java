@@ -38,7 +38,7 @@ import io.restassured.RestAssured;
 @SpringBootTest(classes = { ElefanaApplication.class })
 @TestPropertySource(locations = "classpath:es2.properties")
 public class IndexMappingTest {
-	private static final long TEST_TIMEOUT = 10000L;
+	private static final long TEST_TIMEOUT = 30000L;
 
 	@Before
 	public void setup() {
