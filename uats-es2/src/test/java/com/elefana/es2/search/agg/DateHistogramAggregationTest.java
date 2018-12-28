@@ -22,6 +22,7 @@ import static org.hamcrest.Matchers.equalTo;
 import java.util.List;
 import java.util.UUID;
 
+import io.restassured.path.json.exception.JsonPathException;
 import io.restassured.response.ValidatableResponse;
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -57,12 +58,15 @@ public class DateHistogramAggregationTest extends AbstractAggregationTest {
 					.then()
 					.log().all();
 
-			result = response.extract().body().jsonPath().getList("aggregations.aggs_result.buckets");
-			if(result != null && result.size() == DOCUMENT_QUANTITY) {
-				response.statusCode(200);
-				Assert.assertNotNull(result.get(0));
-				Assert.assertNotNull(result.get(DOCUMENT_QUANTITY - 1));
-				return;
+			try {
+				result = response.extract().body().jsonPath().getList("aggregations.aggs_result.buckets");
+				if(result != null && result.size() == DOCUMENT_QUANTITY) {
+					response.statusCode(200);
+					Assert.assertNotNull(result.get(0));
+					Assert.assertNotNull(result.get(DOCUMENT_QUANTITY - 1));
+					return;
+				}
+			} catch (JsonPathException e) {
 			}
 
 			try {
@@ -97,12 +101,15 @@ public class DateHistogramAggregationTest extends AbstractAggregationTest {
 					.then()
 					.log().all();
 
-			result = response.extract().body().jsonPath().getList("aggregations.aggs_result.buckets");
-			if(result != null && result.size() == DOCUMENT_QUANTITY) {
-				response.statusCode(200);
-				Assert.assertNotNull(result.get(0));
-				Assert.assertNotNull(result.get(DOCUMENT_QUANTITY - 1));
-				return;
+			try {
+				result = response.extract().body().jsonPath().getList("aggregations.aggs_result.buckets");
+				if(result != null && result.size() == DOCUMENT_QUANTITY) {
+					response.statusCode(200);
+					Assert.assertNotNull(result.get(0));
+					Assert.assertNotNull(result.get(DOCUMENT_QUANTITY - 1));
+					return;
+				}
+			} catch (JsonPathException e) {
 			}
 
 			try {
