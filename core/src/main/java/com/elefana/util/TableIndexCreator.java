@@ -169,11 +169,7 @@ public class TableIndexCreator implements Runnable {
 	}
 
 	private void internalCreatePsqlIndices(Connection connection, String tableName, IndexGenerationSettings indexGenerationSettings) throws SQLException {
-		final String timestampIndexName = IndexUtils.TIMESTAMP_INDEX_PREFIX + tableName;
-		final String bucket1sIndexName = IndexUtils.SECOND_INDEX_PREFIX + tableName;
-		final String bucket1mIndexName = IndexUtils.MINUTE_INDEX_PREFIX + tableName;
-		final String bucket1hIndexName = IndexUtils.HOUR_INDEX_PREFIX + tableName;
-		final String bucket1dIndexName = IndexUtils.DAY_INDEX_PREFIX + tableName;
+		final String brinIndexName = IndexUtils.BRIN_INDEX_PREFIX + tableName;
 		final String ginIndexName = IndexUtils.GIN_INDEX_PREFIX + tableName;
 
 		PreparedStatement preparedStatement;
@@ -187,38 +183,10 @@ public class TableIndexCreator implements Runnable {
 			preparedStatement.close();
 		}
 
-		final String createTimestampIndexQuery = "CREATE INDEX IF NOT EXISTS " + timestampIndexName + " ON "
-				+ tableName + " USING BRIN (_timestamp) WITH (pages_per_range = " + nodeSettingsService.getBrinPagesPerRange() + ")";
+		final String createTimestampIndexQuery = "CREATE INDEX IF NOT EXISTS " + brinIndexName + " ON "
+				+ tableName + " USING BRIN (_timestamp, _bucket1s, _bucket1m, _bucket1h, _bucket1d) WITH (pages_per_range = " + nodeSettingsService.getBrinPagesPerRange() + ")";
 		LOGGER.info(createTimestampIndexQuery);
 		preparedStatement = connection.prepareStatement(createTimestampIndexQuery);
-		preparedStatement.execute();
-		preparedStatement.close();
-
-		final String createBucket1sIndexQuery = "CREATE INDEX IF NOT EXISTS " + bucket1sIndexName + " ON "
-				+ tableName + " USING BRIN (_bucket1s) WITH (pages_per_range = " + nodeSettingsService.getBrinPagesPerRange() + ")";
-		LOGGER.info(createBucket1sIndexQuery);
-		preparedStatement = connection.prepareStatement(createBucket1sIndexQuery);
-		preparedStatement.execute();
-		preparedStatement.close();
-
-		final String createBucket1mIndexQuery = "CREATE INDEX IF NOT EXISTS " + bucket1mIndexName + " ON "
-				+ tableName + " USING BRIN (_bucket1m) WITH (pages_per_range = " + nodeSettingsService.getBrinPagesPerRange() + ")";
-		LOGGER.info(createBucket1mIndexQuery);
-		preparedStatement = connection.prepareStatement(createBucket1mIndexQuery);
-		preparedStatement.execute();
-		preparedStatement.close();
-
-		final String createBucket1hIndexQuery = "CREATE INDEX IF NOT EXISTS " + bucket1hIndexName + " ON "
-				+ tableName + " USING BRIN (_bucket1h) WITH (pages_per_range = " + nodeSettingsService.getBrinPagesPerRange() + ")";
-		LOGGER.info(createBucket1hIndexQuery);
-		preparedStatement = connection.prepareStatement(createBucket1hIndexQuery);
-		preparedStatement.execute();
-		preparedStatement.close();
-
-		final String createBucket1dIndexQuery = "CREATE INDEX IF NOT EXISTS " + bucket1dIndexName + " ON "
-				+ tableName + " USING BRIN (_bucket1d) WITH (pages_per_range = " + nodeSettingsService.getBrinPagesPerRange() + ")";
-		LOGGER.info(createBucket1dIndexQuery);
-		preparedStatement = connection.prepareStatement(createBucket1dIndexQuery);
 		preparedStatement.execute();
 		preparedStatement.close();
 	}
