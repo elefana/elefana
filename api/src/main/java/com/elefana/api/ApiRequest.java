@@ -28,11 +28,18 @@ public abstract class ApiRequest<T extends ApiResponse> {
 	@JsonIgnore
 	protected final RequestExecutor requestExecutor;
 	@JsonIgnore
+	protected final boolean streamingResponse;
+	@JsonIgnore
 	protected Future<T> responseFuture;
 
 	public ApiRequest(RequestExecutor requestExecutor) {
+		this(requestExecutor, false);
+	}
+
+	public ApiRequest(RequestExecutor requestExecutor, boolean streamingResponse) {
 		super();
 		this.requestExecutor = requestExecutor;
+		this.streamingResponse = streamingResponse;
 	}
 	
 	protected abstract Callable<T> internalExecute();
@@ -71,5 +78,9 @@ public abstract class ApiRequest<T extends ApiResponse> {
 			return false;
 		}
 		return responseFuture.isDone();
+	}
+
+	public boolean isStreamingResponse() {
+		return streamingResponse;
 	}
 }
