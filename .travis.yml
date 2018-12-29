@@ -7,6 +7,8 @@ jdk:
   - oraclejdk8
 
 language: java
+script: travis_wait 30 ./gradlew clean build
+
 os:
   - linux
 notifications:
