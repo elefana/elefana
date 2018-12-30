@@ -732,7 +732,6 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 	private void saveFieldNames(String index, String type, Set<String> fieldNames) throws ElefanaException {
 		try {
 			final String json = JsonStream.serialize(fieldNames);
-			LOGGER.info(index + " " + type + " " + json);
 			PGobject jsonObject = new PGobject();
 			jsonObject.setType("json");
 			jsonObject.setValue(json);
