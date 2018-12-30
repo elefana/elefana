@@ -104,6 +104,7 @@ public class ApiRouter {
 			switch (urlComponents[1].toLowerCase()) {
 			case "_template":
 				return routeToIndexTemplateApi(method, url, urlComponents, requestBody);
+			case "_field_names":
 			case "_field_caps":
 			case "_mapping":
 				return routeToFieldMappingApi(method, url, urlComponents, requestBody);
@@ -194,9 +195,11 @@ public class ApiRouter {
 				// _mapping
 				return indexFieldMappingService.prepareGetFieldMappings();
 			case 2: {
-				// INDICES/_mapping or INDICES/_field_caps
+				// INDICES/_mapping | INDICES/_field_caps | INDICES/_field_names
 				final String indexPattern = urlDecode(urlComponents[0]);
 				switch (urlComponents[1].toLowerCase()) {
+				case "_field_names":
+					return indexFieldMappingService.prepareGetFieldNames(indexPattern);
 				case "_mapping":
 					return indexFieldMappingService.prepareGetFieldMappings(indexPattern);
 				case "_field_caps":
@@ -205,10 +208,12 @@ public class ApiRouter {
 				break;
 			}
 			case 3: {
-				// INDICES/_mapping/TYPE
+				// INDICES/_mapping/TYPE | INDICES/_field_names/TYPE
 				final String indexPattern = urlDecode(urlComponents[0]);
 				final String typePattern = urlDecode(urlComponents[2]);
 				switch (urlComponents[1].toLowerCase()) {
+				case "_field_names":
+					return indexFieldMappingService.prepareGetFieldNames(indexPattern, typePattern);
 				case "_mapping":
 					return indexFieldMappingService.prepareGetFieldMappings(indexPattern, typePattern);
 				}

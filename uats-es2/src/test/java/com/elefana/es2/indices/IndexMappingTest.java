@@ -18,6 +18,7 @@ package com.elefana.es2.indices;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
 
+import java.util.List;
 import java.util.UUID;
 
 import io.restassured.response.Response;
@@ -43,6 +44,60 @@ public class IndexMappingTest {
 	@Before
 	public void setup() {
 		RestAssured.baseURI = "http://localhost:9201";
+	}
+
+	@Test
+	public void testFieldNames() {
+		final String index = UUID.randomUUID().toString();
+		final String type1 = "test1";
+		final String type2 = "test2";
+
+		given()
+				.request()
+				.body("{\"docField\" : \"This is a test\", \"numField\": 123, \"emptyField\": \"\"}")
+				.when()
+				.post("/" + index + "/" + type1)
+				.then()
+				.statusCode(201);
+
+		given()
+				.request()
+				.body("{\"docField\" : \"This is a test 2\", \"numField\": 124}")
+				.when()
+				.post("/" + index + "/" + type2)
+				.then()
+				.statusCode(201);
+
+		try {
+			Thread.sleep(3000L);
+		} catch (Exception e) {}
+
+		List<String> result = given().when().get("/" + index + "/_field_names")
+				.then()
+				.statusCode(200)
+				.extract().body().jsonPath().getList("field_names");
+		Assert.assertEquals(3, result.size());
+		Assert.assertEquals(true, result.contains("docField"));
+		Assert.assertEquals(true, result.contains("emptyField"));
+		Assert.assertEquals(true, result.contains("numField"));
+
+		result = given().when().get("/" + index + "/_field_names/" + type1)
+				.then()
+				.statusCode(200)
+				.extract().body().jsonPath().getList("field_names");
+		Assert.assertEquals(3, result.size());
+		Assert.assertEquals(true, result.contains("docField"));
+		Assert.assertEquals(true, result.contains("emptyField"));
+		Assert.assertEquals(true, result.contains("numField"));
+
+		result = given().when().get("/" + index + "/_field_names/" + type2)
+				.then()
+				.statusCode(200)
+				.extract().body().jsonPath().getList("field_names");
+		Assert.assertEquals(2, result.size());
+		Assert.assertEquals(true, result.contains("docField"));
+		Assert.assertEquals(true, result.contains("numField"));
+		Assert.assertEquals(false, result.contains("emptyField"));
 	}
 	
 	@Test

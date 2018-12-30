@@ -28,7 +28,7 @@ public class PartitionTableSearchHitsQueryExecutor extends SearchHitsQueryExecut
 	}
 
 	@Override
-	protected SqlRowSet queryHits(PsqlQueryComponents queryComponents, long startTime, int from, int size) {
+	public SqlRowSet queryHits(PsqlQueryComponents queryComponents, long startTime, int from, int size) {
 		final StringBuilder queryBuilder = new StringBuilder();
 		if (queryComponents.getFromComponent().isEmpty()) {
 			return null;
@@ -59,7 +59,7 @@ public class PartitionTableSearchHitsQueryExecutor extends SearchHitsQueryExecut
 	}
 
 	@Override
-	protected SqlRowSet queryHitsCount(PsqlQueryComponents queryComponents, long startTime, int from, int size) {
+	public SqlRowSet queryHitsCount(PsqlQueryComponents queryComponents, long startTime, int from, int size) {
 		final StringBuilder queryBuilder = new StringBuilder();
 		if (queryComponents.getFromComponent().isEmpty()) {
 			return null;

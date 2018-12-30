@@ -40,9 +40,9 @@ public abstract class SearchHitsQueryExecutor {
 		this.searchHits = searchHits;
 	}
 	
-	protected abstract SqlRowSet queryHitsCount(PsqlQueryComponents queryComponents, long startTime, int from, int size);
+	public abstract SqlRowSet queryHitsCount(PsqlQueryComponents queryComponents, long startTime, int from, int size);
 
-	protected abstract SqlRowSet queryHits(PsqlQueryComponents queryComponents, long startTime, int from, int size);
+	public abstract SqlRowSet queryHits(PsqlQueryComponents queryComponents, long startTime, int from, int size);
 	
 	public Callable<SearchResponse> executeCountQuery(final SearchResponse searchResponse, PsqlQueryComponents queryComponents, long startTime, int from, int size) {
 		return new Callable<SearchResponse>() {

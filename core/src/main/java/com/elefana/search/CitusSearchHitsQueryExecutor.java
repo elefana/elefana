@@ -31,7 +31,7 @@ public class CitusSearchHitsQueryExecutor extends SearchHitsQueryExecutor {
 	}
 
 	@Override
-	protected SqlRowSet queryHits(PsqlQueryComponents queryComponents, long startTime, int from, int size) {
+	public SqlRowSet queryHits(PsqlQueryComponents queryComponents, long startTime, int from, int size) {
 		final StringBuilder queryBuilder = new StringBuilder();
 		queryBuilder.append("SELECT ");
 		queryBuilder.append("*");
@@ -57,7 +57,7 @@ public class CitusSearchHitsQueryExecutor extends SearchHitsQueryExecutor {
 	}
 
 	@Override
-	protected SqlRowSet queryHitsCount(PsqlQueryComponents queryComponents, long startTime, int from, int size) {
+	public SqlRowSet queryHitsCount(PsqlQueryComponents queryComponents, long startTime, int from, int size) {
 		final StringBuilder queryBuilder = new StringBuilder();
 		queryBuilder.append("SELECT ");
 		queryBuilder.append("COUNT(_id)");

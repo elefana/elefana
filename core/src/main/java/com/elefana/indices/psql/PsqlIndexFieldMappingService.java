@@ -359,6 +359,17 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 		return null;
 	}
 
+	public GetFieldNamesResponse getFieldNames(GetFieldNamesRequest request) throws ElefanaException {
+		final GetFieldNamesResponse result = new GetFieldNamesResponse();
+
+		for (String index : indexUtils.listIndicesForIndexPattern(request.getIndexPattern())) {
+			for(String type : getTypesForIndex(index, request.getTypePattern())) {
+				result.getFieldNames().addAll(getFieldNames(index, type));
+			}
+		}
+		return result;
+	}
+
 	public GetFieldStatsResponse getFieldStats(String indexPattern) throws Exception {
 		final GetFieldStatsResponse result = new GetFieldStatsResponse();
 		
@@ -707,6 +718,16 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 			e.printStackTrace();
 			throw new ShardFailedException(e);
 		}
+	}
+
+	@Override
+	public GetFieldNamesRequest prepareGetFieldNames(String indexPattern) {
+		return new PsqlGetFieldNamesRequest(this, indexPattern);
+	}
+
+	@Override
+	public GetFieldNamesRequest prepareGetFieldNames(String indexPattern, String typePattern) {
+		return new PsqlGetFieldNamesRequest(this, indexPattern, typePattern);
 	}
 
 	@Override

@@ -15,13 +15,13 @@
  ******************************************************************************/
 package com.elefana.indices;
 
-import com.elefana.api.indices.GetFieldCapabilitiesRequest;
-import com.elefana.api.indices.GetFieldMappingsRequest;
-import com.elefana.api.indices.GetFieldStatsRequest;
-import com.elefana.api.indices.PutFieldMappingRequest;
-import com.elefana.api.indices.RefreshIndexRequest;
+import com.elefana.api.indices.*;
 
 public interface IndexFieldMappingService {
+
+	public GetFieldNamesRequest prepareGetFieldNames(String indexPattern);
+
+	public GetFieldNamesRequest prepareGetFieldNames(String indexPattern, String typePattern);
 	
 	public GetFieldMappingsRequest prepareGetFieldMappings();
 	
