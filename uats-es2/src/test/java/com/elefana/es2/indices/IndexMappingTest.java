@@ -76,7 +76,8 @@ public class IndexMappingTest {
 				.then()
 				.statusCode(200)
 				.extract().body().jsonPath().getList("field_names");
-		Assert.assertEquals(3, result.size());
+		Assert.assertEquals(4, result.size());
+		Assert.assertEquals(true, result.contains("_source"));
 		Assert.assertEquals(true, result.contains("docField"));
 		Assert.assertEquals(true, result.contains("emptyField"));
 		Assert.assertEquals(true, result.contains("numField"));
@@ -85,7 +86,8 @@ public class IndexMappingTest {
 				.then()
 				.statusCode(200)
 				.extract().body().jsonPath().getList("field_names");
-		Assert.assertEquals(3, result.size());
+		Assert.assertEquals(4, result.size());
+		Assert.assertEquals(true, result.contains("_source"));
 		Assert.assertEquals(true, result.contains("docField"));
 		Assert.assertEquals(true, result.contains("emptyField"));
 		Assert.assertEquals(true, result.contains("numField"));
@@ -94,7 +96,8 @@ public class IndexMappingTest {
 				.then()
 				.statusCode(200)
 				.extract().body().jsonPath().getList("field_names");
-		Assert.assertEquals(2, result.size());
+		Assert.assertEquals(3, result.size());
+		Assert.assertEquals(true, result.contains("_source"));
 		Assert.assertEquals(true, result.contains("docField"));
 		Assert.assertEquals(true, result.contains("numField"));
 		Assert.assertEquals(false, result.contains("emptyField"));
