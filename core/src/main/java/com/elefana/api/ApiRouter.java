@@ -115,6 +115,7 @@ public class ApiRouter {
 			break;
 		case 3:
 			switch (urlComponents[1].toLowerCase()) {
+			case "_field_names":
 			case "_mapping":
 				return routeToFieldMappingApi(method, url, urlComponents, requestBody);
 			}
