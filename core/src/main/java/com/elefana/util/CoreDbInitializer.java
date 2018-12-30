@@ -123,6 +123,12 @@ public class CoreDbInitializer implements DbInitializer {
 				"CREATE TABLE IF NOT EXISTS elefana_index_field_capabilities (_index VARCHAR(255) PRIMARY KEY, _capabilities jsonb);");
 		jdbcTemplate.execute(
 				"CREATE TABLE IF NOT EXISTS elefana_index_field_stats (_index VARCHAR(255) PRIMARY KEY, _stats jsonb);");
+		jdbcTemplate.execute(
+				"CREATE TABLE IF NOT EXISTS elefana_index_field_names (_tracking_id VARCHAR(255) PRIMARY KEY, _index VARCHAR(255), _type VARCHAR(255), _field_names jsonb);");
+
+		if (nodeSettingsService.isUsingCitus() && !isTableDistributed("elefana_index_field_names")) {
+			jdbcTemplate.execute("SELECT create_distributed_table('elefana_index_field_names', '_tracking_id');");
+		}
 		if (nodeSettingsService.isUsingCitus() && !isTableDistributed("elefana_index_mapping")) {
 			jdbcTemplate.execute("SELECT create_distributed_table('elefana_index_mapping', '_tracking_id');");
 		}

@@ -38,7 +38,7 @@ public class V2FieldMapper extends FieldMapper {
 	}
 	
 	@Override
-	public List<String> getFieldNames(Map<String, Object> mappings) {
+	public List<String> getFieldNamesFromMapping(Map<String, Object> mappings) {
 		return new ArrayList<String>(mappings.keySet());
 	}
 	

@@ -54,7 +54,10 @@ public class IndexMappingTest {
 
 		given()
 				.request()
-				.body("{\"docField\" : \"This is a test\", \"numField\": 123, \"emptyField\": \"\"}")
+				.body("{\"docField\" : \"This is a test\", \"numField\": 123, " +
+						"\"objectField\": {\"nestedNumField\": 124}, " +
+						"\"listField\": [{\"nestedNumField2\": 125}], " +
+						"\"emptyField\": \"\"}")
 				.when()
 				.post("/" + index + "/" + type1)
 				.then()
@@ -75,32 +78,38 @@ public class IndexMappingTest {
 		List<String> result = given().when().get("/" + index + "/_field_names")
 				.then()
 				.statusCode(200)
+				.log().all()
 				.extract().body().jsonPath().getList("field_names");
-		Assert.assertEquals(4, result.size());
-		Assert.assertEquals(true, result.contains("_source"));
+		Assert.assertEquals(5, result.size());
 		Assert.assertEquals(true, result.contains("docField"));
 		Assert.assertEquals(true, result.contains("emptyField"));
 		Assert.assertEquals(true, result.contains("numField"));
+		Assert.assertEquals(true, result.contains("objectField.nestedNumField"));
+		Assert.assertEquals(true, result.contains("listField[0].nestedNumField2"));
 
 		result = given().when().get("/" + index + "/_field_names/" + type1)
 				.then()
 				.statusCode(200)
+				.log().all()
 				.extract().body().jsonPath().getList("field_names");
-		Assert.assertEquals(4, result.size());
-		Assert.assertEquals(true, result.contains("_source"));
+		Assert.assertEquals(5, result.size());
 		Assert.assertEquals(true, result.contains("docField"));
 		Assert.assertEquals(true, result.contains("emptyField"));
 		Assert.assertEquals(true, result.contains("numField"));
+		Assert.assertEquals(true, result.contains("objectField.nestedNumField"));
+		Assert.assertEquals(true, result.contains("listField[0].nestedNumField2"));
 
 		result = given().when().get("/" + index + "/_field_names/" + type2)
 				.then()
 				.statusCode(200)
+				.log().all()
 				.extract().body().jsonPath().getList("field_names");
-		Assert.assertEquals(3, result.size());
-		Assert.assertEquals(true, result.contains("_source"));
+		Assert.assertEquals(2, result.size());
 		Assert.assertEquals(true, result.contains("docField"));
 		Assert.assertEquals(true, result.contains("numField"));
 		Assert.assertEquals(false, result.contains("emptyField"));
+		Assert.assertEquals(false, result.contains("objectField.nestedNumField"));
+		Assert.assertEquals(false, result.contains("listField[0].nestedNumField2"));
 	}
 	
 	@Test

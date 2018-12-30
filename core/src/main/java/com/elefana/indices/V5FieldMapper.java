@@ -38,7 +38,7 @@ public class V5FieldMapper extends FieldMapper {
 	}
 	
 	@Override
-	public List<String> getFieldNames(Map<String, Object> mappings) {
+	public List<String> getFieldNamesFromMapping(Map<String, Object> mappings) {
 		Map<String, Object> propertyMappings = (Map<String, Object>) mappings.get("properties");
 		if(propertyMappings == null) {
 			return new ArrayList<String>();

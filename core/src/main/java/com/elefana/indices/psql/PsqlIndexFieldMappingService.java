@@ -103,8 +103,22 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 		executorService.shutdown();
 	}
 
-	public List<String> getFieldNames(String index, String type) {
-		return fieldMapper.getFieldNames(getIndexTypeMapping(index, type));
+	public List<String> getFieldNamesByMapping(String index, String type) {
+		return fieldMapper.getFieldNamesFromMapping(getIndexTypeMapping(index, type));
+	}
+
+	public Set<String> getFieldNames(String index, String type) {
+		final Set<String> results = new HashSet<String>();
+		try {
+			SqlRowSet rowSet = jdbcTemplate
+					.queryForRowSet("SELECT _field_names FROM elefana_index_field_names WHERE _index = ? AND _type = ?", index, type);
+			while (rowSet.next()) {
+				results.addAll(JsonIterator.deserialize(rowSet.getString("_field_names"), new TypeLiteral<List<String>>(){}));
+			}
+		} catch (Exception e) {
+			LOGGER.error(e.getMessage(), e);
+		}
+		return results;
 	}
 
 	public List<String> getTypesForIndex(String index) {
@@ -210,7 +224,7 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 		
 		for (String index : matchedIndices) {
 			for(String type : getTypesForIndex(index, typePattern)) {
-				for(String fieldName : getFieldNames(index, type)) {
+				for(String fieldName : getFieldNamesByMapping(index, type)) {
 					if (!fieldName.toLowerCase().matches(fieldPattern)) {
 						continue;
 					}
@@ -467,14 +481,16 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 					}
 				} else {
 					for (String type : mapping.keySet()) {
+						final Set<String> existingFieldNames = getFieldNames(nextIndex, type);
+
 						Map<String, Object> typeMappings = (Map) mapping.get(type);
 						SqlRowSet rowSet = getSampleDocuments(nextIndex, type);
-						int totalSamples = generateMappingsForType(typeMappings, nextIndex, type, rowSet);
+						int totalSamples = generateMappingsForType(typeMappings, existingFieldNames, nextIndex, type, rowSet);
 						if (totalSamples == 0) {
 							rowSet = jdbcTemplate.queryForRowSet("SELECT _source FROM " + IndexUtils.DATA_TABLE
 									+ " WHERE _index = ? AND _type = ? LIMIT "
 									+ nodeSettingsService.getFallbackMappingSampleSize(), nextIndex, type);
-							generateMappingsForType(typeMappings, nextIndex, type, rowSet);
+							generateMappingsForType(typeMappings, existingFieldNames, nextIndex, type, rowSet);
 						}
 					}
 				}
@@ -499,6 +515,8 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 		while (rowSet.next()) {
 			final String type = rowSet.getString("_type");
 
+			final Set<String> fieldNames = getFieldNames(index, type);
+
 			Map<String, Object> typeMappings = (Map) mapping.get(type);
 			if (typeMappings == null) {
 				if (indexTemplate != null) {
@@ -511,18 +529,24 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 			}
 			Map<String, Object> document = JsonIterator.deserialize(rowSet.getString("_source"), new TypeLiteral<Map<String, Object>>(){});
 			fieldMapper.generateMappings(typeMappings, document);
+			fieldMapper.generateFieldNames(fieldNames, document);
+
 			saveMappings(index, type, typeMappings);
+			saveFieldNames(index, type, fieldNames);
+
 			totalSamples++;
 		}
 		return totalSamples;
 	}
 
-	private int generateMappingsForType(Map<String, Object> typeMappings, String nextTable, String type,
+	private int generateMappingsForType(Map<String, Object> typeMappings, Set<String> fieldNames,
+	                                    String nextTable, String type,
 			SqlRowSet rowSet) throws Exception {
 		int totalSamples = 0;
 		while (rowSet.next()) {
 			Map<String, Object> document = JsonIterator.deserialize(rowSet.getString("_source"), new TypeLiteral<Map<String, Object>>(){});
 			fieldMapper.generateMappings(typeMappings, document);
+			fieldMapper.generateFieldNames(fieldNames, document);
 			totalSamples++;
 		}
 
@@ -531,6 +555,7 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 		}
 
 		saveMappings(nextTable, type, typeMappings);
+		saveFieldNames(nextTable, type, fieldNames);
 		return totalSamples;
 	}
 
@@ -567,7 +592,7 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 		final long totalDocs = (long) jdbcTemplate.queryForList(totalDocsQuery).get(0).get("count");
 
 		for (String type : types) {
-			final List<String> fieldNames = getFieldNames(indexName, type);
+			final List<String> fieldNames = getFieldNamesByMapping(indexName, type);
 			indexUtils.ensureJsonFieldIndexExist(indexName, fieldNames);
 
 			for (String fieldName : fieldNames) {
@@ -702,6 +727,23 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 
 		mappingQueue.add(index);
 		fieldStatsQueue.add(index);
+	}
+
+	private void saveFieldNames(String index, String type, Set<String> fieldNames) throws ElefanaException {
+		try {
+			final String json = JsonStream.serialize(fieldNames);
+			LOGGER.info(index + " " + type + " " + json);
+			PGobject jsonObject = new PGobject();
+			jsonObject.setType("json");
+			jsonObject.setValue(json);
+
+			jdbcTemplate.update(
+					"INSERT INTO elefana_index_field_names (_tracking_id, _index, _type, _field_names) VALUES (?, ?, ?, ?) ON CONFLICT (_tracking_id) DO UPDATE SET _field_names = EXCLUDED._field_names",
+					index + "-" + type, index, type, jsonObject);
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ShardFailedException(e);
+		}
 	}
 
 	private void saveMappings(String index, String type, Map<String, Object> mappings) throws ElefanaException {
