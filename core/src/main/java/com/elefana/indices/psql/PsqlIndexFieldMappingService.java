@@ -723,10 +723,10 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 		if(nodeSettingsService.isUsingCitus()) {
 			delayedMappingQueue.add(index);
 			delayedFieldStatsQueue.add(index);
+		} else {
+			mappingQueue.add(index);
+			fieldStatsQueue.add(index);
 		}
-
-		mappingQueue.add(index);
-		fieldStatsQueue.add(index);
 	}
 
 	private void saveFieldNames(String index, String type, Set<String> fieldNames) throws ElefanaException {

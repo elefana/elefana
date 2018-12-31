@@ -29,6 +29,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
@@ -72,6 +73,7 @@ public class PsqlBulkIndexService implements Runnable {
 	private MetricRegistry metricRegistry;
 
 	private final AtomicBoolean running = new AtomicBoolean(true);
+	private final AtomicLong lastQueueId = new AtomicLong(Long.MIN_VALUE);
 	private Counter duplicateKeyCounter;
 	private BlockingQueue<String> indexQueue;
 	private ExecutorService executorService;
@@ -91,8 +93,9 @@ public class PsqlBulkIndexService implements Runnable {
 			@Override
 			public void run() {
 				try {
+					final Queue<String> nextIndexTables = new LinkedList<String>();
 					while (running.get()) {
-						final Queue<String> nextIndexTables = getNextIndexTables();
+						getNextIndexTables(nextIndexTables);
 
 						while (!nextIndexTables.isEmpty()) {
 							String nextIndexTable = nextIndexTables.poll();
@@ -137,12 +140,14 @@ public class PsqlBulkIndexService implements Runnable {
 						preparedStatement.close();
 
 						index = getIndexName(connection, nextIndexTable);
-						final String targetTable = indexUtils.getQueryTarget(connection, index);
+						if(index != null) {
+							final String targetTable = indexUtils.getQueryTarget(connection, index);
 
-						if (nodeSettingsService.isUsingCitus()) {
-							mergeStagingTableIntoDistributedTable(connection, index, nextIndexTable, targetTable);
-						} else {
-							mergeStagingTableIntoPartitionTable(connection, nextIndexTable, targetTable);
+							if (nodeSettingsService.isUsingCitus()) {
+								mergeStagingTableIntoDistributedTable(connection, index, nextIndexTable, targetTable);
+							} else {
+								mergeStagingTableIntoPartitionTable(connection, nextIndexTable, targetTable);
+							}
 						}
 					} catch (Exception e) {
 						if(e.getMessage() != null && e.getMessage().contains("duplicate key")) {
@@ -184,17 +189,19 @@ public class PsqlBulkIndexService implements Runnable {
 		executorService.submit(this);
 	}
 
-	private Queue<String> getNextIndexTables() {
+	private void getNextIndexTables(final Queue<String> results) {
 		final List<Map<String, Object>> nextTableResults = jdbcTemplate
-				.queryForList("SELECT * FROM elefana_bulk_index_queue");
-		final Queue<String> results = new LinkedList<String>();
+				.queryForList("SELECT * FROM elefana_bulk_index_queue WHERE _queue_id > " + lastQueueId.get());
 
 		for (Map<String, Object> row : nextTableResults) {
 			if (row.containsKey("_tableName")) {
 				results.offer(((String) row.get("_tableName")).replace('-', '_'));
 			}
+			if (row.containsKey("_queue_id")) {
+				final long queueId = (long) row.get("_queue_id");
+				lastQueueId.set(Math.max(lastQueueId.get(), queueId));
+			}
 		}
-		return results;
 	}
 
 	private String getIndexName(Connection connection, String nextIndexTable) throws SQLException {
@@ -203,6 +210,8 @@ public class PsqlBulkIndexService implements Runnable {
 		String result = null;
 		if(resultSet.next()) {
 			result = resultSet.getString("_index");
+		} else {
+			LOGGER.warn("No rows in " + nextIndexTable);
 		}
 		preparedStatement.close();
 		return result;

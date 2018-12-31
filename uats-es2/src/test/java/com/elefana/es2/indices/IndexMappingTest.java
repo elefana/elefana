@@ -21,7 +21,9 @@ import static org.hamcrest.Matchers.equalTo;
 import java.util.List;
 import java.util.UUID;
 
+import io.restassured.path.json.exception.JsonPathException;
 import io.restassured.response.Response;
+import io.restassured.response.ValidatableResponse;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -39,7 +41,7 @@ import io.restassured.RestAssured;
 @SpringBootTest(classes = { ElefanaApplication.class })
 @TestPropertySource(locations = "classpath:es2.properties")
 public class IndexMappingTest {
-	private static final long TEST_TIMEOUT = 30000L;
+	private static final long TEST_TIMEOUT = 60000L;
 
 	@Before
 	public void setup() {
@@ -71,45 +73,60 @@ public class IndexMappingTest {
 				.then()
 				.statusCode(201);
 
-		try {
-			Thread.sleep(3000L);
-		} catch (Exception e) {}
+		final long startTime = System.currentTimeMillis();
+		while(System.currentTimeMillis() - startTime < TEST_TIMEOUT) {
+			ValidatableResponse response = given().when().get("/" + index + "/_field_names")
+					.then()
+					.statusCode(200)
+					.log().all();
 
-		List<String> result = given().when().get("/" + index + "/_field_names")
-				.then()
-				.statusCode(200)
-				.log().all()
-				.extract().body().jsonPath().getList("field_names");
-		Assert.assertEquals(5, result.size());
-		Assert.assertEquals(true, result.contains("docField"));
-		Assert.assertEquals(true, result.contains("emptyField"));
-		Assert.assertEquals(true, result.contains("numField"));
-		Assert.assertEquals(true, result.contains("objectField.nestedNumField"));
-		Assert.assertEquals(true, result.contains("listField[0].nestedNumField2"));
+			try {
+				List<String> result = response.extract().body().jsonPath().getList("field_names");
+				if(result.size() < 5) {
+					try {
+						Thread.sleep(500L);
+					} catch (Exception e) {}
+					continue;
+				}
+				Assert.assertEquals(5, result.size());
+				Assert.assertEquals(true, result.contains("docField"));
+				Assert.assertEquals(true, result.contains("emptyField"));
+				Assert.assertEquals(true, result.contains("numField"));
+				Assert.assertEquals(true, result.contains("objectField.nestedNumField"));
+				Assert.assertEquals(true, result.contains("listField[0].nestedNumField2"));
 
-		result = given().when().get("/" + index + "/_field_names/" + type1)
-				.then()
-				.statusCode(200)
-				.log().all()
-				.extract().body().jsonPath().getList("field_names");
-		Assert.assertEquals(5, result.size());
-		Assert.assertEquals(true, result.contains("docField"));
-		Assert.assertEquals(true, result.contains("emptyField"));
-		Assert.assertEquals(true, result.contains("numField"));
-		Assert.assertEquals(true, result.contains("objectField.nestedNumField"));
-		Assert.assertEquals(true, result.contains("listField[0].nestedNumField2"));
+				response = given().when().get("/" + index + "/_field_names/" + type1)
+						.then()
+						.statusCode(200)
+						.log().all();
+				result = response.extract().body().jsonPath().getList("field_names");
+				Assert.assertEquals(5, result.size());
+				Assert.assertEquals(true, result.contains("docField"));
+				Assert.assertEquals(true, result.contains("emptyField"));
+				Assert.assertEquals(true, result.contains("numField"));
+				Assert.assertEquals(true, result.contains("objectField.nestedNumField"));
+				Assert.assertEquals(true, result.contains("listField[0].nestedNumField2"));
 
-		result = given().when().get("/" + index + "/_field_names/" + type2)
-				.then()
-				.statusCode(200)
-				.log().all()
-				.extract().body().jsonPath().getList("field_names");
-		Assert.assertEquals(2, result.size());
-		Assert.assertEquals(true, result.contains("docField"));
-		Assert.assertEquals(true, result.contains("numField"));
-		Assert.assertEquals(false, result.contains("emptyField"));
-		Assert.assertEquals(false, result.contains("objectField.nestedNumField"));
-		Assert.assertEquals(false, result.contains("listField[0].nestedNumField2"));
+				response = given().when().get("/" + index + "/_field_names/" + type2)
+						.then()
+						.statusCode(200)
+						.log().all();
+				result = response.extract().body().jsonPath().getList("field_names");
+				Assert.assertEquals(2, result.size());
+				Assert.assertEquals(true, result.contains("docField"));
+				Assert.assertEquals(true, result.contains("numField"));
+				Assert.assertEquals(false, result.contains("emptyField"));
+				Assert.assertEquals(false, result.contains("objectField.nestedNumField"));
+				Assert.assertEquals(false, result.contains("listField[0].nestedNumField2"));
+				return;
+			} catch (JsonPathException e) {
+			}
+
+			try {
+				Thread.sleep(500L);
+			} catch (Exception e) {}
+		}
+		Assert.fail("Field names not generated within timeout");
 	}
 	
 	@Test
@@ -132,46 +149,62 @@ public class IndexMappingTest {
 			.post("/" + index + "/" + type)
 		.then()
 			.statusCode(201);
-		
-		try {
-			Thread.sleep(3000L);
-		} catch (Exception e) {}
-		
-		given().when().get("/" + index + "/_mapping/" + type)
-		.then()
-			.statusCode(200)
-			.body(index + ".mappings." + type + ".docField.mapping.docField.type", equalTo("text"))
-			.body(index + ".mappings." + type + ".emptyField.mapping.emptyField.type", equalTo("string"))
-			.body(index + ".mappings." + type + ".numField.mapping.numField.type", equalTo("long"))
-			.body(index + ".mappings." + type + "._source.full_name", equalTo("_source"));
-		
-		given().when().get("/" + index + "/_mapping/" + type + "/field/*")
-		.then()
-			.statusCode(200)
-			.body(index + ".mappings." + type + ".docField.mapping.docField.type", equalTo("text"))
-			.body(index + ".mappings." + type + ".emptyField.mapping.emptyField.type", equalTo("string"))
-			.body(index + ".mappings." + type + ".numField.mapping.numField.type", equalTo("long"))
-			.body(index + ".mappings." + type + "._source.full_name", equalTo("_source"));
-		
-		given().when().get("/" + index + "/_mapping/" + type + "/field/numField")
-		.then()
-			.statusCode(200)
-			.body(index + ".mappings." + type + ".numField.mapping.numField.type", equalTo("long"));
-		
-		given().when().get("/" + index + "/_mapping/" + type + "/field/docField")
-		.then()
-			.statusCode(200)
-			.body(index + ".mappings." + type + ".docField.mapping.docField.type", equalTo("text"));
-		
-		given().when().get("/" + index + "/_mapping/field/docField")
-		.then()
-			.statusCode(200)
-			.body(index + ".mappings." + type + ".docField.mapping.docField.type", equalTo("text"));
-		
-		given().when().get("/" + index + "/_mapping/*/field/_source")
-		.then()
-			.statusCode(200)
-			.body(index + ".mappings." + type + "._source.full_name", equalTo("_source"));
+
+		final long startTime = System.currentTimeMillis();
+
+		while(System.currentTimeMillis() - startTime < TEST_TIMEOUT) {
+			final ValidatableResponse response = given().when().get("/" + index + "/_mapping/" + type)
+					.then()
+					.statusCode(200);
+
+			try {
+				final String testValue = response.extract().body().jsonPath().getString(
+						index + ".mappings." + type + ".docField.mapping.docField.type");
+				if(testValue != null) {
+					given().when().get("/" + index + "/_mapping/" + type)
+							.then()
+							.statusCode(200)
+							.body(index + ".mappings." + type + ".docField.mapping.docField.type", equalTo("text"))
+							.body(index + ".mappings." + type + ".emptyField.mapping.emptyField.type", equalTo("string"))
+							.body(index + ".mappings." + type + ".numField.mapping.numField.type", equalTo("long"))
+							.body(index + ".mappings." + type + "._source.full_name", equalTo("_source"));
+
+					given().when().get("/" + index + "/_mapping/" + type + "/field/*")
+							.then()
+							.statusCode(200)
+							.body(index + ".mappings." + type + ".docField.mapping.docField.type", equalTo("text"))
+							.body(index + ".mappings." + type + ".emptyField.mapping.emptyField.type", equalTo("string"))
+							.body(index + ".mappings." + type + ".numField.mapping.numField.type", equalTo("long"))
+							.body(index + ".mappings." + type + "._source.full_name", equalTo("_source"));
+
+					given().when().get("/" + index + "/_mapping/" + type + "/field/numField")
+							.then()
+							.statusCode(200)
+							.body(index + ".mappings." + type + ".numField.mapping.numField.type", equalTo("long"));
+
+					given().when().get("/" + index + "/_mapping/" + type + "/field/docField")
+							.then()
+							.statusCode(200)
+							.body(index + ".mappings." + type + ".docField.mapping.docField.type", equalTo("text"));
+
+					given().when().get("/" + index + "/_mapping/field/docField")
+							.then()
+							.statusCode(200)
+							.body(index + ".mappings." + type + ".docField.mapping.docField.type", equalTo("text"));
+
+					given().when().get("/" + index + "/_mapping/*/field/_source")
+							.then()
+							.statusCode(200)
+							.body(index + ".mappings." + type + "._source.full_name", equalTo("_source"));
+					return;
+				}
+			} catch (JsonPathException e) {}
+
+			try {
+				Thread.sleep(500);
+			} catch (Exception e) {}
+		}
+		Assert.fail("Failed to generate mappins within timeout");
 	}
 	
 	@Test
@@ -224,44 +257,52 @@ public class IndexMappingTest {
 		final long startTime = System.currentTimeMillis();
 
 		while(System.currentTimeMillis() - startTime < TEST_TIMEOUT) {
-			final Response response = given()
+			System.out.println(index);
+			final ValidatableResponse response = given()
 					.request()
 					.body("{\"fields\":[\"docField\"]}")
 					.when()
 					.post("/" + index + "/_field_stats")
-					.then().log().all().extract().response();
-			final Integer maxDocValue = response.path("indices." + index + ".fields.docField.max_doc");
-			if(maxDocValue == null || maxDocValue < totalDocuments) {
-				try {
-					Thread.sleep(100);
-				} catch (Exception e) {}
-				continue;
-			}
+					.then().log().all();
+			try {
+				final int maxDocValue = response.extract().body().jsonPath().getInt("indices." + index + ".fields.docField.max_doc");
+				if(maxDocValue < totalDocuments) {
+					System.out.println(maxDocValue);
+					try {
+						Thread.sleep(500);
+					} catch (Exception e) {}
+					continue;
+				}
 
-			given()
-					.request()
-					.body("{\"fields\":[\"docField\"]}")
-					.when()
-					.post("/" + index + "/_field_stats")
-					.then()
-					.statusCode(200)
-					.log().all()
-					.body("_shards.successful", equalTo(1))
-					.body("indices." + index + ".fields.docField.max_doc", equalTo(totalDocuments))
-					.body("indices." + index + ".fields.docField.doc_count", equalTo(totalDocuments));
+				given()
+						.request()
+						.body("{\"fields\":[\"docField\"]}")
+						.when()
+						.post("/" + index + "/_field_stats")
+						.then()
+						.statusCode(200)
+						.log().all()
+						.body("_shards.successful", equalTo(1))
+						.body("indices." + index + ".fields.docField.max_doc", equalTo(totalDocuments))
+						.body("indices." + index + ".fields.docField.doc_count", equalTo(totalDocuments));
 
-			given()
-					.request()
-					.body("{\"fields\":[\"emptyField\"]}")
-					.when()
-					.post("/" + index + "/_field_stats")
-					.then()
-					.statusCode(200)
-					.log().all()
-					.body("_shards.successful", equalTo(1))
-					.body("indices." + index + ".fields.emptyField.max_doc", equalTo(totalDocuments))
-					.body("indices." + index + ".fields.emptyField.doc_count", equalTo(totalEmptyFieldDocuments));
-			return;
+				given()
+						.request()
+						.body("{\"fields\":[\"emptyField\"]}")
+						.when()
+						.post("/" + index + "/_field_stats")
+						.then()
+						.statusCode(200)
+						.log().all()
+						.body("_shards.successful", equalTo(1))
+						.body("indices." + index + ".fields.emptyField.max_doc", equalTo(totalDocuments))
+						.body("indices." + index + ".fields.emptyField.doc_count", equalTo(totalEmptyFieldDocuments));
+				return;
+			} catch (JsonPathException | NullPointerException e) {}
+
+			try {
+				Thread.sleep(500);
+			} catch (Exception e) {}
 		}
 
 		Assert.fail("Failed to generate stats for " + totalDocuments + " documents");

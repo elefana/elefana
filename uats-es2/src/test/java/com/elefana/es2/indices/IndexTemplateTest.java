@@ -21,6 +21,9 @@ import static org.hamcrest.Matchers.notNullValue;
 
 import java.util.UUID;
 
+import io.restassured.path.json.exception.JsonPathException;
+import io.restassured.response.ValidatableResponse;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -37,6 +40,7 @@ import io.restassured.RestAssured;
 @SpringBootTest(classes = { ElefanaApplication.class })
 @TestPropertySource(locations = "classpath:es2.properties")
 public class IndexTemplateTest {
+	private static final long TEST_TIMEOUT = 30000L;
 
 	@Before
 	public void setup() {
@@ -106,14 +110,31 @@ public class IndexTemplateTest {
 		.then()
 			.statusCode(201);
 		
-		try {
-			Thread.sleep(1000L);
-		} catch (Exception e) {}
-		
-		given().when().get("/" + index + "/_mapping/" + type)
-		.then()
-			.statusCode(200)
-			.body(index + ".mappings." + type + ".nonDocField.mapping.nonDocField.type", equalTo("date"))
-			.body(index + ".mappings." + type + ".docField.mapping.docField.type", equalTo("text"));
+		final long startTime = System.currentTimeMillis();
+		while(System.currentTimeMillis() - startTime < TEST_TIMEOUT) {
+			final ValidatableResponse response = given().when().get("/" + index + "/_mapping/" + type)
+					.then()
+					.statusCode(200);
+
+			try {
+				final String testValue = response.extract().body().jsonPath().getString(
+						index + ".mappings." + type + ".nonDocField.mapping.nonDocField.type");
+				if(testValue == null) {
+					try {
+						Thread.sleep(500L);
+					} catch (Exception e) {}
+					continue;
+				}
+
+				response.body(index + ".mappings." + type + ".nonDocField.mapping.nonDocField.type", equalTo("date"))
+						.body(index + ".mappings." + type + ".docField.mapping.docField.type", equalTo("text"));
+				return;
+			} catch (JsonPathException | NullPointerException e) {}
+
+			try {
+				Thread.sleep(500L);
+			} catch (Exception e) {}
+		}
+		Assert.fail("Failed to generate mappings within timeout");
 	}
 }

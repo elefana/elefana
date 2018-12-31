@@ -20,9 +20,11 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Scanner;
 import java.util.UUID;
 
+import io.restassured.path.json.exception.JsonPathException;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -46,6 +48,7 @@ import io.restassured.response.ValidatableResponse;
 public class DocumentApiTest extends DocumentedTest {
 	private static final String INDEX = UUID.randomUUID().toString();
 	private static final String TYPE = "test";
+	private static final long TEST_TIMEOUT = 20000L;
 	
 	@Before
 	public void setup() {
@@ -269,30 +272,41 @@ public class DocumentApiTest extends DocumentedTest {
 		final String message2 = "This is message 2";
 		indexWithId(id1, message1, System.currentTimeMillis());
 		indexWithId(id2, message2, System.currentTimeMillis());
-		
-		try {
-			Thread.sleep(2000L);
-		} catch (Exception e) {}
-		
-		given()
-			.request()
-			.body("{\"docs\" : [{\"_id\" : \"" + id1 + "\"}," +
-					"{\"_id\" : \"" + id2 + "\"}]}")
-		.when()
-			.get("/" + INDEX + "/" + TYPE + "/_mget")
-		.then()
-			.log().all()
-			.statusCode(200)
-			.body("docs[0]._index", equalTo(INDEX))
-			.body("docs[0]._type", equalTo(TYPE))
-			.body("docs[0]._id", equalTo(id1))
-			.body("docs[0]._version", equalTo(1))
-			.body("docs[0].found", equalTo(true))
-			.body("docs[1]._index", equalTo(INDEX))
-			.body("docs[1]._type", equalTo(TYPE))
-			.body("docs[1]._id", equalTo(id2))
-			.body("docs[1]._version", equalTo(1))
-			.body("docs[1].found", equalTo(true));
+
+		final long startTime = System.currentTimeMillis();
+		while(System.currentTimeMillis() - startTime < TEST_TIMEOUT) {
+			final ValidatableResponse response = given()
+					.request()
+					.body("{\"docs\" : [{\"_id\" : \"" + id1 + "\"}," +
+							"{\"_id\" : \"" + id2 + "\"}]}")
+					.when()
+					.get("/" + INDEX + "/" + TYPE + "/_mget")
+					.then()
+					.log().all()
+					.statusCode(200);
+
+			try {
+				final List docs = response.extract().body().jsonPath().getList("docs");
+				if(docs.size() > 1) {
+					response.body("docs[0]._index", equalTo(INDEX));
+					response.body("docs[0]._type", equalTo(TYPE));
+					response.body("docs[0]._id", equalTo(id1));
+					response.body("docs[0]._version", equalTo(1));
+					response.body("docs[0].found", equalTo(true));
+					response.body("docs[1]._index", equalTo(INDEX));
+					response.body("docs[1]._type", equalTo(TYPE));
+					response.body("docs[1]._id", equalTo(id2));
+					response.body("docs[1]._version", equalTo(1));
+					response.body("docs[1].found", equalTo(true));
+					return;
+				}
+			} catch (JsonPathException e) {}
+
+			try {
+				Thread.sleep(500L);
+			} catch (Exception e) {}
+		}
+		Assert.fail("Insufficient results returned");
 	}
 	
 	private void indexWithId(final String id, final String message, final long timestamp) {
