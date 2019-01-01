@@ -27,7 +27,7 @@ public class SortClause {
 	
 	public String toSqlClause() {
 		final StringBuilder result = new StringBuilder();
-		result.append("elefana_json_field(_source, '");
+		result.append("elefana_json_field_nat(_source, '");
 		result.append(field);
 		result.append("')");
 		if(ascending) {

@@ -124,7 +124,7 @@ public class CoreIndexUtils implements IndexUtils {
 
 	@Override
 	public String generateDocumentId(String index, String type, String source) {
-		final long timestamp = System.currentTimeMillis();
+		final long timestamp = System.nanoTime();
 		final StringBuilder result = new StringBuilder();
 		result.append(Long.toHexString(xxHash.hashChars(source)));
 		result.append(timestamp);

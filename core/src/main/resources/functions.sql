@@ -36,6 +36,11 @@ CREATE OR REPLACE FUNCTION elefana_json_field(_json_column jsonb, _json_field te
 $$
 LANGUAGE SQL IMMUTABLE PARALLEL SAFE;
 
+CREATE OR REPLACE FUNCTION elefana_json_field_nat(_json_column jsonb, _json_field text) RETURNS jsonb AS $$
+select _json_column->_json_field
+			 $$
+			 LANGUAGE SQL IMMUTABLE PARALLEL SAFE;
+
 CREATE OR REPLACE FUNCTION elefana_next_bulk_ingest_table() RETURNS text AS
 $$
 DECLARE
