@@ -55,6 +55,11 @@ public class CoreIndexUtilsTest {
 			final String result2 = indexUtils.generateDocumentId(index, type, source2);
 			Assert.assertNotEquals(result1, result2);
 		}
+		for(int i = 0; i < 1000; i++) {
+			final String result1 = indexUtils.generateDocumentId(index, type, source1);
+			final String result2 = indexUtils.generateDocumentId(index, type, source1);
+			Assert.assertNotEquals(result1, result2);
+		}
 	}
 	
 	@Test

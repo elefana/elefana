@@ -52,6 +52,7 @@ subprojects {
 		nettyVersion = '4.1.32.Final'
 		restAssuredVersion = '3.0.6'
 		stringSearchVersion = '2.2.0'
+		uuidGeneratorVersion = '3.1.5'
 		zeroAllocationHashingVersion = '0.8'
 	}
 	ext['postgresql.version'] = '42.2.5'
@@ -202,6 +203,7 @@ project(":" + rootProject.name + "-core") {
 		compile('org.springframework.boot:spring-boot-starter')
 		compile "org.mini2Dx:natives-loader:$nativesLoaderVersion"
 		compile "com.zaxxer:HikariCP:$hikariVersion"
+		compile "com.fasterxml.uuid:java-uuid-generator:${uuidGeneratorVersion}"
 		compile "io.netty:netty-all:$nettyVersion"
 		compile "com.elefana:stringsearch:$stringSearchVersion"
 		compile "com.elefana:es-query-string-parser:$esQueryStringVersion"

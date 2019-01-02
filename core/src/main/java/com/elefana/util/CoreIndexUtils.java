@@ -32,6 +32,9 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import javax.annotation.PostConstruct;
 
+import com.fasterxml.uuid.EthernetAddress;
+import com.fasterxml.uuid.Generators;
+import com.fasterxml.uuid.impl.TimeBasedGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -86,7 +89,7 @@ public class CoreIndexUtils implements IndexUtils {
 	@Autowired
 	private DbInitializer dbInitializer;
 
-	private final ThreadLocalInteger documentIdCounter = new ThreadLocalInteger();
+	private final TimeBasedGenerator uuidGenerator = Generators.timeBasedGenerator(EthernetAddress.fromInterface());
 	private final AtomicInteger tablespaceIndex = new AtomicInteger();
 	private String[] tablespaces;
 
@@ -124,12 +127,7 @@ public class CoreIndexUtils implements IndexUtils {
 
 	@Override
 	public String generateDocumentId(String index, String type, String source) {
-		final long timestamp = System.nanoTime();
-		final StringBuilder result = new StringBuilder();
-		result.append(Long.toHexString(xxHash.hashChars(source)));
-		result.append(timestamp);
-		result.append(documentIdCounter.getThreadIdAndNextValue());
-		return result.toString();
+		return uuidGenerator.generate().toString();
 	}
 
 	public List<String> listIndices() throws ElefanaException {
