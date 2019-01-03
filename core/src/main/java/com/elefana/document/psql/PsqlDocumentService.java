@@ -411,6 +411,9 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 		default:
 			break;
 		}
+		if(nodeSettingsService.isFlattenJson()) {
+			document = IndexUtils.flattenJson(document);
+		}
 		document = IndexUtils.psqlEscapeString(document);
 		document = IndexUtils.psqlEscapeString(document);
 

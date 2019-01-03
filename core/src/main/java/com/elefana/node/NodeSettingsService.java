@@ -71,6 +71,7 @@ public class NodeSettingsService {
 	private String citusCoordinatorHost = "";
 	private int citusCoordinatorPort = 5432;
 
+	private boolean flattenJson;
 	private int bulkParallelisation;
 	private long fieldStatsInterval;
 	private long mappingInterval;
@@ -112,6 +113,7 @@ public class NodeSettingsService {
 			citusCoordinatorPort = environment.getRequiredProperty("elefana.citus.coordinator.port", Integer.class);
 		}
 
+		flattenJson = environment.getProperty("elefana.flattenJson", Boolean.class, false);
 		bulkParallelisation = Math.max(1,
 				environment.getRequiredProperty("elefana.bulkParallelisation", Integer.class));
 		fieldStatsInterval = environment.getRequiredProperty("elefana.fieldStatsInterval", Long.class);
@@ -320,6 +322,10 @@ public class NodeSettingsService {
 
 	public int getBrinPagesPerRange() {
 		return brinPagesPerRange;
+	}
+
+	public boolean isFlattenJson() {
+		return flattenJson;
 	}
 
 	public boolean isMasterNode() {

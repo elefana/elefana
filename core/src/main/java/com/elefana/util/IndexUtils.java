@@ -18,8 +18,11 @@ package com.elefana.util;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Set;
 
 import com.elefana.api.exception.ElefanaException;
+import com.jsoniter.JsonIterator;
+import com.jsoniter.any.Any;
 
 public interface IndexUtils {
 	public static final String DATA_TABLE = "elefana_data";
@@ -161,5 +164,120 @@ public interface IndexUtils {
 			}
 		}
 		return json;
+	}
+
+	public static String flattenJson(String json) {
+		final StringBuilder result = new StringBuilder();
+		final Any root = JsonIterator.deserialize(json);
+		result.append('{');
+		flattenJson("", root, result);
+		result.append('}');
+		return result.toString();
+	}
+
+	public static void flattenJson(String prefix, Any obj, StringBuilder stringBuilder) {
+		final Any.EntryIterator iterator = obj.entries();
+
+		boolean appendedField = false;
+		while(iterator.next()) {
+			if(appendedField) {
+				stringBuilder.append(',');
+			}
+			switch(iterator.value().valueType()) {
+			case INVALID:
+				break;
+			case STRING:
+				stringBuilder.append('\"');
+				stringBuilder.append(prefix + iterator.key());
+				stringBuilder.append('\"');
+				stringBuilder.append(':');
+				stringBuilder.append('\"');
+				stringBuilder.append(iterator.value().toString());
+				stringBuilder.append('\"');
+				appendedField = true;
+				break;
+			case NUMBER:
+				stringBuilder.append('\"');
+				stringBuilder.append(prefix + iterator.key());
+				stringBuilder.append('\"');
+				stringBuilder.append(':');
+				stringBuilder.append(iterator.value().toString().trim());
+				appendedField = true;
+				break;
+			case NULL:
+				stringBuilder.append('\"');
+				stringBuilder.append(prefix + iterator.key());
+				stringBuilder.append('\"');
+				stringBuilder.append(':');
+				stringBuilder.append("null");
+				appendedField = true;
+				break;
+			case BOOLEAN:
+				stringBuilder.append('\"');
+				stringBuilder.append(prefix + iterator.key());
+				stringBuilder.append('\"');
+				stringBuilder.append(':');
+				stringBuilder.append(iterator.value().toBoolean());
+				appendedField = true;
+				break;
+			case ARRAY:
+				final List<Any> list = iterator.value().asList();
+				flattenJson(prefix + iterator.key(), list, stringBuilder);
+				appendedField = true;
+				break;
+			case OBJECT:
+				flattenJson(prefix + iterator.key() + "_", iterator.value(), stringBuilder);
+				appendedField = true;
+				break;
+			}
+		}
+	}
+
+	public static void flattenJson(String prefix, List<Any> list, StringBuilder stringBuilder) {
+		for(int i = 0; i < list.size(); i++) {
+			switch(list.get(i).valueType()) {
+			case INVALID:
+				break;
+			case STRING:
+				stringBuilder.append('\"');
+				stringBuilder.append(prefix + "_" + i);
+				stringBuilder.append('\"');
+				stringBuilder.append(':');
+				stringBuilder.append('\"');
+				stringBuilder.append(list.get(i).toString());
+				stringBuilder.append('\"');
+				break;
+			case NUMBER:
+				stringBuilder.append('\"');
+				stringBuilder.append(prefix + "_" + i);
+				stringBuilder.append('\"');
+				stringBuilder.append(':');
+				stringBuilder.append(list.get(i).toString().trim());
+				break;
+			case NULL:
+				stringBuilder.append('\"');
+				stringBuilder.append(prefix + "_" + i);
+				stringBuilder.append('\"');
+				stringBuilder.append(':');
+				stringBuilder.append("null");
+				break;
+			case BOOLEAN:
+				stringBuilder.append('\"');
+				stringBuilder.append(prefix + "_" + i);
+				stringBuilder.append('\"');
+				stringBuilder.append(':');
+				stringBuilder.append(list.get(i).toBoolean());
+				break;
+			case ARRAY:
+				flattenJson(prefix + "_" + i, list.get(i).asList(), stringBuilder);
+				break;
+			case OBJECT:
+				flattenJson(prefix + "_" + i + "_", list.get(i), stringBuilder);
+				break;
+			}
+			if(i < list.size() - 1) {
+				stringBuilder.append(',');
+			}
+		}
 	}
 }

@@ -144,7 +144,13 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 						BulkIndexOperation indexOperation = BulkIndexOperation.allocate();
 						indexOperation.setIndex(indexOperationTarget.get(BulkTask.KEY_INDEX).toString());
 						indexOperation.setType(indexOperationTarget.get(BulkTask.KEY_TYPE).toString());
-						indexOperation.setSource(lines[i + 1]);
+
+						if(nodeSettingsService.isFlattenJson()) {
+							indexOperation.setSource(IndexUtils.flattenJson(lines[i + 1]));
+						} else {
+							indexOperation.setSource(lines[i + 1]);
+						}
+
 						indexOperation.setTimestamp(
 								indexUtils.getTimestamp(indexOperation.getIndex(), indexOperation.getSource()));
 

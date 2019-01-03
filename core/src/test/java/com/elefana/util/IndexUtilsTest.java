@@ -89,4 +89,25 @@ public class IndexUtilsTest {
 		Assert.assertEquals(expectedJson4, IndexUtils.psqlUnescapeString(inputJson4));
 		Assert.assertEquals(expectedJson4, IndexUtils.psqlUnescapeString(expectedJson4));
 	}
+
+	@Test
+	public void testFlattenJsonString() throws IOException {
+		final String json = "{\"int\": 123, \"bool\": true, \"string\": \"str\", \"array\":[100, 101, 102], \"arrayObj\":[{\"int\": 124}, {\"int\": 125}, {\"double\": 1.01234}], \"object\":{\"a\":1,\"b\":2}}";
+		final StringBuilder expectedResult = new StringBuilder();
+		expectedResult.append('{');
+		expectedResult.append("\"int\":123,");
+		expectedResult.append("\"bool\":true,");
+		expectedResult.append("\"string\":\"str\",");
+		expectedResult.append("\"array_0\":100,");
+		expectedResult.append("\"array_1\":101,");
+		expectedResult.append("\"array_2\":102,");
+		expectedResult.append("\"arrayObj_0_int\":124,");
+		expectedResult.append("\"arrayObj_1_int\":125,");
+		expectedResult.append("\"arrayObj_2_double\":1.01234,");
+		expectedResult.append("\"object_a\":1,");
+		expectedResult.append("\"object_b\":2");
+		expectedResult.append('}');
+
+		Assert.assertEquals(expectedResult.toString(), IndexUtils.flattenJson(json));
+	}
 }

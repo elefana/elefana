@@ -376,10 +376,16 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 	public GetFieldNamesResponse getFieldNames(GetFieldNamesRequest request) throws ElefanaException {
 		final GetFieldNamesResponse result = new GetFieldNamesResponse();
 
+		int totalIndices = 0;
 		for (String index : indexUtils.listIndicesForIndexPattern(request.getIndexPattern())) {
 			for(String type : getTypesForIndex(index, request.getTypePattern())) {
 				result.getFieldNames().addAll(getFieldNames(index, type));
 			}
+
+			if(request.getMaxIndices() > 0 && totalIndices > request.getMaxIndices()) {
+				break;
+			}
+			totalIndices++;
 		}
 		return result;
 	}

@@ -21,6 +21,7 @@ import com.elefana.api.RequestExecutor;
 public abstract class GetFieldNamesRequest extends ApiRequest<GetFieldNamesResponse> {
 	protected final String indexPattern;
 	protected final String typePattern;
+	protected int maxIndices = 10;
 
 	public GetFieldNamesRequest(RequestExecutor requestExecutor, String indexPattern) {
 		this(requestExecutor, indexPattern, "*");
@@ -38,5 +39,13 @@ public abstract class GetFieldNamesRequest extends ApiRequest<GetFieldNamesRespo
 
 	public String getTypePattern() {
 		return typePattern;
+	}
+
+	public int getMaxIndices() {
+		return maxIndices;
+	}
+
+	public void setMaxIndices(int maxIndices) {
+		this.maxIndices = maxIndices;
 	}
 }
