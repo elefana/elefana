@@ -130,9 +130,6 @@ public class HttpServer {
 				serverBootstrap.channel(NioServerSocketChannel.class);
 				serverExecutor = new NioEventLoopGroup();
 			}
-		} else if (OsInformation.isUnix()) {
-			serverBootstrap.channel(EpollServerSocketChannel.class);
-			serverExecutor = new EpollEventLoopGroup();
 		} else {
 			serverBootstrap.channel(NioServerSocketChannel.class);
 			serverExecutor = new NioEventLoopGroup();
