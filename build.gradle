@@ -214,7 +214,6 @@ project(":" + rootProject.name + "-core") {
 		compile "commons-validator:commons-validator:$commonsValidatorVersion"
 		compile "net.openhft:zero-allocation-hashing:$zeroAllocationHashingVersion"
 		compile('org.postgresql:postgresql')
-		}
 
 		compile "io.netty:netty-transport-native-epoll:$nettyVersion:linux-x86_64"
 		compile "io.netty:netty-transport-native-kqueue:$nettyVersion:osx-x86_64"
