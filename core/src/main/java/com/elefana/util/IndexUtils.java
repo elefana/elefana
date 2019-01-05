@@ -175,7 +175,7 @@ public interface IndexUtils {
 		return result.toString();
 	}
 
-	public static void flattenJson(String prefix, Any obj, StringBuilder stringBuilder) {
+	public static boolean flattenJson(String prefix, Any obj, StringBuilder stringBuilder) {
 		final Any.EntryIterator iterator = obj.entries();
 
 		boolean appendedField = false;
@@ -185,6 +185,7 @@ public interface IndexUtils {
 			}
 			switch(iterator.value().valueType()) {
 			case INVALID:
+				appendedField = false;
 				break;
 			case STRING:
 				stringBuilder.append('\"');
@@ -222,21 +223,30 @@ public interface IndexUtils {
 				break;
 			case ARRAY:
 				final List<Any> list = iterator.value().asList();
-				flattenJson(prefix + iterator.key(), list, stringBuilder);
-				appendedField = true;
+				if(list.size() > 0) {
+					appendedField = flattenJson(prefix + iterator.key(), list, stringBuilder);
+				} else {
+					appendedField = false;
+				}
 				break;
 			case OBJECT:
-				flattenJson(prefix + iterator.key() + "_", iterator.value(), stringBuilder);
-				appendedField = true;
+				appendedField = flattenJson(prefix + iterator.key() + "_", iterator.value(), stringBuilder);
 				break;
 			}
 		}
+		return appendedField;
 	}
 
-	public static void flattenJson(String prefix, List<Any> list, StringBuilder stringBuilder) {
+	public static boolean flattenJson(String prefix, List<Any> list, StringBuilder stringBuilder) {
+		boolean appendedField = false;
 		for(int i = 0; i < list.size(); i++) {
+			if(appendedField) {
+				stringBuilder.append(',');
+			}
 			switch(list.get(i).valueType()) {
+			default:
 			case INVALID:
+				appendedField = false;
 				break;
 			case STRING:
 				stringBuilder.append('\"');
@@ -246,6 +256,7 @@ public interface IndexUtils {
 				stringBuilder.append('\"');
 				stringBuilder.append(list.get(i).toString());
 				stringBuilder.append('\"');
+				appendedField = true;
 				break;
 			case NUMBER:
 				stringBuilder.append('\"');
@@ -253,6 +264,7 @@ public interface IndexUtils {
 				stringBuilder.append('\"');
 				stringBuilder.append(':');
 				stringBuilder.append(list.get(i).toString().trim());
+				appendedField = true;
 				break;
 			case NULL:
 				stringBuilder.append('\"');
@@ -260,6 +272,7 @@ public interface IndexUtils {
 				stringBuilder.append('\"');
 				stringBuilder.append(':');
 				stringBuilder.append("null");
+				appendedField = true;
 				break;
 			case BOOLEAN:
 				stringBuilder.append('\"');
@@ -267,17 +280,21 @@ public interface IndexUtils {
 				stringBuilder.append('\"');
 				stringBuilder.append(':');
 				stringBuilder.append(list.get(i).toBoolean());
+				appendedField = true;
 				break;
 			case ARRAY:
-				flattenJson(prefix + "_" + i, list.get(i).asList(), stringBuilder);
+				final List<Any> nestedList = list.get(i).asList();
+				if(nestedList.size() > 0) {
+					appendedField = flattenJson(prefix + "_" + i, nestedList, stringBuilder);
+				} else {
+					appendedField = false;
+				}
 				break;
 			case OBJECT:
-				flattenJson(prefix + "_" + i + "_", list.get(i), stringBuilder);
+				appendedField = flattenJson(prefix + "_" + i + "_", list.get(i), stringBuilder);
 				break;
 			}
-			if(i < list.size() - 1) {
-				stringBuilder.append(',');
-			}
 		}
+		return appendedField;
 	}
 }
