@@ -100,11 +100,11 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 
 			final ApiRequest<?> apiRequest = apiRouter.route(httpRequest.getMethod(), uri, requestContent);
 			if(apiRequest == null) {
-				throw new NoSuchApiException(uri);
+				throw new NoSuchApiException(httpRequest.getMethod(), uri);
 			}
 			final ApiResponse apiResponse = apiRequest.get();
 			if(apiResponse == null) {
-				throw new NoSuchApiException(uri);
+				throw new NoSuchApiException(httpRequest.getMethod(), uri);
 			}
 			return createResponse(httpRequest, HttpResponseStatus.valueOf(apiResponse.getStatusCode()), apiResponse.toJsonString());
 		} catch (NoSuchDocumentException e) {

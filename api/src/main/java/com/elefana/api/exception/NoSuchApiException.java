@@ -15,13 +15,14 @@
  ******************************************************************************/
 package com.elefana.api.exception;
 
+import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpResponseStatus;
 
 public class NoSuchApiException extends ElefanaException {
 	private static final long serialVersionUID = 4093484427436583921L;
 
-	public NoSuchApiException(String requestUrl) {
-		super(HttpResponseStatus.NOT_FOUND, "No such API at " + requestUrl);
+	public NoSuchApiException(HttpMethod httpMethod, String requestUrl) {
+		super(HttpResponseStatus.NOT_FOUND, "No such API at " + requestUrl + " for method " + httpMethod.name());
 	}
 
 }

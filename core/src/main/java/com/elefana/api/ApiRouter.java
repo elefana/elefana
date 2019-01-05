@@ -158,7 +158,7 @@ public class ApiRouter {
 		case "_bulk":
 			return bulkIngestService.prepareBulkRequest(requestBody);
 		}
-		throw new NoSuchApiException(url);
+		throw new NoSuchApiException(method, url);
 	}
 
 	private ApiRequest<?> routeToClusterApi(HttpMethod method, String url, String[] urlComponents, String requestBody)
@@ -185,7 +185,7 @@ public class ApiRouter {
 			break;
 		}
 		}
-		throw new NoSuchApiException(url);
+		throw new NoSuchApiException(method, url);
 	}
 
 	private ApiRequest<?> routeToFieldMappingApi(HttpMethod method, String url, String[] urlComponents,
@@ -266,7 +266,7 @@ public class ApiRouter {
 			final String index = urlDecode(urlComponents[0]);
 			return indexFieldMappingService.preparePutFieldMappings(index, requestBody);
 		}
-		throw new NoSuchApiException(url);
+		throw new NoSuchApiException(method, url);
 	}
 
 	private ApiRequest<?> routeToDocumentApi(HttpMethod method, String url, String[] urlComponents, String requestBody)
@@ -349,7 +349,7 @@ public class ApiRouter {
 			break;
 		}
 		}
-		throw new NoSuchApiException(url);
+		throw new NoSuchApiException(method, url);
 	}
 
 	private ApiRequest<?> routeToSearchApi(HttpMethod method, String url, String[] urlComponents, String requestBody)
@@ -388,7 +388,7 @@ public class ApiRouter {
 			}
 			break;
 		}
-		throw new NoSuchApiException(url);
+		throw new NoSuchApiException(method, url);
 	}
 
 	private ApiRequest<?> routeToNodeApi(HttpMethod method, String url, String[] urlComponents, String requestBody)
@@ -420,7 +420,7 @@ public class ApiRouter {
 			}
 		}
 		}
-		throw new NoSuchApiException(url);
+		throw new NoSuchApiException(method, url);
 	}
 
 	private ApiRequest<?> routeToIndexTemplateApi(HttpMethod method, String url, String[] urlComponents,
@@ -442,7 +442,7 @@ public class ApiRouter {
 			}
 			break;
 		}
-		throw new NoSuchApiException(url);
+		throw new NoSuchApiException(method, url);
 	}
 
 	private boolean isHeadMethod(HttpMethod method) {
