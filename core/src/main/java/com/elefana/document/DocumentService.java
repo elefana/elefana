@@ -16,12 +16,15 @@
 package com.elefana.document;
 
 import com.elefana.api.document.*;
+import com.elefana.api.indices.DeleteIndexRequest;
 
 public interface DocumentService {
 
 	public GetRequest prepareGet(String index, String type, String id, boolean fetchSource);
 
 	public DeleteRequest prepareDelete(String index, String type, String id);
+
+	public DeleteIndexRequest prepareDeleteIndex(String indexPattern, String typePattern);
 
 	public MultiGetRequest prepareMultiGet(String requestBody);
 

@@ -15,11 +15,11 @@
  ******************************************************************************/
 package com.elefana.indices.psql;
 
-import java.util.concurrent.Callable;
-
+import com.elefana.api.AckResponse;
 import com.elefana.api.indices.PutIndexTemplateRequest;
 import com.elefana.api.indices.PutIndexTemplateResponse;
-import com.elefana.cluster.AckResponse;
+
+import java.util.concurrent.Callable;
 
 public class PsqlPutIndexTemplateRequest extends PutIndexTemplateRequest implements Callable<PutIndexTemplateResponse> {
 	private final PsqlIndexTemplateService indexTemplateService;

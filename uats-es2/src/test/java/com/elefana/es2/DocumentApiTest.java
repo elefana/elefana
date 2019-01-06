@@ -115,6 +115,21 @@ public class DocumentApiTest extends DocumentedTest {
 				.then()
 				.statusCode(404);
 	}
+
+	@Test
+	public void testDeleteIndex() {
+		final String id = UUID.randomUUID().toString();
+		final String message = "This is a test";
+		indexWithId(id, message, System.currentTimeMillis());
+
+		given().when().delete("/" + INDEX)
+				.then()
+				.statusCode(200);
+
+		given().when().get("/" + INDEX + "/" + TYPE + "/" + id)
+				.then()
+				.statusCode(404);
+	}
 	
 	@Test
 	public void testIndexWithEscapedJson() throws IOException {

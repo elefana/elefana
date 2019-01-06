@@ -28,6 +28,7 @@ import java.util.concurrent.Future;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 
+import com.elefana.api.AckResponse;
 import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,7 +49,6 @@ import com.elefana.api.indices.IndexStorageSettings;
 import com.elefana.api.indices.IndexTemplate;
 import com.elefana.api.indices.ListIndexTemplatesRequest;
 import com.elefana.api.indices.PutIndexTemplateRequest;
-import com.elefana.cluster.AckResponse;
 import com.elefana.indices.IndexTemplateService;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.ValueType;

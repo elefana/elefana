@@ -68,6 +68,9 @@ public abstract class ApiRequest<T extends ApiResponse> {
 			e.printStackTrace();
 			throw new ShardFailedException(e);
 		} catch (ExecutionException e) {
+			if(e.getCause() instanceof ElefanaException) {
+				throw (ElefanaException) e.getCause();
+			}
 			e.printStackTrace();
 			throw new ShardFailedException(e);
 		}

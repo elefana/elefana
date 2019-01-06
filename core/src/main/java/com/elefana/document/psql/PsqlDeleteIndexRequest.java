@@ -15,27 +15,32 @@
  ******************************************************************************/
 package com.elefana.document.psql;
 
+import com.elefana.api.AckResponse;
 import com.elefana.api.RequestExecutor;
-import com.elefana.api.document.DeleteRequest;
-import com.elefana.api.document.DeleteResponse;
+import com.elefana.api.exception.ElefanaException;
+import com.elefana.api.indices.DeleteIndexRequest;
 
 import java.util.concurrent.Callable;
 
-public class PsqlDeleteRequest extends DeleteRequest implements Callable<DeleteResponse> {
+public class PsqlDeleteIndexRequest extends DeleteIndexRequest implements Callable<AckResponse> {
 	private final PsqlDocumentService documentService;
 
-	public PsqlDeleteRequest(PsqlDocumentService documentService, String index, String type, String id) {
-		super(documentService, index, type, id);
+	public PsqlDeleteIndexRequest(PsqlDocumentService documentService, String indexPattern) {
+		this(documentService, indexPattern, "*");
+	}
+
+	public PsqlDeleteIndexRequest(PsqlDocumentService documentService, String indexPattern, String typePattern) {
+		super(documentService, indexPattern, typePattern);
 		this.documentService = documentService;
 	}
 
 	@Override
-	protected Callable<DeleteResponse> internalExecute() {
+	protected Callable<AckResponse> internalExecute() {
 		return this;
 	}
 
 	@Override
-	public DeleteResponse call() throws Exception {
-		return documentService.delete(getIndex(), getType(), getId());
+	public AckResponse call() throws Exception {
+		return documentService.deleteIndex(getIndexPattern(), getTypePattern());
 	}
 }

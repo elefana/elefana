@@ -276,6 +276,12 @@ public class ApiRouter {
 			switch (urlComponents[0].toLowerCase()) {
 			case "_mget":
 				return documentService.prepareMultiGet(requestBody);
+			default:
+				final String index = urlDecode(urlComponents[0]);
+				if(isDeleteMethod(method)) {
+					return documentService.prepareDeleteIndex(index, "*");
+				}
+				break;
 			}
 			break;
 		case 2: {
@@ -295,6 +301,8 @@ public class ApiRouter {
 			if (isPostMethod(method)) {
 				return documentService
 						.prepareIndex(index, type, UUID.randomUUID().toString(), requestBody, IndexOpType.OVERWRITE);
+			} else if(isDeleteMethod(method)) {
+				return documentService.prepareDeleteIndex(index, type);
 			}
 			break;
 		}

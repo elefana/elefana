@@ -13,29 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package com.elefana.document.psql;
+package com.elefana.api;
 
-import com.elefana.api.RequestExecutor;
-import com.elefana.api.document.DeleteRequest;
-import com.elefana.api.document.DeleteResponse;
+import com.jsoniter.JsonIterator;
+import com.jsoniter.output.JsonStream;
+import io.netty.handler.codec.http.HttpResponseStatus;
 
-import java.util.concurrent.Callable;
+public class AckResponse extends ApiResponse {
+	private boolean acknowledged = true;
 
-public class PsqlDeleteRequest extends DeleteRequest implements Callable<DeleteResponse> {
-	private final PsqlDocumentService documentService;
+	public AckResponse() {
+		super(HttpResponseStatus.OK.code());
+	}
 
-	public PsqlDeleteRequest(PsqlDocumentService documentService, String index, String type, String id) {
-		super(documentService, index, type, id);
-		this.documentService = documentService;
+	public boolean isAcknowledged() {
+		return acknowledged;
+	}
+
+	public void setAcknowledged(boolean acknowledged) {
+		this.acknowledged = acknowledged;
 	}
 
 	@Override
-	protected Callable<DeleteResponse> internalExecute() {
-		return this;
-	}
-
-	@Override
-	public DeleteResponse call() throws Exception {
-		return documentService.delete(getIndex(), getType(), getId());
+	public String toJsonString() {
+		return JsonStream.serialize(this);
 	}
 }

@@ -30,7 +30,9 @@ import java.util.concurrent.Future;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 
+import com.elefana.api.AckResponse;
 import com.elefana.api.document.*;
+import com.elefana.api.indices.DeleteIndexRequest;
 import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -99,6 +101,11 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 	@Override
 	public DeleteRequest prepareDelete(String index, String type, String id) {
 		return new PsqlDeleteRequest(this, index, type, id);
+	}
+
+	@Override
+	public DeleteIndexRequest prepareDeleteIndex(String indexPattern, String typePattern) {
+		return new PsqlDeleteIndexRequest(this, indexPattern, typePattern);
 	}
 
 	@Override
@@ -402,6 +409,49 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 			throw new ShardFailedException(e);
 		}
 		return result;
+	}
+
+	public AckResponse deleteIndex(String indexPattern, String typePattern) throws ElefanaException {
+		int rows = 0;
+
+		for (String index : indexUtils.listIndicesForIndexPattern(indexPattern)) {
+			final String queryTarget = indexUtils.getQueryTarget(index);
+
+			for (String type : indexFieldMappingService.getTypesForIndex(index, typePattern)) {
+				StringBuilder queryBuilder = new StringBuilder();
+				queryBuilder.append("DELETE FROM ");
+				queryBuilder.append(queryTarget);
+				queryBuilder.append(" WHERE ");
+
+				if (!nodeSettingsService.isUsingCitus()) {
+					queryBuilder.append("_index = '");
+					queryBuilder.append(index);
+					queryBuilder.append("'");
+					queryBuilder.append(" AND ");
+				}
+
+				queryBuilder.append("_type = '");
+				queryBuilder.append(type);
+				queryBuilder.append("'");
+
+				try {
+					rows += jdbcTemplate.update(queryBuilder.toString());
+					if(rows > 0) {
+						indexFieldMappingService.scheduleIndexForMappingAndStats(index);
+					}
+				} catch (Exception e) {
+					LOGGER.error(e.getMessage(), e);
+				}
+			}
+		}
+
+		final AckResponse response = new AckResponse();
+		if(rows > 0) {
+			response.setAcknowledged(true);
+		} else {
+			response.setAcknowledged(false);
+		}
+		return response;
 	}
 
 	public DeleteResponse delete(String index, String type, String id) {

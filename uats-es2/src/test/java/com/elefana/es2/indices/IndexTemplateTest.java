@@ -52,7 +52,7 @@ public class IndexTemplateTest {
 		final String index = UUID.randomUUID().toString();
 		final String type = "test";
 
-		given().when().head("/_template/testIndexTemplate")
+		given().when().head("/_template/testIndexTemplateA")
 				.then()
 				.log().all()
 				.statusCode(404);
@@ -61,16 +61,16 @@ public class IndexTemplateTest {
 			.request()
 			.body("{\"template\": \"" + index + "\",\"mappings\": {\"" + type + "\": {\"_source\": {\"enabled\": false},\"properties\": {\"nonDocField\": {\"type\": \"date\"}}}}}")
 		.when()
-			.put("/_template/testIndexTemplate")
+			.put("/_template/testIndexTemplateA")
 		.then()
 			.statusCode(200);
 		
-		given().when().get("/_template/testIndexTemplate")
+		given().when().get("/_template/testIndexTemplateA")
 			.then()
 			.log().all()
 			.statusCode(200)
-			.body("testIndexTemplate.template", equalTo(index))
-			.body("testIndexTemplate.mappings." + type, notNullValue());
+			.body("testIndexTemplateA.template", equalTo(index))
+			.body("testIndexTemplateA.mappings." + type, notNullValue());
 	}
 	
 	@Test

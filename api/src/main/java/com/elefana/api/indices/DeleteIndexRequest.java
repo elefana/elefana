@@ -13,29 +13,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package com.elefana.document.psql;
+package com.elefana.api.indices;
 
+import com.elefana.api.AckResponse;
+import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
-import com.elefana.api.document.DeleteRequest;
-import com.elefana.api.document.DeleteResponse;
 
 import java.util.concurrent.Callable;
 
-public class PsqlDeleteRequest extends DeleteRequest implements Callable<DeleteResponse> {
-	private final PsqlDocumentService documentService;
+public abstract class DeleteIndexRequest extends ApiRequest<AckResponse> {
+	private final String indexPattern, typePattern;
 
-	public PsqlDeleteRequest(PsqlDocumentService documentService, String index, String type, String id) {
-		super(documentService, index, type, id);
-		this.documentService = documentService;
+	public DeleteIndexRequest(RequestExecutor requestExecutor, String indexPattern) {
+		this(requestExecutor, indexPattern, "*");
 	}
 
-	@Override
-	protected Callable<DeleteResponse> internalExecute() {
-		return this;
+	public DeleteIndexRequest(RequestExecutor requestExecutor, String indexPattern, String typePattern) {
+		super(requestExecutor);
+		this.indexPattern = indexPattern;
+		this.typePattern = typePattern;
 	}
 
-	@Override
-	public DeleteResponse call() throws Exception {
-		return documentService.delete(getIndex(), getType(), getId());
+	public String getIndexPattern() {
+		return indexPattern;
+	}
+
+	public String getTypePattern() {
+		return typePattern;
 	}
 }

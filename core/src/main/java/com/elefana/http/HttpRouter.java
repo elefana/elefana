@@ -118,7 +118,11 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 			LOGGER.error(uri);
 			LOGGER.error(requestContent);
 			LOGGER.error(e.getMessage(), e);
-			return createResponse(httpRequest, HttpResponseStatus.INTERNAL_SERVER_ERROR);
+			if(e.getCause() instanceof ElefanaException) {
+				return createErrorResponse(httpRequest, (ElefanaException) e.getCause());
+			} else {
+				return createResponse(httpRequest, HttpResponseStatus.INTERNAL_SERVER_ERROR);
+			}
 		}
 	}
 
