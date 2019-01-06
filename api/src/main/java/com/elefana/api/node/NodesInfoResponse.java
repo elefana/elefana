@@ -25,7 +25,8 @@ import com.jsoniter.output.JsonStream;
 import io.netty.handler.codec.http.HttpResponseStatus;
 
 public class NodesInfoResponse extends ApiResponse {
-	private final Map<String, NodeInfo> nodes = new HashMap<String, NodeInfo>();
+	@JsonProperty("nodes")
+	private Map<String, NodeInfo> nodes = new HashMap<String, NodeInfo>();
 	@JsonProperty("cluster_name")
 	private String clusterName;
 	
@@ -48,6 +49,10 @@ public class NodesInfoResponse extends ApiResponse {
 
 	public Map<String, NodeInfo> getNodes() {
 		return nodes;
+	}
+
+	public void setNodes(Map<String, NodeInfo> nodes) {
+		this.nodes = nodes;
 	}
 
 	@Override
