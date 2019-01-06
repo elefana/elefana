@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2018 Viridian Software Limited
+ * Copyright 2019 Viridian Software Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,21 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package com.elefana.document;
+package com.elefana.document.psql;
 
-import com.elefana.api.document.*;
+import com.elefana.api.RequestExecutor;
+import com.elefana.api.document.DeleteRequest;
+import com.elefana.api.document.DeleteResponse;
 
-public interface DocumentService {
+import java.util.concurrent.Callable;
 
-	public GetRequest prepareGet(String index, String type, String id, boolean fetchSource);
+public class PsqlDeleteRequest extends DeleteRequest {
+	private final PsqlDocumentService documentService;
 
-	public DeleteRequest prepareDelete(String index, String type, String id);
+	public PsqlDeleteRequest(PsqlDocumentService documentService, String index, String type, String id) {
+		super(documentService, index, type, id);
+		this.documentService = documentService;
+	}
 
-	public MultiGetRequest prepareMultiGet(String requestBody);
-
-	public MultiGetRequest prepareMultiGet(String indexPattern, String requestBody);
-
-	public MultiGetRequest prepareMultiGet(String indexPattern, String typePattern, String requestBody);
-
-	public IndexRequest prepareIndex(String index, String type, String id, String document, IndexOpType opType);
+	@Override
+	protected Callable<DeleteResponse> internalExecute() {
+		return null;
+	}
 }

@@ -318,6 +318,8 @@ public class ApiRouter {
 				return documentService.prepareGet(index, type, id, isGetMethod(method));
 			} else if (isPostMethod(method)) {
 				return documentService.prepareIndex(index, type, id, requestBody, IndexOpType.OVERWRITE);
+			} else if (isDeleteMethod(method)) {
+				return documentService.prepareDelete(index, type, id);
 			}
 			break;
 		}

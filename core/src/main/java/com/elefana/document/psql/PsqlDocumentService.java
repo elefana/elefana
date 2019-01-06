@@ -30,6 +30,7 @@ import java.util.concurrent.Future;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 
+import com.elefana.api.document.*;
 import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,13 +41,6 @@ import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.stereotype.Service;
 
 import com.elefana.api.RequestExecutor;
-import com.elefana.api.document.GetRequest;
-import com.elefana.api.document.GetResponse;
-import com.elefana.api.document.IndexOpType;
-import com.elefana.api.document.IndexRequest;
-import com.elefana.api.document.IndexResponse;
-import com.elefana.api.document.MultiGetRequest;
-import com.elefana.api.document.MultiGetResponse;
 import com.elefana.api.exception.DocumentAlreadyExistsException;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.ShardFailedException;
@@ -100,6 +94,11 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 		final PsqlGetRequest getRequest = new PsqlGetRequest(this, index, type, id);
 		getRequest.setFetchSource(fetchSource);
 		return getRequest;
+	}
+
+	@Override
+	public DeleteRequest prepareDelete(String index, String type, String id) {
+		return new PsqlDeleteRequest(this, index, type, id);
 	}
 
 	@Override
@@ -403,6 +402,57 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 			throw new ShardFailedException(e);
 		}
 		return result;
+	}
+
+	public DeleteResponse delete(String index, String type, String id) {
+		final String queryTarget = indexUtils.getQueryTarget(index);
+
+		final StringBuilder queryBuilder = new StringBuilder();
+		queryBuilder.append("DELETE FROM ");
+		queryBuilder.append(queryTarget);
+		queryBuilder.append(" WHERE ");
+
+		if (!nodeSettingsService.isUsingCitus()) {
+			queryBuilder.append("_index = '");
+			queryBuilder.append(index);
+			queryBuilder.append("'");
+
+			if ((type != null &&  !type.isEmpty()) || (id != null && !id.isEmpty()) ) {
+				queryBuilder.append(" AND ");
+			}
+		}
+
+		if(type != null && !type.isEmpty()) {
+			queryBuilder.append("_type = '");
+			queryBuilder.append(type);
+			queryBuilder.append("'");
+
+			if (id != null && !id.isEmpty()) {
+				queryBuilder.append(" AND ");
+			}
+		}
+
+		if (id != null && !id.isEmpty()) {
+			queryBuilder.append("_id = '");
+			queryBuilder.append(id);
+			queryBuilder.append("'");
+		}
+
+		final DeleteResponse response = new DeleteResponse();
+		response.setIndex(index);
+		response.setType(type);
+		response.setId(id);
+		try {
+			int rows = jdbcTemplate.update(queryBuilder.toString());
+			if(rows == 0) {
+				response.setResult("not_found");
+			} else {
+				indexFieldMappingService.scheduleIndexForMappingAndStats(index);
+			}
+		} catch (Exception e) {
+			LOGGER.error(e.getMessage(), e);
+		}
+		return response;
 	}
 
 	public IndexResponse index(String index, String type, String id, String document, IndexOpType opType)

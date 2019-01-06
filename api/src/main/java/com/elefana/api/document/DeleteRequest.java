@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2018 Viridian Software Limited
+ * Copyright 2019 Viridian Software Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,13 +13,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package com.elefana.document;
+package com.elefana.api.document;
 
-/**
- *
- */
-public class DocumentShardInfo {
-	public int total = 1;
-	public int successful = 1;
-	public int failed = 0;
+import com.elefana.api.ApiRequest;
+import com.elefana.api.RequestExecutor;
+
+import java.util.concurrent.Callable;
+
+public abstract class DeleteRequest extends ApiRequest<DeleteResponse> {
+	protected final String index, type, id;
+
+	public DeleteRequest(RequestExecutor requestExecutor, String index, String type, String id) {
+		super(requestExecutor);
+		this.index = index;
+		this.type = type;
+		this.id = id;
+	}
+
+	public String getIndex() {
+		return index;
+	}
+
+	public String getType() {
+		return type;
+	}
+
+	public String getId() {
+		return id;
+	}
 }

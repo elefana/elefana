@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2018 Viridian Software Limited
+ * Copyright 2019 Viridian Software Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,21 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package com.elefana.document;
+package com.elefana.api.document;
 
-import com.elefana.api.document.*;
-
-public interface DocumentService {
-
-	public GetRequest prepareGet(String index, String type, String id, boolean fetchSource);
-
-	public DeleteRequest prepareDelete(String index, String type, String id);
-
-	public MultiGetRequest prepareMultiGet(String requestBody);
-
-	public MultiGetRequest prepareMultiGet(String indexPattern, String requestBody);
-
-	public MultiGetRequest prepareMultiGet(String indexPattern, String typePattern, String requestBody);
-
-	public IndexRequest prepareIndex(String index, String type, String id, String document, IndexOpType opType);
+public class DocumentShardInfo {
+	public int total = 1;
+	public int successful = 1;
+	public int failed = 0;
 }
