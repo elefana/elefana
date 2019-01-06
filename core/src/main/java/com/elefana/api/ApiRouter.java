@@ -314,8 +314,8 @@ public class ApiRouter {
 			}
 			final String id = urlDecode(urlComponents[2]);
 
-			if (isGetMethod(method)) {
-				return documentService.prepareGet(index, type, id);
+			if (isGetMethod(method) || isHeadMethod(method)) {
+				return documentService.prepareGet(index, type, id, isGetMethod(method));
 			} else if (isPostMethod(method)) {
 				return documentService.prepareIndex(index, type, id, requestBody, IndexOpType.OVERWRITE);
 			}
@@ -430,8 +430,8 @@ public class ApiRouter {
 			switch(urlComponents[0].toLowerCase()) {
 			case "_template":
 				final String templateId = urlDecode(urlComponents[1]);
-				if (isGetMethod(method)) {
-					return indexTemplateService.prepareGetIndexTemplate(templateId);
+				if (isGetMethod(method) || isHeadMethod(method)) {
+					return indexTemplateService.prepareGetIndexTemplate(templateId, isGetMethod(method));
 				} else if (isPostMethod(method) || isPutMethod(method)) {
 					return indexTemplateService.preparePutIndexTemplate(templateId, requestBody);
 				}

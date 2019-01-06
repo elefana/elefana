@@ -20,6 +20,7 @@ import com.elefana.api.RequestExecutor;
 
 public abstract class GetRequest extends ApiRequest<GetResponse> {
 	protected String index, type, id;
+	protected boolean fetchSource = true;
 
 	public GetRequest(RequestExecutor requestExecutor, String index, String type, String id) {
 		super(requestExecutor);
@@ -59,5 +60,13 @@ public abstract class GetRequest extends ApiRequest<GetResponse> {
 			return;
 		}
 		this.id = id;
+	}
+
+	public boolean isFetchSource() {
+		return fetchSource;
+	}
+
+	public void setFetchSource(boolean fetchSource) {
+		this.fetchSource = fetchSource;
 	}
 }

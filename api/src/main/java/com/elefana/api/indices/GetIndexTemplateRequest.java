@@ -22,6 +22,7 @@ import com.elefana.api.RequestExecutor;
 
 public abstract class GetIndexTemplateRequest extends ApiRequest<GetIndexTemplateResponse> implements Callable<GetIndexTemplateResponse> {
 	private final String templateId;
+	private boolean fetchSource = true;
 	
 	public GetIndexTemplateRequest(RequestExecutor requestExecutor, String templateId) {
 		super(requestExecutor);
@@ -37,4 +38,11 @@ public abstract class GetIndexTemplateRequest extends ApiRequest<GetIndexTemplat
 		return templateId;
 	}
 
+	public boolean isFetchSource() {
+		return fetchSource;
+	}
+
+	public void setFetchSource(boolean fetchSource) {
+		this.fetchSource = fetchSource;
+	}
 }

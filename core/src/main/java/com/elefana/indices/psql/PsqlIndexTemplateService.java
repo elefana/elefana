@@ -16,6 +16,7 @@
 package com.elefana.indices.psql;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -85,8 +86,10 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 	}
 
 	@Override
-	public GetIndexTemplateRequest prepareGetIndexTemplate(String index) {
-		return new PsqlGetIndexTemplateRequest(this, index);
+	public GetIndexTemplateRequest prepareGetIndexTemplate(String index, boolean fetchSource) {
+		final PsqlGetIndexTemplateRequest request = new PsqlGetIndexTemplateRequest(this, index);
+		request.setFetchSource(fetchSource);
+		return request;
 	}
 
 	@Override
@@ -118,19 +121,32 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 		return results;
 	}
 
-	public IndexTemplate getIndexTemplate(String templateId) throws ElefanaException {
-		SqlRowSet rowSet = jdbcTemplate.queryForRowSet("SELECT * FROM elefana_index_template WHERE _template_id = ?",
-				templateId);
+	public IndexTemplate getIndexTemplate(String templateId, boolean fetchSource) throws ElefanaException {
+		final String query;
+
+		if(fetchSource) {
+			query = "SELECT * FROM elefana_index_template WHERE _template_id = ?";
+		} else {
+			query = "SELECT _index_pattern FROM elefana_index_template WHERE _template_id = ?";
+		}
+
+		SqlRowSet rowSet = jdbcTemplate.queryForRowSet(query, templateId);
 		if (!rowSet.next()) {
 			throw new NoSuchTemplateException(templateId);
 		}
 		try {
 			IndexTemplate result = new IndexTemplate(templateId);
-			result.setTemplate(rowSet.getString("_index_pattern"));
-			result.setStorage(JsonIterator.deserialize(rowSet.getString("_storage"), IndexStorageSettings.class));
-			result.setMappings(
-					JsonIterator.deserialize(rowSet.getString("_mappings"), new TypeLiteral<Map<String, Object>>() {
-					}));
+
+			if(fetchSource) {
+				result.setTemplate(rowSet.getString("_index_pattern"));
+				result.setStorage(JsonIterator.deserialize(rowSet.getString("_storage"), IndexStorageSettings.class));
+				result.setMappings(
+						JsonIterator.deserialize(rowSet.getString("_mappings"), new TypeLiteral<Map<String, Object>>() {
+						}));
+			} else {
+				result.setTemplate(rowSet.getString("_index_pattern"));
+				result.setMappings(new HashMap<String, Object>());
+			}
 			return result;
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);

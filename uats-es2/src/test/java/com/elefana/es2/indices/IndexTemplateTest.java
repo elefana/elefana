@@ -51,6 +51,11 @@ public class IndexTemplateTest {
 	public void testIndexTemplate() {
 		final String index = UUID.randomUUID().toString();
 		final String type = "test";
+
+		given().when().head("/_template/testIndexTemplate")
+				.then()
+				.log().all()
+				.statusCode(404);
 		
 		given()
 			.request()

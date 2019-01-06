@@ -19,6 +19,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -95,8 +96,10 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 	}
 
 	@Override
-	public GetRequest prepareGet(String index, String type, String id) {
-		return new PsqlGetRequest(this, index, type, id);
+	public GetRequest prepareGet(String index, String type, String id, boolean fetchSource) {
+		final PsqlGetRequest getRequest = new PsqlGetRequest(this, index, type, id);
+		getRequest.setFetchSource(fetchSource);
+		return getRequest;
 	}
 
 	@Override
@@ -130,30 +133,45 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 		return result;
 	}
 
-	public GetResponse get(String index, String type, String id) throws ElefanaException {
+	public GetResponse get(GetRequest getRequest) throws ElefanaException {
 		final GetResponse result = new GetResponse();
-		result.setIndex(index);
-		result.setType(type);
-		result.setId(id);
+		result.setIndex(getRequest.getIndex());
+		result.setType(getRequest.getType());
+		result.setId(getRequest.getId());
 
 		try {
-			final String queryTarget = indexUtils.getQueryTarget(index);
+			final String queryTarget = indexUtils.getQueryTarget(getRequest.getIndex());
 
 			SqlRowSet resultSet;
 			if (nodeSettingsService.isUsingCitus()) {
-				String query = "SELECT * FROM " + queryTarget + " WHERE _type = ? AND _id = ?";
-				resultSet = jdbcTemplate.queryForRowSet(query, type, id);
+				if(getRequest.isFetchSource()) {
+					String query = "SELECT * FROM " + queryTarget + " WHERE _type = ? AND _id = ?";
+					resultSet = jdbcTemplate.queryForRowSet(query, getRequest.getType(), getRequest.getId());
+				} else {
+					String query = "SELECT _timestamp FROM " + queryTarget + " WHERE _type = ? AND _id = ?";
+					resultSet = jdbcTemplate.queryForRowSet(query, getRequest.getType(), getRequest.getId());
+				}
 			} else {
-				String query = "SELECT * FROM " + queryTarget + " WHERE _index = ? AND _type = ? AND _id = ?";
-				resultSet = jdbcTemplate.queryForRowSet(query, index, type, id);
+				if(getRequest.isFetchSource()) {
+					String query = "SELECT * FROM " + queryTarget + " WHERE _index = ? AND _type = ? AND _id = ?";
+					resultSet = jdbcTemplate.queryForRowSet(query, getRequest.getIndex(), getRequest.getType(), getRequest.getId());
+				} else {
+					String query = "SELECT _timestamp FROM " + queryTarget + " WHERE _index = ? AND _type = ? AND _id = ?";
+					resultSet = jdbcTemplate.queryForRowSet(query, getRequest.getIndex(), getRequest.getType(), getRequest.getId());
+				}
 			}
 
 			if (resultSet.next()) {
 				result.setVersion(1);
 				result.setFound(true);
-				result.setSource(JsonIterator.deserialize(IndexUtils.psqlUnescapeString(resultSet.getString("_source")),
-						new TypeLiteral<Map<String, Object>>() {
-						}));
+
+				if(getRequest.isFetchSource()) {
+					result.setSource(JsonIterator.deserialize(IndexUtils.psqlUnescapeString(resultSet.getString("_source")),
+							new TypeLiteral<Map<String, Object>>() {
+							}));
+				} else {
+					result.setSource(new HashMap<String, Object>());
+				}
 			} else {
 				result.setFound(false);
 			}

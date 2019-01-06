@@ -26,7 +26,7 @@ public interface IndexTemplateService {
 	
 	public GetIndexTemplateForIndexRequest prepareGetIndexTemplateForIndex(String index);
 	
-	public GetIndexTemplateRequest prepareGetIndexTemplate(String templateId);
+	public GetIndexTemplateRequest prepareGetIndexTemplate(String templateId, boolean fetchSource);
 	
 	public PutIndexTemplateRequest preparePutIndexTemplate(String templateId, String requestBody);
 }

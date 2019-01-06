@@ -22,7 +22,7 @@ import com.elefana.api.document.MultiGetRequest;
 
 public interface DocumentService {
 
-	public GetRequest prepareGet(String index, String type, String id);
+	public GetRequest prepareGet(String index, String type, String id, boolean fetchSource);
 
 	public MultiGetRequest prepareMultiGet(String requestBody);
 

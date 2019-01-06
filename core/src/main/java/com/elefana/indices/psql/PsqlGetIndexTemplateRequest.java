@@ -29,7 +29,7 @@ public class PsqlGetIndexTemplateRequest extends GetIndexTemplateRequest {
 	@Override
 	public GetIndexTemplateResponse call() throws Exception {
 		GetIndexTemplateResponse result = new GetIndexTemplateResponse(getTemplateId());
-		result.setIndexTemplate(indexTemplateService.getIndexTemplate(getTemplateId()));
+		result.setIndexTemplate(indexTemplateService.getIndexTemplate(getTemplateId(), isFetchSource()));
 		return result;
 	}
 }

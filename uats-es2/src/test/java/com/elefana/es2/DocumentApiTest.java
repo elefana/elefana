@@ -80,6 +80,22 @@ public class DocumentApiTest extends DocumentedTest {
 		final String message = "This is a test";
 		indexWithId(id, message, System.currentTimeMillis());
 	}
+
+	@Test
+	public void testExists() {
+		final String id = UUID.randomUUID().toString();
+		final String message = "This is a test";
+
+		given().when().head("/" + INDEX + "/" + TYPE + "/" + id)
+				.then()
+				.statusCode(404);
+
+		indexWithId(id, message, System.currentTimeMillis());
+
+		given().when().get("/" + INDEX + "/" + TYPE + "/" + id)
+				.then()
+				.statusCode(200);
+	}
 	
 	@Test
 	public void testIndexWithEscapedJson() throws IOException {
