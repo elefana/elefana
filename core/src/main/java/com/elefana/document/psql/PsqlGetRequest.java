@@ -35,6 +35,6 @@ public class PsqlGetRequest extends GetRequest implements Callable<GetResponse> 
 
 	@Override
 	public GetResponse call() throws Exception {
-		return documentService.get(index, type, id);
+		return documentService.get(this);
 	}
 }

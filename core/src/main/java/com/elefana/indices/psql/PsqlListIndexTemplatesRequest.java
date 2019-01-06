@@ -50,7 +50,7 @@ public class PsqlListIndexTemplatesRequest extends ListIndexTemplatesRequest {
 			}
 		} else {
 			for(String templateId : templateIds) {
-				result.getTemplates().put(templateId, indexTemplateService.getIndexTemplate(templateId));
+				result.getTemplates().put(templateId, indexTemplateService.getIndexTemplate(templateId, true));
 			}
 		}
 		return result;
