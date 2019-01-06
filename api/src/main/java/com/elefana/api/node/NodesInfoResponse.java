@@ -34,11 +34,6 @@ public class NodesInfoResponse extends ApiResponse {
 		super(HttpResponseStatus.OK.code());
 	}
 
-	public NodesInfoResponse(String clusterName) {
-		super(HttpResponseStatus.OK.code());
-		this.clusterName = clusterName;
-	}
-
 	public String getClusterName() {
 		return clusterName;
 	}
