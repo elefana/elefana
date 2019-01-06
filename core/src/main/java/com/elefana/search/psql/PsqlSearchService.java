@@ -15,9 +15,7 @@
  ******************************************************************************/
 package com.elefana.search.psql;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -180,8 +178,13 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 	public SearchResponse search(String indexPattern, String typesPattern, String httpRequest) throws ElefanaException {
 		List<String> indices = indexPattern == null || indexPattern.isEmpty() ? indexUtils.listIndices()
 				: indexUtils.listIndicesForIndexPattern(indexPattern);
-		String[] types = typesPattern == null ? EMPTY_TYPES_LIST : typesPattern.split(",");
-		return internalSearch(indices, types, httpRequest);
+		final Set<String> types = new HashSet<String>();
+		if(typesPattern != null) {
+			for(String index : indices) {
+				types.addAll(indexFieldMappingService.getTypesForIndex(index, typesPattern));
+			}
+		}
+		return internalSearch(indices, types.toArray(EMPTY_TYPES_LIST), httpRequest);
 	}
 
 	private SearchResponse internalSearch(List<String> indices, String[] types, String httpRequest)
