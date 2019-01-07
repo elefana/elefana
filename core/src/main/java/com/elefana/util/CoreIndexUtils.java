@@ -205,9 +205,6 @@ public class CoreIndexUtils implements IndexUtils {
 		if (indexTemplate == null) {
 			return System.currentTimeMillis();
 		}
-		if (!indexTemplate.isTimeSeries()) {
-			return System.currentTimeMillis();
-		}
 		String timestampPath = indexTemplate.getStorage().getTimestampPath();
 		if (timestampPath == null) {
 			return System.currentTimeMillis();
