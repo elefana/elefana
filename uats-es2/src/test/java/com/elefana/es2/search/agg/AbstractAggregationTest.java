@@ -28,7 +28,7 @@ public class AbstractAggregationTest {
 	protected static final int RANDOM_SEED = 963845658;
 	protected static final int DOCUMENT_QUANTITY = 100;
 	protected static final int [] DOCUMENT_VALUES = generateValues();
-	protected static final long TIMEOUT = 60000L;
+	protected static final long TIMEOUT = 120000L;
 	
 	@Before
 	public void setup() {

@@ -48,7 +48,7 @@ import io.restassured.response.ValidatableResponse;
 public class DocumentApiTest extends DocumentedTest {
 	private static final String INDEX = UUID.randomUUID().toString();
 	private static final String TYPE = "test";
-	private static final long TEST_TIMEOUT = 20000L;
+	private static final long TEST_TIMEOUT = 30000L;
 	
 	@Before
 	public void setup() {
@@ -126,9 +126,20 @@ public class DocumentApiTest extends DocumentedTest {
 				.then()
 				.statusCode(200);
 
-		given().when().get("/" + INDEX + "/" + TYPE + "/" + id)
-				.then()
-				.statusCode(404);
+		final long startTime = System.currentTimeMillis();
+		int lastResponseCode = 0;
+		while(System.currentTimeMillis() - startTime < TEST_TIMEOUT) {
+			final ValidatableResponse response = given().when().get("/" + INDEX + "/" + TYPE + "/" + id)
+					.then();
+			lastResponseCode = response.extract().statusCode();
+			if(lastResponseCode == 404) {
+				return;
+			}
+			try {
+				Thread.sleep(500);
+			} catch (Exception e) {}
+		}
+		Assert.fail("Expected 404 response but received " + lastResponseCode);
 	}
 	
 	@Test
