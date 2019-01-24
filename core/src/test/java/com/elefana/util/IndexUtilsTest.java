@@ -18,6 +18,9 @@ package com.elefana.util;
 import java.io.IOException;
 import java.util.Scanner;
 
+import com.jsoniter.JsonIterator;
+import com.jsoniter.ValueType;
+import com.jsoniter.any.Any;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -55,6 +58,18 @@ public class IndexUtilsTest {
 		
 		Assert.assertEquals(expectedJson4, IndexUtils.psqlEscapeString(inputJson4));
 		Assert.assertEquals(expectedJson4, IndexUtils.psqlEscapeString(expectedJson4));
+
+		final String inputJson5 = "\\\"Nested\njson\\\"";
+		final String expectedJson5 = "\\\\\\\"Nested\\\\njson\\\\\\\"";
+
+		Assert.assertEquals(expectedJson5, IndexUtils.psqlEscapeString(inputJson5));
+		Assert.assertEquals(expectedJson5, IndexUtils.psqlEscapeString(expectedJson5));
+
+		final String inputJson6 = "\n";
+		final String expectedJson6 = "\\\\n";
+
+		Assert.assertEquals(expectedJson6, IndexUtils.psqlEscapeString(inputJson6));
+		Assert.assertEquals(expectedJson6, IndexUtils.psqlEscapeString(expectedJson6));
 	}
 	
 	@Test
@@ -88,6 +103,18 @@ public class IndexUtilsTest {
 		
 		Assert.assertEquals(expectedJson4, IndexUtils.psqlUnescapeString(inputJson4));
 		Assert.assertEquals(expectedJson4, IndexUtils.psqlUnescapeString(expectedJson4));
+
+		final String inputJson5 = "\\\\\\\"Nested\\\\njson\\\\\\\"";
+		final String expectedJson5 = "\\\"Nested\njson\\\"";
+
+		Assert.assertEquals(expectedJson5, IndexUtils.psqlUnescapeString(inputJson5));
+		Assert.assertEquals(expectedJson5, IndexUtils.psqlUnescapeString(expectedJson5));
+
+		final String inputJson6 = "\\\\n";
+		final String expectedJson6 = "\n";
+
+		Assert.assertEquals(expectedJson6, IndexUtils.psqlUnescapeString(inputJson6));
+		Assert.assertEquals(expectedJson6, IndexUtils.psqlUnescapeString(expectedJson6));
 	}
 
 	@Test
@@ -109,5 +136,13 @@ public class IndexUtilsTest {
 		expectedResult.append('}');
 
 		Assert.assertEquals(expectedResult.toString(), IndexUtils.flattenJson(json));
+	}
+
+	@Test
+	public void testFlattenJsonStringWithLineBreak() throws IOException {
+		final String json = "{\"str\":\"This a value with a \n line break\"}";
+		final String result = IndexUtils.flattenJson(json);
+		final Any any = JsonIterator.deserialize(result);
+		Assert.assertEquals(ValueType.STRING, any.get("str").valueType());
 	}
 }

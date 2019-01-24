@@ -97,47 +97,57 @@ public interface IndexUtils {
 	 * @return The escaped JSON string
 	 */
 	public static String psqlEscapeString(String json) {
-		if(!json.contains("\\\"")) {
+		if(!json.contains("\\\"") && !json.contains("\n")) {
 			return json;
 		}
-		for(int i = 0; i < json.length() - 1; i++) {
-			if(json.charAt(i) != '\\') {
-				continue;
-			}
-			switch(json.charAt(i + 1)) {
+		for(int i = 0; i < json.length(); i++) {
+			switch(json.charAt(i)) {
 			case '\\':
-				if(i + 2 >= json.length()) {
-					continue;
-				}
-				switch(json.charAt(i + 2)) {
+				switch(json.charAt(i + 1)) {
 				case '\\':
-					if(i + 3 >= json.length()) {
+					if(i + 2 >= json.length()) {
 						continue;
 					}
-					switch(json.charAt(i + 3)) {
-					case '\"':
-						i += 3;
-						continue;
+					switch(json.charAt(i + 2)) {
+					case '\\':
+						if(i + 3 >= json.length()) {
+							continue;
+						}
+						switch(json.charAt(i + 3)) {
+						case '\"':
+							i += 3;
+							continue;
+						}
+						break;
 					}
 					break;
+				case '\"':
+					json = json.substring(0, i) + "\\\\\\\"" + json.substring(i + 2);
+					i += 3;
+					break;
+				default:
+					continue;
 				}
 				break;
-			case '\"':
-				json = json.substring(0, i) + "\\\\\\\"" + json.substring(i + 2);
-				i += 3;
+			case '\n':
+				if(i == 0) {
+					json = "\\\\n" + json.substring(i + 1);
+					i += 3;
+				} else {
+					json = json.substring(0, i) + "\\\\n" + json.substring(i + 1);
+					i += 3;
+				}
 				break;
-			default:
-				continue;
 			}
 		}
 		return json;
 	}
 	
 	public static String psqlUnescapeString(String json) {
-		if(!json.contains("\\\"")) {
+		if(!json.contains("\\\"") && !json.contains("\\\\n")) {
 			return json;
 		}
-		for(int i = 0; i < json.length() - 1; i++) {
+		for(int i = 0; i < json.length(); i++) {
 			if(json.charAt(i) != '\\') {
 				continue;
 			}
@@ -155,6 +165,13 @@ public interface IndexUtils {
 					case '\"':
 						json = json.substring(0, i) + json.substring(i + 2);
 						continue;
+					}
+					break;
+				case 'n':
+					if(i > 0) {
+						json = json.substring(0, i) + '\n' + json.substring(i + 3);
+					} else {
+						json = '\n' + json.substring(i + 3);
 					}
 					break;
 				}

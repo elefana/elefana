@@ -65,7 +65,7 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 	private static final String PROCESSOR_THREAD_PREFIX = THREAD_PREFIX + "processor" + "-";
 
 	private static final String OPERATION_INDEX = "index";
-	private static final String NEW_LINE = "\n";
+	private static final String NEW_LINE = "\\}(\\s)*\n";
 
 	public static final int MINIMUM_BULK_SIZE = 250;
 	
@@ -137,8 +137,10 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 					break;
 				}
 				try {
-					Any operation = JsonIterator.deserialize(lines[i]);
+					final String line = lines[i] + "}";
+					Any operation = JsonIterator.deserialize(line);
 					if (!operation.get(OPERATION_INDEX).valueType().equals(ValueType.INVALID)) {
+						final String sourceLine = lines[i + 1] + "}";
 						Any indexOperationTarget = operation.get(OPERATION_INDEX);
 
 						BulkIndexOperation indexOperation = BulkIndexOperation.allocate();
@@ -146,9 +148,9 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 						indexOperation.setType(indexOperationTarget.get(BulkTask.KEY_TYPE).toString());
 
 						if(nodeSettingsService.isFlattenJson()) {
-							indexOperation.setSource(IndexUtils.flattenJson(lines[i + 1]));
+							indexOperation.setSource(IndexUtils.flattenJson(sourceLine));
 						} else {
-							indexOperation.setSource(lines[i + 1]);
+							indexOperation.setSource(sourceLine);
 						}
 
 						indexOperation.setTimestamp(
@@ -167,12 +169,12 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 						indexOperations.get(indexOperation.getIndex()).add(indexOperation);
 					} else {
 						bulkApiResponse.setErrors(true);
-						LOGGER.error("Invalid JSON at line number " + (i + 1) + ": " + lines[i]);
+						LOGGER.error("Invalid JSON at line number " + (i + 1) + ": " + line);
 						break;
 					}
 					// TODO: Handle other operations
 				} catch (JsonException e) {
-					LOGGER.error("Error parsing JSON at line number " + (i + 1) + ": " + lines[i] + " - " + e.getMessage(), e);
+					LOGGER.error("Error parsing JSON at line number " + (i + 1) + ": " + lines[i] + "} - " + e.getMessage(), e);
 					bulkApiResponse.setErrors(true);
 				}
 			}

@@ -136,6 +136,45 @@ public class BulkApiTest {
 		}
 		Assert.fail("Expected " + totalDocuments + " documents, found " + result);
 	}
+
+	@Test
+	public void testBulkIndexingWithLineBreakContent() {
+		final int totalDocuments = RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE * 2);
+		final String index = "message-logs-" + UUID.randomUUID().toString();
+		final String type = "test";
+
+		given()
+				.request()
+				.body(generateBulkRequestWithLineBreak(index, type, totalDocuments))
+				.when().
+				post("/_bulk")
+				.then()
+				.statusCode(200)
+				.body("errors", equalTo(false))
+				.body("items.size()", equalTo(totalDocuments));
+
+		final long startTime = System.currentTimeMillis();
+		int result = 0;
+
+		while(System.currentTimeMillis() - startTime < BULK_INDEX_TIMEOUT) {
+			ValidatableResponse response = given()
+					.request()
+					.body("{\"query\":{\"match_all\":{}}, \"size\":" + totalDocuments + "}")
+					.when()
+					.post("/" + index + "/_search")
+					.then()
+					.statusCode(200);
+			result = response.extract().body().jsonPath().getInt("hits.total");
+			if(result == totalDocuments) {
+				return;
+			}
+
+			try {
+				Thread.sleep(100);
+			} catch (Exception e) {}
+		}
+		Assert.fail("Expected " + totalDocuments + " documents, found " + result);
+	}
 	
 	@Test
 	public void testBulkIndexingWithInvalidData() {
@@ -254,6 +293,16 @@ public class BulkApiTest {
 		for(int i = 0; i < totalDocuments; i++) {
 			result.append("{\"index\": { \"_index\" : \"" + index + "\", \"_type\" : \"" + type + "\" }}\n");
 			result.append("{ \"field\" : \"{\\\"key\\\":\\\"value\\\"}\" }\n");
+		}
+		return result.toString();
+	}
+
+	private String generateBulkRequestWithLineBreak(String index, String type, int totalDocuments) {
+		StringBuilder result = new StringBuilder();
+
+		for(int i = 0; i < totalDocuments; i++) {
+			result.append("{\"index\": { \"_index\" : \"" + index + "\", \"_type\" : \"" + type + "\" }}\n");
+			result.append("{ \"field\" : \"This has a \nline break.\" }\n");
 		}
 		return result.toString();
 	}
