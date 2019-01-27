@@ -97,9 +97,6 @@ public interface IndexUtils {
 	 * @return The escaped JSON string
 	 */
 	public static String psqlEscapeString(String json) {
-		if(!json.contains("\\\"") && !json.contains("\n")) {
-			return json;
-		}
 		for(int i = 0; i < json.length(); i++) {
 			switch(json.charAt(i)) {
 			case '\\':
@@ -115,7 +112,7 @@ public interface IndexUtils {
 						}
 						switch(json.charAt(i + 3)) {
 						case '\"':
-							i += 3;
+							i += 2;
 							continue;
 						}
 						break;
@@ -123,7 +120,7 @@ public interface IndexUtils {
 					break;
 				case '\"':
 					json = json.substring(0, i) + "\\\\\\\"" + json.substring(i + 2);
-					i += 3;
+					i += 2;
 					break;
 				default:
 					continue;
@@ -132,10 +129,46 @@ public interface IndexUtils {
 			case '\n':
 				if(i == 0) {
 					json = "\\\\n" + json.substring(i + 1);
-					i += 3;
+					i += 2;
 				} else {
 					json = json.substring(0, i) + "\\\\n" + json.substring(i + 1);
-					i += 3;
+					i += 2;
+				}
+				break;
+			case '\r':
+				if(i == 0) {
+					json = "\\\\r" + json.substring(i + 1);
+					i += 2;
+				} else {
+					json = json.substring(0, i) + "\\\\r" + json.substring(i + 1);
+					i += 2;
+				}
+				break;
+			case '\t':
+				if(i == 0) {
+					json = "\\\\t" + json.substring(i + 1);
+					i += 2;
+				} else {
+					json = json.substring(0, i) + "\\\\t" + json.substring(i + 1);
+					i += 2;
+				}
+				break;
+			case '\f':
+				if(i == 0) {
+					json = "\\\\f" + json.substring(i + 1);
+					i += 2;
+				} else {
+					json = json.substring(0, i) + "\\\\f" + json.substring(i + 1);
+					i += 2;
+				}
+				break;
+			case '\b':
+				if(i == 0) {
+					json = "\\\\b" + json.substring(i + 1);
+					i += 2;
+				} else {
+					json = json.substring(0, i) + "\\\\b" + json.substring(i + 1);
+					i += 2;
 				}
 				break;
 			}
@@ -144,9 +177,6 @@ public interface IndexUtils {
 	}
 	
 	public static String psqlUnescapeString(String json) {
-		if(!json.contains("\\\"") && !json.contains("\\\\n")) {
-			return json;
-		}
 		for(int i = 0; i < json.length(); i++) {
 			if(json.charAt(i) != '\\') {
 				continue;
@@ -172,6 +202,34 @@ public interface IndexUtils {
 						json = json.substring(0, i) + '\n' + json.substring(i + 3);
 					} else {
 						json = '\n' + json.substring(i + 3);
+					}
+					break;
+				case 'r':
+					if(i > 0) {
+						json = json.substring(0, i) + '\r' + json.substring(i + 3);
+					} else {
+						json = '\r' + json.substring(i + 3);
+					}
+					break;
+				case 't':
+					if(i > 0) {
+						json = json.substring(0, i) + '\t' + json.substring(i + 3);
+					} else {
+						json = '\t' + json.substring(i + 3);
+					}
+					break;
+				case 'f':
+					if(i > 0) {
+						json = json.substring(0, i) + '\f' + json.substring(i + 3);
+					} else {
+						json = '\f' + json.substring(i + 3);
+					}
+					break;
+				case 'b':
+					if(i > 0) {
+						json = json.substring(0, i) + '\b' + json.substring(i + 3);
+					} else {
+						json = '\b' + json.substring(i + 3);
 					}
 					break;
 				}

@@ -70,6 +70,36 @@ public class IndexUtilsTest {
 
 		Assert.assertEquals(expectedJson6, IndexUtils.psqlEscapeString(inputJson6));
 		Assert.assertEquals(expectedJson6, IndexUtils.psqlEscapeString(expectedJson6));
+
+		final String inputJson7 = "Nested\rjson";
+		final String expectedJson7 = "Nested\\\\rjson";
+
+		Assert.assertEquals(expectedJson7, IndexUtils.psqlEscapeString(inputJson7));
+		Assert.assertEquals(expectedJson7, IndexUtils.psqlEscapeString(expectedJson7));
+
+		final String inputJson8 = "Nested\r\njson";
+		final String expectedJson8 = "Nested\\\\r\\\\njson";
+
+		Assert.assertEquals(expectedJson8, IndexUtils.psqlEscapeString(inputJson8));
+		Assert.assertEquals(expectedJson8, IndexUtils.psqlEscapeString(expectedJson8));
+
+		final String inputJson9 = "Nested\tjson";
+		final String expectedJson9 = "Nested\\\\tjson";
+
+		Assert.assertEquals(expectedJson9, IndexUtils.psqlEscapeString(inputJson9));
+		Assert.assertEquals(expectedJson9, IndexUtils.psqlEscapeString(expectedJson9));
+
+		final String inputJson10 = "Nested\fjson";
+		final String expectedJson10 = "Nested\\\\fjson";
+
+		Assert.assertEquals(expectedJson10, IndexUtils.psqlEscapeString(inputJson10));
+		Assert.assertEquals(expectedJson10, IndexUtils.psqlEscapeString(expectedJson10));
+
+		final String inputJson11 = "Nested\bjson";
+		final String expectedJson11 = "Nested\\\\bjson";
+
+		Assert.assertEquals(expectedJson11, IndexUtils.psqlEscapeString(inputJson11));
+		Assert.assertEquals(expectedJson11, IndexUtils.psqlEscapeString(expectedJson11));
 	}
 	
 	@Test
@@ -115,6 +145,36 @@ public class IndexUtilsTest {
 
 		Assert.assertEquals(expectedJson6, IndexUtils.psqlUnescapeString(inputJson6));
 		Assert.assertEquals(expectedJson6, IndexUtils.psqlUnescapeString(expectedJson6));
+
+		final String inputJson7 = "Nested\\\\rjson";
+		final String expectedJson7 = "Nested\rjson";
+
+		Assert.assertEquals(expectedJson7, IndexUtils.psqlUnescapeString(inputJson7));
+		Assert.assertEquals(expectedJson7, IndexUtils.psqlUnescapeString(expectedJson7));
+
+		final String inputJson8 = "Nested\\\\r\\\\njson";
+		final String expectedJson8 = "Nested\r\njson";
+
+		Assert.assertEquals(expectedJson8, IndexUtils.psqlUnescapeString(inputJson8));
+		Assert.assertEquals(expectedJson8, IndexUtils.psqlUnescapeString(expectedJson8));
+
+		final String inputJson9 = "Nested\\\\tjson";
+		final String expectedJson9 = "Nested\tjson";
+
+		Assert.assertEquals(expectedJson9, IndexUtils.psqlUnescapeString(inputJson9));
+		Assert.assertEquals(expectedJson9, IndexUtils.psqlUnescapeString(expectedJson9));
+
+		final String inputJson10 = "Nested\\\\fjson";
+		final String expectedJson10 = "Nested\fjson";
+
+		Assert.assertEquals(expectedJson10, IndexUtils.psqlUnescapeString(inputJson10));
+		Assert.assertEquals(expectedJson10, IndexUtils.psqlUnescapeString(expectedJson10));
+
+		final String inputJson11 = "Nested\\\\bjson";
+		final String expectedJson11 = "Nested\bjson";
+
+		Assert.assertEquals(expectedJson11, IndexUtils.psqlUnescapeString(inputJson11));
+		Assert.assertEquals(expectedJson11, IndexUtils.psqlUnescapeString(expectedJson11));
 	}
 
 	@Test
