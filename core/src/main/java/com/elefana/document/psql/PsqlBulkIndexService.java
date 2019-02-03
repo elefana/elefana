@@ -15,6 +15,7 @@
  ******************************************************************************/
 package com.elefana.document.psql;
 
+import java.io.File;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -78,12 +79,20 @@ public class PsqlBulkIndexService implements Runnable {
 	private BlockingQueue<String> indexQueue;
 	private ExecutorService executorService;
 
+	private File tmpDirectory;
+
 	@PostConstruct
 	public void postConstruct() {
 		duplicateKeyCounter = metricRegistry.counter(MetricRegistry.name("bulk", "key", "duplicates"));
 		
 		final int totalThreads = Math.max(2, environment.getProperty("elefana.service.bulk.index.threads",
 				Integer.class, Runtime.getRuntime().availableProcessors()));
+		final String tmpDirectoryPath = environment.getProperty("elefana.service.bulk.ingest.dir",
+				System.getProperty("java.io.tmpdir"));
+		tmpDirectory = new File(tmpDirectoryPath);
+		if(!tmpDirectory.exists()) {
+			tmpDirectory.mkdirs();
+		}
 
 		indexQueue = new ArrayBlockingQueue<String>(totalThreads);
 		executorService = Executors.newFixedThreadPool(totalThreads);
@@ -261,13 +270,13 @@ public class PsqlBulkIndexService implements Runnable {
 	}
 
 	private void mergeStagingTableIntoPartitionTable(Connection connection, String bulkIngestTable, String targetTable) throws IOException, SQLException {
-		String tmpFile = "/tmp/elefana-idx-" + targetTable + "-" + System.nanoTime() + ".tmp";
+		String tmpFile = new File(tmpDirectory,  "elefana-idx-" + targetTable + "-" + System.nanoTime() + ".tmp").getAbsolutePath();
 
-		PreparedStatement preparedStatement = connection.prepareStatement("COPY " + bulkIngestTable + " TO '" + tmpFile + "' WITH BINARY");
+		PreparedStatement preparedStatement = connection.prepareStatement("COPY " + bulkIngestTable + " TO '" + tmpFile + "' WITH BINARY ENCODING 'UTF8'");
 		preparedStatement.execute();
 		preparedStatement.close();
 
-		preparedStatement = connection.prepareStatement("COPY " + targetTable + " FROM '" + tmpFile + "' WITH BINARY");
+		preparedStatement = connection.prepareStatement("COPY " + targetTable + " FROM '" + tmpFile + "' WITH BINARY ENCODING 'UTF8'");
 		preparedStatement.execute();
 		preparedStatement.close();
 
