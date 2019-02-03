@@ -10,6 +10,7 @@
     <appender name="LOGFILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
 	    <file>${LOG_PATH}/elefana.log</file>
 	    <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+			<charset>UTF-8</charset>
 	        <Pattern>%d{dd-MM-yyyy HH:mm:ss.SSS} [%thread] %-5level %logger{36}.%M - %msg%n</Pattern>
 	    </encoder>
 		<rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
@@ -20,7 +21,7 @@
 		</rollingPolicy>
 	</appender>
 
-    <root level="INFO">
+	<root level="INFO">
         <appender-ref ref="LOGFILE"/>
     </root>
 

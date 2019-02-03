@@ -15,6 +15,7 @@
  ******************************************************************************/
 package com.elefana.document;
 
+import java.nio.charset.Charset;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -27,6 +28,7 @@ import com.elefana.api.document.DocumentShardInfo;
 import org.postgresql.copy.CopyIn;
 import org.postgresql.copy.CopyManager;
 import org.postgresql.jdbc.PgConnection;
+import org.postgresql.util.PSQLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -45,8 +47,10 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 	private static final String FALLBACK_STAGING_TABLE_PREFIX = "elefana_fallback_stg_";
 	private static int FALLBACK_STAGING_TABLE_ID = 0;
 
-	private static final String DELIMITER = "|";
+	private static final String DELIMITER_INIT = "e'\\x1f'";
+	private static final String DELIMITER = Character.toString((char) 31);
 	private static final String NEW_LINE = "\n";
+	private static final Charset CHARSET = Charset.forName("UTF-8");
 
 	public static final String KEY_INDEX = "_index";
 	public static final String KEY_TYPE = "_type";
@@ -137,9 +141,10 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 			final CopyManager copyManager = new CopyManager(pgConnection);
 
 			Timer.Context timer = psqlTimer.time();
+			final StringBuilder csv = new StringBuilder();
 			try {
 				CopyIn copyIn = copyManager
-						.copyIn("COPY " + stagingTable + " FROM STDIN WITH DELIMITER '" + DELIMITER + "'");
+						.copyIn("COPY " + stagingTable + " FROM STDIN WITH ENCODING 'UTF8' DELIMITER " + DELIMITER_INIT + "");
 
 				for (int i = from; i < from + size && i < indexOperations.size(); i++) {
 					BulkIndexOperation indexOperation = indexOperations.get(i);
@@ -151,16 +156,25 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 							- (indexOperation.getTimestamp() % ONE_HOUR_IN_MILLIS);
 					final long bucket1d = indexOperation.getTimestamp()
 							- (indexOperation.getTimestamp() % ONE_DAY_IN_MILLIS);
+					final String escapedJson = IndexUtils.psqlEscapeString(indexOperation.getSource());
+					if (escapedJson.contains("\n")) {
+						throw new Exception("Escape error: Received: " + indexOperation.getSource() + " - Produced: " + escapedJson);
+					}
 
 					final String row = indexOperation.getIndex() + DELIMITER + indexOperation.getType() + DELIMITER
 							+ indexOperation.getId() + DELIMITER + indexOperation.getTimestamp() + DELIMITER + bucket1s
 							+ DELIMITER + bucket1m + DELIMITER + bucket1h + DELIMITER + bucket1d + DELIMITER
-							+ IndexUtils.psqlEscapeString(indexOperation.getSource()) + NEW_LINE;
-					final byte[] rowBytes = row.getBytes();
+							+ escapedJson + NEW_LINE;
+					csv.append(row);
+					final byte[] rowBytes = row.getBytes(CHARSET);
 					copyIn.writeToCopy(rowBytes, 0, rowBytes.length);
 				}
 				copyIn.endCopy();
 				timer.stop();
+			} catch (PSQLException e) {
+				LOGGER.error(csv.toString());
+				timer.stop();
+				throw e;
 			} catch (Exception e) {
 				timer.stop();
 				throw e;

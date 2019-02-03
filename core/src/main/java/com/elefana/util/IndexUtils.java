@@ -99,6 +99,10 @@ public interface IndexUtils {
 	public static String psqlEscapeString(String json) {
 		for(int i = 0; i < json.length(); i++) {
 			switch(json.charAt(i)) {
+			case 0x00:
+				json = json.substring(0, i) + json.substring(i + 1);
+				i -= 1;
+				break;
 			case '\\':
 				switch(json.charAt(i + 1)) {
 				case '\\':
@@ -126,6 +130,7 @@ public interface IndexUtils {
 					continue;
 				}
 				break;
+			case 0x85:
 			case '\n':
 				if(i == 0) {
 					json = "\\\\n" + json.substring(i + 1);
@@ -197,6 +202,7 @@ public interface IndexUtils {
 						continue;
 					}
 					break;
+				case 0x85:
 				case 'n':
 					if(i > 0) {
 						json = json.substring(0, i) + '\n' + json.substring(i + 3);
