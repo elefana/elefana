@@ -19,9 +19,16 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.Mockito.when;
 
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 
+import com.jsoniter.JsonIterator;
+import com.jsoniter.any.Any;
+import io.restassured.config.DecoderConfig;
+import io.restassured.config.EncoderConfig;
 import io.restassured.response.ValidatableResponse;
 import org.junit.Assert;
 import org.junit.Before;
@@ -48,6 +55,8 @@ public class BulkApiTest {
 	
 	@Before
 	public void setup() {
+		RestAssured.config = RestAssured.config().encoderConfig(EncoderConfig.encoderConfig().defaultContentCharset("UTF-8")).
+				decoderConfig(DecoderConfig.decoderConfig().defaultContentCharset("UTF-8"));
 		RestAssured.baseURI = "http://localhost:9201";
 	}
 
@@ -166,6 +175,7 @@ public class BulkApiTest {
 					.statusCode(200);
 			result = response.extract().body().jsonPath().getInt("hits.total");
 			if(result == totalDocuments) {
+				validateBulkResponseWithLineBreak(response.extract().asString());
 				return;
 			}
 
@@ -185,6 +195,7 @@ public class BulkApiTest {
 		given()
 				.request()
 				.body(generateBulkRequestWithArabicAndLineBreak(index, type, totalDocuments))
+				.log().all()
 				.when().
 				post("/_bulk")
 				.then()
@@ -205,6 +216,8 @@ public class BulkApiTest {
 					.statusCode(200);
 			result = response.extract().body().jsonPath().getInt("hits.total");
 			if(result == totalDocuments) {
+				response.log().all();
+				validateBulkResponseWithArabicAndLineBreak(response.extract().asString());
 				return;
 			}
 
@@ -244,6 +257,8 @@ public class BulkApiTest {
 					.statusCode(200);
 			result = response.extract().body().jsonPath().getInt("hits.total");
 			if(result == totalDocuments) {
+				response.log().all();
+				validateBulkResponseWithPipe(response.extract().asString());
 				return;
 			}
 
@@ -283,6 +298,7 @@ public class BulkApiTest {
 					.statusCode(200);
 			result = response.extract().body().jsonPath().getInt("hits.total");
 			if(result == totalDocuments) {
+				validateBulkResponseWithCarriageReturn(response.extract().asString());
 				return;
 			}
 
@@ -322,6 +338,7 @@ public class BulkApiTest {
 					.statusCode(200);
 			result = response.extract().body().jsonPath().getInt("hits.total");
 			if(result == totalDocuments) {
+				validateBulkResponseWithCarriageReturnAndLineBreak(response.extract().asString());
 				return;
 			}
 
@@ -361,6 +378,7 @@ public class BulkApiTest {
 					.statusCode(200);
 			result = response.extract().body().jsonPath().getInt("hits.total");
 			if(result == totalDocuments) {
+				validateBulkResponseWithTab(response.extract().asString());
 				return;
 			}
 
@@ -462,6 +480,7 @@ public class BulkApiTest {
 					.statusCode(200);
 			result = response.extract().body().jsonPath().getInt("hits.total");
 			if(result == totalDocuments) {
+				validateBulkResponseWithJsonString(response.extract().asString());
 				return;
 			}
 
@@ -492,6 +511,13 @@ public class BulkApiTest {
 		return result.toString();
 	}
 
+	private void validateBulkResponseWithJsonString(String responseBody) {
+		final List<Any> docs = JsonIterator.deserialize(responseBody).get("hits").get("hits").asList();
+		for(int i = 0; i < docs.size(); i++) {
+			Assert.assertEquals("{\\\"key\\\":\\\"value\\\"}", docs.get(i).get("_source").get("field").toString());
+		}
+	}
+
 	private String generateBulkRequestWithLineBreak(String index, String type, int totalDocuments) {
 		StringBuilder result = new StringBuilder();
 
@@ -502,6 +528,14 @@ public class BulkApiTest {
 		return result.toString();
 	}
 
+	private void validateBulkResponseWithLineBreak(String responseBody) {
+		final List<Any> docs = JsonIterator.deserialize(responseBody).get("hits").get("hits").asList();
+		for(int i = 0; i < docs.size(); i++) {
+			Assert.assertEquals("This has a \nline break.", docs.get(i).get("_source").get("field").toString());
+		}
+	}
+
+
 	private String generateBulkRequestWithArabicAndLineBreak(String index, String type, int totalDocuments) {
 		StringBuilder result = new StringBuilder();
 
@@ -509,7 +543,15 @@ public class BulkApiTest {
 			result.append("{\"index\": { \"_index\" : \"" + index + "\", \"_type\" : \"" + type + "\" }}\n");
 			result.append("{ \"field\" : \"مناقشة سبل استخدام يونكود في النظ\r\n القائمة وفيما يخص التطبيقات ال\" }\n");
 		}
+		System.err.println(new String(result.toString().getBytes(Charset.forName("UTF-8")), Charset.forName("UTF-8")));
 		return result.toString();
+	}
+
+	private void validateBulkResponseWithArabicAndLineBreak(String responseBody) {
+		final List<Any> docs = JsonIterator.deserialize(responseBody).get("hits").get("hits").asList();
+		for(int i = 0; i < docs.size(); i++) {
+			Assert.assertEquals("مناقشة سبل استخدام يونكود في النظ\r\n القائمة وفيما يخص التطبيقات ال", docs.get(i).get("_source").get("field").toString());
+		}
 	}
 
 	private String generateBulkRequestWithPipe(String index, String type, int totalDocuments) {
@@ -522,6 +564,13 @@ public class BulkApiTest {
 		return result.toString();
 	}
 
+	private void validateBulkResponseWithPipe(String responseBody) {
+		final List<Any> docs = JsonIterator.deserialize(responseBody).get("hits").get("hits").asList();
+		for(int i = 0; i < docs.size(); i++) {
+			Assert.assertEquals("مناقشة سبل استخدام يونكود في النظ| القائمة وفيما يخص التطبيقات ال", docs.get(i).get("_source").get("field").toString());
+		}
+	}
+
 	private String generateBulkRequestWithCarriageReturn(String index, String type, int totalDocuments) {
 		StringBuilder result = new StringBuilder();
 
@@ -530,6 +579,13 @@ public class BulkApiTest {
 			result.append("{ \"field\" : \"This has a \rcarriage return.\" }\n");
 		}
 		return result.toString();
+	}
+
+	private void validateBulkResponseWithCarriageReturn(String responseBody) {
+		final List<Any> docs = JsonIterator.deserialize(responseBody).get("hits").get("hits").asList();
+		for(int i = 0; i < docs.size(); i++) {
+			Assert.assertEquals("This has a \rcarriage return.", docs.get(i).get("_source").get("field").toString());
+		}
 	}
 
 	private String generateBulkRequestWithCarriageReturnAndLineBreak(String index, String type, int totalDocuments) {
@@ -542,6 +598,13 @@ public class BulkApiTest {
 		return result.toString();
 	}
 
+	private void validateBulkResponseWithCarriageReturnAndLineBreak(String responseBody) {
+		final List<Any> docs = JsonIterator.deserialize(responseBody).get("hits").get("hits").asList();
+		for(int i = 0; i < docs.size(); i++) {
+			Assert.assertEquals("This has a \r\ncarriage return and line break.", docs.get(i).get("_source").get("field").toString());
+		}
+	}
+
 	private String generateBulkRequestWithTab(String index, String type, int totalDocuments) {
 		StringBuilder result = new StringBuilder();
 
@@ -550,5 +613,12 @@ public class BulkApiTest {
 			result.append("{ \"field\" : \"This has a \ttab.\" }\n");
 		}
 		return result.toString();
+	}
+
+	private void validateBulkResponseWithTab(String responseBody) {
+		final List<Any> docs = JsonIterator.deserialize(responseBody).get("hits").get("hits").asList();
+		for(int i = 0; i < docs.size(); i++) {
+			Assert.assertEquals("This has a \ttab.", docs.get(i).get("_source").get("field").toString());
+		}
 	}
 }

@@ -49,6 +49,8 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 
 	private static final String DELIMITER_INIT = "e'\\x1f'";
 	private static final String DELIMITER = Character.toString((char) 31);
+	private static final String ESCAPE_INIT = "e'\\x1e'";
+	private static final String ESCAPE = Character.toString((char) 30);
 	private static final String NEW_LINE = "\n";
 	private static final Charset CHARSET = Charset.forName("UTF-8");
 
@@ -140,11 +142,11 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 			final PgConnection pgConnection = connection.unwrap(PgConnection.class);
 			final CopyManager copyManager = new CopyManager(pgConnection);
 
-			Timer.Context timer = psqlTimer.time();
-			final StringBuilder csv = new StringBuilder();
+			final Timer.Context timer = psqlTimer.time();
+
 			try {
 				CopyIn copyIn = copyManager
-						.copyIn("COPY " + stagingTable + " FROM STDIN WITH ENCODING 'UTF8' DELIMITER " + DELIMITER_INIT + "");
+						.copyIn("COPY " + stagingTable + " FROM STDIN WITH CSV ENCODING 'UTF8' DELIMITER " + DELIMITER_INIT + " QUOTE " + ESCAPE_INIT);
 
 				for (int i = from; i < from + size && i < indexOperations.size(); i++) {
 					BulkIndexOperation indexOperation = indexOperations.get(i);
@@ -157,22 +159,36 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 					final long bucket1d = indexOperation.getTimestamp()
 							- (indexOperation.getTimestamp() % ONE_DAY_IN_MILLIS);
 					final String escapedJson = IndexUtils.psqlEscapeString(indexOperation.getSource());
-					if (escapedJson.contains("\n")) {
-						throw new Exception("Escape error: Received: " + indexOperation.getSource() + " - Produced: " + escapedJson);
-					}
 
-					final String row = indexOperation.getIndex() + DELIMITER + indexOperation.getType() + DELIMITER
-							+ indexOperation.getId() + DELIMITER + indexOperation.getTimestamp() + DELIMITER + bucket1s
-							+ DELIMITER + bucket1m + DELIMITER + bucket1h + DELIMITER + bucket1d + DELIMITER
-							+ escapedJson + NEW_LINE;
-					csv.append(row);
-					final byte[] rowBytes = row.getBytes(CHARSET);
+					final StringBuilder rowBuilder = new StringBuilder();
+					rowBuilder.append(indexOperation.getIndex());
+					rowBuilder.append(DELIMITER);
+					rowBuilder.append(indexOperation.getType());
+					rowBuilder.append(DELIMITER);
+					rowBuilder.append(indexOperation.getId());
+					rowBuilder.append(DELIMITER);
+					rowBuilder.append(indexOperation.getTimestamp());
+					rowBuilder.append(DELIMITER);
+					rowBuilder.append(bucket1s);
+					rowBuilder.append(DELIMITER);
+					rowBuilder.append(bucket1m);
+					rowBuilder.append(DELIMITER);
+					rowBuilder.append(bucket1h);
+					rowBuilder.append(DELIMITER);
+					rowBuilder.append(bucket1d);
+					rowBuilder.append(DELIMITER);
+					rowBuilder.append(ESCAPE);
+					rowBuilder.append(escapedJson);
+					rowBuilder.append(ESCAPE);
+					rowBuilder.append(NEW_LINE);
+
+					LOGGER.info(rowBuilder.toString());
+					final byte[] rowBytes = rowBuilder.toString().getBytes(CHARSET);
 					copyIn.writeToCopy(rowBytes, 0, rowBytes.length);
 				}
 				copyIn.endCopy();
 				timer.stop();
 			} catch (PSQLException e) {
-				LOGGER.error(csv.toString());
 				timer.stop();
 				throw e;
 			} catch (Exception e) {

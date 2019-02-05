@@ -49,8 +49,11 @@ import io.netty.handler.codec.http.HttpUtil;
 public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 	private static final Logger LOGGER = LoggerFactory.getLogger(HttpRouter.class);
 
-	private static final String CONTENT_TYPE = "Content-Type";
-	private static final String APPLICATION_JSON = "application/json";
+	private static final String HEADER_CONTENT_TYPE = "Content-Type";
+	private static final String HEADER_VALUE_APPLICATION_JSON = "application/json";
+	private static final String HEADER_CHARSET = "charset";
+	private static final String HEADER_VALUE_UTF8 = "utf-8";
+	private static final Charset CHARSET = Charset.forName("UTF-8");
 
 	private final ApiRouter apiRouter;
 	private final Counter httpConnections;
@@ -142,8 +145,9 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 
 	private FullHttpResponse createResponse(FullHttpRequest request, HttpResponseStatus status, String content) {
 		final FullHttpResponse result = new DefaultFullHttpResponse(request.getProtocolVersion(), status,
-				Unpooled.wrappedBuffer(content.getBytes()));
-		result.headers().set(CONTENT_TYPE, APPLICATION_JSON);
+				Unpooled.wrappedBuffer(content.getBytes(CHARSET)));
+		result.headers().set(HEADER_CHARSET, HEADER_VALUE_UTF8);
+		result.headers().set(HEADER_CONTENT_TYPE, HEADER_VALUE_APPLICATION_JSON);
 
 		if (HttpUtil.isKeepAlive(request)) {
 			HttpUtil.setKeepAlive(result, true);

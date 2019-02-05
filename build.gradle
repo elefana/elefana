@@ -50,7 +50,7 @@ subprojects {
 		metricsVersion = '4.0.3'
 		nativesLoaderVersion = '1.0.0'
 		nettyVersion = '4.1.31.Final'
-		restAssuredVersion = '3.0.6'
+		restAssuredVersion = '3.1.1'
 		stringSearchVersion = '2.2.0'
 		uuidGeneratorVersion = '3.1.5'
 		zeroAllocationHashingVersion = '0.8'
