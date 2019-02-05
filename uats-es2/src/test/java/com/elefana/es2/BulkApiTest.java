@@ -541,9 +541,8 @@ public class BulkApiTest {
 
 		for(int i = 0; i < totalDocuments; i++) {
 			result.append("{\"index\": { \"_index\" : \"" + index + "\", \"_type\" : \"" + type + "\" }}\n");
-			result.append("{ \"field\" : \"مناقشة سبل استخدام يونكود في النظ\r\n القائمة وفيما يخص التطبيقات ال\" }\n");
+			result.append("{ \"field\" : \"" + "مناقشة سبل استخدام يونكود في النظ\r\n القائمة وفيما يخص التطبيقات ال" + "\" }\n");
 		}
-		System.err.println(new String(result.toString().getBytes(Charset.forName("UTF-8")), Charset.forName("UTF-8")));
 		return result.toString();
 	}
 
