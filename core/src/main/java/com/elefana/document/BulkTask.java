@@ -182,7 +182,6 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 					rowBuilder.append(ESCAPE);
 					rowBuilder.append(NEW_LINE);
 
-					LOGGER.info(rowBuilder.toString());
 					final byte[] rowBytes = rowBuilder.toString().getBytes(CHARSET);
 					copyIn.writeToCopy(rowBytes, 0, rowBytes.length);
 				}

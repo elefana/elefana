@@ -195,7 +195,6 @@ public class BulkApiTest {
 		given()
 				.request()
 				.body(generateBulkRequestWithArabicAndLineBreak(index, type, totalDocuments))
-				.log().all()
 				.when().
 				post("/_bulk")
 				.then()
@@ -216,7 +215,6 @@ public class BulkApiTest {
 					.statusCode(200);
 			result = response.extract().body().jsonPath().getInt("hits.total");
 			if(result == totalDocuments) {
-				response.log().all();
 				validateBulkResponseWithArabicAndLineBreak(response.extract().asString());
 				return;
 			}
@@ -257,7 +255,6 @@ public class BulkApiTest {
 					.statusCode(200);
 			result = response.extract().body().jsonPath().getInt("hits.total");
 			if(result == totalDocuments) {
-				response.log().all();
 				validateBulkResponseWithPipe(response.extract().asString());
 				return;
 			}
@@ -480,6 +477,7 @@ public class BulkApiTest {
 					.statusCode(200);
 			result = response.extract().body().jsonPath().getInt("hits.total");
 			if(result == totalDocuments) {
+				response.log().all();
 				validateBulkResponseWithJsonString(response.extract().asString());
 				return;
 			}
@@ -514,7 +512,7 @@ public class BulkApiTest {
 	private void validateBulkResponseWithJsonString(String responseBody) {
 		final List<Any> docs = JsonIterator.deserialize(responseBody).get("hits").get("hits").asList();
 		for(int i = 0; i < docs.size(); i++) {
-			Assert.assertEquals("{\\\"key\\\":\\\"value\\\"}", docs.get(i).get("_source").get("field").toString());
+			Assert.assertEquals("{\"field\":\"{\\\"key\\\":\\\"value\\\"}\"}", docs.get(i).get("_source").toString());
 		}
 	}
 
