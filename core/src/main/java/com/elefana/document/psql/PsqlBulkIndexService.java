@@ -270,7 +270,7 @@ public class PsqlBulkIndexService implements Runnable {
 	}
 
 	private void mergeStagingTableIntoPartitionTable(Connection connection, String bulkIngestTable, String targetTable) throws IOException, SQLException {
-		String tmpFile = new File(tmpDirectory,  "elefana-idx-" + targetTable + "-" + System.nanoTime() + ".tmp").getAbsolutePath();
+		String tmpFile = File.createTempFile("elefana-idx-" + targetTable + "-", ".tmp", tmpDirectory).getAbsolutePath();
 
 		PreparedStatement preparedStatement = connection.prepareStatement("COPY " + bulkIngestTable + " TO '" + tmpFile + "' WITH BINARY ENCODING 'UTF8'");
 		preparedStatement.execute();
