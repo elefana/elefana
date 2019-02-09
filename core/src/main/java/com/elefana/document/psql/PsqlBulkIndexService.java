@@ -17,6 +17,7 @@ package com.elefana.document.psql;
 
 import java.io.File;
 import java.io.IOException;
+import java.security.SecureRandom;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -270,7 +271,7 @@ public class PsqlBulkIndexService implements Runnable {
 	}
 
 	private void mergeStagingTableIntoPartitionTable(Connection connection, String bulkIngestTable, String targetTable) throws IOException, SQLException {
-		String tmpFile = File.createTempFile("elefana-idx-" + targetTable + "-", ".tmp", tmpDirectory).getAbsolutePath();
+		String tmpFile = IndexUtils.createTempFilePath("elefana-idx-" + targetTable + "-", ".tmp", tmpDirectory);
 
 		PreparedStatement preparedStatement = connection.prepareStatement("COPY " + bulkIngestTable + " TO '" + tmpFile + "' WITH BINARY ENCODING 'UTF8'");
 		preparedStatement.execute();

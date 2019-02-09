@@ -15,6 +15,8 @@
  ******************************************************************************/
 package com.elefana.util;
 
+import java.io.File;
+import java.security.SecureRandom;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
@@ -25,6 +27,8 @@ import com.jsoniter.JsonIterator;
 import com.jsoniter.any.Any;
 
 public interface IndexUtils {
+	public static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
 	public static final String DATA_TABLE = "elefana_data";
 	public static final String PARTITION_TRACKING_TABLE = "elefana_partition_tracking";
 
@@ -377,5 +381,31 @@ public interface IndexUtils {
 			}
 		}
 		return appendedField;
+	}
+
+	public static String createTempFilePath(String prefix, String suffix, File directory) {
+		if(prefix == null) {
+			prefix = "";
+		}
+		if(prefix.contains("/")) {
+			prefix = prefix.substring(prefix.lastIndexOf('/') + 1);
+		}
+		if(suffix == null) {
+			suffix = ".tmp";
+		}
+
+		File result = null;
+		do {
+			long n = SECURE_RANDOM.nextLong();
+			if (n == Long.MIN_VALUE) {
+				n = 0;
+			} else {
+				n = Math.abs(n);
+			}
+
+			final String filename = prefix + Long.toString(n) + suffix;
+			result = new File(directory, filename);
+		} while (result.exists());
+		return result.getAbsolutePath();
 	}
 }
