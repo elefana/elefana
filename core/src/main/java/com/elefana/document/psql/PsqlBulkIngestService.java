@@ -217,31 +217,48 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 			}
 		}
 
+		boolean success = true;
 		for (int i = 0; i < results.size(); i++) {
 			final BulkTask task = bulkTasks.get(i);
 			try {
-				List<BulkItemResponse> nextResult = results.get(i).get();
+				final List<BulkItemResponse> nextResult = results.get(i).get();
 				if (nextResult.isEmpty()) {
 					bulkOperationsFailed.mark(task.getSize());
-					bulkApiResponse.setErrors(true);
+					success = false;
 				} else {
 					for(int j = 0; j < nextResult.size(); j++) {
 						BulkItemResponse response = nextResult.get(j);
 						if(response.isFailed()) {
-							bulkApiResponse.setErrors(true);
+							success = false;
 							bulkOperationsFailed.mark();
-							break;
 						} else {
 							bulkOperationsSuccess.mark();
 						}
 					}
-					
-					bulkApiResponse.getItems().addAll(nextResult);
-					jdbcTemplate.execute("INSERT INTO elefana_bulk_index_queue (_tableName, _queue_id) VALUES ('" + task.getStagingTable() + "', nextval('elefana_bulk_index_queue_id'))");
 				}
 			} catch (InterruptedException e) {
 				LOGGER.error(e.getMessage(), e);
 			} catch (ExecutionException e) {
+				LOGGER.error(e.getMessage(), e);
+			}
+		}
+
+		if(!success) {
+			bulkApiResponse.setErrors(true);
+		}
+
+		for (int i = 0; i < results.size(); i++) {
+			try {
+				final BulkTask task = bulkTasks.get(i);
+				final List<BulkItemResponse> nextResult = results.get(i).get();
+				bulkApiResponse.getItems().addAll(nextResult);
+
+				if(success) {
+					jdbcTemplate.execute("INSERT INTO elefana_bulk_index_queue (_tableName, _queue_id) VALUES ('" + task.getStagingTable() + "', nextval('elefana_bulk_index_queue_id'))");
+				} else {
+					jdbcTemplate.execute("DELETE FROM " + task.getStagingTable());
+				}
+			} catch (Exception e) {
 				LOGGER.error(e.getMessage(), e);
 			}
 		}
