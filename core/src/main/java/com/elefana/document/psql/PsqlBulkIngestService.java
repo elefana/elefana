@@ -15,6 +15,7 @@
  ******************************************************************************/
 package com.elefana.document.psql;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -174,6 +175,9 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 					}
 					// TODO: Handle other operations
 				} catch (JsonException e) {
+					LOGGER.error("Error parsing JSON at line number " + (i + 1) + ": " + lines[i] + "} - " + e.getMessage(), e);
+					bulkApiResponse.setErrors(true);
+				} catch (IOException e) {
 					LOGGER.error("Error parsing JSON at line number " + (i + 1) + ": " + lines[i] + "} - " + e.getMessage(), e);
 					bulkApiResponse.setErrors(true);
 				}

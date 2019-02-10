@@ -100,6 +100,18 @@ public class IndexUtilsTest {
 
 		Assert.assertEquals(expectedJson11, IndexUtils.psqlEscapeString(inputJson11));
 		Assert.assertEquals(expectedJson11, IndexUtils.psqlEscapeString(expectedJson11));
+
+		final String inputJson12 = ((char) 0) + "\u0000{}";
+		final String expectedJson12 = "{}";
+
+		Assert.assertEquals(expectedJson12, IndexUtils.psqlEscapeString(inputJson12));
+		Assert.assertEquals(expectedJson12, IndexUtils.psqlEscapeString(expectedJson12));
+
+		final String inputJson13 = "{\u0000" + ((char) 0) + "}";
+		final String expectedJson13 = "{}";
+
+		Assert.assertEquals(expectedJson13, IndexUtils.psqlEscapeString(inputJson13));
+		Assert.assertEquals(expectedJson13, IndexUtils.psqlEscapeString(expectedJson13));
 	}
 	
 	@Test
@@ -179,9 +191,10 @@ public class IndexUtilsTest {
 
 	@Test
 	public void testFlattenJsonString() throws IOException {
-		final String json = "{\"int\": 123, \"bool\": true, \"string\": \"str\", \"array\":[100, 101, 102], \"arrayObj\":[{\"int\": 124}, {\"int\": 125}, {\"double\": 1.01234}], \"object\":{\"a\":1,\"b\":2}}";
+		final String json = "{\"nestedJson\": \"{\\\"nestedKey\\\":\\\"nestedValue\\\"}\", \"int\": 123, \"bool\": true, \"string\": \"str\", \"array\":[100, 101, 102], \"arrayObj\":[{\"int\": 124}, {\"int\": 125}, {\"double\": 1.01234}], \"object\":{\"a\":1,\"b\":2}}";
 		final StringBuilder expectedResult = new StringBuilder();
 		expectedResult.append('{');
+		expectedResult.append("\"nestedJson\":\"{\\\"nestedKey\\\":\\\"nestedValue\\\"}\",");
 		expectedResult.append("\"int\":123,");
 		expectedResult.append("\"bool\":true,");
 		expectedResult.append("\"string\":\"str\",");
@@ -201,6 +214,14 @@ public class IndexUtilsTest {
 	@Test
 	public void testFlattenJsonStringWithLineBreak() throws IOException {
 		final String json = "{\"str\":\"This a value with a \n line break\"}";
+		final String result = IndexUtils.flattenJson(json);
+		final Any any = JsonIterator.deserialize(result);
+		Assert.assertEquals(ValueType.STRING, any.get("str").valueType());
+	}
+
+	@Test
+	public void testFlattenJsonStringWithTab() throws IOException {
+		final String json = "{\"str\":\"This a value with a \t tab\"}";
 		final String result = IndexUtils.flattenJson(json);
 		final Any any = JsonIterator.deserialize(result);
 		Assert.assertEquals(ValueType.STRING, any.get("str").valueType());

@@ -15,6 +15,7 @@
  ******************************************************************************/
 package com.elefana.document.psql;
 
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -530,7 +531,11 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 			break;
 		}
 		if(nodeSettingsService.isFlattenJson()) {
-			document = IndexUtils.flattenJson(document);
+			try {
+				document = IndexUtils.flattenJson(document);
+			} catch (IOException e) {
+				throw new ShardFailedException(e);
+			}
 		}
 		document = IndexUtils.psqlEscapeString(document);
 		document = IndexUtils.psqlEscapeString(document);
