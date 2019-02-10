@@ -251,13 +251,18 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 			try {
 				final BulkTask task = bulkTasks.get(i);
 				final List<BulkItemResponse> nextResult = results.get(i).get();
-				bulkApiResponse.getItems().addAll(nextResult);
 
 				if(success) {
 					jdbcTemplate.execute("INSERT INTO elefana_bulk_index_queue (_tableName, _queue_id) VALUES ('" + task.getStagingTable() + "', nextval('elefana_bulk_index_queue_id'))");
 				} else {
+					for(BulkItemResponse response : nextResult) {
+						response.setResult(BulkItemResponse.STATUS_FAILED);
+					}
+
 					jdbcTemplate.execute("DELETE FROM " + task.getStagingTable());
 				}
+
+				bulkApiResponse.getItems().addAll(nextResult);
 			} catch (Exception e) {
 				LOGGER.error(e.getMessage(), e);
 			}
