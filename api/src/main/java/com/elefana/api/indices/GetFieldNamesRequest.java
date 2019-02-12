@@ -17,10 +17,14 @@ package com.elefana.api.indices;
 
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
+import com.jsoniter.annotation.JsonIgnore;
 
 public abstract class GetFieldNamesRequest extends ApiRequest<GetFieldNamesResponse> {
+	@JsonIgnore
 	protected final String indexPattern;
+	@JsonIgnore
 	protected final String typePattern;
+
 	protected int maxIndices = 10;
 
 	public GetFieldNamesRequest(RequestExecutor requestExecutor, String indexPattern) {
