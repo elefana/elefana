@@ -18,6 +18,7 @@ package com.elefana.http;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 
+import io.netty.handler.timeout.IdleStateHandler;
 import org.mini2Dx.natives.OsInformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -101,7 +102,13 @@ public class HttpServer {
 	
 	public void start(String ip, int port) {
 		final ServerBootstrap serverBootstrap = new ServerBootstrap();
+		serverBootstrap.option(ChannelOption.SO_BACKLOG, 1024);
+		serverBootstrap.option(ChannelOption.SO_REUSEADDR, true);
+		serverBootstrap.option(ChannelOption.SO_KEEPALIVE, true);
 		serverBootstrap.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
+
+		serverBootstrap.childOption(ChannelOption.SO_REUSEADDR, true);
+		serverBootstrap.childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
 		serverBootstrap.childOption(ChannelOption.WRITE_BUFFER_WATER_MARK, new WriteBufferWaterMark(8 * 1024, 32 * 1024));
 
 		if (OsInformation.isMac()) {
@@ -142,8 +149,9 @@ public class HttpServer {
 				if(httpConnections != null) {
 					httpConnections.inc();
 				}
-				
-				ChannelPipeline channelPipeline = ch.pipeline().addLast(new HttpServerCodec());
+
+				ChannelPipeline channelPipeline = ch.pipeline();
+				channelPipeline = ch.pipeline().addLast(new HttpServerCodec());
 				channelPipeline = channelPipeline.addLast(new HttpServerExpectContinueHandler());
 
 				final boolean compressionEnabled = nodeSettingsService.isHttpGzipEnabled();

@@ -23,6 +23,7 @@ import com.elefana.api.ApiRouter;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.HttpUtil;
 import io.netty.util.ReferenceCountUtil;
 
 /**
@@ -41,8 +42,9 @@ public class DefaultHttpRouter extends HttpRouter {
 		if (!(request instanceof FullHttpRequest)) {
 			return;
 		}
+		final boolean keepAlive = HttpUtil.isKeepAlive(request);
 		try {
-			write(ctx.channel(), route((FullHttpRequest) request));
+			write(keepAlive, ctx, route((FullHttpRequest) request));
 		} finally {
 			ReferenceCountUtil.release(request);
 		}

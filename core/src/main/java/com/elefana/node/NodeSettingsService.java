@@ -60,6 +60,7 @@ public class NodeSettingsService {
 	private boolean httpGzipEnabled;
 	private int maxHttpPipelineEvents;
 	private int maxHttpPayloadSize;
+	private int httpTimeout;
 
 	private boolean transportEnabled;
 	private String transportIp;
@@ -95,6 +96,7 @@ public class NodeSettingsService {
 			httpGzipEnabled = environment.getRequiredProperty("elefana.http.gzip", Boolean.class);
 			maxHttpPipelineEvents = environment.getRequiredProperty("elefana.http.maxEvents", Integer.class);
 			maxHttpPayloadSize = environment.getRequiredProperty("elefana.http.maxPayloadSize", Integer.class);
+			httpTimeout = environment.getProperty("elefana.http.timeout", Integer.class, 300);
 			httpAddress = httpIp + ":" + httpPort;
 		}
 
@@ -254,6 +256,10 @@ public class NodeSettingsService {
 
 	public boolean isHttpGzipEnabled() {
 		return httpGzipEnabled;
+	}
+
+	public int getHttpTimeout() {
+		return httpTimeout;
 	}
 
 	public boolean isTransportEnabled() {

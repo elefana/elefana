@@ -19,6 +19,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.nio.charset.Charset;
 
+import io.netty.channel.ChannelFutureListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,8 +72,9 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
 		cause.printStackTrace();
+		ctx.close();
 	}
-	
+
 	@Override
 	public void channelInactive(ChannelHandlerContext ctx) throws Exception {
 		if(httpConnections != null) {
@@ -81,18 +83,22 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 		super.channelInactive(ctx);
 	}
 	
-	public void write(Channel channel, HttpResponse response) {
-		while(!channel.isWritable()) {
+	public void write(boolean keepAlive, ChannelHandlerContext ctx, HttpResponse response) {
+		while(!ctx.channel().isWritable()) {
 			//TODO: What to do here?
 		}
-		channel.writeAndFlush(response);
+		if(keepAlive) {
+			ctx.writeAndFlush(response, ctx.voidPromise());
+		} else {
+			ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
+		}
 	}
 	
-	public void write(Channel channel, HttpPipelinedResponse response) {
-		while(!channel.isWritable()) {
+	public void write(ChannelHandlerContext ctx, HttpPipelinedResponse response) {
+		while(!ctx.channel().isWritable()) {
 			//TODO: What to do here?
 		}
-		channel.write(response);
+		ctx.writeAndFlush(response);
 	}
 
 	public HttpResponse route(FullHttpRequest httpRequest) {
