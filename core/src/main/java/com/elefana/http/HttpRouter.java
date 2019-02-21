@@ -88,7 +88,11 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 			//TODO: What to do here?
 		}
 		if(keepAlive) {
-			ctx.writeAndFlush(response, ctx.voidPromise());
+			if(isErrorResponse(response)) {
+				ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
+			} else {
+				ctx.writeAndFlush(response, ctx.voidPromise());
+			}
 		} else {
 			ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
 		}
@@ -188,5 +192,12 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 			}
 		}
 		return result;
+	}
+
+	private boolean isErrorResponse(HttpResponse response) {
+		if(response.status().code() >= 400 && response.status().code() < 600) {
+			return true;
+		}
+		return false;
 	}
 }

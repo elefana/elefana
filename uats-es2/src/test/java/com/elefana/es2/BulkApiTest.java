@@ -396,7 +396,7 @@ public class BulkApiTest {
 		data = data.substring(0, data.length() - 5);
 		
 		given()
-			.request()
+			.request().headers("Connection", "keep-alive")
 			.body(data)
 		.when().
 			post("/_bulk")
