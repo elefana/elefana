@@ -26,10 +26,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -41,6 +38,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.stereotype.Service;
 
 import com.codahale.metrics.Counter;
@@ -75,6 +73,7 @@ public class PsqlBulkIndexService implements Runnable {
 	private MetricRegistry metricRegistry;
 
 	private final AtomicBoolean running = new AtomicBoolean(true);
+	private final Queue<String> fileDeletionQueue = new LinkedList<String>();
 	private final AtomicLong lastQueueId = new AtomicLong(Long.MIN_VALUE);
 	private Counter duplicateKeyCounter;
 	private BlockingQueue<String> indexQueue;
@@ -111,6 +110,8 @@ public class PsqlBulkIndexService implements Runnable {
 							String nextIndexTable = nextIndexTables.poll();
 							indexQueue.put(nextIndexTable);
 						}
+
+						deleteTempFiles();
 					}
 				} catch (Exception e) {
 					LOGGER.error(e.getMessage(), e);
@@ -199,6 +200,28 @@ public class PsqlBulkIndexService implements Runnable {
 		executorService.submit(this);
 	}
 
+	private void deleteTempFiles() {
+		try {
+			final long timestamp = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(1L);
+			final SqlRowSet results = jdbcTemplate.queryForRowSet("SELECT * FROM elefana_file_deletion_queue WHERE _timestamp <= ? ORDER BY _timestamp ASC", timestamp);
+			while(results.next()) {
+				final String filepath = results.getString("_filepath");
+				fileDeletionQueue.offer(filepath);
+			}
+			while(!fileDeletionQueue.isEmpty()) {
+				final String filepath = fileDeletionQueue.poll();
+				final File file = new File(filepath);
+				if(file.exists()) {
+					jdbcTemplate.execute("SELECT elefana_delete_tmp_file('" + filepath + "')");
+				} else {
+					jdbcTemplate.execute("DELETE FROM elefana_file_deletion_queue WHERE _filepath = '" + filepath + "'");
+				}
+			}
+		} catch (Exception e) {
+			LOGGER.error(e.getMessage(), e);
+		}
+	}
+
 	private void getNextIndexTables(final Queue<String> results) {
 		final List<Map<String, Object>> nextTableResults = jdbcTemplate
 				.queryForList("SELECT * FROM elefana_bulk_index_queue WHERE _queue_id > " + lastQueueId.get());
@@ -281,7 +304,7 @@ public class PsqlBulkIndexService implements Runnable {
 		preparedStatement.execute();
 		preparedStatement.close();
 
-		preparedStatement = connection.prepareStatement("SELECT elefana_delete_tmp_file('" + tmpFile + "')");
+		preparedStatement = connection.prepareStatement("INSERT INTO elefana_file_deletion_queue (_filepath, _timestamp) VALUES ('" + tmpFile + "', " + System.currentTimeMillis() + ")");
 		preparedStatement.execute();
 		preparedStatement.close();
 	}
