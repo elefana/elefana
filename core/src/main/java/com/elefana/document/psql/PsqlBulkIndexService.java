@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import javax.annotation.PostConstruct;
@@ -73,6 +74,7 @@ public class PsqlBulkIndexService implements Runnable {
 	private MetricRegistry metricRegistry;
 
 	private final AtomicBoolean running = new AtomicBoolean(true);
+	private final AtomicInteger totalFileDeletions = new AtomicInteger();
 	private final Queue<String> fileDeletionQueue = new LinkedList<String>();
 	private final AtomicLong lastQueueId = new AtomicLong(Long.MIN_VALUE);
 	private Counter duplicateKeyCounter;
@@ -85,7 +87,7 @@ public class PsqlBulkIndexService implements Runnable {
 	public void postConstruct() {
 		duplicateKeyCounter = metricRegistry.counter(MetricRegistry.name("bulk", "key", "duplicates"));
 		
-		final int totalThreads = Math.max(2, environment.getProperty("elefana.service.bulk.index.threads",
+		final int totalThreads = Math.max(3, environment.getProperty("elefana.service.bulk.index.threads",
 				Integer.class, Runtime.getRuntime().availableProcessors()));
 		final String tmpDirectoryPath = environment.getProperty("elefana.service.bulk.ingest.dir",
 				System.getProperty("java.io.tmpdir"));
@@ -110,8 +112,30 @@ public class PsqlBulkIndexService implements Runnable {
 							String nextIndexTable = nextIndexTables.poll();
 							indexQueue.put(nextIndexTable);
 						}
+					}
+				} catch (Exception e) {
+					LOGGER.error(e.getMessage(), e);
+				}
+				if (!running.get()) {
+					return;
+				}
+				executorService.submit(this);
+			}
+		});
+		executorService.submit(new Runnable() {
 
-						deleteTempFiles();
+			@Override
+			public void run() {
+				try {
+					while (running.get()) {
+						final int totalDeletions = deleteTempFiles();
+						if(totalDeletions < 1) {
+							synchronized(totalFileDeletions) {
+								totalFileDeletions.wait();
+							}
+						} else {
+							totalFileDeletions.addAndGet(totalDeletions);
+						}
 					}
 				} catch (Exception e) {
 					LOGGER.error(e.getMessage(), e);
@@ -123,7 +147,7 @@ public class PsqlBulkIndexService implements Runnable {
 			}
 		});
 
-		for (int i = 0; i < totalThreads - 1; i++) {
+		for (int i = 0; i < totalThreads - 2; i++) {
 			executorService.submit(this);
 		}
 	}
@@ -200,14 +224,17 @@ public class PsqlBulkIndexService implements Runnable {
 		executorService.submit(this);
 	}
 
-	private void deleteTempFiles() {
+	private int deleteTempFiles() {
+		int result = 0;
 		try {
-			final long timestamp = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(1L);
-			final SqlRowSet results = jdbcTemplate.queryForRowSet("SELECT * FROM elefana_file_deletion_queue WHERE _timestamp <= ? ORDER BY _timestamp ASC", timestamp);
+			final long timestamp = System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(5L);
+			final SqlRowSet results = jdbcTemplate.queryForRowSet("SELECT * FROM elefana_file_deletion_queue WHERE _timestamp <= ? ORDER BY _timestamp ASC LIMIT 100", timestamp);
 			while(results.next()) {
 				final String filepath = results.getString("_filepath");
 				fileDeletionQueue.offer(filepath);
 			}
+			result = fileDeletionQueue.size();
+			LOGGER.info(fileDeletionQueue.size() + " files to be deleted");
 			while(!fileDeletionQueue.isEmpty()) {
 				final String filepath = fileDeletionQueue.poll();
 				final File file = new File(filepath);
@@ -220,6 +247,7 @@ public class PsqlBulkIndexService implements Runnable {
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
 		}
+		return result;
 	}
 
 	private void getNextIndexTables(final Queue<String> results) {
@@ -307,5 +335,9 @@ public class PsqlBulkIndexService implements Runnable {
 		preparedStatement = connection.prepareStatement("INSERT INTO elefana_file_deletion_queue (_filepath, _timestamp) VALUES ('" + tmpFile + "', " + System.currentTimeMillis() + ")");
 		preparedStatement.execute();
 		preparedStatement.close();
+
+		synchronized(totalFileDeletions) {
+			totalFileDeletions.notifyAll();
+		}
 	}
 }
