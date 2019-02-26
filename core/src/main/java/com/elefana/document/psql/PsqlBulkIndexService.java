@@ -234,7 +234,7 @@ public class PsqlBulkIndexService implements Runnable {
 				fileDeletionQueue.offer(filepath);
 			}
 			result = fileDeletionQueue.size();
-			LOGGER.info(fileDeletionQueue.size() + " files to be deleted");
+
 			while(!fileDeletionQueue.isEmpty()) {
 				final String filepath = fileDeletionQueue.poll();
 				final File file = new File(filepath);
@@ -323,6 +323,7 @@ public class PsqlBulkIndexService implements Runnable {
 
 	private void mergeStagingTableIntoPartitionTable(Connection connection, String bulkIngestTable, String targetTable) throws IOException, SQLException {
 		String tmpFile = IndexUtils.createTempFilePath("elefana-idx-" + targetTable + "-", ".tmp", tmpDirectory);
+		//tmpFile = "/tmp/elefana-idx-" + targetTable + "-" + System.nanoTime() + ".tmp";
 
 		PreparedStatement preparedStatement = connection.prepareStatement("COPY " + bulkIngestTable + " TO '" + tmpFile + "' WITH BINARY ENCODING 'UTF8'");
 		preparedStatement.execute();

@@ -68,4 +68,22 @@ public class BoolQueryTest extends AbstractQueryTest {
 			.statusCode(200)
 			.body("hits.total", equalTo(1));
 	}
+
+	@Test
+	public void testBoolQueryWithQueryString() {
+		final String index = UUID.randomUUID().toString();
+		final String type = "test";
+
+		generatePhraseDocuments(index, type);
+
+		given()
+				.request()
+				.body("{\"query\": {\"bool\" : {\"must\" : {\"match\" : { \"message\" : \"fox\" }},\"should\" : [{ \"query_string\" : {\"query\":\"message:jumps\"} }] }}}")
+				.when()
+				.post("/" + index + "/_search")
+				.then()
+				.statusCode(200)
+				.log().all()
+				.body("hits.total", equalTo(4));
+	}
 }
