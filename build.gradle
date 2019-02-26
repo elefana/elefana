@@ -43,7 +43,7 @@ subprojects {
 		commonsTextVersion = '1.6'
 		commonsValidatorVersion = '1.6'
 		esCompatVersion = '1.0.1'
-		esQueryStringVersion = '1.0.2-SNAPSHOT'
+		esQueryStringVersion = '1.0.2'
 		hikariVersion = '3.2.0'
 		jacksonVersion = '2.9.8'
 		jodaVersion = '2.9.9'
