@@ -267,6 +267,126 @@ public class BulkApiTest {
 	}
 
 	@Test
+	public void testBulkIndexingWithNullContent() {
+		final int totalDocuments = RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE * 2);
+		final String index = "message-logs-" + UUID.randomUUID().toString();
+		final String type = "test";
+
+		given()
+				.request()
+				.body(generateBulkRequestWithNull(index, type, totalDocuments))
+				.when().
+				post("/_bulk")
+				.then()
+				.statusCode(200)
+				.body("errors", equalTo(false))
+				.body("items.size()", equalTo(totalDocuments));
+
+		final long startTime = System.currentTimeMillis();
+		int result = 0;
+
+		while(System.currentTimeMillis() - startTime < BULK_INDEX_TIMEOUT) {
+			ValidatableResponse response = given()
+					.request()
+					.body("{\"query\":{\"match_all\":{}}, \"size\":" + totalDocuments + "}")
+					.when()
+					.post("/" + index + "/_search")
+					.then()
+					.statusCode(200);
+			result = response.extract().body().jsonPath().getInt("hits.total");
+			if(result == totalDocuments) {
+				validateBulkResponseWithNull(response.extract().asString());
+				return;
+			}
+
+			try {
+				Thread.sleep(100);
+			} catch (Exception e) {}
+		}
+		Assert.fail("Expected " + totalDocuments + " documents, found " + result);
+	}
+
+	@Test
+	public void testBulkIndexingWithEscapedUnicodeControl() {
+		final int totalDocuments = RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE * 2);
+		final String index = "message-logs-" + UUID.randomUUID().toString();
+		final String type = "test";
+
+		given()
+				.request()
+				.body(generateBulkRequestWithEscapedNull(index, type, totalDocuments))
+				.when().
+				post("/_bulk")
+				.then()
+				.statusCode(200)
+				.body("errors", equalTo(false))
+				.body("items.size()", equalTo(totalDocuments));
+
+		final long startTime = System.currentTimeMillis();
+		int result = 0;
+
+		while(System.currentTimeMillis() - startTime < BULK_INDEX_TIMEOUT) {
+			ValidatableResponse response = given()
+					.request()
+					.body("{\"query\":{\"match_all\":{}}, \"size\":" + totalDocuments + "}")
+					.when()
+					.post("/" + index + "/_search")
+					.then()
+					.statusCode(200);
+			result = response.extract().body().jsonPath().getInt("hits.total");
+			if(result == totalDocuments) {
+				validateBulkResponseWithEscapedNull(response.extract().asString());
+				return;
+			}
+
+			try {
+				Thread.sleep(100);
+			} catch (Exception e) {}
+		}
+		Assert.fail("Expected " + totalDocuments + " documents, found " + result);
+	}
+
+	@Test
+	public void testBulkIndexingWithEmojiContent() {
+		final int totalDocuments = RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE * 2);
+		final String index = "message-logs-" + UUID.randomUUID().toString();
+		final String type = "test";
+
+		given()
+				.request()
+				.body(generateBulkRequestWithEmoji(index, type, totalDocuments))
+				.when().
+				post("/_bulk")
+				.then()
+				.statusCode(200)
+				.body("errors", equalTo(false))
+				.body("items.size()", equalTo(totalDocuments));
+
+		final long startTime = System.currentTimeMillis();
+		int result = 0;
+
+		while(System.currentTimeMillis() - startTime < BULK_INDEX_TIMEOUT) {
+			ValidatableResponse response = given()
+					.request()
+					.body("{\"query\":{\"match_all\":{}}, \"size\":" + totalDocuments + "}")
+					.when()
+					.post("/" + index + "/_search")
+					.then()
+					.statusCode(200);
+			result = response.extract().body().jsonPath().getInt("hits.total");
+			if(result == totalDocuments) {
+				validateBulkResponseWithEmoji(response.extract().asString());
+				return;
+			}
+
+			try {
+				Thread.sleep(100);
+			} catch (Exception e) {}
+		}
+		Assert.fail("Expected " + totalDocuments + " documents, found " + result);
+	}
+
+	@Test
 	public void testBulkIndexingWithCarriageReturnContent() {
 		final int totalDocuments = RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE * 2);
 		final String index = "message-logs-" + UUID.randomUUID().toString();
@@ -477,7 +597,6 @@ public class BulkApiTest {
 					.statusCode(200);
 			result = response.extract().body().jsonPath().getInt("hits.total");
 			if(result == totalDocuments) {
-				response.log().all();
 				validateBulkResponseWithJsonString(response.extract().asString());
 				return;
 			}
@@ -616,6 +735,57 @@ public class BulkApiTest {
 		final List<Any> docs = JsonIterator.deserialize(responseBody).get("hits").get("hits").asList();
 		for(int i = 0; i < docs.size(); i++) {
 			Assert.assertEquals("This has a \ttab.", docs.get(i).get("_source").get("field").toString());
+		}
+	}
+
+	private String generateBulkRequestWithNull(String index, String type, int totalDocuments) {
+		StringBuilder result = new StringBuilder();
+
+		for(int i = 0; i < totalDocuments; i++) {
+			result.append("{\"index\": { \"_index\" : \"" + index + "\", \"_type\" : \"" + type + "\" }}\n");
+			result.append("{ \"field\" : \"This has a \u0000null.\" }\n");
+		}
+		return result.toString();
+	}
+
+	private void validateBulkResponseWithNull(String responseBody) {
+		final List<Any> docs = JsonIterator.deserialize(responseBody).get("hits").get("hits").asList();
+		for(int i = 0; i < docs.size(); i++) {
+			Assert.assertEquals("This has a null.", docs.get(i).get("_source").get("field").toString());
+		}
+	}
+
+	private String generateBulkRequestWithEmoji(String index, String type, int totalDocuments) {
+		StringBuilder result = new StringBuilder();
+
+		for(int i = 0; i < totalDocuments; i++) {
+			result.append("{\"index\": { \"_index\" : \"" + index + "\", \"_type\" : \"" + type + "\" }}\n");
+			result.append("{ \"field\" : \"\uD83D\uDCE3This has an emoji.\" }\n");
+		}
+		return result.toString();
+	}
+
+	private void validateBulkResponseWithEmoji(String responseBody) {
+		final List<Any> docs = JsonIterator.deserialize(responseBody).get("hits").get("hits").asList();
+		for(int i = 0; i < docs.size(); i++) {
+			Assert.assertEquals("\uD83D\uDCE3This has an emoji.", docs.get(i).get("_source").get("field").toString());
+		}
+	}
+
+	private String generateBulkRequestWithEscapedNull(String index, String type, int totalDocuments) {
+		StringBuilder result = new StringBuilder();
+
+		for(int i = 0; i < totalDocuments; i++) {
+			result.append("{\"index\": { \"_index\" : \"" + index + "\", \"_type\" : \"" + type + "\" }}\n");
+			result.append("{ \"field\" : \"This has a \\u0000null.\" }\n");
+		}
+		return result.toString();
+	}
+
+	private void validateBulkResponseWithEscapedNull(String responseBody) {
+		final List<Any> docs = JsonIterator.deserialize(responseBody).get("hits").get("hits").asList();
+		for(int i = 0; i < docs.size(); i++) {
+			Assert.assertEquals("This has a \u0000null.", docs.get(i).get("_source").get("field").toString());
 		}
 	}
 }

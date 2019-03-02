@@ -87,7 +87,7 @@ public class PsqlBulkIndexService implements Runnable {
 	public void postConstruct() {
 		duplicateKeyCounter = metricRegistry.counter(MetricRegistry.name("bulk", "key", "duplicates"));
 		
-		final int totalThreads = Math.max(3, environment.getProperty("elefana.service.bulk.index.threads",
+		final int totalThreads = Math.max(4, environment.getProperty("elefana.service.bulk.index.threads",
 				Integer.class, Runtime.getRuntime().availableProcessors()));
 		final String tmpDirectoryPath = environment.getProperty("elefana.service.bulk.ingest.dir",
 				System.getProperty("java.io.tmpdir"));

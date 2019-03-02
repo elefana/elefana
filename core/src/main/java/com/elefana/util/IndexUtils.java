@@ -31,6 +31,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.any.Any;
+import io.netty.buffer.ByteBuf;
 
 public interface IndexUtils {
 	public static final SecureRandom SECURE_RANDOM = new SecureRandom();
@@ -44,7 +45,9 @@ public interface IndexUtils {
 	public static final String GIN_INDEX_PREFIX = "elefana_gin_idx_";
 	public static final String BRIN_INDEX_PREFIX = "elefana_brin_idx_";
 	public static final String PRIMARY_KEY_PREFIX = "elefana_pkey_";
-	
+
+	public static final char[] HEX_CHARS = "0123456789ABCDEF".toCharArray();
+
 	public String generateDocumentId(String index, String type, String source);
 
 	public List<String> listIndices() throws ElefanaException;
@@ -131,11 +134,34 @@ public interface IndexUtils {
 							continue;
 						}
 						break;
+					case 'u':
+						if(i + 3 >= json.length()) {
+							continue;
+						}
+						i += 2;
+						break;
 					}
 					break;
 				case '\"':
 					json = json.substring(0, i) + "\\\\\\\"" + json.substring(i + 2);
 					i += 2;
+					break;
+				case 'u':
+					boolean allDigits = true;
+					if(i + 5 >= json.length()) {
+						continue;
+					}
+					for(int j = i + 2; j <= i + 5 && j < json.length(); j++) {
+						if(!Character.isDigit(json.charAt(j))) {
+							allDigits = false;
+							break;
+						}
+					}
+					if(allDigits) {
+						//Unicode sequence
+						json = json.substring(0, i) + '\\' + json.substring(i);
+						i += 3;
+					}
 					break;
 				default:
 					continue;
@@ -247,6 +273,13 @@ public interface IndexUtils {
 						json = json.substring(0, i) + '\b' + json.substring(i + 3);
 					} else {
 						json = '\b' + json.substring(i + 3);
+					}
+					break;
+				case 'u':
+					if(i > 0) {
+						json = json.substring(0, i) + json.substring(i + 1);
+					} else {
+						json = json.substring(i + 1);
 					}
 					break;
 				}
@@ -399,5 +432,26 @@ public interface IndexUtils {
 			result = new File(directory, filename);
 		} while (result.exists());
 		return result.getAbsolutePath();
+	}
+
+	public static String bytesToHex(byte[] bytes) {
+		char[] result = new char[bytes.length * 2];
+		for ( int j = 0; j < bytes.length; j++ ) {
+			int v = bytes[j] & 0xFF;
+			result[j * 2] = HEX_CHARS[v >>> 4];
+			result[j * 2 + 1] = HEX_CHARS[v & 0x0F];
+		}
+		return new String(result);
+	}
+
+	public static String bytesToHex(ByteBuf bytes) {
+		final int totalBytes = (bytes.writerIndex() - bytes.readerIndex());
+		char[] result = new char[totalBytes * 2];
+		for ( int j = 0; j < totalBytes; j++ ) {
+			int v = bytes.readByte() & 0xFF;
+			result[j * 2] = HEX_CHARS[v >>> 4];
+			result[j * 2 + 1] = HEX_CHARS[v & 0x0F];
+		}
+		return new String(result);
 	}
 }

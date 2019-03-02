@@ -25,6 +25,8 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 
 import com.elefana.api.document.DocumentShardInfo;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import org.postgresql.copy.CopyIn;
 import org.postgresql.copy.CopyManager;
 import org.postgresql.jdbc.PgConnection;
@@ -43,7 +45,7 @@ import com.jsoniter.spi.JsonException;
 
 public class BulkTask implements Callable<List<BulkItemResponse>> {
 	private static final Logger LOGGER = LoggerFactory.getLogger(BulkTask.class);
-
+	
 	private static final String FALLBACK_STAGING_TABLE_PREFIX = "elefana_fallback_stg_";
 	private static int FALLBACK_STAGING_TABLE_ID = 0;
 
@@ -145,8 +147,8 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 			final Timer.Context timer = psqlTimer.time();
 
 			try {
-				CopyIn copyIn = copyManager
-						.copyIn("COPY " + stagingTable + " FROM STDIN WITH CSV ENCODING 'UTF8' DELIMITER " + DELIMITER_INIT + " QUOTE " + ESCAPE_INIT);
+				final CopyIn copyIn = copyManager.
+						copyIn("COPY " + stagingTable + " FROM STDIN WITH CSV ENCODING 'UTF8' DELIMITER " + DELIMITER_INIT + " QUOTE " + ESCAPE_INIT);
 
 				for (int i = from; i < from + size && i < indexOperations.size(); i++) {
 					BulkIndexOperation indexOperation = indexOperations.get(i);
@@ -182,7 +184,7 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 					rowBuilder.append(ESCAPE);
 					rowBuilder.append(NEW_LINE);
 
-					final byte[] rowBytes = rowBuilder.toString().getBytes(CHARSET);
+					final byte [] rowBytes = rowBuilder.toString().getBytes(CHARSET);
 					copyIn.writeToCopy(rowBytes, 0, rowBytes.length);
 				}
 				copyIn.endCopy();
