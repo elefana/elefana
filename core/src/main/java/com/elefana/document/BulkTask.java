@@ -45,7 +45,7 @@ import com.jsoniter.spi.JsonException;
 
 public class BulkTask implements Callable<List<BulkItemResponse>> {
 	private static final Logger LOGGER = LoggerFactory.getLogger(BulkTask.class);
-	
+
 	private static final String FALLBACK_STAGING_TABLE_PREFIX = "elefana_fallback_stg_";
 	private static int FALLBACK_STAGING_TABLE_ID = 0;
 
