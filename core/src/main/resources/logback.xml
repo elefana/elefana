@@ -14,7 +14,7 @@
 	        <Pattern>%d{dd-MM-yyyy HH:mm:ss.SSS} [%thread] %-5level %logger{36}.%M - %msg%n</Pattern>
 	    </encoder>
 		<rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-			<fileNamePattern>elefana-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+			<fileNamePattern>${LOG_PATH}/elefana-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
 			<maxFileSize>100MB</maxFileSize>    
 			<maxHistory>30</maxHistory>
 			<totalSizeCap>10GB</totalSizeCap>
