@@ -89,6 +89,7 @@ public class BulkApiTest {
 					.statusCode(200);
 			result = response.extract().body().jsonPath().getInt("hits.total");
 			if(result == totalDocuments) {
+				response.log().all();
 				return;
 			}
 
@@ -505,6 +506,47 @@ public class BulkApiTest {
 		}
 		Assert.fail("Expected " + totalDocuments + " documents, found " + result);
 	}
+
+	@Test
+	public void testBulkIndexingWithDuplicateKey() {
+		final String index = "message-logs-" + UUID.randomUUID().toString();
+		final String type = "test";
+
+		final String bulkRequest = generateBulkRequestWithFixedId(index, type);
+		for(int i = 0; i < 4; i++) {
+			given()
+					.request()
+					.body(bulkRequest)
+					.when().
+					post("/_bulk")
+					.then()
+					.statusCode(200)
+					.body("errors", equalTo(false))
+					.body("items.size()", equalTo(1));
+		}
+
+		final long startTime = System.currentTimeMillis();
+		int result = 0;
+
+		while(System.currentTimeMillis() - startTime < BULK_INDEX_TIMEOUT) {
+			ValidatableResponse response = given()
+					.request()
+					.body("{\"query\":{\"match_all\":{}}, \"size\":" + 2 + "}")
+					.when()
+					.post("/" + index + "/_search")
+					.then()
+					.statusCode(200);
+			result = response.extract().body().jsonPath().getInt("hits.total");
+			if(result == 1) {
+				return;
+			}
+
+			try {
+				Thread.sleep(100);
+			} catch (Exception e) {}
+		}
+		Assert.fail("Expected " + 1 + " documents, found " + result);
+	}
 	
 	@Test
 	public void testBulkIndexingWithInvalidData() {
@@ -615,6 +657,14 @@ public class BulkApiTest {
 			result.append("{\"index\": { \"_index\" : \"" + index + "\", \"_type\" : \"" + type + "\" }}\n");
 			result.append("{ \"field\" : \"value\" }\n");
 		}
+		return result.toString();
+	}
+
+	private String generateBulkRequestWithFixedId(String index, String type) {
+		StringBuilder result = new StringBuilder();
+
+		result.append("{\"index\": { \"_index\" : \"" + index + "\", \"_type\" : \"" + type + "\", \"_id\" : \"" + 123 + "\" }}\n");
+		result.append("{ \"field\" : \"value\" }\n");
 		return result.toString();
 	}
 	

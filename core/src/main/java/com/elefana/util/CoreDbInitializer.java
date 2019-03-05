@@ -44,6 +44,7 @@ public class CoreDbInitializer implements DbInitializer {
 
 	public void initialiseDatabase() throws SQLException {
 		createSqlFunctions();
+		createDuplicateKeyTable();
 		createMasterTableIfNotExists();
 		createPartitionTrackingTableIfNotExists();
 		createFieldStatsTablesIfNotExists();
@@ -66,6 +67,23 @@ public class CoreDbInitializer implements DbInitializer {
 					new ClassPathResource("/functions.sql", IndexFieldMappingService.class));
 			resourceDatabasePopulator.setSeparator(ScriptUtils.EOF_STATEMENT_SEPARATOR);
 			resourceDatabasePopulator.execute(jdbcTemplate.getDataSource());
+		} catch (Exception e) {
+			LOGGER.error(e.getMessage(), e);
+		}
+	}
+
+	private void createDuplicateKeyTable() {
+		try {
+			Connection connection = jdbcTemplate.getDataSource().getConnection();
+
+			final String createDuplicateKeyTableQuery = "CREATE TABLE IF NOT EXISTS elefana_duplicate_keys"
+					+ " (_index VARCHAR(255) NOT NULL, _type VARCHAR(255) NOT NULL, _id VARCHAR(255) NOT NULL, _timestamp BIGINT, "
+					+ "_bucket1s BIGINT, _bucket1m BIGINT, _bucket1h BIGINT, _bucket1d BIGINT, _source jsonb);";
+			PreparedStatement preparedStatement = connection.prepareStatement(createDuplicateKeyTableQuery);
+			preparedStatement.execute();
+			preparedStatement.close();
+
+			connection.close();
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
 		}

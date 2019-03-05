@@ -169,11 +169,12 @@ public class PsqlBulkIndexService implements Runnable {
 				try {
 					connection = jdbcTemplate.getDataSource().getConnection();
 
-					try {
-						PreparedStatement preparedStatement = connection.prepareStatement("DELETE FROM elefana_bulk_index_queue WHERE _tableName='" + nextIndexTable + "'");
-						preparedStatement.execute();
-						preparedStatement.close();
+					PreparedStatement preparedStatement = connection.prepareStatement("DELETE FROM elefana_bulk_index_queue WHERE _tableName='" + nextIndexTable + "'");
+					preparedStatement.execute();
+					preparedStatement.close();
 
+					BulkIndexResult bulkIndexResult = BulkIndexResult.SUCCESS;
+					try {
 						index = getIndexName(connection, nextIndexTable);
 						if(index != null) {
 							final String targetTable = indexUtils.getQueryTarget(connection, index);
@@ -188,14 +189,41 @@ public class PsqlBulkIndexService implements Runnable {
 						if(e.getMessage() != null && e.getMessage().contains("duplicate key")) {
 							LOGGER.error("Duplicate key in bulk staging table: " + nextIndexTable);
 							duplicateKeyCounter.inc();
+							bulkIndexResult = BulkIndexResult.DUPLICATE;
 						} else {
 							LOGGER.error(e.getMessage(), e);
+							bulkIndexResult = BulkIndexResult.EXCEPTION;
 						}
 					}
 
-					PreparedStatement dropTableStatement = connection.prepareStatement("DROP TABLE IF EXISTS " + nextIndexTable);
-					dropTableStatement.execute();
-					dropTableStatement.close();
+					try {
+						switch(bulkIndexResult) {
+						case EXCEPTION:
+							PreparedStatement reinsertStatement = connection.prepareStatement(
+									"INSERT INTO elefana_bulk_index_queue (_tableName, _queue_id) VALUES ('" +
+											nextIndexTable + "', nextval('elefana_bulk_index_queue_id'))");
+							reinsertStatement.execute();
+							reinsertStatement.close();
+							LOGGER.error("Re-queued " + nextIndexTable + " for indexing due to exception");
+							break;
+						case DUPLICATE:
+							PreparedStatement transferStatement = connection.prepareStatement(
+									"INSERT INTO elefana_duplicate_keys SELECT * FROM " + nextIndexTable);
+							transferStatement.execute();
+							transferStatement.close();
+							LOGGER.error("Copied " + nextIndexTable + " to elefana_duplicate_keys");
+						default:
+						case SUCCESS: {
+							PreparedStatement dropTableStatement = connection.prepareStatement(
+									"DROP TABLE IF EXISTS " + nextIndexTable);
+							dropTableStatement.execute();
+							dropTableStatement.close();
+							break;
+						}
+						}
+					} catch (Exception e) {
+						LOGGER.error(e.getMessage(), e);
+					}
 
 					connection.close();
 					connection = null;
@@ -340,5 +368,11 @@ public class PsqlBulkIndexService implements Runnable {
 		synchronized(totalFileDeletions) {
 			totalFileDeletions.notifyAll();
 		}
+	}
+
+	private enum BulkIndexResult {
+		SUCCESS,
+		DUPLICATE,
+		EXCEPTION
 	}
 }
