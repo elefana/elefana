@@ -291,8 +291,10 @@ public interface IndexUtils {
 		return json;
 	}
 
+	public static final CumulativeAverage FLATTEN_JSON_CAPACITY = new CumulativeAverage(32);
+
 	public static String flattenJson(String json) throws IOException {
-		final StringBuilder result = new StringBuilder();
+		final StringBuilder result = new StringBuilder(FLATTEN_JSON_CAPACITY.avg());
 		
 		json = json.replace("\n", "\\\\n");
 		json = json.replace("\r", "\\\\r");
@@ -304,6 +306,8 @@ public interface IndexUtils {
 		result.append('{');
 		flattenJson("", root, result);
 		result.append('}');
+
+		FLATTEN_JSON_CAPACITY.add(result.length());
 		return result.toString();
 	}
 
