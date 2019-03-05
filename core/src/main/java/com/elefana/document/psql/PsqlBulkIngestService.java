@@ -31,6 +31,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 
+import com.elefana.api.json.V2BulkResponseEncoder;
+import com.elefana.api.json.V5BulkResponseEncoder;
+import com.elefana.node.VersionInfoService;
+import com.jsoniter.spi.JsoniterSpi;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -79,6 +83,8 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 	@Autowired
 	private NodeSettingsService nodeSettingsService;
 	@Autowired
+	protected VersionInfoService versionInfoService;
+	@Autowired
 	private PsqlBulkIndexService bulkIndexService;
 	@Autowired
 	private MetricRegistry metricRegistry;
@@ -108,6 +114,16 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 		bulkOperationsPsqlTimer = metricRegistry.timer(MetricRegistry.name("bulk", "operations", "duration", "psql"));
 		bulkOperationsSuccess = metricRegistry.meter(MetricRegistry.name("bulk", "operations", "success"));
 		bulkOperationsFailed = metricRegistry.meter(MetricRegistry.name("bulk", "operations", "failed"));
+
+		switch(versionInfoService.getApiVersion()) {
+		case V_5_5_2:
+			JsoniterSpi.registerTypeEncoder(BulkResponse.class, new V2BulkResponseEncoder());
+			break;
+		default:
+		case V_2_4_3:
+			JsoniterSpi.registerTypeEncoder(BulkResponse.class, new V5BulkResponseEncoder());
+			break;
+		}
 	}
 
 	@PreDestroy

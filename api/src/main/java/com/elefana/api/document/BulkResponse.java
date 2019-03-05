@@ -20,7 +20,7 @@ import java.util.List;
 
 import com.elefana.api.ApiResponse;
 import com.elefana.api.json.BulkResponseDecoder;
-import com.elefana.api.json.BulkResponseEncoder;
+import com.elefana.api.json.V5BulkResponseEncoder;
 import com.jsoniter.output.JsonStream;
 import com.jsoniter.spi.JsoniterSpi;
 
@@ -30,7 +30,7 @@ public class BulkResponse extends ApiResponse {
 	
 	static {
 		JsoniterSpi.registerTypeDecoder(BulkResponse.class, new BulkResponseDecoder());
-		JsoniterSpi.registerTypeEncoder(BulkResponse.class, new BulkResponseEncoder());
+		JsoniterSpi.registerTypeEncoder(BulkResponse.class, new V5BulkResponseEncoder());
 	}
 	
 	private long took;
