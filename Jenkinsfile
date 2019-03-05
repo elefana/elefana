@@ -2,11 +2,11 @@ def version = 'alpha35'
 
 pipeline {
     agent none
-    environment {
-        BUILD_EMAIL_ADDRESS     = credentials('build-email-address')
-    }
     stages {
     	stage('Linux Build') {
+    	    environment {
+                BUILD_EMAIL_ADDRESS     = credentials('build-email-address')
+            }
 			agent {
 				label 'linux'
 			}
