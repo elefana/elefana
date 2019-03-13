@@ -73,58 +73,42 @@ public class TableIndexCreator implements Runnable {
 
 	@Override
 	public void run() {
-		runTableIndexCreation();
-		runFieldIndexCreation();
-	}
-
-	private void runTableIndexCreation() {
-		final DelayedTableIndexCreation nextIndexCreation = tableIndexCreationQueue.poll();
-		if(nextIndexCreation == null) {
-			return;
-		}
-
 		Connection connection = null;
 		try {
-			connection = jdbcTemplate.getDataSource().getConnection();
+			connection = runTableIndexCreation(connection);
+			connection = runFieldIndexCreation(connection);
+		} catch (Exception e) {
+			LOGGER.error(e.getMessage(), e);
+		}
+		if(connection != null) {
+			try {
+				connection.close();
+			} catch (Exception e) {}
+		}
+	}
 
+	private Connection runTableIndexCreation(Connection connection) throws SQLException {
+		DelayedTableIndexCreation nextIndexCreation = tableIndexCreationQueue.poll();
+		while(nextIndexCreation != null) {
+			if(connection == null) {
+				connection = jdbcTemplate.getDataSource().getConnection();
+			}
 			internalCreatePsqlIndices(connection, nextIndexCreation.tableName, nextIndexCreation.indexGenerationSettings);
-
-			connection.close();
-		} catch (Exception e) {
-			if (connection != null) {
-				try {
-					connection.close();
-				} catch (SQLException e1) {
-					e1.printStackTrace();
-				}
-			}
-			e.printStackTrace();
+			nextIndexCreation = tableIndexCreationQueue.poll();
 		}
+		return connection;
 	}
 
-	private void runFieldIndexCreation() {
-		final DelayedFieldIndexCreation nextIndexCreation = fieldIndexCreationQueue.poll();
-		if(nextIndexCreation == null) {
-			return;
-		}
-
-		Connection connection = null;
-		try {
-			connection = jdbcTemplate.getDataSource().getConnection();
-
-			internalCreatePsqlIndex(connection, nextIndexCreation.tableName, nextIndexCreation.fieldName, nextIndexCreation.indexGenerationSettings);
-
-			connection.close();
-		} catch (Exception e) {
-			if (connection != null) {
-				try {
-					connection.close();
-				} catch (SQLException e1) {
-					e1.printStackTrace();
-				}
+	private Connection runFieldIndexCreation(Connection connection) throws SQLException {
+		DelayedFieldIndexCreation nextIndexCreation = fieldIndexCreationQueue.poll();
+		while(nextIndexCreation != null) {
+			if(connection == null) {
+				connection = jdbcTemplate.getDataSource().getConnection();
 			}
-			e.printStackTrace();
+			internalCreatePsqlIndex(connection, nextIndexCreation.tableName, nextIndexCreation.fieldName, nextIndexCreation.indexGenerationSettings);
+			nextIndexCreation = fieldIndexCreationQueue.poll();
 		}
+		return connection;
 	}
 
 	public void createPsqlIndices(Connection connection, String tableName, IndexGenerationSettings indexGenerationSettings) throws SQLException {
