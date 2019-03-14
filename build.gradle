@@ -32,7 +32,7 @@ subprojects {
 	apply plugin: 'org.springframework.boot'
 
 	group = 'com.elefana'
-	version = '1.0.0-rc8'
+	version = '1.0.0-SNAPSHOT'
 
 	sourceCompatibility = 1.8
 	targetCompatibility = 1.8
@@ -51,6 +51,7 @@ subprojects {
 		metricsVersion = '4.0.3'
 		nativesLoaderVersion = '1.0.0'
 		nettyVersion = '4.1.33.Final'
+		oshiVersion = '3.13.0'
 		restAssuredVersion = '3.1.1'
 		stringSearchVersion = '2.2.0'
 		uuidGeneratorVersion = '3.1.5'
@@ -206,6 +207,7 @@ project(":" + rootProject.name + "-core") {
 			exclude group: 'org.apache.tomcat', module: 'tomcat-jdbc' 
 		}
 		compile('org.springframework.boot:spring-boot-starter')
+		compile "com.github.oshi:oshi-core:$oshiVersion"
 		compile "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
 		compile "org.mini2Dx:natives-loader:$nativesLoaderVersion"
 		compile "com.zaxxer:HikariCP:$hikariVersion"
