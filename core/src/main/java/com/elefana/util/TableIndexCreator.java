@@ -17,13 +17,13 @@ package com.elefana.util;
 
 import com.elefana.api.indices.IndexGenerationMode;
 import com.elefana.api.indices.IndexGenerationSettings;
+import com.elefana.indices.IndexTemplateService;
 import com.elefana.node.NodeInfoService;
 import com.elefana.node.NodeSettingsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.DependsOn;
-import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -31,20 +31,28 @@ import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.*;
 
 @Service
-@DependsOn("nodeInfoService")
+@DependsOn({"nodeInfoService"})
 public class TableIndexCreator implements Runnable {
 	private static final Logger LOGGER = LoggerFactory.getLogger(TableIndexCreator.class);
 
-	private final DelayQueue<DelayedTableIndexCreation> tableIndexCreationQueue = new DelayQueue<DelayedTableIndexCreation>();
-	private final DelayQueue<DelayedFieldIndexCreation> fieldIndexCreationQueue = new DelayQueue<DelayedFieldIndexCreation>();
+	private final Queue<String> tableIndexQueue = new LinkedList<String>();
+	private final Map<String, IndexGenerationMode> tableIndexModes = new HashMap<String, IndexGenerationMode>();
+
+	private final Queue<String> tableFieldIndexQueue = new LinkedList<String>();
+	private final Queue<String> fieldIndexQueue = new LinkedList<String>();
+	private final Map<String, IndexGenerationMode> tableFieldIndexModes = new HashMap<String, IndexGenerationMode>();
+
 	private final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
 
-	@Autowired
-	private Environment environment;
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 	@Autowired
@@ -88,56 +96,80 @@ public class TableIndexCreator implements Runnable {
 	}
 
 	private Connection runTableIndexCreation(Connection connection) throws SQLException {
-		DelayedTableIndexCreation nextIndexCreation = tableIndexCreationQueue.poll();
-		while(nextIndexCreation != null) {
-			if(connection == null) {
-				connection = jdbcTemplate.getDataSource().getConnection();
-			}
-			internalCreatePsqlIndices(connection, nextIndexCreation.tableName, nextIndexCreation.indexGenerationSettings);
-			nextIndexCreation = tableIndexCreationQueue.poll();
+		if(connection == null) {
+			connection = jdbcTemplate.getDataSource().getConnection();
+		}
+		final String fetchQueueQuery = "SELECT * FROM elefana_delayed_table_index_queue WHERE _timestamp <= " + System.currentTimeMillis();
+		PreparedStatement preparedStatement = connection.prepareStatement(fetchQueueQuery);
+		final ResultSet resultSet = preparedStatement.executeQuery();
+		while(resultSet.next()) {
+			final String tableName = resultSet.getString("_tableName");
+			final IndexGenerationMode indexGenerationMode = IndexGenerationMode.valueOf(resultSet.getString("_generationMode"));
+			tableIndexQueue.offer(tableName);
+			tableIndexModes.put(tableName, indexGenerationMode);
+		}
+		preparedStatement.close();
+
+		while(!tableIndexQueue.isEmpty()) {
+			final String tableName = tableIndexQueue.poll();
+			final IndexGenerationMode indexGenerationMode = tableIndexModes.remove(tableName);
+
+			internalCreatePsqlTableIndices(connection, tableName, indexGenerationMode);
 		}
 		return connection;
 	}
 
 	private Connection runFieldIndexCreation(Connection connection) throws SQLException {
-		DelayedFieldIndexCreation nextIndexCreation = fieldIndexCreationQueue.poll();
-		while(nextIndexCreation != null) {
-			if(connection == null) {
-				connection = jdbcTemplate.getDataSource().getConnection();
-			}
-			internalCreatePsqlIndex(connection, nextIndexCreation.tableName, nextIndexCreation.fieldName, nextIndexCreation.indexGenerationSettings);
-			nextIndexCreation = fieldIndexCreationQueue.poll();
+		if(connection == null) {
+			connection = jdbcTemplate.getDataSource().getConnection();
 		}
+		final String fetchQueueQuery = "SELECT * FROM elefana_delayed_field_index_queue WHERE _timestamp <= " + System.currentTimeMillis();
+		PreparedStatement preparedStatement = connection.prepareStatement(fetchQueueQuery);
+		final ResultSet resultSet = preparedStatement.executeQuery();
+		while(resultSet.next()) {
+			final String tableName = resultSet.getString("_tableName");
+			final String fieldName = resultSet.getString("_fieldName");
+			final IndexGenerationMode indexGenerationMode = IndexGenerationMode.valueOf(resultSet.getString("_generationMode"));
+			tableFieldIndexQueue.offer(tableName);
+			fieldIndexQueue.offer(fieldName);
+			tableFieldIndexModes.put(tableName, indexGenerationMode);
+		}
+		preparedStatement.close();
+
+		while(!tableFieldIndexQueue.isEmpty()) {
+			final String tableName = tableFieldIndexQueue.poll();
+			final String fieldName = fieldIndexQueue.poll();
+			final IndexGenerationMode indexGenerationMode = tableFieldIndexModes.get(tableName);
+
+			internalCreatePsqlFieldIndex(connection, tableName, fieldName, indexGenerationMode);
+		}
+
+		tableFieldIndexModes.clear();
 		return connection;
 	}
 
-	public void createPsqlIndices(Connection connection, String tableName, IndexGenerationSettings indexGenerationSettings) throws SQLException {
+	public void createPsqlTableIndices(Connection connection, String tableName, IndexGenerationSettings indexGenerationSettings) throws SQLException {
 		if(indexGenerationSettings.getIndexDelaySeconds() <= 0) {
-			internalCreatePsqlIndices(connection, tableName, indexGenerationSettings);
+			internalCreatePsqlTableIndices(connection, tableName, indexGenerationSettings.getMode());
 		} else {
-			final DelayedTableIndexCreation delayedTableIndexCreation = new DelayedTableIndexCreation();
-			delayedTableIndexCreation.indexGenerationSettings = indexGenerationSettings;
-			delayedTableIndexCreation.tableName = tableName;
-			delayedTableIndexCreation.delayMillis = TimeUnit.SECONDS.toMillis(indexGenerationSettings.getIndexDelaySeconds());
-			tableIndexCreationQueue.offer(delayedTableIndexCreation);
+			final long indexTimestamp = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(indexGenerationSettings.getIndexDelaySeconds());
+			jdbcTemplate.execute("INSERT INTO elefana_delayed_table_index_queue (_tableName, _timestamp, _generationMode) VALUES ('" +
+					tableName + "', " + indexTimestamp + ", '" + indexGenerationSettings.getMode().name() + "')");
 		}
 	}
 
-	public void createPsqlIndex(Connection connection, String tableName, String fieldName, IndexGenerationSettings indexGenerationSettings) throws SQLException {
+	public void createPsqlFieldIndex(Connection connection, String tableName, String fieldName, IndexGenerationSettings indexGenerationSettings) throws SQLException {
 		if(indexGenerationSettings.getIndexDelaySeconds() <= 0) {
-			internalCreatePsqlIndex(connection, tableName, fieldName, indexGenerationSettings);
+			internalCreatePsqlFieldIndex(connection, tableName, fieldName, indexGenerationSettings.getMode());
 		} else {
-			final DelayedFieldIndexCreation delayedFieldIndexCreation = new DelayedFieldIndexCreation();
-			delayedFieldIndexCreation.indexGenerationSettings = indexGenerationSettings;
-			delayedFieldIndexCreation.tableName = tableName;
-			delayedFieldIndexCreation.fieldName = fieldName;
-			delayedFieldIndexCreation.delayMillis = TimeUnit.SECONDS.toMillis(indexGenerationSettings.getIndexDelaySeconds());
-			fieldIndexCreationQueue.offer(delayedFieldIndexCreation);
+			final long indexTimestamp = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(indexGenerationSettings.getIndexDelaySeconds());
+			jdbcTemplate.execute("INSERT INTO elefana_delayed_field_index_queue (_tableName, _fieldName, _timestamp, _generationMode) VALUES ('" +
+					tableName + "', '" + fieldName + "', " + indexTimestamp + ", '" + indexGenerationSettings.getMode().name() + "')");
 		}
 	}
 
-	private void internalCreatePsqlIndex(Connection connection, String tableName, String fieldName, IndexGenerationSettings indexGenerationSettings) throws SQLException {
-		switch(indexGenerationSettings.getMode()) {
+	private void internalCreatePsqlFieldIndex(Connection connection, String tableName, String fieldName, IndexGenerationMode indexGenerationMode) throws SQLException {
+		switch(indexGenerationMode) {
 		case ALL:
 			return;
 		case PRESET:
@@ -152,13 +184,13 @@ public class TableIndexCreator implements Runnable {
 		}
 	}
 
-	private void internalCreatePsqlIndices(Connection connection, String tableName, IndexGenerationSettings indexGenerationSettings) throws SQLException {
+	private void internalCreatePsqlTableIndices(Connection connection, String tableName, IndexGenerationMode indexGenerationMode) throws SQLException {
 		final String brinIndexName = IndexUtils.BRIN_INDEX_PREFIX + tableName;
 		final String ginIndexName = IndexUtils.GIN_INDEX_PREFIX + tableName;
 
 		PreparedStatement preparedStatement;
 
-		if(indexGenerationSettings.getMode().equals(IndexGenerationMode.ALL)) {
+		if(indexGenerationMode.equals(IndexGenerationMode.ALL)) {
 			final String createGinIndexQuery = "CREATE INDEX IF NOT EXISTS " + ginIndexName + " ON " + tableName
 					+ " USING GIN (_source jsonb_ops)";
 			LOGGER.info(createGinIndexQuery);
@@ -173,38 +205,5 @@ public class TableIndexCreator implements Runnable {
 		preparedStatement = connection.prepareStatement(createTimestampIndexQuery);
 		preparedStatement.execute();
 		preparedStatement.close();
-	}
-
-	private class DelayedTableIndexCreation implements Delayed {
-		public String tableName;
-		public IndexGenerationSettings indexGenerationSettings;
-		public long delayMillis;
-
-		@Override
-		public long getDelay(TimeUnit unit) {
-			return unit.convert(delayMillis, TimeUnit.MILLISECONDS);
-		}
-
-		@Override
-		public int compareTo(Delayed o) {
-			return Long.compare(delayMillis, o.getDelay(TimeUnit.MILLISECONDS));
-		}
-	}
-
-	private class DelayedFieldIndexCreation implements Delayed {
-		public String tableName;
-		public String fieldName;
-		public IndexGenerationSettings indexGenerationSettings;
-		public long delayMillis;
-
-		@Override
-		public long getDelay(TimeUnit unit) {
-			return unit.convert(delayMillis, TimeUnit.MILLISECONDS);
-		}
-
-		@Override
-		public int compareTo(Delayed o) {
-			return Long.compare(delayMillis, o.getDelay(TimeUnit.MILLISECONDS));
-		}
 	}
 }

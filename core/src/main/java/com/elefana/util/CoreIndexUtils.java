@@ -264,7 +264,7 @@ public class CoreIndexUtils implements IndexUtils {
 					if (!matchedPresetField) {
 						continue;
 					}
-					tableIndexCreator.createPsqlIndex(connection, tableName, fieldName, indexGenerationSettings);
+					tableIndexCreator.createPsqlFieldIndex(connection, tableName, fieldName, indexGenerationSettings);
 					break;
 				case DYNAMIC:
 				default:
@@ -348,9 +348,9 @@ public class CoreIndexUtils implements IndexUtils {
 			preparedStatement.close();
 
 			if(indexTemplate != null && indexTemplate.getStorage() != null && indexTemplate.getStorage().getIndexGenerationSettings() != null) {
-				tableIndexCreator.createPsqlIndices(connection, tableName, indexTemplate.getStorage().getIndexGenerationSettings());
+				tableIndexCreator.createPsqlTableIndices(connection, tableName, indexTemplate.getStorage().getIndexGenerationSettings());
 			} else {
-				tableIndexCreator.createPsqlIndices(connection, tableName, DEFAULT_INDEX_GENERATION_SETTINGS);
+				tableIndexCreator.createPsqlTableIndices(connection, tableName, DEFAULT_INDEX_GENERATION_SETTINGS);
 			}
 
 			if (nodeSettingsService.isUsingCitus() && timeSeries) {
