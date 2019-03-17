@@ -68,7 +68,7 @@ public class TableIndexCreator implements Runnable {
 			return;
 		}
 		final long interval = Math.min(nodeSettingsService.getFieldStatsInterval(), nodeSettingsService.getMappingInterval());
-		scheduledExecutorService.scheduleAtFixedRate(this, 1L, Math.max(1000, interval), TimeUnit.MILLISECONDS);
+		scheduledExecutorService.scheduleAtFixedRate(this, 30000L, Math.max(1000, interval), TimeUnit.MILLISECONDS);
 	}
 
 	@PreDestroy
