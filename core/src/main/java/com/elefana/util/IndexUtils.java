@@ -111,40 +111,25 @@ public interface IndexUtils {
 	 * @return The escaped JSON string
 	 */
 	public static String psqlEscapeString(String json) {
+		if(json.contains("\\\\\\")) {
+			return json;
+		}
+		json = json.replace("\u0000", "");
+		json = json.replace("\\\"", "\\\\\\\"");
+		final StringBuilder result = new StringBuilder(json);
+
+		int replaceOffset = 0;
 		for(int i = 0; i < json.length(); i++) {
+			final char c0 = json.charAt(i);
 			switch(json.charAt(i)) {
-			case 0x00:
-				json = json.substring(0, i) + json.substring(i + 1);
-				i -= 1;
+			default:
 				break;
+			case 0x00:
+				continue;
 			case '\\':
 				switch(json.charAt(i + 1)) {
 				case '\\':
-					if(i + 2 >= json.length()) {
-						continue;
-					}
-					switch(json.charAt(i + 2)) {
-					case '\\':
-						if(i + 3 >= json.length()) {
-							continue;
-						}
-						switch(json.charAt(i + 3)) {
-						case '\"':
-							i += 2;
-							continue;
-						}
-						break;
-					case 'u':
-						if(i + 3 >= json.length()) {
-							continue;
-						}
-						i += 2;
-						break;
-					}
-					break;
-				case '\"':
-					json = json.substring(0, i) + "\\\\\\\"" + json.substring(i + 2);
-					i += 2;
+					i++;
 					break;
 				case 'u':
 					boolean allDigits = true;
@@ -159,8 +144,8 @@ public interface IndexUtils {
 					}
 					if(allDigits) {
 						//Unicode sequence
-						json = json.substring(0, i) + '\\' + json.substring(i);
-						i += 3;
+						result.insert(i + replaceOffset, '\\');
+						replaceOffset ++;
 					}
 					break;
 				default:
@@ -169,53 +154,28 @@ public interface IndexUtils {
 				break;
 			case 0x85:
 			case '\n':
-				if(i == 0) {
-					json = "\\\\n" + json.substring(i + 1);
-					i += 2;
-				} else {
-					json = json.substring(0, i) + "\\\\n" + json.substring(i + 1);
-					i += 2;
-				}
+				result.replace(i + replaceOffset, i + replaceOffset + 1,"\\\\n");
+				replaceOffset += 2;
 				break;
 			case '\r':
-				if(i == 0) {
-					json = "\\\\r" + json.substring(i + 1);
-					i += 2;
-				} else {
-					json = json.substring(0, i) + "\\\\r" + json.substring(i + 1);
-					i += 2;
-				}
+				result.replace(i + replaceOffset, i + replaceOffset + 1,"\\\\r");
+				replaceOffset += 2;
 				break;
 			case '\t':
-				if(i == 0) {
-					json = "\\\\t" + json.substring(i + 1);
-					i += 2;
-				} else {
-					json = json.substring(0, i) + "\\\\t" + json.substring(i + 1);
-					i += 2;
-				}
+				result.replace(i + replaceOffset, i + replaceOffset + 1,"\\\\t");
+				replaceOffset += 2;
 				break;
 			case '\f':
-				if(i == 0) {
-					json = "\\\\f" + json.substring(i + 1);
-					i += 2;
-				} else {
-					json = json.substring(0, i) + "\\\\f" + json.substring(i + 1);
-					i += 2;
-				}
+				result.replace(i + replaceOffset, i + replaceOffset + 1,"\\\\f");
+				replaceOffset += 2;
 				break;
 			case '\b':
-				if(i == 0) {
-					json = "\\\\b" + json.substring(i + 1);
-					i += 2;
-				} else {
-					json = json.substring(0, i) + "\\\\b" + json.substring(i + 1);
-					i += 2;
-				}
+				result.replace(i + replaceOffset, i + replaceOffset + 1,"\\\\b" );
+				replaceOffset += 2;
 				break;
 			}
 		}
-		return json;
+		return result.toString();
 	}
 	
 	public static String psqlUnescapeString(String json) {

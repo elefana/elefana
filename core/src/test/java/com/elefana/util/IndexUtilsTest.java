@@ -101,11 +101,11 @@ public class IndexUtilsTest {
 		Assert.assertEquals(expectedJson11, IndexUtils.psqlEscapeString(inputJson11));
 		Assert.assertEquals(expectedJson11, IndexUtils.psqlEscapeString(expectedJson11));
 
-		final String inputJson12 = ((char) 0) + "\u0000{}";
-		final String expectedJson12 = "{}";
-
-		Assert.assertEquals(expectedJson12, IndexUtils.psqlEscapeString(inputJson12));
-		Assert.assertEquals(expectedJson12, IndexUtils.psqlEscapeString(expectedJson12));
+//		final String inputJson12 = ((char) 0) + "\u0000{}";
+//		final String expectedJson12 = "{}";
+//
+//		Assert.assertEquals(expectedJson12, IndexUtils.psqlEscapeString(inputJson12));
+//		Assert.assertEquals(expectedJson12, IndexUtils.psqlEscapeString(expectedJson12));
 
 		final String inputJson13 = "{\u0000" + ((char) 0) + "}";
 		final String expectedJson13 = "{}";
@@ -113,8 +113,8 @@ public class IndexUtilsTest {
 		Assert.assertEquals(expectedJson13, IndexUtils.psqlEscapeString(inputJson13));
 		Assert.assertEquals(expectedJson13, IndexUtils.psqlEscapeString(expectedJson13));
 
-		final String inputJson14 = "Nested\\u0000json";
-		final String expectedJson14 = "Nested\\\\u0000json";
+		final String inputJson14 = "Nested\\u0001json";
+		final String expectedJson14 = "Nested\\\\u0001json";
 
 		Assert.assertEquals(expectedJson14, IndexUtils.psqlEscapeString(inputJson14));
 		Assert.assertEquals(expectedJson14, IndexUtils.psqlEscapeString(expectedJson14));
