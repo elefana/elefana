@@ -5,6 +5,7 @@ buildscript {
 		asciiDoctorVersion = '1.5.7'
 		dockerComposeVersion = '0.8.12'
 		dockerRunVersion = '0.17.2'
+		jmhVersion = '0.4.8'
 		nexusStagingVersion = '0.9.0'
 		springBootVersion = '2.1.0.RELEASE'
 	}
@@ -21,6 +22,7 @@ buildscript {
 		classpath("com.avast.gradle:gradle-docker-compose-plugin:${dockerComposeVersion}")
 		classpath("org.asciidoctor:asciidoctor-gradle-plugin:${asciiDoctorVersion}")
 		classpath("io.codearte.gradle.nexus:gradle-nexus-staging-plugin:${nexusStagingVersion}")
+		classpath("me.champeau.gradle:jmh-gradle-plugin:${jmhVersion}")
 		classpath ':proguard:'
 	}
 }
@@ -198,6 +200,8 @@ project(":" + rootProject.name + "-api") {
 }
 
 project(":" + rootProject.name + "-core") {
+	apply plugin: "me.champeau.gradle.jmh"
+
 	description = 'Elastic HTTP API for PostgreSQL'
 	
 	dependencies {
@@ -234,7 +238,16 @@ project(":" + rootProject.name + "-core") {
 	processResources {
 		exclude('application.properties')
 	}
-	
+
+	jmh {
+		timeUnit = 's'
+		warmupIterations = 5
+		iterations = 10
+		fork = 2
+		threads = 4
+		jvmArgs = ['-Djmh.separateClasspathJAR=true', '-Xmx1024m']
+	}
+
 	task copyToRelease(type: Copy, dependsOn: bootJar) {
 		from "build/libs/elefana-core-" + project.version + "-boot.jar"
 		into "build/release/"

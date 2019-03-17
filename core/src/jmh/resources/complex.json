@@ -1,0 +1,195 @@
+{
+  "monitor-mode": null,
+  "layer1-dialogue": {
+    "dialogueRequest": {
+      "protocol-version": [
+        "version1"
+      ],
+      "application-context-name": [
+        0,
+        4,
+        0,
+        0,
+        1,
+        0,
+        25,
+        2
+      ]
+    }
+  },
+  "mt_sm_rp_oa": "96895001028",
+  "source": {
+    "country": "IE",
+    "network": "NET1",
+    "node": "96895001028"
+  },
+  "mt_sm_rp_oa_msisdn": {
+    "country": "XX",
+    "network": "Unknown"
+  },
+  "dest-info": "source",
+  "sccp": {
+    "udt": {
+      "protocol-class": {
+        "message-handling": "no-special-options",
+        "class": "connectionless-0"
+      },
+      "called-party-address": {
+        "address-indicator": {
+          "reserved?": false,
+          "routing-indicator?": false,
+          "global-title-indicator": 4,
+          "subsystem-number-indicator?": true,
+          "point-code-indicator?": false
+        },
+        "point-code": null,
+        "subsystem-number": 8,
+        "global-title": {
+          "translation-type": 0,
+          "numbering-plan": "telephony",
+          "encoding-scheme": "bcd-odd",
+          "nature-of-address-indicator": "international",
+          "spare": false,
+          "digits": "357238572894"
+        }
+      },
+      "calling-party-address": {
+        "address-indicator": {
+          "reserved?": false,
+          "routing-indicator?": false,
+          "global-title-indicator": 4,
+          "subsystem-number-indicator?": true,
+          "point-code-indicator?": false
+        },
+        "point-code": null,
+        "subsystem-number": 8,
+        "global-title": {
+          "translation-type": 0,
+          "numbering-plan": "telephony",
+          "encoding-scheme": "bcd-odd",
+          "nature-of-address-indicator": "international",
+          "spare": false,
+          "digits": "32052389523"
+        }
+      }
+    }
+  },
+  "mt_da_imsi": "390472385728",
+  "bytes": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+  "action": {
+    "log-to-disk": {
+      "include-all-fields?": true,
+      "exclude-fields": [
+        [
+          [
+            "sctp"
+          ]
+        ],
+        [
+          [
+            "m3ua"
+          ]
+        ],
+        [
+          [
+            "mtp3"
+          ]
+        ]
+      ],
+      "include-fields": []
+    }
+  },
+  "origin": "dest",
+  "message-actions": [
+    "allow"
+  ],
+  "layer1": {
+    "begin": {
+      "otid": "1cd8",
+      "dialoguePortion": {
+        "direct-reference": [
+          0,
+          0,
+          17,
+          773,
+          1,
+          1,
+          1
+        ]
+      },
+      "components": [
+        {
+          "invoke": {
+            "invokeID": -1,
+            "operationCode": {
+              "localValue": 46
+            },
+            "parameter": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          }
+        }
+      ]
+    },
+    "components": []
+  },
+  "timestamp": 154732334136980,
+  "sm-tp": [
+    {
+      "deliver": {
+        "flags": {
+          "reply-path": true,
+          "user-data-header-indicator": true,
+          "status-report-indication": false,
+          "loop-prevention": false,
+          "more-messages-to-send": false,
+          "message-type-indicator": 0
+        },
+        "protocol-identifier": 0,
+        "data-coding-scheme": 8,
+        "time-stamp": "42586734985634",
+        "user-data": {
+          "header": [
+            {
+              "identifier": 0,
+              "identifier-type": "Concatenated",
+              "Concatenated": {
+                "reference": 189,
+                "maximum": 4,
+                "sequence": 1
+              }
+            }
+          ],
+          "short-message": {
+            "ucs2": "This is a test message"
+          }
+        }
+      }
+    }
+  ],
+  "dest": {
+    "country": "IE",
+    "network": "NET2",
+    "node": "2386457245"
+  },
+  "layer2": [
+    {
+      "phase2": {
+        "argument": {
+          "forwardSM": {
+            "sm-RP-DA": {
+              "imsi": "0237524856289"
+            },
+            "sm-RP-OA": {
+              "serviceCentreAddressOA": {
+                "nai": "international",
+                "npi": "e164",
+                "digits": "328568239562"
+              }
+            },
+            "sm-RP-UI": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "moreMessagesToSend": "null"
+          }
+        }
+      }
+    }
+  ]
+}
