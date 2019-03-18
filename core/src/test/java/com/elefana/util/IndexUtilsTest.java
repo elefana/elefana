@@ -34,7 +34,7 @@ public class IndexUtilsTest {
 		
 		Assert.assertEquals(expectedWithoutJson, IndexUtils.psqlEscapeString(inputWithoutJson));
 		Assert.assertEquals(expectedWithoutJson, IndexUtils.psqlEscapeString(expectedWithoutJson));
-		
+
 		final String inputJson = new Scanner(IndexUtilsTest.class.getResource("/escapedSample.json").openStream()).nextLine();
 		final String expectedJson = inputJson.replace("\\", "\\\\\\");
 		

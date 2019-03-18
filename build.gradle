@@ -245,6 +245,7 @@ project(":" + rootProject.name + "-core") {
 		iterations = 10
 		fork = 2
 		threads = 4
+		include = ['Psql']
 		jvmArgs = ['-Djmh.separateClasspathJAR=true', '-Xmx1024m']
 	}
 

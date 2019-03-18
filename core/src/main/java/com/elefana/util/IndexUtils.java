@@ -104,6 +104,25 @@ public interface IndexUtils {
 		}
 		return true;
 	}
+
+	public static final String [] ESCAPE_SEARCH = new String [] {
+			"\\\"",
+			"\n",
+			"\r",
+			"\t",
+			"\f",
+			"\b",
+			"\u0000"
+	};
+	public static final String [] ESCAPE_REPLACE = new String [] {
+			"\\\\\\\"",
+			"\\\\n",
+			"\\\\r",
+			"\\\\t",
+			"\\\\f",
+			"\\\\b",
+			""
+	};
 	
 	/**
 	 * If JSON string contains \" we need to escape it as \\" for PSQL to handle correctly
@@ -111,71 +130,57 @@ public interface IndexUtils {
 	 * @return The escaped JSON string
 	 */
 	public static String psqlEscapeString(String json) {
-		if(json.contains("\\\\\\")) {
+		if(NoAllocStringReplace.contains(json, ESCAPE_REPLACE)) {
 			return json;
 		}
-		json = json.replace("\u0000", "");
-		json = json.replace("\\\"", "\\\\\\\"");
-		final StringBuilder result = new StringBuilder(json);
-
-		int replaceOffset = 0;
-		for(int i = 0; i < json.length(); i++) {
-			final char c0 = json.charAt(i);
-			switch(json.charAt(i)) {
-			default:
-				break;
-			case 0x00:
-				continue;
-			case '\\':
-				switch(json.charAt(i + 1)) {
-				case '\\':
-					i++;
-					break;
-				case 'u':
-					boolean allDigits = true;
-					if(i + 5 >= json.length()) {
-						continue;
-					}
-					for(int j = i + 2; j <= i + 5 && j < json.length(); j++) {
-						if(!Character.isDigit(json.charAt(j))) {
-							allDigits = false;
-							break;
-						}
-					}
-					if(allDigits) {
-						//Unicode sequence
-						result.insert(i + replaceOffset, '\\');
-						replaceOffset ++;
-					}
-					break;
-				default:
-					continue;
-				}
-				break;
-			case 0x85:
-			case '\n':
-				result.replace(i + replaceOffset, i + replaceOffset + 1,"\\\\n");
-				replaceOffset += 2;
-				break;
-			case '\r':
-				result.replace(i + replaceOffset, i + replaceOffset + 1,"\\\\r");
-				replaceOffset += 2;
-				break;
-			case '\t':
-				result.replace(i + replaceOffset, i + replaceOffset + 1,"\\\\t");
-				replaceOffset += 2;
-				break;
-			case '\f':
-				result.replace(i + replaceOffset, i + replaceOffset + 1,"\\\\f");
-				replaceOffset += 2;
-				break;
-			case '\b':
-				result.replace(i + replaceOffset, i + replaceOffset + 1,"\\\\b" );
-				replaceOffset += 2;
-				break;
-			}
-		}
+		final NoAllocStringReplace result = new NoAllocStringReplace(json);
+		result.replaceAndEscapeUnicode(ESCAPE_SEARCH, ESCAPE_REPLACE);
 		return result.toString();
+
+//		if(json.contains("\\\\\\")) {
+//			return json;
+//		}
+//		json = json.replace("\u0000", "");
+//		json = json.replace("\\\"", "\\\\\\\"");
+//		final StringBuilder result = new StringBuilder(json);
+//
+//		int replaceOffset = 0;
+//		for(int i = 0; i < json.length(); i++) {
+//			final char c0 = json.charAt(i);
+//			switch(json.charAt(i)) {
+//			default:
+//				break;
+//			case 0x00:
+//				continue;
+//			case '\\':
+//				switch(json.charAt(i + 1)) {
+//				case '\\':
+//					i++;
+//					break;
+//				case 'u':
+//					boolean allDigits = true;
+//					if(i + 5 >= json.length()) {
+//						continue;
+//					}
+//					for(int j = i + 2; j <= i + 5 && j < json.length(); j++) {
+//						if(!Character.isDigit(json.charAt(j))) {
+//							allDigits = false;
+//							break;
+//						}
+//					}
+//					if(allDigits) {
+//						//Unicode sequence
+//						result.insert(i + replaceOffset, '\\');
+//						replaceOffset ++;
+//					}
+//					break;
+//				default:
+//					continue;
+//				}
+//				break;
+//			}
+//		}
+//		return result.toString();
 	}
 	
 	public static String psqlUnescapeString(String json) {
