@@ -259,7 +259,7 @@ public interface IndexUtils {
 	public static final CumulativeAverage FLATTEN_JSON_CAPACITY = new CumulativeAverage(32);
 
 	public static String flattenJson(String json) throws IOException {
-		final StringBuilder result = new StringBuilder(FLATTEN_JSON_CAPACITY.avg());
+		final StringBuilder result = POOLED_STRING_BUILDER.get();
 
 		final NoAllocStringReplace str = NoAllocStringReplace.allocate(json);
 		str.replaceAndEscapeUnicode(ESCAPE_SEARCH, ESCAPE_REPLACE);
@@ -420,4 +420,18 @@ public interface IndexUtils {
 		}
 		return new String(result);
 	}
+
+	public static ThreadLocal<StringBuilder> POOLED_STRING_BUILDER = new ThreadLocal<StringBuilder>() {
+		@Override
+		protected StringBuilder initialValue() {
+			return new StringBuilder();
+		}
+
+		@Override
+		public StringBuilder get() {
+			StringBuilder b = super.get();
+			b.setLength(0); // clear/reset the buffer
+			return b;
+		}
+	};
 }
