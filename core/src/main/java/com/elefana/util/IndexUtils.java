@@ -133,9 +133,9 @@ public interface IndexUtils {
 		if(NoAllocStringReplace.contains(json, ESCAPE_REPLACE)) {
 			return json;
 		}
-		final NoAllocStringReplace result = new NoAllocStringReplace(json);
-		result.replaceAndEscapeUnicode(ESCAPE_SEARCH, ESCAPE_REPLACE);
-		return result.toString();
+		final NoAllocStringReplace str = NoAllocStringReplace.allocate(json);
+		str.replaceAndEscapeUnicode(ESCAPE_SEARCH, ESCAPE_REPLACE);
+		return str.dispose();
 
 //		if(json.contains("\\\\\\")) {
 //			return json;
@@ -260,14 +260,11 @@ public interface IndexUtils {
 
 	public static String flattenJson(String json) throws IOException {
 		final StringBuilder result = new StringBuilder(FLATTEN_JSON_CAPACITY.avg());
-		
-		json = json.replace("\n", "\\\\n");
-		json = json.replace("\r", "\\\\r");
-		json = json.replace("\t", "\\\\t");
-		json = json.replace("\b", "\\\\b");
-		json = json.replace("\f", "\\\\f");
 
-		final JsonNode root = OBJECT_MAPPER.readTree(json);
+		final NoAllocStringReplace str = NoAllocStringReplace.allocate(json);
+		str.replaceAndEscapeUnicode(ESCAPE_SEARCH, ESCAPE_REPLACE);
+
+		final JsonNode root = OBJECT_MAPPER.readTree(str.dispose());
 		result.append('{');
 		flattenJson("", root, result);
 		result.append('}');

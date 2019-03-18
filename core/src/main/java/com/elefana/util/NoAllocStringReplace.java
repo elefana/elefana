@@ -1,16 +1,33 @@
 package com.elefana.util;
 
+import java.util.concurrent.ConcurrentLinkedQueue;
+
 public class NoAllocStringReplace {
 	private static final CumulativeAverage AVG_ARRAY_SIZE = new CumulativeAverage(16);
+	private static final ConcurrentLinkedQueue<NoAllocStringReplace> POOL = new ConcurrentLinkedQueue<NoAllocStringReplace>();
+
+	public static NoAllocStringReplace allocate(String value) {
+		NoAllocStringReplace result = POOL.poll();
+		if(result == null) {
+			result = new NoAllocStringReplace();
+		}
+		result.set(value);
+		return result;
+	}
 
 	private char [] str;
 	private int length;
 
-	public NoAllocStringReplace(String value) {
+	private NoAllocStringReplace() {
 		super();
-		str = new char[Math.max(AVG_ARRAY_SIZE.avg(), value.length() + 1)];
-		length = value.length();
+		str = new char[AVG_ARRAY_SIZE.avg()];
+	}
 
+	public void set(String value) {
+		if(value.length() > str.length) {
+			str = new char[value.length() + (value.length() / 2)];
+		}
+		length = value.length();
 		value.getChars(0, value.length(), str, 0);
 	}
 
@@ -76,7 +93,7 @@ public class NoAllocStringReplace {
 		//Shift chars to right
 		char [] oldStr = str;
 		if(str.length < length) {
-			str = new char[length * 2];
+			str = new char[length + (length / 2)];
 			if(index > 0) {
 				System.arraycopy(oldStr, 0, str, 0, index);
 			}
@@ -105,9 +122,11 @@ public class NoAllocStringReplace {
 		}
 	}
 
-	public String toString() {
+	public String dispose() {
 		AVG_ARRAY_SIZE.add(str.length / length > 2 ? length : str.length);
-		return new String(str, 0, length);
+		final String result = new String(str, 0, length);
+		POOL.offer(this);
+		return result;
 	}
 
 	public static boolean contains(String str, String [] search) {
