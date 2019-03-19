@@ -422,7 +422,7 @@ public class CoreIndexUtils implements IndexUtils {
 		jdbcTemplate.update("DROP TABLE IF EXISTS " + tableName + " CASCADE;");
 	}
 
-	private List<String> listTables() throws SQLException {
+	protected List<String> listTables() throws SQLException {
 		final String query = "SELECT _partitionTable FROM " + PARTITION_TRACKING_TABLE;
 		final List<String> results = new ArrayList<String>(1);
 
