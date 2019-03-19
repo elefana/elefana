@@ -284,12 +284,21 @@ public interface IndexUtils {
 			final Map.Entry<String, JsonNode> field = iterator.next();
 			if(field.getValue().isArray()) {
 				if (field.getValue().size() > 0) {
-					appendedField = flattenJson(prefix + field.getKey(), field.getValue().elements(), stringBuilder);
+					final String key = field.getKey();
+					final StringBuilder newPrefix = new StringBuilder(prefix.length() + key.length() + 1);
+					newPrefix.append(prefix);
+					newPrefix.append(key);
+					appendedField = flattenJson(newPrefix.toString(), field.getValue().elements(), stringBuilder);
 				} else {
 					appendedField = false;
 				}
 			} else if(field.getValue().isObject()) {
-				appendedField = flattenJson(prefix + field.getKey() + "_", field.getValue(), stringBuilder);
+				final String key = field.getKey();
+				final StringBuilder newPrefix = new StringBuilder(prefix.length() + key.length() + 2);
+				newPrefix.append(prefix);
+				newPrefix.append(key);
+				newPrefix.append('_');
+				appendedField = flattenJson(newPrefix.toString(), field.getValue(), stringBuilder);
 			} else if(field.getValue().isNull()) {
 				stringBuilder.append('\"');
 				stringBuilder.append(prefix);
@@ -338,12 +347,21 @@ public interface IndexUtils {
 
 			if(nextNode.isArray()) {
 				if (nextNode.size() > 0) {
-					appendedField = flattenJson(prefix + "_" + i, nextNode.elements(), stringBuilder);
+					final StringBuilder newPrefix = new StringBuilder(prefix.length() + 3);
+					newPrefix.append(prefix);
+					newPrefix.append('_');
+					newPrefix.append(i);
+					appendedField = flattenJson(newPrefix.toString(), nextNode.elements(), stringBuilder);
 				} else {
 					appendedField = false;
 				}
 			} else if(nextNode.isObject()) {
-				appendedField = flattenJson(prefix + "_" + i + "_", nextNode, stringBuilder);
+				final StringBuilder newPrefix = new StringBuilder(prefix.length() + 4);
+				newPrefix.append(prefix);
+				newPrefix.append('_');
+				newPrefix.append(i);
+				newPrefix.append('_');
+				appendedField = flattenJson(newPrefix.toString(), nextNode, stringBuilder);
 			} else if(nextNode.isNull()) {
 				stringBuilder.append('\"');
 				stringBuilder.append(prefix);
