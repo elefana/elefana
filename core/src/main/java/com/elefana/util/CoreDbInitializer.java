@@ -120,14 +120,12 @@ public class CoreDbInitializer implements DbInitializer {
 		preparedStatement.execute();
 		preparedStatement.close();
 
-		if (nodeSettingsService.isUsingCitus() && !isTableDistributed(IndexUtils.PARTITION_TRACKING_TABLE)) {
-			preparedStatement = connection.prepareStatement(
-					"SELECT create_distributed_table('" + IndexUtils.PARTITION_TRACKING_TABLE + "', '_index');");
-			preparedStatement.execute();
-			preparedStatement.close();
-		}
-
 		connection.close();
+
+		if (nodeSettingsService.isUsingCitus() && !isTableDistributed(IndexUtils.PARTITION_TRACKING_TABLE)) {
+			jdbcTemplate.execute(
+					"SELECT create_distributed_table('" + IndexUtils.PARTITION_TRACKING_TABLE + "', '_index');");
+		}
 	}
 
 	private void createFieldStatsTablesIfNotExists() throws SQLException {
