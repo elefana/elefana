@@ -83,13 +83,14 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 	private final String tablespace;
 	private final String index;
 	private final String queryTarget;
+	private final boolean flatten;
 	private final int from;
 	private final int size;
 
 	private final String stagingTable;
 
 	public BulkTask(Timer psqlTimer, JdbcTemplate jdbcTemplate, List<BulkIndexOperation> indexOperations,
-			String tablespace, String index, String queryTarget, int from, int size) {
+			String tablespace, String index, String queryTarget, boolean flatten, int from, int size) {
 		super();
 		this.psqlTimer = psqlTimer;
 		this.jdbcTemplate = jdbcTemplate;
@@ -97,6 +98,7 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 		this.tablespace = tablespace;
 		this.index = index;
 		this.queryTarget = queryTarget;
+		this.flatten = flatten;
 		this.from = from;
 		this.size = size;
 
@@ -166,7 +168,12 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 							- (indexOperation.getTimestamp() % ONE_HOUR_IN_MILLIS);
 					final long bucket1d = indexOperation.getTimestamp()
 							- (indexOperation.getTimestamp() % ONE_DAY_IN_MILLIS);
-					final String escapedJson = IndexUtils.psqlEscapeString(indexOperation.getSource());
+					final String escapedJson;
+					if(flatten) {
+						escapedJson = IndexUtils.psqlEscapeString(IndexUtils.flattenJson(indexOperation.getSource()));
+					} else {
+						escapedJson = IndexUtils.psqlEscapeString(indexOperation.getSource());
+					}
 
 					batchInsertStatement.setString(1, indexOperation.getIndex());
 					batchInsertStatement.setString(2, indexOperation.getType());

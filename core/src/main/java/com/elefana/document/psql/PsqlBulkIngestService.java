@@ -163,12 +163,7 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 						BulkIndexOperation indexOperation = BulkIndexOperation.allocate();
 						indexOperation.setIndex(indexOperationTarget.get(BulkTask.KEY_INDEX).toString());
 						indexOperation.setType(indexOperationTarget.get(BulkTask.KEY_TYPE).toString());
-
-						if(nodeSettingsService.isFlattenJson()) {
-							indexOperation.setSource(IndexUtils.flattenJson(sourceLine));
-						} else {
-							indexOperation.setSource(sourceLine);
-						}
+						indexOperation.setSource(sourceLine);
 
 						indexOperation.setTimestamp(
 								indexUtils.getTimestamp(indexOperation.getIndex(), indexOperation.getSource()));
@@ -191,9 +186,6 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 					}
 					// TODO: Handle other operations
 				} catch (JsonException e) {
-					LOGGER.error("Error parsing JSON at line number " + (i + 1) + ": " + lines[i] + "} - " + e.getMessage(), e);
-					bulkApiResponse.setErrors(true);
-				} catch (IOException e) {
 					LOGGER.error("Error parsing JSON at line number " + (i + 1) + ": " + lines[i] + "} - " + e.getMessage(), e);
 					bulkApiResponse.setErrors(true);
 				}
@@ -224,7 +216,7 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 		for (int i = 0; i < indexOperations.size(); i += operationSize) {
 			final String tablespace = tablespaces[tablespaceIndex.incrementAndGet() % tablespaces.length];
 			final BulkTask task = new BulkTask(bulkOperationsPsqlTimer, jdbcTemplate, indexOperations, tablespace,
-					index, queryTarget, i, operationSize);
+					index, queryTarget, nodeSettingsService.isFlattenJson(), i, operationSize);
 			bulkTasks.add(task);
 			try {
 				results.add(bulkProcessingExecutorService.submit(task));
