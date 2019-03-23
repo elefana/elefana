@@ -59,15 +59,21 @@ public abstract class ApiRequest<T extends ApiResponse> {
 	}
 	
 	public T get() throws ElefanaException {
-		if(responseFuture == null) {
-			execute();
-		}
 		try {
+			if(responseFuture == null) {
+				execute();
+			}
 			return responseFuture.get();
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 			throw new ShardFailedException(e);
 		} catch (ExecutionException e) {
+			if(e.getCause() instanceof ElefanaException) {
+				throw (ElefanaException) e.getCause();
+			}
+			e.printStackTrace();
+			throw new ShardFailedException(e);
+		} catch (Exception e) {
 			if(e.getCause() instanceof ElefanaException) {
 				throw (ElefanaException) e.getCause();
 			}
