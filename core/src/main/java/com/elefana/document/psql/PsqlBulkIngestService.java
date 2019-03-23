@@ -206,7 +206,6 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 	private void bulkIndex(BulkResponse bulkApiResponse, String index, List<BulkIndexOperation> indexOperations)
 			throws ElefanaException {
 		indexUtils.ensureIndexExists(index);
-		final String queryTarget = indexUtils.getQueryTarget(index);
 
 		final int operationSize = Math.max(MINIMUM_BULK_SIZE, indexOperations.size() / nodeSettingsService.getBulkParallelisation());
 		
@@ -216,7 +215,7 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 		for (int i = 0; i < indexOperations.size(); i += operationSize) {
 			final String tablespace = tablespaces[tablespaceIndex.incrementAndGet() % tablespaces.length];
 			final BulkTask task = new BulkTask(bulkOperationsPsqlTimer, jdbcTemplate, indexOperations, tablespace,
-					index, queryTarget, nodeSettingsService.isFlattenJson(), i, operationSize);
+					index, nodeSettingsService.isFlattenJson(), i, operationSize);
 			bulkTasks.add(task);
 			try {
 				results.add(bulkProcessingExecutorService.submit(task));

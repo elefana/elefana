@@ -82,7 +82,6 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 	private final List<BulkIndexOperation> indexOperations;
 	private final String tablespace;
 	private final String index;
-	private final String queryTarget;
 	private final boolean flatten;
 	private final int from;
 	private final int size;
@@ -90,14 +89,13 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 	private final String stagingTable;
 
 	public BulkTask(Timer psqlTimer, JdbcTemplate jdbcTemplate, List<BulkIndexOperation> indexOperations,
-			String tablespace, String index, String queryTarget, boolean flatten, int from, int size) {
+			String tablespace, String index, boolean flatten, int from, int size) {
 		super();
 		this.psqlTimer = psqlTimer;
 		this.jdbcTemplate = jdbcTemplate;
 		this.indexOperations = indexOperations;
 		this.tablespace = tablespace;
 		this.index = index;
-		this.queryTarget = queryTarget;
 		this.flatten = flatten;
 		this.from = from;
 		this.size = size;
@@ -132,9 +130,8 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 			StringBuilder createTableQuery = new StringBuilder();
 			createTableQuery.append("CREATE TABLE ");
 			createTableQuery.append(stagingTable);
-			createTableQuery.append(" (LIKE ");
-			createTableQuery.append(queryTarget);
-			createTableQuery.append(")");
+			createTableQuery.append(" (_index VARCHAR(255) NOT NULL, _type VARCHAR(255) NOT NULL, _id VARCHAR(255) NOT NULL, _timestamp BIGINT, ");
+			createTableQuery.append("_bucket1s BIGINT, _bucket1m BIGINT, _bucket1h BIGINT, _bucket1d BIGINT, _source jsonb)");
 			if (tablespace != null && !tablespace.isEmpty()) {
 				createTableQuery.append(" TABLESPACE ");
 				createTableQuery.append(tablespace);
