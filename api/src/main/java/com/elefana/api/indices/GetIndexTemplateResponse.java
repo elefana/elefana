@@ -15,19 +15,28 @@
  ******************************************************************************/
 package com.elefana.api.indices;
 
+import com.elefana.api.ApiResponse;
+import com.elefana.api.json.GetIndexTemplateForIndexResponseDecoder;
+import com.elefana.api.json.GetIndexTemplateResponseDecoder;
+import com.jsoniter.output.JsonStream;
+import com.jsoniter.spi.JsoniterSpi;
+import io.netty.handler.codec.http.HttpResponseStatus;
+
 import java.util.HashMap;
 import java.util.Map;
 
-import com.elefana.api.ApiResponse;
-import com.elefana.api.json.EmptyJsonObject;
-import com.jsoniter.output.JsonStream;
-
-import io.netty.handler.codec.http.HttpResponseStatus;
-
 public class GetIndexTemplateResponse extends ApiResponse {
-	protected final String templateId;
+	static {
+		JsoniterSpi.registerTypeDecoder(GetIndexTemplateResponse.class, new GetIndexTemplateResponseDecoder());
+	}
+
+	protected String templateId;
 	protected final Map<String, IndexTemplate> templates = new HashMap<String, IndexTemplate>(1);
-	
+
+	public GetIndexTemplateResponse() {
+		super(HttpResponseStatus.OK.code());
+	}
+
 	public GetIndexTemplateResponse(String templateId) {
 		super(HttpResponseStatus.OK.code());
 		this.templateId = templateId;
@@ -36,6 +45,10 @@ public class GetIndexTemplateResponse extends ApiResponse {
 	@Override
 	public String toJsonString() {
 		return JsonStream.serialize(templates);
+	}
+
+	public Map<String, IndexTemplate> getTemplates() {
+		return templates;
 	}
 
 	public IndexTemplate getIndexTemplate() {
@@ -50,6 +63,14 @@ public class GetIndexTemplateResponse extends ApiResponse {
 			return;
 		}
 		templates.put(templateId, indexTemplate);
+	}
+
+	public String getTemplateId() {
+		return templateId;
+	}
+
+	public void setTemplateId(String templateId) {
+		this.templateId = templateId;
 	}
 
 	@Override
