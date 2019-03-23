@@ -99,6 +99,12 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 	
 	@Override
 	public GetIndexTemplateForIndexRequest prepareGetIndexTemplateForIndex(String index) {
+		if (indexToIndexTemplateNullCache.containsKey(index)) {
+			return new ImmediateGetIndexTemplateForIndexRequest(index, null);
+		}
+		if (indexToIndexTemplateCache.containsKey(index)) {
+			return new ImmediateGetIndexTemplateForIndexRequest(index, indexToIndexTemplateCache.get(index));
+		}
 		return new PsqlGetIndexTemplateForIndexRequest(this, index);
 	}
 	
