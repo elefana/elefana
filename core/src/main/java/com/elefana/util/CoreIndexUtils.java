@@ -32,6 +32,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import javax.annotation.PostConstruct;
 
+import com.elefana.indices.IndexTemplateCache;
 import com.fasterxml.uuid.EthernetAddress;
 import com.fasterxml.uuid.Generators;
 import com.fasterxml.uuid.impl.TimeBasedGenerator;
@@ -79,7 +80,7 @@ public class CoreIndexUtils implements IndexUtils {
 	@Autowired
 	private NodeSettingsService nodeSettingsService;
 	@Autowired
-	private IndexTemplateService indexTemplateService;
+	private IndexTemplateCache indexTemplateCache;
 	@Autowired
 	private TableIndexCreator tableIndexCreator;
 	@Autowired
@@ -198,10 +199,7 @@ public class CoreIndexUtils implements IndexUtils {
 	}
 
 	public long getTimestamp(String index, String document) throws ElefanaException {
-		final GetIndexTemplateForIndexRequest indexTemplateForIndexRequest = indexTemplateService
-				.prepareGetIndexTemplateForIndex(index);
-		final GetIndexTemplateForIndexResponse indexTemplateForIndexResponse = indexTemplateForIndexRequest.get();
-		final IndexTemplate indexTemplate = indexTemplateForIndexResponse.getIndexTemplate();
+		final IndexTemplate indexTemplate = indexTemplateCache.getIndexTemplate(index);
 		if (indexTemplate == null) {
 			return System.currentTimeMillis();
 		}
@@ -230,12 +228,8 @@ public class CoreIndexUtils implements IndexUtils {
 
 	@Override
 	public void ensureJsonFieldIndexExist(String indexName, List<String> fieldNames) throws ElefanaException {
-		final IndexTemplate indexTemplate;
-		final GetIndexTemplateForIndexResponse indexTemplateForIndexResponse = indexTemplateService
-				.prepareGetIndexTemplateForIndex(indexName).get();
-		if (indexTemplateForIndexResponse.getIndexTemplate() != null) {
-			indexTemplate = indexTemplateForIndexResponse.getIndexTemplate();
-		} else {
+		final IndexTemplate indexTemplate = indexTemplateCache.getIndexTemplate(indexName);
+		if (indexTemplate == null) {
 			return;
 		}
 		final String tableName = convertIndexNameToTableName(indexName);
@@ -304,10 +298,7 @@ public class CoreIndexUtils implements IndexUtils {
 			return;
 		}
 
-		final GetIndexTemplateForIndexRequest indexTemplateForIndexRequest = indexTemplateService
-				.prepareGetIndexTemplateForIndex(indexName);
-		final GetIndexTemplateForIndexResponse indexTemplateForIndexResponse = indexTemplateForIndexRequest.get();
-		final IndexTemplate indexTemplate = indexTemplateForIndexResponse.getIndexTemplate();
+		final IndexTemplate indexTemplate = indexTemplateCache.getIndexTemplate(indexName);
 		boolean timeSeries = false;
 
 		if (indexTemplate != null && indexTemplate.isTimeSeries()) {

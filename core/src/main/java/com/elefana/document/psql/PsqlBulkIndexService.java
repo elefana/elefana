@@ -34,6 +34,7 @@ import javax.annotation.PreDestroy;
 import com.elefana.api.indices.GetIndexTemplateForIndexRequest;
 import com.elefana.api.indices.GetIndexTemplateForIndexResponse;
 import com.elefana.indices.IndexFieldMappingService;
+import com.elefana.indices.IndexTemplateCache;
 import com.elefana.indices.IndexTemplateService;
 import org.apache.commons.collections.map.LRUMap;
 import org.slf4j.Logger;
@@ -68,7 +69,7 @@ public class PsqlBulkIndexService implements Runnable {
 	@Autowired
 	private IndexFieldMappingService indexFieldMappingService;
 	@Autowired
-	private IndexTemplateService indexTemplateService;
+	private IndexTemplateCache indexTemplateCache;
 	@Autowired
 	private IndexUtils indexUtils;
 	@Autowired
@@ -164,15 +165,7 @@ public class PsqlBulkIndexService implements Runnable {
 	@Override
 	public void run() {
 		try {
-			final Map<String, IndexTemplate> indexTemplateCache = new HashMap<String, IndexTemplate>();
-			long lastCacheExpire = 0L;
-
 			while (running.get()) {
-				if(System.currentTimeMillis() - lastCacheExpire >= INDEX_TEMPLATE_CACHE_EXPIRE) {
-					indexTemplateCache.clear();
-					lastCacheExpire = System.currentTimeMillis();
-				}
-
 				final String nextIndexTable = indexQueue.take();
 				String index = null;
 
@@ -191,7 +184,7 @@ public class PsqlBulkIndexService implements Runnable {
 							final String targetTable = indexUtils.getQueryTarget(connection, index);
 
 							if (nodeSettingsService.isUsingCitus()) {
-								mergeStagingTableIntoDistributedTable(indexTemplateCache, connection, index, nextIndexTable, targetTable);
+								mergeStagingTableIntoDistributedTable(connection, index, nextIndexTable, targetTable);
 							} else {
 								mergeStagingTableIntoPartitionTable(connection, nextIndexTable, targetTable);
 							}
@@ -319,17 +312,9 @@ public class PsqlBulkIndexService implements Runnable {
 		return result;
 	}
 
-	private boolean mergeStagingTableIntoDistributedTable(Map<String, IndexTemplate> indexTemplateCache,
-	                                                      Connection connection, String index, String bulkIngestTable, String targetTable)
+	private boolean mergeStagingTableIntoDistributedTable(Connection connection, String index, String bulkIngestTable, String targetTable)
 			throws ElefanaException, IOException, SQLException {
-		if(!indexTemplateCache.containsKey(index)) {
-			final GetIndexTemplateForIndexRequest indexTemplateRequest = indexTemplateService.prepareGetIndexTemplateForIndex(index);
-			final GetIndexTemplateForIndexResponse indexTemplateResponse = indexTemplateRequest.get();
-			final IndexTemplate indexTemplate = indexTemplateResponse.getIndexTemplate();
-			indexTemplateCache.put(index, indexTemplate);
-		}
-
-		final IndexTemplate indexTemplate = indexTemplateCache.get(index);
+		final IndexTemplate indexTemplate = indexTemplateCache.getIndexTemplate(index);
 
 		if (indexTemplate != null && indexTemplate.isTimeSeries()) {
 			PreparedStatement preparedStatement = connection.prepareStatement("SELECT select_shard('" + targetTable + "')");
