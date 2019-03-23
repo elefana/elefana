@@ -81,7 +81,6 @@ public class NodeSettingsService {
 	private double mappingSampleSize;
 	private int fallbackMappingSampleSize;
 	private long garbageCollectionInterval;
-	private long indexTemplateCacheExpiry;
 	private int brinPagesPerRange;
 
 	@PostConstruct
@@ -129,7 +128,6 @@ public class NodeSettingsService {
 		mappingSampleSize = environment.getRequiredProperty("elefana.mappingSampleSize", Double.class);
 		fallbackMappingSampleSize = environment.getRequiredProperty("elefana.fallbackMappingSampleSize", Integer.class);
 		garbageCollectionInterval = environment.getRequiredProperty("elefana.gcInterval", Long.class);
-		indexTemplateCacheExpiry = environment.getProperty("elefana.indexTemplateCacheExpiry", Long.class, 3600000L);
 		brinPagesPerRange = Integer.parseInt(environment.getProperty("elefana.brinPagesPerRange", DEFAULT_BRIN_PAGES_PER_RANGE));
 
 		masterNode = checkIfMasterNode();
@@ -356,10 +354,6 @@ public class NodeSettingsService {
 
 	public long getGarbageCollectionInterval() {
 		return garbageCollectionInterval;
-	}
-
-	public long getIndexTemplateCacheExpiry() {
-		return indexTemplateCacheExpiry;
 	}
 
 	public int getBrinPagesPerRange() {
