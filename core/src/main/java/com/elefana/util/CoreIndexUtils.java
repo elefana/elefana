@@ -353,21 +353,12 @@ public class CoreIndexUtils implements IndexUtils {
 				tableIndexCreator.createPsqlTableIndices(connection, tableName, DEFAULT_INDEX_GENERATION_SETTINGS);
 			}
 
-			if (nodeSettingsService.isUsingCitus() && timeSeries) {
-				final String createPrimaryKeyQuery = "ALTER TABLE " + tableName + " ADD CONSTRAINT " + constraintName
-						+ " PRIMARY KEY (_timestamp, _id);";
-				LOGGER.info(createPrimaryKeyQuery);
-				preparedStatement = connection.prepareStatement(createPrimaryKeyQuery);
-				preparedStatement.execute();
-				preparedStatement.close();
-			} else {
-				final String createPrimaryKeyQuery = "ALTER TABLE " + tableName + " ADD CONSTRAINT " + constraintName
-						+ " PRIMARY KEY (_id);";
-				LOGGER.info(createPrimaryKeyQuery);
-				preparedStatement = connection.prepareStatement(createPrimaryKeyQuery);
-				preparedStatement.execute();
-				preparedStatement.close();
-			}
+			final String createPrimaryKeyQuery = "ALTER TABLE " + tableName + " ADD CONSTRAINT " + constraintName
+					+ " PRIMARY KEY (_id);";
+			LOGGER.info(createPrimaryKeyQuery);
+			preparedStatement = connection.prepareStatement(createPrimaryKeyQuery);
+			preparedStatement.execute();
+			preparedStatement.close();
 
 			final String createPartitionTrackingEntry = "INSERT INTO " + PARTITION_TRACKING_TABLE
 					+ " (_index, _partitionTable) VALUES (?, ?) ON CONFLICT DO NOTHING";

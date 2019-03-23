@@ -71,6 +71,8 @@ public class NodeSettingsService {
 	private boolean usingCitus = false;
 	private String citusCoordinatorHost = "";
 	private int citusCoordinatorPort = 5432;
+	private String citusWorkerHost = "";
+	private int citusWorkerPort = 5432;
 
 	private boolean flattenJson;
 	private int bulkParallelisation;
@@ -113,6 +115,9 @@ public class NodeSettingsService {
 		if (usingCitus) {
 			citusCoordinatorHost = environment.getRequiredProperty("elefana.citus.coordinator.host");
 			citusCoordinatorPort = environment.getRequiredProperty("elefana.citus.coordinator.port", Integer.class);
+
+			citusWorkerHost = environment.getProperty("elefana.citus.worker.host", "");
+			citusWorkerPort = environment.getProperty("elefana.citus.worker.port", Integer.class, 5432);
 		}
 
 		flattenJson = environment.getProperty("elefana.flattenJson", Boolean.class, false);
@@ -294,12 +299,37 @@ public class NodeSettingsService {
 		return usingCitus;
 	}
 
+	public boolean isConnectedToCitusCoordinator() {
+		if(!usingCitus) {
+			return false;
+		}
+		return isMasterNode();
+	}
+
+	public boolean isConnectedToCitusWorker() {
+		if(!usingCitus) {
+			return false;
+		}
+		if(isMasterNode()) {
+			return false;
+		}
+		return isDataNode();
+	}
+
 	public String getCitusCoordinatorHost() {
 		return citusCoordinatorHost;
 	}
 
 	public int getCitusCoordinatorPort() {
 		return citusCoordinatorPort;
+	}
+
+	public String getCitusWorkerHost() {
+		return citusWorkerHost;
+	}
+
+	public int getCitusWorkerPort() {
+		return citusWorkerPort;
 	}
 
 	public int getBulkParallelisation() {

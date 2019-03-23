@@ -22,7 +22,9 @@ import org.mini2Dx.natives.OsInformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.Banner.Mode;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -33,7 +35,7 @@ import com.jsoniter.JsonIterator;
 import com.jsoniter.extra.PreciseFloatSupport;
 import com.jsoniter.spi.DecodingMode;
 
-@SpringBootApplication
+@SpringBootApplication(exclude= { DataSourceAutoConfiguration.class })
 @ComponentScan(basePackages = { "com.elefana" })
 public class ElefanaApplication implements ApplicationListener<ContextRefreshedEvent> {
 	private static final Logger LOGGER = LoggerFactory.getLogger(ElefanaApplication.class);

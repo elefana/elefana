@@ -22,10 +22,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -34,6 +31,11 @@ import java.util.concurrent.atomic.AtomicLong;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 
+import com.elefana.api.indices.GetIndexTemplateForIndexRequest;
+import com.elefana.api.indices.GetIndexTemplateForIndexResponse;
+import com.elefana.indices.IndexFieldMappingService;
+import com.elefana.indices.IndexTemplateService;
+import org.apache.commons.collections.map.LRUMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,16 +58,17 @@ public class PsqlBulkIndexService implements Runnable {
 	private static final Logger LOGGER = LoggerFactory.getLogger(PsqlBulkIndexService.class);
 
 	private static final int MAX_FILE_DELETION_RETRIES = 5;
-	private static final long SHARD_TIMEOUT = 5000L;
+	private static final long SHARD_TIMEOUT = 30000L;
+	private static final long INDEX_TEMPLATE_CACHE_EXPIRE = 60000L;
 
 	@Autowired
 	private Environment environment;
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 	@Autowired
-	private PsqlIndexFieldMappingService indexFieldMappingService;
+	private IndexFieldMappingService indexFieldMappingService;
 	@Autowired
-	private PsqlIndexTemplateService indexTemplateService;
+	private IndexTemplateService indexTemplateService;
 	@Autowired
 	private IndexUtils indexUtils;
 	@Autowired
@@ -161,7 +164,15 @@ public class PsqlBulkIndexService implements Runnable {
 	@Override
 	public void run() {
 		try {
+			final Map<String, IndexTemplate> indexTemplateCache = new HashMap<String, IndexTemplate>();
+			long lastCacheExpire = 0L;
+
 			while (running.get()) {
+				if(System.currentTimeMillis() - lastCacheExpire >= INDEX_TEMPLATE_CACHE_EXPIRE) {
+					indexTemplateCache.clear();
+					lastCacheExpire = System.currentTimeMillis();
+				}
+
 				final String nextIndexTable = indexQueue.take();
 				String index = null;
 
@@ -180,7 +191,7 @@ public class PsqlBulkIndexService implements Runnable {
 							final String targetTable = indexUtils.getQueryTarget(connection, index);
 
 							if (nodeSettingsService.isUsingCitus()) {
-								mergeStagingTableIntoDistributedTable(connection, index, nextIndexTable, targetTable);
+								mergeStagingTableIntoDistributedTable(indexTemplateCache, connection, index, nextIndexTable, targetTable);
 							} else {
 								mergeStagingTableIntoPartitionTable(connection, nextIndexTable, targetTable);
 							}
@@ -229,7 +240,9 @@ public class PsqlBulkIndexService implements Runnable {
 					connection = null;
 
 					if(index != null) {
-						indexFieldMappingService.scheduleIndexForMappingAndStats(index);
+						if(indexFieldMappingService instanceof PsqlIndexFieldMappingService) {
+							((PsqlIndexFieldMappingService) indexFieldMappingService).scheduleIndexForMappingAndStats(index);
+						}
 					}
 				} catch (Exception e) {
 					if (connection != null) {
@@ -306,9 +319,17 @@ public class PsqlBulkIndexService implements Runnable {
 		return result;
 	}
 
-	private boolean mergeStagingTableIntoDistributedTable(Connection connection, String index, String bulkIngestTable, String targetTable)
+	private boolean mergeStagingTableIntoDistributedTable(Map<String, IndexTemplate> indexTemplateCache,
+	                                                      Connection connection, String index, String bulkIngestTable, String targetTable)
 			throws ElefanaException, IOException, SQLException {
-		final IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndex(index);
+		if(!indexTemplateCache.containsKey(index)) {
+			final GetIndexTemplateForIndexRequest indexTemplateRequest = indexTemplateService.prepareGetIndexTemplateForIndex(index);
+			final GetIndexTemplateForIndexResponse indexTemplateResponse = indexTemplateRequest.get();
+			final IndexTemplate indexTemplate = indexTemplateResponse.getIndexTemplate();
+			indexTemplateCache.put(index, indexTemplate);
+		}
+
+		final IndexTemplate indexTemplate = indexTemplateCache.get(index);
 
 		if (indexTemplate != null && indexTemplate.isTimeSeries()) {
 			PreparedStatement preparedStatement = connection.prepareStatement("SELECT select_shard('" + targetTable + "')");
@@ -320,6 +341,13 @@ public class PsqlBulkIndexService implements Runnable {
 			}
 			final long shardId = shardResultSet.getLong("select_shard");
 
+			final String psqlHost = nodeSettingsService.isConnectedToCitusCoordinator() ?
+					nodeSettingsService.getCitusCoordinatorHost() :
+					nodeSettingsService.getCitusWorkerHost();
+			final int psqlPort = nodeSettingsService.isConnectedToCitusCoordinator() ?
+					nodeSettingsService.getCitusCoordinatorPort() :
+					nodeSettingsService.getCitusWorkerPort();
+
 			long timer = 0L;
 			Exception lastException = null;
 			while (timer < SHARD_TIMEOUT) {
@@ -327,8 +355,7 @@ public class PsqlBulkIndexService implements Runnable {
 				try {
 					PreparedStatement appendShardStatement = connection.prepareStatement(
 							"SELECT master_append_table_to_shard(" + shardId + ", '" + bulkIngestTable
-							+ "', '" + nodeSettingsService.getCitusCoordinatorHost() + "', "
-							+ nodeSettingsService.getCitusCoordinatorPort() + ");");
+							+ "', '" + psqlHost + "', " + psqlPort + ");");
 					preparedStatement.execute();
 					preparedStatement.close();
 					return true;
@@ -351,7 +378,7 @@ public class PsqlBulkIndexService implements Runnable {
 
 	private void mergeStagingTableIntoPartitionTable(Connection connection, String bulkIngestTable, String targetTable) throws IOException, SQLException {
 		String tmpFile = IndexUtils.createTempFilePath("elefana-idx-" + targetTable + "-", ".tmp", tmpDirectory);
-		//tmpFile = "/tmp/elefana-idx-" + targetTable + "-" + System.nanoTime() + ".tmp";
+		tmpFile = "/tmp/elefana-idx-" + targetTable + "-" + System.nanoTime() + ".tmp";
 
 		PreparedStatement preparedStatement = connection.prepareStatement("COPY " + bulkIngestTable + " TO '" + tmpFile + "' WITH BINARY ENCODING 'UTF8'");
 		preparedStatement.execute();
