@@ -17,11 +17,10 @@ package com.elefana.indices.psql;
 
 import com.elefana.api.AckResponse;
 import com.elefana.api.indices.PutIndexTemplateRequest;
-import com.elefana.api.indices.PutIndexTemplateResponse;
 
 import java.util.concurrent.Callable;
 
-public class PsqlPutIndexTemplateRequest extends PutIndexTemplateRequest implements Callable<PutIndexTemplateResponse> {
+public class PsqlPutIndexTemplateRequest extends PutIndexTemplateRequest implements Callable<AckResponse> {
 	private final PsqlIndexTemplateService indexTemplateService;
 
 	public PsqlPutIndexTemplateRequest(PsqlIndexTemplateService indexTemplateService, String templateId, String requestBody) {
@@ -30,9 +29,12 @@ public class PsqlPutIndexTemplateRequest extends PutIndexTemplateRequest impleme
 	}
 
 	@Override
-	public PutIndexTemplateResponse call() throws Exception {
-		AckResponse response = indexTemplateService.putIndexTemplate(templateId, requestBody);
-		return new PutIndexTemplateResponse(response.isAcknowledged());
+	public AckResponse call() throws Exception {
+		return indexTemplateService.putIndexTemplate(templateId, requestBody);
 	}
 
+	@Override
+	protected Callable<AckResponse> internalExecute() {
+		return this;
+	}
 }

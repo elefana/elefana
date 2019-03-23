@@ -261,16 +261,16 @@ public interface IndexUtils {
 	public static String flattenJson(String json) throws IOException {
 		final StringBuilder result = POOLED_STRING_BUILDER.get();
 
-		final NoAllocStringReplace str = NoAllocStringReplace.allocate(json);
-		str.replaceAndEscapeUnicode(ESCAPE_SEARCH, ESCAPE_REPLACE);
-
-		final JsonNode root = OBJECT_MAPPER.readTree(str.dispose());
+		final JsonNode root = OBJECT_MAPPER.readTree(json);
 		result.append('{');
 		flattenJson("", root, result);
 		result.append('}');
 
 		FLATTEN_JSON_CAPACITY.add(result.length());
-		return result.toString();
+
+		final NoAllocStringReplace str = NoAllocStringReplace.allocate(result.toString());
+		str.replaceAndEscapeUnicode(ESCAPE_SEARCH, ESCAPE_REPLACE);
+		return str.dispose();
 	}
 
 	public static boolean flattenJson(String prefix, JsonNode obj, StringBuilder stringBuilder) {

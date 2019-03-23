@@ -17,10 +17,11 @@ package com.elefana.api.indices;
 
 import java.util.concurrent.Callable;
 
+import com.elefana.api.AckResponse;
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
 
-public abstract class PutIndexTemplateRequest extends ApiRequest<PutIndexTemplateResponse> implements Callable<PutIndexTemplateResponse> {
+public abstract class PutIndexTemplateRequest extends ApiRequest<AckResponse> {
 	protected final String templateId;
 	protected String requestBody;
 	
@@ -34,11 +35,6 @@ public abstract class PutIndexTemplateRequest extends ApiRequest<PutIndexTemplat
 		super(requestExecutor);
 		this.templateId = templateId;
 		this.requestBody = requestBody;
-	}
-	
-	@Override
-	protected Callable<PutIndexTemplateResponse> internalExecute() {
-		return this;
 	}
 
 	public String getRequestBody() {
