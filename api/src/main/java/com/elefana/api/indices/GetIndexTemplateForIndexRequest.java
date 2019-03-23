@@ -20,17 +20,12 @@ import java.util.concurrent.Callable;
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
 
-public abstract class GetIndexTemplateForIndexRequest extends ApiRequest<GetIndexTemplateForIndexResponse> implements Callable<GetIndexTemplateForIndexResponse> {
+public abstract class GetIndexTemplateForIndexRequest extends ApiRequest<GetIndexTemplateForIndexResponse> {
 	private final String index;
 	
 	public GetIndexTemplateForIndexRequest(RequestExecutor requestExecutor, String index) {
 		super(requestExecutor);
 		this.index = index;
-	}
-	
-	@Override
-	protected Callable<GetIndexTemplateForIndexResponse> internalExecute() {
-		return this;
 	}
 
 	public String getIndex() {

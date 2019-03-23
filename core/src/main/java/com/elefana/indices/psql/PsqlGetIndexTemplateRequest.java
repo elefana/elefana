@@ -18,7 +18,9 @@ package com.elefana.indices.psql;
 import com.elefana.api.indices.GetIndexTemplateRequest;
 import com.elefana.api.indices.GetIndexTemplateResponse;
 
-public class PsqlGetIndexTemplateRequest extends GetIndexTemplateRequest {
+import java.util.concurrent.Callable;
+
+public class PsqlGetIndexTemplateRequest extends GetIndexTemplateRequest implements Callable<GetIndexTemplateResponse> {
 	private final PsqlIndexTemplateService indexTemplateService;
 
 	public PsqlGetIndexTemplateRequest(PsqlIndexTemplateService indexTemplateService, String templateId) {
@@ -31,5 +33,10 @@ public class PsqlGetIndexTemplateRequest extends GetIndexTemplateRequest {
 		GetIndexTemplateResponse result = new GetIndexTemplateResponse(getTemplateId());
 		result.setIndexTemplate(indexTemplateService.getIndexTemplate(getTemplateId(), isFetchSource()));
 		return result;
+	}
+
+	@Override
+	protected Callable<GetIndexTemplateResponse> internalExecute() {
+		return this;
 	}
 }
