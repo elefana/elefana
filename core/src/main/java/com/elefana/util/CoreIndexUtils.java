@@ -371,7 +371,7 @@ public class CoreIndexUtils implements IndexUtils {
 			if (nodeSettingsService.isUsingCitus()) {
 				if (timeSeries) {
 					preparedStatement = connection.prepareStatement(
-							"SELECT create_distributed_table('" + tableName + "', '_timestamp', 'append');");
+							"SELECT create_distributed_table('" + tableName + "', '_id', 'append');");
 					preparedStatement.execute();
 					preparedStatement.close();
 				} else {
