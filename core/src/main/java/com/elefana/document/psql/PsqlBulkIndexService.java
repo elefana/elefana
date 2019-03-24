@@ -57,32 +57,31 @@ import com.elefana.util.IndexUtils;
 public class PsqlBulkIndexService implements Runnable {
 	private static final Logger LOGGER = LoggerFactory.getLogger(PsqlBulkIndexService.class);
 
-	private static final int MAX_FILE_DELETION_RETRIES = 5;
-	private static final long SHARD_TIMEOUT = 30000L;
 	private static final long INDEX_TEMPLATE_CACHE_EXPIRE = 60000L;
 
 	@Autowired
-	private Environment environment;
+	protected Environment environment;
 	@Autowired
-	private JdbcTemplate jdbcTemplate;
+	protected JdbcTemplate jdbcTemplate;
 	@Autowired
-	private IndexFieldMappingService indexFieldMappingService;
+	protected IndexFieldMappingService indexFieldMappingService;
 	@Autowired
-	private IndexTemplateService indexTemplateService;
+	protected IndexTemplateService indexTemplateService;
 	@Autowired
-	private IndexUtils indexUtils;
+	protected IndexUtils indexUtils;
 	@Autowired
-	private NodeSettingsService nodeSettingsService;
+	protected NodeSettingsService nodeSettingsService;
 	@Autowired
-	private MetricRegistry metricRegistry;
+	protected MetricRegistry metricRegistry;
 
-	private final AtomicBoolean running = new AtomicBoolean(true);
 	private final AtomicInteger totalFileDeletions = new AtomicInteger();
 	private final Queue<String> fileDeletionQueue = new LinkedList<String>();
 	private final AtomicLong lastQueueId = new AtomicLong(Long.MIN_VALUE);
 	private Counter duplicateKeyCounter;
 	private BlockingQueue<String> indexQueue;
-	private ExecutorService executorService;
+
+	protected final AtomicBoolean running = new AtomicBoolean(true);
+	protected ExecutorService executorService;
 
 	private File tmpDirectory;
 
@@ -90,8 +89,7 @@ public class PsqlBulkIndexService implements Runnable {
 	public void postConstruct() {
 		duplicateKeyCounter = metricRegistry.counter(MetricRegistry.name("bulk", "key", "duplicates"));
 		
-		final int totalThreads = Math.max(4, environment.getProperty("elefana.service.bulk.index.threads",
-				Integer.class, Runtime.getRuntime().availableProcessors()));
+		final int totalThreads = getTotalThreads();
 		final String tmpDirectoryPath = environment.getProperty("elefana.service.bulk.ingest.dir",
 				System.getProperty("java.io.tmpdir"));
 		tmpDirectory = new File(tmpDirectoryPath);
@@ -153,13 +151,26 @@ public class PsqlBulkIndexService implements Runnable {
 		for (int i = 0; i < totalThreads - 2; i++) {
 			executorService.submit(this);
 		}
+
+		additionalSetup();
 	}
 
 	@PreDestroy
 	public void preDestroy() {
 		running.set(false);
 		executorService.shutdown();
+
+		additionalTeardown();
 	}
+
+	protected int getTotalThreads() {
+		return Math.max(4, environment.getProperty("elefana.service.bulk.index.threads",
+				Integer.class, Runtime.getRuntime().availableProcessors()));
+	}
+
+	protected void additionalSetup() {}
+
+	protected void additionalTeardown() {}
 
 	@Override
 	public void run() {
@@ -191,7 +202,7 @@ public class PsqlBulkIndexService implements Runnable {
 							final String targetTable = indexUtils.getQueryTarget(connection, index);
 
 							if (nodeSettingsService.isUsingCitus()) {
-								mergeStagingTableIntoDistributedTable(indexTemplateCache, connection, index, nextIndexTable, targetTable);
+								bulkIndexResult = mergeStagingTableIntoDistributedTable(indexTemplateCache, connection, index, nextIndexTable, targetTable);
 							} else {
 								mergeStagingTableIntoPartitionTable(connection, nextIndexTable, targetTable);
 							}
@@ -209,6 +220,8 @@ public class PsqlBulkIndexService implements Runnable {
 
 					try {
 						switch(bulkIndexResult) {
+						case ROUTE:
+							break;
 						case EXCEPTION:
 							PreparedStatement reinsertStatement = connection.prepareStatement(
 									"INSERT INTO elefana_bulk_index_queue (_tableName, _queue_id) VALUES ('" +
@@ -319,61 +332,15 @@ public class PsqlBulkIndexService implements Runnable {
 		return result;
 	}
 
-	private boolean mergeStagingTableIntoDistributedTable(Map<String, IndexTemplate> indexTemplateCache,
+	protected BulkIndexResult mergeStagingTableIntoDistributedTable(Map<String, IndexTemplate> indexTemplateCache,
 	                                                      Connection connection, String index, String bulkIngestTable, String targetTable)
 			throws ElefanaException, IOException, SQLException {
-		if(!indexTemplateCache.containsKey(index)) {
-			final GetIndexTemplateForIndexRequest indexTemplateRequest = indexTemplateService.prepareGetIndexTemplateForIndex(index);
-			final GetIndexTemplateForIndexResponse indexTemplateResponse = indexTemplateRequest.get();
-			final IndexTemplate indexTemplate = indexTemplateResponse.getIndexTemplate();
-			indexTemplateCache.put(index, indexTemplate);
-		}
-
-		final IndexTemplate indexTemplate = indexTemplateCache.get(index);
-
-		if (indexTemplate != null && indexTemplate.isTimeSeries()) {
-			PreparedStatement preparedStatement = connection.prepareStatement("SELECT select_shard('" + targetTable + "')");
-			final ResultSet shardResultSet = preparedStatement.executeQuery();
-			preparedStatement.close();
-
-			if (!shardResultSet.next()) {
-				return false;
-			}
-			final long shardId = shardResultSet.getLong("select_shard");
-
-			final String psqlHost = nodeSettingsService.isConnectedToCitusCoordinator() ?
-					nodeSettingsService.getCitusCoordinatorHost() :
-					nodeSettingsService.getCitusWorkerHost();
-			final int psqlPort = nodeSettingsService.isConnectedToCitusCoordinator() ?
-					nodeSettingsService.getCitusCoordinatorPort() :
-					nodeSettingsService.getCitusWorkerPort();
-
-			long timer = 0L;
-			Exception lastException = null;
-			while (timer < SHARD_TIMEOUT) {
-				long startTime = System.currentTimeMillis();
-				try {
-					PreparedStatement appendShardStatement = connection.prepareStatement(
-							"SELECT master_append_table_to_shard(" + shardId + ", '" + bulkIngestTable
-							+ "', '" + psqlHost + "', " + psqlPort + ");");
-					preparedStatement.execute();
-					preparedStatement.close();
-					return true;
-				} catch (Exception e) {
-					lastException = e;
-				}
-				try {
-					Thread.sleep(100L);
-				} catch (Exception e) {
-				}
-				timer += (System.currentTimeMillis() - startTime);
-			}
-			lastException.printStackTrace();
-			return false;
-		} else {
+		if(nodeSettingsService.isMasterNode()) {
 			mergeStagingTableIntoPartitionTable(connection, bulkIngestTable, targetTable);
+			return BulkIndexResult.SUCCESS;
 		}
-		return true;
+		LOGGER.info("[Enterprise License Required] Cannot index into " + targetTable + " from non-master node. Data will remain in table " + bulkIngestTable);
+		return BulkIndexResult.ROUTE;
 	}
 
 	private void mergeStagingTableIntoPartitionTable(Connection connection, String bulkIngestTable, String targetTable) throws IOException, SQLException {
@@ -399,6 +366,7 @@ public class PsqlBulkIndexService implements Runnable {
 
 	private enum BulkIndexResult {
 		SUCCESS,
+		ROUTE,
 		DUPLICATE,
 		EXCEPTION
 	}
