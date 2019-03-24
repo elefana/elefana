@@ -364,7 +364,7 @@ public class PsqlBulkIndexService implements Runnable {
 		}
 	}
 
-	private enum BulkIndexResult {
+	protected enum BulkIndexResult {
 		SUCCESS,
 		ROUTE,
 		DUPLICATE,
