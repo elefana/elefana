@@ -69,6 +69,9 @@ public class NoAllocStringReplace {
 				if(str[i] != search[j].charAt(0)) {
 					continue;
 				}
+				if(search[j].length() > length - i) {
+					continue;
+				}
 
 				boolean match = true;
 				for(int k = 1; k < search[j].length() && i + k < length; k++) {
@@ -116,6 +119,9 @@ public class NoAllocStringReplace {
 			length -= search.length() - replace.length();
 
 			final int remainder = oldLength - (index + search.length());
+			if(remainder <= 0) {
+				return;
+			}
 			replace.getChars(0, replace.length(), str, index);
 			System.arraycopy(str, index + search.length(), str,
 					index + replace.length(), remainder);
@@ -123,10 +129,15 @@ public class NoAllocStringReplace {
 	}
 
 	public String dispose() {
-		AVG_ARRAY_SIZE.add(str.length / length > 2 ? length : str.length);
-		final String result = new String(str, 0, length);
-		POOL.offer(this);
-		return result;
+		if(length <= 0) {
+			POOL.offer(this);
+			return "";
+		} else {
+			AVG_ARRAY_SIZE.add(str.length / length > 2 ? length : str.length);
+			final String result = new String(str, 0, length);
+			POOL.offer(this);
+			return result;
+		}
 	}
 
 	public static boolean contains(String str, String [] search) {
