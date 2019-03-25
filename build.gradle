@@ -123,6 +123,7 @@ subprojects {
 			events "failed"
 			exceptionFormat "full"
 		}
+		//include "**/*Document*"
 	}
 	
 	if(project.name.contains("core") || project.name.contains("api")) {

@@ -224,8 +224,24 @@ public class IndexUtilsTest {
 	}
 
 	@Test
-	public void testFlattenJsonStringWithLineBreak() throws IOException {
+	public void testFlattenJsonStringWithLineBreakInContent() throws IOException {
 		final String json = "{\"str\":\"This a value with a \n line break\"}";
+		final String result = IndexUtils.flattenJson(json);
+		final Any any = JsonIterator.deserialize(result);
+		Assert.assertEquals(ValueType.STRING, any.get("str").valueType());
+	}
+
+	@Test
+	public void testFlattenJsonStringWithLineBreakBetweenContent() throws IOException {
+		final String json = "{\"str\":\"This a value with a line break\",\n \"int\": 0}";
+		final String result = IndexUtils.flattenJson(json);
+		final Any any = JsonIterator.deserialize(result);
+		Assert.assertEquals(ValueType.STRING, any.get("str").valueType());
+	}
+
+	@Test
+	public void testFlattenJsonStringWithLineBreakInAndBetweenContent() throws IOException {
+		final String json = "{\"str\":\"This a value with\n a line break\",\n \"int\": 0}";
 		final String result = IndexUtils.flattenJson(json);
 		final Any any = JsonIterator.deserialize(result);
 		Assert.assertEquals(ValueType.STRING, any.get("str").valueType());

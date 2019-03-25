@@ -335,6 +335,7 @@ public class DocumentApiTest extends DocumentedTest {
 		indexWithId(id2, message2, System.currentTimeMillis());
 
 		final long startTime = System.currentTimeMillis();
+		int lastResultCount = 0;
 		while(System.currentTimeMillis() - startTime < TEST_TIMEOUT) {
 			final ValidatableResponse response = given()
 					.request()
@@ -348,6 +349,7 @@ public class DocumentApiTest extends DocumentedTest {
 
 			try {
 				final List docs = response.extract().body().jsonPath().getList("docs");
+				lastResultCount = docs.size();
 				if(docs.size() > 1) {
 					response.body("docs[0]._index", equalTo(INDEX));
 					response.body("docs[0]._type", equalTo(TYPE));
@@ -367,7 +369,7 @@ public class DocumentApiTest extends DocumentedTest {
 				Thread.sleep(500L);
 			} catch (Exception e) {}
 		}
-		Assert.fail("Insufficient results returned");
+		Assert.fail("Expected 2 results but got " + lastResultCount);
 	}
 	
 	private void indexWithId(final String id, final String message, final long timestamp) {
@@ -384,5 +386,20 @@ public class DocumentApiTest extends DocumentedTest {
 			.body("_id", equalTo(id))
 			.body("_version", equalTo(1))
 			.body("created", equalTo(true));
+
+		final long startTime = System.currentTimeMillis();
+		while(System.currentTimeMillis() - startTime < TEST_TIMEOUT) {
+			final ValidatableResponse response = given().when().get("/" + INDEX + "/" + TYPE + "/" + id)
+					.then();
+			if(response.extract().statusCode() == 200) {
+				if(response.extract().jsonPath().getBoolean("found")) {
+					return;
+				}
+			}
+			try {
+				Thread.sleep(500L);
+			} catch (Exception e) {}
+		}
+		Assert.fail("Document was indexed but cannot be retrieved");
 	}
 }

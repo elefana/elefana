@@ -395,6 +395,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 								result.getDocs().add(getResponse);
 							}
 						} catch (Exception e) {
+							LOGGER.error(e.getMessage(), e);
 							GetResponse getResponse = new GetResponse();
 							getResponse.setIndex((String) requestItem.get("_index"));
 							getResponse.setType((String) requestItem.get("_type"));
@@ -436,6 +437,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 				queryBuilder.append("'");
 
 				try {
+					LOGGER.info(queryBuilder.toString());
 					rows += jdbcTemplate.update(queryBuilder.toString());
 					if(rows > 0) {
 						indexFieldMappingService.scheduleIndexForMappingAndStats(index);
@@ -494,6 +496,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 		response.setType(type);
 		response.setId(id);
 		try {
+			LOGGER.info(queryBuilder.toString());
 			int rows = jdbcTemplate.update(queryBuilder.toString());
 			if(rows == 0) {
 				response.setResult("not_found");

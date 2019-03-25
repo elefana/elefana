@@ -41,6 +41,7 @@ public interface IndexUtils {
 	public static final String PARTITION_TRACKING_TABLE = "elefana_partition_tracking";
 
 	public static final String TRIGGERS_PREFIX = "elefana_triggers_";
+	public static final String HASH_INDEX_PREFIX = "elefana_hash_idx_";
 	public static final String BTREE_INDEX_PREFIX = "elefana_btree_idx_";
 	public static final String GIN_INDEX_PREFIX = "elefana_gin_idx_";
 	public static final String BRIN_INDEX_PREFIX = "elefana_brin_idx_";
@@ -107,21 +108,36 @@ public interface IndexUtils {
 
 	public static final String [] ESCAPE_SEARCH = new String [] {
 			"\\\"",
+			",\n\"",
+			",\n \"",
+			",\n\t\"",
 			"\n",
 			"\r",
 			"\t",
 			"\f",
 			"\b",
 			"\u0000"
+
 	};
 	public static final String [] ESCAPE_REPLACE = new String [] {
 			"\\\\\\\"",
+			",\"",
+			",\"",
+			",\"",
 			"\\\\n",
 			"\\\\r",
 			"\\\\t",
 			"\\\\f",
 			"\\\\b",
 			""
+	};
+	public static final String [] ESCAPE_PRE_ESCAPE = new String [] {
+			"\\\\\\\"",
+			"\\\\n",
+			"\\\\r",
+			"\\\\t",
+			"\\\\f",
+			"\\\\b"
 	};
 	
 	/**
@@ -130,7 +146,7 @@ public interface IndexUtils {
 	 * @return The escaped JSON string
 	 */
 	public static String psqlEscapeString(String json) {
-		if(NoAllocStringReplace.contains(json, ESCAPE_REPLACE)) {
+		if(NoAllocStringReplace.contains(json, ESCAPE_PRE_ESCAPE)) {
 			return json;
 		}
 		final NoAllocStringReplace str = NoAllocStringReplace.allocate(json);
@@ -259,18 +275,18 @@ public interface IndexUtils {
 	public static final CumulativeAverage FLATTEN_JSON_CAPACITY = new CumulativeAverage(32);
 
 	public static String flattenJson(String json) throws IOException {
+		final NoAllocStringReplace str = NoAllocStringReplace.allocate(json);
+		str.replaceAndEscapeUnicode(ESCAPE_SEARCH, ESCAPE_REPLACE);
+
 		final StringBuilder result = POOLED_STRING_BUILDER.get();
 
-		final JsonNode root = OBJECT_MAPPER.readTree(json);
+		final JsonNode root = OBJECT_MAPPER.readTree(str.dispose());
 		result.append('{');
 		flattenJson("", root, result);
 		result.append('}');
 
 		FLATTEN_JSON_CAPACITY.add(result.length());
-
-		final NoAllocStringReplace str = NoAllocStringReplace.allocate(result.toString());
-		str.replaceAndEscapeUnicode(ESCAPE_SEARCH, ESCAPE_REPLACE);
-		return str.dispose();
+		return result.toString();
 	}
 
 	public static boolean flattenJson(String prefix, JsonNode obj, StringBuilder stringBuilder) {
