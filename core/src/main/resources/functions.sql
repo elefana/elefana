@@ -17,7 +17,7 @@ BEGIN
   WHERE logicalrelid = _distributedTable::regclass AND shardlength < 1024*1024*1024
   GROUP BY shardid ORDER BY RANDOM() ASC) AS results;
 
-  IF num_small_shards IS NULL OR num_small_shards < 20 THEN
+  IF num_small_shards IS NULL OR num_small_shards < 32 THEN
     SELECT master_create_empty_shard(_distributedTable) INTO shard_id;
   END IF;
 
