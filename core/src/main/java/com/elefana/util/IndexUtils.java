@@ -108,22 +108,15 @@ public interface IndexUtils {
 
 	public static final String [] ESCAPE_SEARCH = new String [] {
 			"\\\"",
-			",\n\"",
-			",\n \"",
-			",\n\t\"",
 			"\n",
 			"\r",
 			"\t",
 			"\f",
 			"\b",
 			"\u0000"
-
 	};
 	public static final String [] ESCAPE_REPLACE = new String [] {
 			"\\\\\\\"",
-			",\"",
-			",\"",
-			",\"",
 			"\\\\n",
 			"\\\\r",
 			"\\\\t",
