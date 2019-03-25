@@ -10,13 +10,14 @@ CREATE TABLE IF NOT EXISTS elefana_delayed_field_index_queue (_tableName VARCHAR
 CREATE OR REPLACE FUNCTION select_shard(_distributedTable VARCHAR) RETURNS bigint AS $$
 DECLARE
   shard_id bigint;
+  num_small_shards int;
 BEGIN
-  SELECT shardid INTO shard_id
+  SELECT shardid, count(*) OVER () INTO shard_id, num_small_shards
   FROM pg_dist_shard JOIN pg_dist_placement USING (shardid)
-  WHERE logicalrelid = _distributedTable::regclass AND shardlength < 1024*1024*1024;
+  WHERE logicalrelid = _distributedTable::regclass AND shardlength < 1024*1024*1024
+  GROUP BY shardid ORDER BY RANDOM() ASC;
 
-  IF shard_id IS NULL THEN
-    /* no shard smaller than 1GB, create a new one */
+  IF num_small_shards IS NULL OR num_small_shards < 20 THEN
     SELECT master_create_empty_shard(_distributedTable) INTO shard_id;
   END IF;
 
