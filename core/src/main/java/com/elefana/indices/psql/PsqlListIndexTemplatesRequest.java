@@ -45,9 +45,7 @@ public class PsqlListIndexTemplatesRequest extends ListIndexTemplatesRequest {
 	public ListIndexTemplatesResponse call() throws Exception {
 		ListIndexTemplatesResponse result = new ListIndexTemplatesResponse();
 		if(templateIds == null || templateIds.length == 0) {
-			for(IndexTemplate indexTemplate : indexTemplateService.getIndexTemplates()) {
-				result.getTemplates().put(indexTemplate.getTemplateId(), indexTemplate);
-			}
+			result.getTemplates().putAll(indexTemplateService.getIndexTemplates());
 		} else {
 			for(String templateId : templateIds) {
 				result.getTemplates().put(templateId, indexTemplateService.getIndexTemplate(templateId, true));

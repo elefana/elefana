@@ -31,8 +31,12 @@ public class PsqlGetIndexTemplateForIndexRequest extends GetIndexTemplateForInde
 
 	@Override
 	public GetIndexTemplateForIndexResponse call() throws Exception {
-		IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndex(getIndex());
-		GetIndexTemplateForIndexResponse result = new GetIndexTemplateForIndexResponse(getIndex(), indexTemplate != null ? indexTemplate.getTemplateId() : null);
+		final String templateId = indexTemplateService.getIndexTemplateIdForIndex(getIndex());
+		if(templateId == null) {
+			return new GetIndexTemplateForIndexResponse(getIndex(), null);
+		}
+		IndexTemplate indexTemplate = indexTemplateService.getIndexTemplate(templateId, true);
+		GetIndexTemplateForIndexResponse result = new GetIndexTemplateForIndexResponse(getIndex(), templateId);
 		if(indexTemplate != null) {
 			result.setIndexTemplate(indexTemplate);
 		}

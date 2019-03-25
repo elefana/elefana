@@ -10,15 +10,17 @@ import java.util.concurrent.Callable;
 
 public class ImmediateGetIndexTemplateForIndexRequest extends GetIndexTemplateForIndexRequest implements Callable<GetIndexTemplateForIndexResponse> {
 	private final IndexTemplate indexTemplate;
+	private final String templateId;
 
-	public ImmediateGetIndexTemplateForIndexRequest(String index, IndexTemplate indexTemplate) {
+	public ImmediateGetIndexTemplateForIndexRequest(String index, String templateId, IndexTemplate indexTemplate) {
 		super(ImmediateRequestExecutor.INSTANCE, index);
+		this.templateId = templateId;
 		this.indexTemplate = indexTemplate;
 	}
 
 	@Override
 	public GetIndexTemplateForIndexResponse call() throws Exception {
-		final GetIndexTemplateForIndexResponse response = new GetIndexTemplateForIndexResponse(getIndex(), indexTemplate != null ? indexTemplate.getTemplateId() : null);
+		final GetIndexTemplateForIndexResponse response = new GetIndexTemplateForIndexResponse(getIndex(), templateId);
 		response.setIndexTemplate(indexTemplate);
 		return response;
 	}

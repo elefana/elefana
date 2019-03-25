@@ -32,7 +32,7 @@ public class GetIndexTemplateForIndexResponseTest {
 		final String index = "logs-01-01-1970";
 		final String templateId = "template1";
 		
-		final IndexTemplate indexTemplate = new IndexTemplate(templateId);
+		final IndexTemplate indexTemplate = new IndexTemplate();
 		indexTemplate.setMappings(new HashMap<String, Object>());
 		
 		final GetIndexTemplateForIndexResponse expected = new GetIndexTemplateForIndexResponse(index, templateId);

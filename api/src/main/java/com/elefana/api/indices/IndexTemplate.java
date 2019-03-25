@@ -27,21 +27,9 @@ public class IndexTemplate {
 	private IndexStorageSettings storage = new IndexStorageSettings();
 	private Map<String, Object> mappings;
 	
-	@JsonIgnore
-	private String templateId;
-	
 	public IndexTemplate() {
 		super();
 		settings.put("number_of_shards", 1);
-	}
-	
-	public IndexTemplate(String templateId) {
-		this();
-		this.templateId = templateId;
-	}
-	
-	public String getTemplateId() {
-		return templateId;
 	}
 
 	public String getTemplate() {
@@ -104,7 +92,6 @@ public class IndexTemplate {
 		result = prime * result + ((settings == null) ? 0 : settings.hashCode());
 		result = prime * result + ((storage == null) ? 0 : storage.hashCode());
 		result = prime * result + ((template == null) ? 0 : template.hashCode());
-		result = prime * result + ((templateId == null) ? 0 : templateId.hashCode());
 		return result;
 	}
 
@@ -136,11 +123,6 @@ public class IndexTemplate {
 			if (other.template != null)
 				return false;
 		} else if (!template.equals(other.template))
-			return false;
-		if (templateId == null) {
-			if (other.templateId != null)
-				return false;
-		} else if (!templateId.equals(other.templateId))
 			return false;
 		return true;
 	}
