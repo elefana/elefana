@@ -57,8 +57,6 @@ import com.elefana.util.IndexUtils;
 public class PsqlBulkIndexService implements Runnable {
 	private static final Logger LOGGER = LoggerFactory.getLogger(PsqlBulkIndexService.class);
 
-	private static final long INDEX_TEMPLATE_CACHE_EXPIRE = 60000L;
-
 	@Autowired
 	protected Environment environment;
 	@Autowired
@@ -175,15 +173,9 @@ public class PsqlBulkIndexService implements Runnable {
 	@Override
 	public void run() {
 		try {
-			final Map<String, IndexTemplate> indexTemplateCache = new HashMap<String, IndexTemplate>();
 			long lastCacheExpire = 0L;
 
 			while (running.get()) {
-				if(System.currentTimeMillis() - lastCacheExpire >= INDEX_TEMPLATE_CACHE_EXPIRE) {
-					indexTemplateCache.clear();
-					lastCacheExpire = System.currentTimeMillis();
-				}
-
 				final String nextIndexTable = indexQueue.take();
 				String index = null;
 
@@ -202,7 +194,7 @@ public class PsqlBulkIndexService implements Runnable {
 							final String targetTable = indexUtils.getQueryTarget(connection, index);
 
 							if (nodeSettingsService.isUsingCitus()) {
-								bulkIndexResult = mergeStagingTableIntoDistributedTable(indexTemplateCache, connection, index, nextIndexTable, targetTable);
+								bulkIndexResult = mergeStagingTableIntoDistributedTable(connection, index, nextIndexTable, targetTable);
 							} else {
 								mergeStagingTableIntoPartitionTable(connection, nextIndexTable, targetTable);
 							}
@@ -332,8 +324,7 @@ public class PsqlBulkIndexService implements Runnable {
 		return result;
 	}
 
-	protected BulkIndexResult mergeStagingTableIntoDistributedTable(Map<String, IndexTemplate> indexTemplateCache,
-	                                                      Connection connection, String index, String bulkIngestTable, String targetTable)
+	protected BulkIndexResult mergeStagingTableIntoDistributedTable(Connection connection, String index, String bulkIngestTable, String targetTable)
 			throws ElefanaException, IOException, SQLException {
 		if(nodeSettingsService.isMasterNode()) {
 			mergeStagingTableIntoPartitionTable(connection, bulkIngestTable, targetTable);
