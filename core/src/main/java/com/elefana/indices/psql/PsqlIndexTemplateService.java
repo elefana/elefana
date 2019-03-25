@@ -15,7 +15,6 @@
  ******************************************************************************/
 package com.elefana.indices.psql;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,9 +63,11 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 
-	private final Map<String, String> indexToIndexTemplateNullCache = new ConcurrentHashMap<String, String>();
-	private final Map<String, IndexTemplate> templateIdToTemplateCache = new ConcurrentHashMap<String, IndexTemplate>();
+	private final Map<String, String> indexToTemplateNullCache = new ConcurrentHashMap<String, String>();
 	private final Map<String, String> indexToTemplateIdCache = new ConcurrentHashMap<String, String>();
+
+	private final Map<String, IndexTemplate> templateIdToTemplateCache = new ConcurrentHashMap<String, IndexTemplate>();
+	private final Map<String, String> templateIdToNullCache = new ConcurrentHashMap<String, String>();
 
 	private ExecutorService executorService;
 	
@@ -100,12 +101,15 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 	
 	@Override
 	public GetIndexTemplateForIndexRequest prepareGetIndexTemplateForIndex(String index) {
-		if (indexToIndexTemplateNullCache.containsKey(index)) {
+		if (indexToTemplateNullCache.containsKey(index)) {
 			return new ImmediateGetIndexTemplateForIndexRequest(index, null, null);
 		}
 		final String templateId = indexToTemplateIdCache.get(index);
 		if (templateId != null && templateIdToTemplateCache.containsKey(templateId)) {
 			return new ImmediateGetIndexTemplateForIndexRequest(index, templateId, templateIdToTemplateCache.get(templateId));
+		}
+		if (templateId != null && templateIdToNullCache.containsKey(templateId)) {
+			return new ImmediateGetIndexTemplateForIndexRequest(index, templateId, null);
 		}
 		return new PsqlGetIndexTemplateForIndexRequest(this, index);
 	}
@@ -121,7 +125,10 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 				indexTemplate.setMappings(
 						JsonIterator.deserialize(rowSet.getString("_mappings"), new TypeLiteral<Map<String, Object>>() {
 						}));
-				results.put(rowSet.getString("_template_id"), indexTemplate);
+
+				final String templateId = rowSet.getString("_template_id");
+				results.put(templateId, indexTemplate);
+				templateIdToTemplateCache.put(templateId, indexTemplate);
 			}
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
@@ -130,6 +137,14 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 	}
 
 	public IndexTemplate getIndexTemplate(String templateId, boolean fetchSource) throws ElefanaException {
+		if(fetchSource) {
+			if(templateIdToTemplateCache.containsKey(templateId)) {
+				return templateIdToTemplateCache.get(templateId);
+			}
+			if(templateIdToNullCache.containsKey(templateId)) {
+				return null;
+			}
+		}
 		final String query;
 
 		if(fetchSource) {
@@ -183,7 +198,7 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 	}
 
 	public String getIndexTemplateIdForIndex(String index) throws ElefanaException {
-		if (indexToIndexTemplateNullCache.containsKey(index)) {
+		if (indexToTemplateNullCache.containsKey(index)) {
 			return null;
 		}
 		String templateId = indexToTemplateIdCache.get(index);
@@ -193,7 +208,7 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 
 		templateId = internalGetIndexTemplateIdForIndex(index);
 		if (templateId == null) {
-			indexToIndexTemplateNullCache.put(index, index);
+			indexToTemplateNullCache.put(index, index);
 			return null;
 		}
 		indexToTemplateIdCache.put(index, templateId);
@@ -201,17 +216,20 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 	}
 
 	public IndexTemplate getIndexTemplateForIndex(String index) throws ElefanaException {
-		if (indexToIndexTemplateNullCache.containsKey(index)) {
+		if (indexToTemplateNullCache.containsKey(index)) {
 			return null;
 		}
 		String templateId = indexToTemplateIdCache.get(index);
 		if (templateId != null && templateIdToTemplateCache.containsKey(templateId)) {
 			return templateIdToTemplateCache.get(templateId);
 		}
+		if (templateId != null && templateIdToNullCache.containsKey(templateId)) {
+			return null;
+		}
 
 		templateId = internalGetIndexTemplateIdForIndex(index);
 		if (templateId == null) {
-			indexToIndexTemplateNullCache.put(index, index);
+			indexToTemplateNullCache.put(index, index);
 			return null;
 		}
 		IndexTemplate result = getIndexTemplate(templateId, true);
@@ -219,7 +237,8 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 			templateIdToTemplateCache.put(templateId, result);
 			indexToTemplateIdCache.put(index, templateId);
 		} else {
-			indexToIndexTemplateNullCache.put(index, index);
+			templateIdToNullCache.put(templateId, templateId);
+			indexToTemplateIdCache.put(index, templateId);
 		}
 		return result;
 	}
@@ -277,9 +296,10 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 					"INSERT INTO elefana_index_template (_template_id, _index_pattern, _storage, _mappings) VALUES (?, ?, ?, ?) ON CONFLICT (_template_id) DO UPDATE SET _mappings = EXCLUDED._mappings, _storage = EXCLUDED._storage, _index_pattern = EXCLUDED._index_pattern",
 					templateId, indexPattern, storageObject, mappingsObject);
 
-			indexToIndexTemplateNullCache.clear();
-			templateIdToTemplateCache.clear();
 			indexToTemplateIdCache.clear();
+			indexToTemplateNullCache.clear();
+			templateIdToTemplateCache.clear();
+			templateIdToNullCache.clear();
 			return new AckResponse();
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
