@@ -12,10 +12,10 @@ DECLARE
   shard_id bigint;
   num_small_shards int;
 BEGIN
-  SELECT shardid, count(*) OVER () INTO shard_id, num_small_shards
-  FROM pg_dist_shard JOIN pg_dist_placement USING (shardid)
-  WHERE logicalrelid = _distributedTable::regclass AND shardlength < 1024*1024*1024
-  GROUP BY shardid ORDER BY RANDOM() ASC;
+  SELECT results.shardid, results.total INTO shard_id, num_small_shards
+  FROM (SELECT shardid, count(*) OVER () AS total FROM pg_dist_shard JOIN pg_dist_placement USING (shardid)
+  WHERE logicalrelid = 'messages_m_logs_m_2019_f_02_f_18'::regclass AND shardlength < 1024*1024*1024
+  GROUP BY shardid ORDER BY RANDOM() ASC) AS results;
 
   IF num_small_shards IS NULL OR num_small_shards < 20 THEN
     SELECT master_create_empty_shard(_distributedTable) INTO shard_id;
