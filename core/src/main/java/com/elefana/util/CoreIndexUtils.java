@@ -328,7 +328,7 @@ public class CoreIndexUtils implements IndexUtils {
 			if (nodeSettingsService.isUsingCitus()) {
 				createTableQuery.append(
 						" (_index VARCHAR(255) NOT NULL, _type VARCHAR(255) NOT NULL, _id VARCHAR(255) NOT NULL, _timestamp BIGINT, "
-						+ "_bucket1s BIGINT, _bucket1m BIGINT, _bucket1h BIGINT, _bucket1d BIGINT, _source jsonb)");
+								+ "_bucket1s BIGINT, _bucket1m BIGINT, _bucket1h BIGINT, _bucket1d BIGINT, _source jsonb)");
 			} else {
 				createTableQuery.append(" PARTITION OF ");
 				createTableQuery.append(DATA_TABLE);
@@ -353,12 +353,22 @@ public class CoreIndexUtils implements IndexUtils {
 				tableIndexCreator.createPsqlTableIndices(connection, tableName, DEFAULT_INDEX_GENERATION_SETTINGS);
 			}
 
-			final String createPrimaryKeyQuery = "ALTER TABLE " + tableName + " ADD CONSTRAINT " + constraintName
-					+ " PRIMARY KEY (_id);";
-			LOGGER.info(createPrimaryKeyQuery);
-			preparedStatement = connection.prepareStatement(createPrimaryKeyQuery);
-			preparedStatement.execute();
-			preparedStatement.close();
+			final boolean createPrimaryKey = !nodeSettingsService.isUsingCitus() || (nodeSettingsService.isUsingCitus() && !timeSeries);
+			if(createPrimaryKey) {
+				final String createPrimaryKeyQuery = "ALTER TABLE " + tableName + " ADD CONSTRAINT " + constraintName
+						+ " PRIMARY KEY (_id);";
+				LOGGER.info(createPrimaryKeyQuery);
+				preparedStatement = connection.prepareStatement(createPrimaryKeyQuery);
+				preparedStatement.execute();
+				preparedStatement.close();
+			} else {
+				final String hashIndexName = IndexUtils.HASH_INDEX_PREFIX + tableName + "_id";
+				final String createIdIndexQuery = "CREATE INDEX IF NOT EXISTS " + hashIndexName + " ON " + tableName + " USING HASH (_id);";
+				LOGGER.info(createIdIndexQuery);
+				preparedStatement = connection.prepareStatement(createIdIndexQuery);
+				preparedStatement.execute();
+				preparedStatement.close();
+			}
 
 			final String createPartitionTrackingEntry = "INSERT INTO " + PARTITION_TRACKING_TABLE
 					+ " (_index, _partitionTable) VALUES (?, ?) ON CONFLICT DO NOTHING";
@@ -371,7 +381,7 @@ public class CoreIndexUtils implements IndexUtils {
 			if (nodeSettingsService.isUsingCitus()) {
 				if (timeSeries) {
 					preparedStatement = connection.prepareStatement(
-							"SELECT create_distributed_table('" + tableName + "', '_id', 'append');");
+							"SELECT create_distributed_table('" + tableName + "', '_timestamp', 'append');");
 					preparedStatement.execute();
 					preparedStatement.close();
 				} else {
