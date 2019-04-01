@@ -15,7 +15,8 @@
  ******************************************************************************/
 package com.elefana.document.psql;
 
-import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -93,8 +94,9 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 	private String[] tablespaces;
 	private ExecutorService bulkRequestExecutorService, bulkProcessingExecutorService;
 
-	private Timer bulkOperationsTotalTimer, bulkOperationsPsqlTimer, bulkOperationsSerializationTimer;
-	private Meter bulkOperationsSuccess, bulkOperationsFailed;
+	private Timer bulkIngestTotalTimer, bulkIngestPsqlTimer, bulkIngestSerializationTimer, bulkGatherResultsTimer, bulkQueueTablesTimer;
+	private Timer psqlBatchBuildTimer, jsonFlattenTimer, jsonEscapeTimer;
+	private Meter bulkOperationsSuccess, bulkOperationsFailed, bulkOperationsBatchSize;
 
 	@PostConstruct
 	public void postConstruct() {
@@ -103,17 +105,26 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 			tablespaces = DEFAULT_TABLESPACES;
 		}
 
-		final int totalThreads = environment.getProperty("elefana.service.bulk.ingest.threads", Integer.class,
+		final int totalIngestThreads = environment.getProperty("elefana.service.bulk.ingest.threads", Integer.class,
 				Runtime.getRuntime().availableProcessors());
-		bulkRequestExecutorService = Executors.newFixedThreadPool(totalThreads, new NamedThreadFactory(REQUEST_THREAD_PREFIX));
-		bulkProcessingExecutorService = Executors.newFixedThreadPool(totalThreads, new NamedThreadFactory(PROCESSOR_THREAD_PREFIX));
+		final int totalProcessingThreads = (nodeSettingsService.getBulkParallelisation() * totalIngestThreads) + 1;
+		bulkRequestExecutorService = Executors.newFixedThreadPool(totalIngestThreads, new NamedThreadFactory(REQUEST_THREAD_PREFIX));
+		bulkProcessingExecutorService = Executors.newFixedThreadPool(totalProcessingThreads, new NamedThreadFactory(PROCESSOR_THREAD_PREFIX));
 
-		bulkOperationsTotalTimer = metricRegistry.timer(MetricRegistry.name("bulk", "operations", "duration", "total"));
-		bulkOperationsSerializationTimer = metricRegistry
-				.timer(MetricRegistry.name("bulk", "operations", "duration", "serialization"));
-		bulkOperationsPsqlTimer = metricRegistry.timer(MetricRegistry.name("bulk", "operations", "duration", "psql"));
-		bulkOperationsSuccess = metricRegistry.meter(MetricRegistry.name("bulk", "operations", "success"));
-		bulkOperationsFailed = metricRegistry.meter(MetricRegistry.name("bulk", "operations", "failed"));
+		bulkIngestTotalTimer = metricRegistry.timer(MetricRegistry.name("bulk", "ingest", "duration", "total"));
+		bulkIngestSerializationTimer = metricRegistry
+				.timer(MetricRegistry.name("bulk", "ingest", "duration", "serialization"));
+		bulkIngestPsqlTimer = metricRegistry.timer(MetricRegistry.name("bulk", "ingest", "duration", "psql"));
+		bulkGatherResultsTimer = metricRegistry.timer(MetricRegistry.name("bulk", "ingest", "duration", "gather"));
+		bulkQueueTablesTimer = metricRegistry.timer(MetricRegistry.name("bulk", "ingest", "duration", "queueTables"));
+
+		bulkOperationsBatchSize = metricRegistry.meter(MetricRegistry.name("bulk", "ingest", "batch", "size"));
+		bulkOperationsSuccess = metricRegistry.meter(MetricRegistry.name("bulk", "ingest", "success"));
+		bulkOperationsFailed = metricRegistry.meter(MetricRegistry.name("bulk", "ingest", "failed"));
+
+		psqlBatchBuildTimer = metricRegistry.timer(MetricRegistry.name("bulk", "ingest", "duration", "batch"));
+		jsonFlattenTimer = metricRegistry.timer(MetricRegistry.name("json",  "duration", "flatten"));
+		jsonEscapeTimer = metricRegistry.timer(MetricRegistry.name("json", "duration", "escape"));
 
 		switch(versionInfoService.getApiVersion()) {
 		case V_5_5_2:
@@ -138,16 +149,18 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 	}
 
 	public BulkResponse bulkOperations(String requestBody) throws ElefanaException {
-		final Timer.Context totalTimer = bulkOperationsTotalTimer.time();
-
-		final BulkResponse bulkApiResponse = new BulkResponse();
-		bulkApiResponse.setErrors(false);
+		final Timer.Context totalTimer = bulkIngestTotalTimer.time();
 
 		final String[] lines = requestBody.split(NEW_LINE);
+		int responseCapacity = lines.length / 2;
+		bulkOperationsBatchSize.mark(responseCapacity);
+
+		final BulkResponse bulkApiResponse = new BulkResponse(responseCapacity + 1);
+		bulkApiResponse.setErrors(false);
 
 		final Map<String, List<BulkIndexOperation>> indexOperations = new HashMap<String, List<BulkIndexOperation>>();
 
-		final Timer.Context serializationTimer = bulkOperationsSerializationTimer.time();
+		final Timer.Context serializationTimer = bulkIngestSerializationTimer.time();
 		try {
 			for (int i = 0; i < lines.length; i += 2) {
 				if (i + 1 >= lines.length) {
@@ -210,19 +223,22 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 		final int operationSize = Math.max(MINIMUM_BULK_SIZE, indexOperations.size() / nodeSettingsService.getBulkParallelisation());
 		
 		final List<BulkTask> bulkTasks = new ArrayList<BulkTask>();
-		final List<Future<List<BulkItemResponse>>> results = new ArrayList<Future<List<BulkItemResponse>>>();
+		List<Future<List<BulkItemResponse>>> results = null;
 
 		for (int i = 0; i < indexOperations.size(); i += operationSize) {
 			final String tablespace = tablespaces[tablespaceIndex.incrementAndGet() % tablespaces.length];
-			final BulkTask task = new BulkTask(bulkOperationsPsqlTimer, jdbcTemplate, indexOperations, tablespace,
-					index, nodeSettingsService.isFlattenJson(), i, operationSize);
+			final BulkTask task = new BulkTask(jdbcTemplate, indexOperations, tablespace,
+					index, nodeSettingsService.isFlattenJson(), i, operationSize,
+					bulkIngestPsqlTimer, psqlBatchBuildTimer, jsonFlattenTimer, jsonEscapeTimer);
 			bulkTasks.add(task);
-			try {
-				results.add(bulkProcessingExecutorService.submit(task));
-			} catch (Exception e) {
-				LOGGER.error(e.getMessage(), e);
-			}
 		}
+		try {
+			results = bulkProcessingExecutorService.invokeAll(bulkTasks);
+		} catch (Exception e) {
+			LOGGER.error(e.getMessage(), e);
+		}
+
+		final Timer.Context gatherTimer = bulkGatherResultsTimer.time();
 
 		boolean success = true;
 		for (int i = 0; i < results.size(); i++) {
@@ -233,14 +249,11 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 					bulkOperationsFailed.mark(task.getSize());
 					success = false;
 				} else {
-					for(int j = 0; j < nextResult.size(); j++) {
-						BulkItemResponse response = nextResult.get(j);
-						if(response.isFailed()) {
-							success = false;
-							bulkOperationsFailed.mark();
-						} else {
-							bulkOperationsSuccess.mark();
-						}
+					bulkOperationsSuccess.mark(task.getTotalSuccess());
+					bulkOperationsFailed.mark(task.getTotalFailed());
+
+					if(task.getTotalFailed() > 0) {
+						success = false;
 					}
 				}
 			} catch (InterruptedException e) {
@@ -249,30 +262,68 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 				LOGGER.error(e.getMessage(), e);
 			}
 		}
+		gatherTimer.stop();
 
 		if(!success) {
 			bulkApiResponse.setErrors(true);
 		}
 
+		final Timer.Context queueTimer = bulkQueueTablesTimer.time();
+
+		Connection connection = null;
+		PreparedStatement batchQueueStatement = null;
 		for (int i = 0; i < results.size(); i++) {
 			try {
+				if(connection == null) {
+					connection = jdbcTemplate.getDataSource().getConnection();
+					connection.setAutoCommit(false);
+				}
+
 				final BulkTask task = bulkTasks.get(i);
 				final List<BulkItemResponse> nextResult = results.get(i).get();
 
 				if(success) {
-					jdbcTemplate.execute("INSERT INTO elefana_bulk_index_queue (_tableName, _queue_id) VALUES ('" + task.getStagingTable() + "', nextval('elefana_bulk_index_queue_id'))");
+					if(batchQueueStatement == null) {
+						batchQueueStatement = connection.prepareStatement("INSERT INTO elefana_bulk_index_queue (_tableName, _queue_id) VALUES (?, nextval('elefana_bulk_index_queue_id'))");
+					}
+
+					batchQueueStatement.setString(1, task.getStagingTable());
+					batchQueueStatement.addBatch();
 				} else {
+					if(batchQueueStatement != null) {
+						batchQueueStatement.executeBatch();
+						connection.commit();
+						batchQueueStatement = null;
+					}
 					for(BulkItemResponse response : nextResult) {
 						response.setResult(BulkItemResponse.STATUS_FAILED);
 					}
 
-					jdbcTemplate.execute("DELETE FROM " + task.getStagingTable());
+					PreparedStatement deleteTableStatement = connection.prepareStatement("DROP TABLE " + task.getStagingTable());
+					deleteTableStatement.execute();
+					deleteTableStatement.close();
 				}
 
 				bulkApiResponse.getItems().addAll(nextResult);
 			} catch (Exception e) {
 				LOGGER.error(e.getMessage(), e);
 			}
+		}
+		try {
+			if(batchQueueStatement != null) {
+				batchQueueStatement.executeBatch();
+				connection.commit();
+			}
+		} catch (Exception e) {
+			LOGGER.error(e.getMessage(), e);
+		}
+		queueTimer.stop();
+
+		if(connection != null) {
+			try {
+				connection.setAutoCommit(true);
+				connection.close();
+			} catch (Exception e) {}
 		}
 	}
 

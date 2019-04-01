@@ -35,10 +35,16 @@ public class BulkResponse extends ApiResponse {
 	
 	private long took;
 	private boolean errors;
-	private final List<BulkItemResponse> items = new ArrayList<BulkItemResponse>();
+	private final List<BulkItemResponse> items;
 	
 	public BulkResponse() {
 		super(HttpResponseStatus.OK.code());
+		items = new ArrayList<BulkItemResponse>();
+	}
+
+	public BulkResponse(int capacity) {
+		super(HttpResponseStatus.OK.code());
+		items = new ArrayList<BulkItemResponse>(capacity);
 	}
 
 	public long getTook() {

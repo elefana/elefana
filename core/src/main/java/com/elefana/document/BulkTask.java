@@ -77,7 +77,7 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 
 	private static final DocumentShardInfo SHARDS = new DocumentShardInfo();
 
-	private final Timer psqlTimer;
+	private final Timer psqlTimer, batchBuildTimer, flattenTimer, escapeTimer;
 	private final JdbcTemplate jdbcTemplate;
 	private final List<BulkIndexOperation> indexOperations;
 	private final String tablespace;
@@ -86,12 +86,18 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 	private final int from;
 	private final int size;
 
-	private final String stagingTable;
+	private String stagingTable;
+	private volatile int totalFailed, totalSuccess;
 
-	public BulkTask(Timer psqlTimer, JdbcTemplate jdbcTemplate, List<BulkIndexOperation> indexOperations,
-			String tablespace, String index, boolean flatten, int from, int size) {
+	public BulkTask(JdbcTemplate jdbcTemplate, List<BulkIndexOperation> indexOperations,
+			String tablespace, String index, boolean flatten, int from, int size,
+			        Timer psqlTimer, Timer batchBuildTimer, Timer flattenTimer, Timer escapeTimer) {
 		super();
 		this.psqlTimer = psqlTimer;
+		this.batchBuildTimer = batchBuildTimer;
+		this.flattenTimer = flattenTimer;
+		this.escapeTimer = escapeTimer;
+
 		this.jdbcTemplate = jdbcTemplate;
 		this.indexOperations = indexOperations;
 		this.tablespace = tablespace;
@@ -99,7 +105,10 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 		this.flatten = flatten;
 		this.from = from;
 		this.size = size;
+	}
 
+	@Override
+	public List<BulkItemResponse> call() {
 		List<Map<String, Object>> nextTableResults = jdbcTemplate
 				.queryForList("SELECT elefana_next_bulk_ingest_table()");
 		if (nextTableResults.isEmpty()) {
@@ -117,10 +126,7 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 				stagingTable = FALLBACK_STAGING_TABLE_PREFIX + FALLBACK_STAGING_TABLE_ID++;
 			}
 		}
-	}
 
-	@Override
-	public List<BulkItemResponse> call() {
 		final List<BulkItemResponse> results = new ArrayList<BulkItemResponse>(1);
 		Connection connection = null;
 
@@ -128,7 +134,7 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 			connection = jdbcTemplate.getDataSource().getConnection();
 
 			StringBuilder createTableQuery = new StringBuilder();
-			createTableQuery.append("CREATE TABLE ");
+			createTableQuery.append("CREATE UNLOGGED TABLE ");
 			createTableQuery.append(stagingTable);
 			createTableQuery.append(" (_index VARCHAR(255) NOT NULL, _type VARCHAR(255) NOT NULL, _id VARCHAR(255) NOT NULL, _timestamp BIGINT, ");
 			createTableQuery.append("_bucket1s BIGINT, _bucket1m BIGINT, _bucket1h BIGINT, _bucket1d BIGINT, _source jsonb)");
@@ -136,6 +142,7 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 				createTableQuery.append(" TABLESPACE ");
 				createTableQuery.append(tablespace);
 			}
+			createTableQuery.append(" WITH (autovacuum_enabled=false)");
 
 			PreparedStatement createTableStatement = connection.prepareStatement(createTableQuery.toString());
 			createTableStatement.execute();
@@ -144,7 +151,7 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 			final PgConnection pgConnection = connection.unwrap(PgConnection.class);
 			final CopyManager copyManager = new CopyManager(pgConnection);
 
-			final Timer.Context timer = psqlTimer.time();
+			final Timer.Context batchBuildTime = batchBuildTimer.time();
 
 			final StringBuilder batchInsertQuery = new StringBuilder();
 			batchInsertQuery.append("INSERT INTO ");
@@ -167,9 +174,13 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 							- (indexOperation.getTimestamp() % ONE_DAY_IN_MILLIS);
 					final String escapedJson;
 					if(flatten) {
-						escapedJson = IndexUtils.psqlEscapeString(IndexUtils.flattenJson(indexOperation.getSource()));
+						final Timer.Context flattenTime = flattenTimer.time();
+						escapedJson = IndexUtils.flattenJson(indexOperation.getSource());
+						flattenTime.stop();
 					} else {
+						final Timer.Context escapeTime = flattenTimer.time();
 						escapedJson = IndexUtils.psqlEscapeString(indexOperation.getSource());
+						escapeTime.stop();
 					}
 
 					batchInsertStatement.setString(1, indexOperation.getIndex());
@@ -188,14 +199,17 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 					batchInsertStatement.setObject(9, jsonObject);
 					batchInsertStatement.addBatch();
 				}
+				batchBuildTime.stop();
+
+				final Timer.Context psqlTime = psqlTimer.time();
 				batchInsertStatement.executeBatch();
 				connection.commit();
-				timer.stop();
+				psqlTime.stop();
 			} catch (PSQLException e) {
-				timer.stop();
+				batchBuildTime.stop();
 				throw e;
 			} catch (Exception e) {
-				timer.stop();
+				batchBuildTime.stop();
 				throw e;
 			}
 
@@ -206,7 +220,12 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 				results.add(responseEntry);
 				indexOperation.release();
 			}
+			totalSuccess = results.size();
+			totalFailed = 0;
 		} catch (Exception e) {
+			totalSuccess = 0;
+			totalFailed = 0;
+
 			boolean foundBadEntry = false;
 			for (int i = from; i < from + size && i < indexOperations.size(); i++) {
 				BulkIndexOperation indexOperation = indexOperations.get(i);
@@ -222,9 +241,11 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 
 				BulkItemResponse responseEntry = null;
 				if (foundBadEntry) {
+					totalFailed++;
 					responseEntry = createEntry(i, "index", indexOperation.getIndex(), indexOperation.getType(),
 							indexOperation.getId(), BulkItemResponse.STATUS_FAILED);
 				} else {
+					totalSuccess++;
 					responseEntry = createEntry(i, "index", indexOperation.getIndex(), indexOperation.getType(),
 							indexOperation.getId(), BulkItemResponse.STATUS_CREATED);
 				}
@@ -273,5 +294,13 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 
 	public String getStagingTable() {
 		return stagingTable;
+	}
+
+	public int getTotalFailed() {
+		return totalFailed;
+	}
+
+	public int getTotalSuccess() {
+		return totalSuccess;
 	}
 }

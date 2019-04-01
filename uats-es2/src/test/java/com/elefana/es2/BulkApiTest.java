@@ -89,7 +89,6 @@ public class BulkApiTest {
 					.statusCode(200);
 			result = response.extract().body().jsonPath().getInt("hits.total");
 			if(result == totalDocuments) {
-				response.log().all();
 				return;
 			}
 

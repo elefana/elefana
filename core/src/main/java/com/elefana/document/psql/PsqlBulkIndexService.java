@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 
+import com.codahale.metrics.Timer;
 import com.elefana.api.indices.GetIndexTemplateForIndexRequest;
 import com.elefana.api.indices.GetIndexTemplateForIndexResponse;
 import com.elefana.indices.IndexFieldMappingService;
@@ -75,18 +76,21 @@ public class PsqlBulkIndexService implements Runnable {
 	private final AtomicInteger totalFileDeletions = new AtomicInteger();
 	private final Queue<String> fileDeletionQueue = new LinkedList<String>();
 	private final AtomicLong lastQueueId = new AtomicLong(Long.MIN_VALUE);
-	private Counter duplicateKeyCounter;
 	private BlockingQueue<String> indexQueue;
 
 	protected final AtomicBoolean running = new AtomicBoolean(true);
 	protected ExecutorService executorService;
+
+	private Timer bulkIndexTimer;
+	private Counter duplicateKeyCounter;
 
 	private File tmpDirectory;
 
 	@PostConstruct
 	public void postConstruct() {
 		duplicateKeyCounter = metricRegistry.counter(MetricRegistry.name("bulk", "key", "duplicates"));
-		
+		bulkIndexTimer = metricRegistry.timer(MetricRegistry.name("bulk", "index", "duration", "total"));
+
 		final int totalThreads = getTotalThreads();
 		final String tmpDirectoryPath = environment.getProperty("elefana.service.bulk.ingest.dir",
 				System.getProperty("java.io.tmpdir"));
@@ -193,11 +197,13 @@ public class PsqlBulkIndexService implements Runnable {
 						if(index != null) {
 							final String targetTable = indexUtils.getQueryTarget(connection, index);
 
+							final Timer.Context indexTimer = bulkIndexTimer.time();
 							if (nodeSettingsService.isUsingCitus()) {
 								bulkIndexResult = mergeStagingTableIntoDistributedTable(connection, index, nextIndexTable, targetTable);
 							} else {
 								mergeStagingTableIntoPartitionTable(connection, nextIndexTable, targetTable);
 							}
+							indexTimer.stop();
 						}
 					} catch (Exception e) {
 						if(e.getMessage() != null && e.getMessage().contains("duplicate key")) {
@@ -338,15 +344,15 @@ public class PsqlBulkIndexService implements Runnable {
 		String tmpFile = IndexUtils.createTempFilePath("elefana-idx-" + targetTable + "-", ".tmp", tmpDirectory);
 		//tmpFile = "/tmp/elefana-idx-" + targetTable + "-" + System.nanoTime() + ".tmp";
 
-		PreparedStatement preparedStatement = connection.prepareStatement("COPY " + bulkIngestTable + " TO '" + tmpFile + "' WITH BINARY ENCODING 'UTF8'");
-		preparedStatement.execute();
-		preparedStatement.close();
+//		PreparedStatement preparedStatement = connection.prepareStatement("COPY " + bulkIngestTable + " TO '" + tmpFile + "' WITH BINARY ENCODING 'UTF8'");
+//		preparedStatement.execute();
+//		preparedStatement.close();
+//
+//		preparedStatement = connection.prepareStatement("COPY " + targetTable + " FROM '" + tmpFile + "' WITH BINARY ENCODING 'UTF8'");
+//		preparedStatement.execute();
+//		preparedStatement.close();
 
-		preparedStatement = connection.prepareStatement("COPY " + targetTable + " FROM '" + tmpFile + "' WITH BINARY ENCODING 'UTF8'");
-		preparedStatement.execute();
-		preparedStatement.close();
-
-		preparedStatement = connection.prepareStatement("INSERT INTO elefana_file_deletion_queue (_filepath, _timestamp) VALUES ('" + tmpFile + "', " + System.currentTimeMillis() + ")");
+		PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO " + targetTable + " SELECT * FROM " + bulkIngestTable);
 		preparedStatement.execute();
 		preparedStatement.close();
 
