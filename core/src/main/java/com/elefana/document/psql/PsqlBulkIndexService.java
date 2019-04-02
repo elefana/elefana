@@ -71,20 +71,15 @@ public class PsqlBulkIndexService implements Runnable {
 	@Autowired
 	protected NodeSettingsService nodeSettingsService;
 	@Autowired
+	protected IngestTableTracker ingestTableTracker;
+	@Autowired
 	protected MetricRegistry metricRegistry;
-
-	private final AtomicInteger totalFileDeletions = new AtomicInteger();
-	private final Queue<String> fileDeletionQueue = new LinkedList<String>();
-	private final AtomicLong lastQueueId = new AtomicLong(Long.MIN_VALUE);
-	private BlockingQueue<String> indexQueue;
 
 	protected final AtomicBoolean running = new AtomicBoolean(true);
 	protected ExecutorService executorService;
 
 	private Timer bulkIndexTimer;
 	private Counter duplicateKeyCounter;
-
-	private File tmpDirectory;
 
 	@PostConstruct
 	public void postConstruct() {
@@ -94,63 +89,9 @@ public class PsqlBulkIndexService implements Runnable {
 		final int totalThreads = getTotalThreads();
 		final String tmpDirectoryPath = environment.getProperty("elefana.service.bulk.ingest.dir",
 				System.getProperty("java.io.tmpdir"));
-		tmpDirectory = new File(tmpDirectoryPath);
-		if(!tmpDirectory.exists()) {
-			tmpDirectory.mkdirs();
-		}
 
-		indexQueue = new ArrayBlockingQueue<String>(totalThreads);
 		executorService = Executors.newFixedThreadPool(totalThreads);
-
-		executorService.submit(new Runnable() {
-
-			@Override
-			public void run() {
-				try {
-					final Queue<String> nextIndexTables = new LinkedList<String>();
-					while (running.get()) {
-						getNextIndexTables(nextIndexTables);
-
-						while (!nextIndexTables.isEmpty()) {
-							String nextIndexTable = nextIndexTables.poll();
-							indexQueue.put(nextIndexTable);
-						}
-					}
-				} catch (Exception e) {
-					LOGGER.error(e.getMessage(), e);
-				}
-				if (!running.get()) {
-					return;
-				}
-				executorService.submit(this);
-			}
-		});
-		executorService.submit(new Runnable() {
-
-			@Override
-			public void run() {
-				try {
-					while (running.get()) {
-						final int totalDeletions = deleteTempFiles();
-						if(totalDeletions < 1) {
-							synchronized(totalFileDeletions) {
-								totalFileDeletions.wait();
-							}
-						} else {
-							totalFileDeletions.addAndGet(totalDeletions);
-						}
-					}
-				} catch (Exception e) {
-					LOGGER.error(e.getMessage(), e);
-				}
-				if (!running.get()) {
-					return;
-				}
-				executorService.submit(this);
-			}
-		});
-
-		for (int i = 0; i < totalThreads - 2; i++) {
+		for (int i = 0; i < totalThreads; i++) {
 			executorService.submit(this);
 		}
 
@@ -177,94 +118,46 @@ public class PsqlBulkIndexService implements Runnable {
 	@Override
 	public void run() {
 		try {
-			long lastCacheExpire = 0L;
-
+			final Queue<IngestTable> ingestTablesQueue = new LinkedList<IngestTable>();
 			while (running.get()) {
-				final String nextIndexTable = indexQueue.take();
-				String index = null;
+				ingestTableTracker.getIngestTables(ingestTablesQueue);
 
 				Connection connection = null;
-				try {
-					connection = jdbcTemplate.getDataSource().getConnection();
 
-					PreparedStatement preparedStatement = connection.prepareStatement("DELETE FROM elefana_bulk_index_queue WHERE _tableName='" + nextIndexTable + "'");
-					preparedStatement.execute();
-					preparedStatement.close();
+				while(!ingestTablesQueue.isEmpty()) {
+					final IngestTable nextIngestTable = ingestTablesQueue.poll();
 
-					BulkIndexResult bulkIndexResult = BulkIndexResult.SUCCESS;
-					try {
-						index = getIndexName(connection, nextIndexTable);
-						if(index != null) {
-							final String targetTable = indexUtils.getQueryTarget(connection, index);
-
-							final Timer.Context indexTimer = bulkIndexTimer.time();
-							if (nodeSettingsService.isUsingCitus()) {
-								bulkIndexResult = mergeStagingTableIntoDistributedTable(connection, index, nextIndexTable, targetTable);
-							} else {
-								mergeStagingTableIntoPartitionTable(connection, nextIndexTable, targetTable);
-							}
-							indexTimer.stop();
-						}
-					} catch (Exception e) {
-						if(e.getMessage() != null && e.getMessage().contains("duplicate key")) {
-							LOGGER.error("Duplicate key in bulk staging table: " + nextIndexTable);
-							duplicateKeyCounter.inc();
-							bulkIndexResult = BulkIndexResult.DUPLICATE;
-						} else {
-							LOGGER.error(e.getMessage(), e);
-							bulkIndexResult = BulkIndexResult.EXCEPTION;
-						}
+					if(connection == null) {
+						connection = jdbcTemplate.getDataSource().getConnection();
 					}
 
 					try {
-						switch(bulkIndexResult) {
-						case ROUTE:
-							break;
-						case EXCEPTION:
-							PreparedStatement reinsertStatement = connection.prepareStatement(
-									"INSERT INTO elefana_bulk_index_queue (_tableName, _queue_id) VALUES ('" +
-											nextIndexTable + "', nextval('elefana_bulk_index_queue_id'))");
-							reinsertStatement.execute();
-							reinsertStatement.close();
-							LOGGER.error("Re-queued " + nextIndexTable + " for indexing due to exception");
-							break;
-						case DUPLICATE:
-							PreparedStatement transferStatement = connection.prepareStatement(
-									"INSERT INTO elefana_duplicate_keys SELECT * FROM " + nextIndexTable);
-							transferStatement.execute();
-							transferStatement.close();
-							LOGGER.error("Copied " + nextIndexTable + " to elefana_duplicate_keys");
-						default:
-						case SUCCESS: {
-							PreparedStatement dropTableStatement = connection.prepareStatement(
-									"DROP TABLE IF EXISTS " + nextIndexTable);
-							dropTableStatement.execute();
-							dropTableStatement.close();
-							break;
-						}
+						if(ingestTable(connection, nextIngestTable)) {
+							if(indexFieldMappingService instanceof PsqlIndexFieldMappingService) {
+								((PsqlIndexFieldMappingService) indexFieldMappingService).
+										scheduleIndexForMappingAndStats(nextIngestTable.getIndex());
+							}
 						}
 					} catch (Exception e) {
 						LOGGER.error(e.getMessage(), e);
-					}
-
-					connection.close();
-					connection = null;
-
-					if(index != null) {
-						if(indexFieldMappingService instanceof PsqlIndexFieldMappingService) {
-							((PsqlIndexFieldMappingService) indexFieldMappingService).scheduleIndexForMappingAndStats(index);
+						if (connection != null) {
+							try {
+								connection.close();
+								connection = null;
+							} catch (SQLException e1) {
+								e1.printStackTrace();
+							}
 						}
 					}
-				} catch (Exception e) {
-					if (connection != null) {
-						try {
-							connection.close();
-							connection = null;
-						} catch (SQLException e1) {
-							e1.printStackTrace();
-						}
+				}
+
+				if (connection != null) {
+					try {
+						connection.close();
+						connection = null;
+					} catch (SQLException e1) {
+						e1.printStackTrace();
 					}
-					e.printStackTrace();
 				}
 			}
 		} catch (Exception e) {
@@ -276,57 +169,73 @@ public class PsqlBulkIndexService implements Runnable {
 		executorService.submit(this);
 	}
 
-	private int deleteTempFiles() {
-		int result = 0;
-		try {
-			final long timestamp = System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(5L);
-			final SqlRowSet results = jdbcTemplate.queryForRowSet("SELECT * FROM elefana_file_deletion_queue WHERE _timestamp <= ? ORDER BY _timestamp ASC LIMIT 100", timestamp);
-			while(results.next()) {
-				final String filepath = results.getString("_filepath");
-				fileDeletionQueue.offer(filepath);
-			}
-			result = fileDeletionQueue.size();
+	protected boolean ingestTable(Connection connection, IngestTable ingestTable) throws SQLException {
+		boolean result = false;
 
-			while(!fileDeletionQueue.isEmpty()) {
-				final String filepath = fileDeletionQueue.poll();
-				final File file = new File(filepath);
-				if(file.exists()) {
-					jdbcTemplate.execute("SELECT elefana_delete_tmp_file('" + filepath + "')");
+		for(int i = 0; i < ingestTable.getCapacity(); i++) {
+			final int stagingTableId;
+			try {
+				stagingTableId = ingestTable.lockWrittenTable();
+			} catch (Exception e) {
+				LOGGER.error(e.getMessage(), e);
+				continue;
+			}
+			if(stagingTableId <= -1) {
+				continue;
+			}
+
+			final String stagingTableName = ingestTable.getIngestionTableName(stagingTableId);
+			final String targetTableName = indexUtils.getQueryTarget(connection, ingestTable.getIndex());
+
+			BulkIndexResult bulkIndexResult = BulkIndexResult.SUCCESS;
+			try {
+				final Timer.Context indexTimer = bulkIndexTimer.time();
+				if (nodeSettingsService.isUsingCitus()) {
+					bulkIndexResult = mergeStagingTableIntoDistributedTable(connection, ingestTable.getIndex(), stagingTableName, targetTableName);
 				} else {
-					jdbcTemplate.execute("DELETE FROM elefana_file_deletion_queue WHERE _filepath = '" + filepath + "'");
+					mergeStagingTableIntoPartitionTable(connection, stagingTableName, targetTableName);
+				}
+				indexTimer.stop();
+			} catch (Exception e) {
+				if(e.getMessage() != null && e.getMessage().contains("duplicate key")) {
+					LOGGER.error("Duplicate key in bulk staging table: " + stagingTableName);
+					duplicateKeyCounter.inc();
+					bulkIndexResult = BulkIndexResult.DUPLICATE;
+				} else {
+					LOGGER.error(e.getMessage(), e);
+					bulkIndexResult = BulkIndexResult.EXCEPTION;
 				}
 			}
-		} catch (Exception e) {
-			LOGGER.error(e.getMessage(), e);
-		}
-		return result;
-	}
 
-	private void getNextIndexTables(final Queue<String> results) {
-		final List<Map<String, Object>> nextTableResults = jdbcTemplate
-				.queryForList("SELECT * FROM elefana_bulk_index_queue WHERE _queue_id > " + lastQueueId.get());
+			try {
+				switch(bulkIndexResult) {
+				case ROUTE:
+					break;
+				case EXCEPTION:
+					break;
+				case DUPLICATE:
+					PreparedStatement transferStatement = connection.prepareStatement(
+							"INSERT INTO elefana_duplicate_keys SELECT * FROM " + stagingTableName);
+					transferStatement.execute();
+					transferStatement.close();
+					LOGGER.error("Copied " + stagingTableName + " to elefana_duplicate_keys");
+				default:
+				case SUCCESS: {
+					PreparedStatement dropTableStatement = connection.prepareStatement(
+							"TRUNCATE TABLE " + stagingTableName);
+					dropTableStatement.execute();
+					dropTableStatement.close();
+					ingestTable.unmarkData(stagingTableId);
 
-		for (Map<String, Object> row : nextTableResults) {
-			if (row.containsKey("_tableName")) {
-				results.offer(((String) row.get("_tableName")).replace('-', '_'));
+					result |= true;
+					break;
+				}
+				}
+			} catch (Exception e) {
+				LOGGER.error(e.getMessage(), e);
 			}
-			if (row.containsKey("_queue_id")) {
-				final long queueId = (long) row.get("_queue_id");
-				lastQueueId.set(Math.max(lastQueueId.get(), queueId));
-			}
+			ingestTable.unlockTable(stagingTableId);
 		}
-	}
-
-	private String getIndexName(Connection connection, String nextIndexTable) throws SQLException {
-		final PreparedStatement preparedStatement = connection.prepareStatement("SELECT _index FROM " + nextIndexTable + " LIMIT 1");
-		final ResultSet resultSet = preparedStatement.executeQuery();
-		String result = null;
-		if(resultSet.next()) {
-			result = resultSet.getString("_index");
-		} else {
-			LOGGER.warn("No rows in " + nextIndexTable);
-		}
-		preparedStatement.close();
 		return result;
 	}
 
@@ -341,24 +250,9 @@ public class PsqlBulkIndexService implements Runnable {
 	}
 
 	private void mergeStagingTableIntoPartitionTable(Connection connection, String bulkIngestTable, String targetTable) throws IOException, SQLException {
-		String tmpFile = IndexUtils.createTempFilePath("elefana-idx-" + targetTable + "-", ".tmp", tmpDirectory);
-		//tmpFile = "/tmp/elefana-idx-" + targetTable + "-" + System.nanoTime() + ".tmp";
-
-//		PreparedStatement preparedStatement = connection.prepareStatement("COPY " + bulkIngestTable + " TO '" + tmpFile + "' WITH BINARY ENCODING 'UTF8'");
-//		preparedStatement.execute();
-//		preparedStatement.close();
-//
-//		preparedStatement = connection.prepareStatement("COPY " + targetTable + " FROM '" + tmpFile + "' WITH BINARY ENCODING 'UTF8'");
-//		preparedStatement.execute();
-//		preparedStatement.close();
-
 		PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO " + targetTable + " SELECT * FROM " + bulkIngestTable);
 		preparedStatement.execute();
 		preparedStatement.close();
-
-		synchronized(totalFileDeletions) {
-			totalFileDeletions.notifyAll();
-		}
 	}
 
 	protected enum BulkIndexResult {

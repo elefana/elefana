@@ -15,40 +15,32 @@
  ******************************************************************************/
 package com.elefana.document;
 
+import com.codahale.metrics.Timer;
+import com.elefana.api.document.BulkItemResponse;
+import com.elefana.api.document.BulkOpType;
+import com.elefana.api.document.DocumentShardInfo;
+import com.elefana.document.psql.IngestTable;
+import com.elefana.util.IndexUtils;
+import com.jsoniter.JsonIterator;
+import com.jsoniter.spi.JsonException;
+import org.postgresql.copy.CopyIn;
+import org.postgresql.copy.CopyManager;
+import org.postgresql.jdbc.PgConnection;
+import org.postgresql.util.PSQLException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.jdbc.core.JdbcTemplate;
+
 import java.nio.charset.Charset;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Callable;
-
-import com.elefana.api.document.DocumentShardInfo;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
-import org.postgresql.copy.CopyIn;
-import org.postgresql.copy.CopyManager;
-import org.postgresql.jdbc.PgConnection;
-import org.postgresql.util.PGobject;
-import org.postgresql.util.PSQLException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.jdbc.core.JdbcTemplate;
-
-import com.codahale.metrics.Timer;
-import com.elefana.api.document.BulkItemResponse;
-import com.elefana.api.document.BulkOpType;
-import com.elefana.api.exception.ShardFailedException;
-import com.elefana.util.IndexUtils;
-import com.jsoniter.JsonIterator;
-import com.jsoniter.spi.JsonException;
 
 public class BulkTask implements Callable<List<BulkItemResponse>> {
 	private static final Logger LOGGER = LoggerFactory.getLogger(BulkTask.class);
-
-	private static final String FALLBACK_STAGING_TABLE_PREFIX = "elefana_fallback_stg_";
-	private static int FALLBACK_STAGING_TABLE_ID = 0;
 
 	private static final String DELIMITER_INIT = "e'\\x1f'";
 	private static final String DELIMITER = Character.toString((char) 31);
@@ -71,17 +63,16 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 	private final Timer psqlTimer, batchBuildTimer, flattenTimer, escapeTimer;
 	private final JdbcTemplate jdbcTemplate;
 	private final List<BulkIndexOperation> indexOperations;
-	private final String tablespace;
+	private final IngestTable ingestTable;
 	private final String index;
 	private final boolean flatten;
 	private final int from;
 	private final int size;
 
-	private String stagingTable;
 	private volatile int totalFailed, totalSuccess;
 
 	public BulkTask(JdbcTemplate jdbcTemplate, List<BulkIndexOperation> indexOperations,
-			String tablespace, String index, boolean flatten, int from, int size,
+			String index, IngestTable ingestTable, boolean flatten, int from, int size,
 			        Timer psqlTimer, Timer batchBuildTimer, Timer flattenTimer, Timer escapeTimer) {
 		super();
 		this.psqlTimer = psqlTimer;
@@ -91,8 +82,8 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 
 		this.jdbcTemplate = jdbcTemplate;
 		this.indexOperations = indexOperations;
-		this.tablespace = tablespace;
 		this.index = index;
+		this.ingestTable = ingestTable;
 		this.flatten = flatten;
 		this.from = from;
 		this.size = size;
@@ -100,45 +91,32 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 
 	@Override
 	public List<BulkItemResponse> call() {
-		List<Map<String, Object>> nextTableResults = jdbcTemplate
-				.queryForList("SELECT elefana_next_bulk_ingest_table()");
-		if (nextTableResults.isEmpty()) {
-			LOGGER.error("Could not get next staging table ID from elefana_next_staging_table(), using fallback table");
-			stagingTable = FALLBACK_STAGING_TABLE_PREFIX + FALLBACK_STAGING_TABLE_ID++;
-		} else {
-			Map<String, Object> row = nextTableResults.get(0);
-			if (row.containsKey("table_name")) {
-				stagingTable = ((String) row.get("table_name")).replace('-', '_');
-			} else if (row.containsKey("elefana_next_bulk_ingest_table")) {
-				stagingTable = ((String) row.get("elefana_next_bulk_ingest_table")).replace('-', '_');
-			} else {
-				LOGGER.error(
-						"Could not get next staging table ID from elefana_next_staging_table(), using fallback table");
-				stagingTable = FALLBACK_STAGING_TABLE_PREFIX + FALLBACK_STAGING_TABLE_ID++;
-			}
-		}
-
 		final List<BulkItemResponse> results = new ArrayList<BulkItemResponse>(1);
 		Connection connection = null;
 
+		final int stagingTableId;
+		try {
+			stagingTableId = ingestTable.lockTable();
+		} catch (Exception e) {
+			LOGGER.error(e.getMessage(), e);
+
+			for (int i = from; i < from + size && i < indexOperations.size(); i++) {
+				BulkIndexOperation indexOperation = indexOperations.get(i);
+				BulkItemResponse responseEntry = createEntry(i, "index", indexOperation.getIndex(),
+						indexOperation.getType(), indexOperation.getId(), BulkItemResponse.STATUS_FAILED);
+				results.add(responseEntry);
+				indexOperation.release();
+			}
+			totalSuccess = 0;
+			totalFailed = results.size();
+			return results;
+		}
+
+		final String stagingTable = ingestTable.getIngestionTableName(stagingTableId);
+		boolean stagingTableUnlocked = false;
+
 		try {
 			connection = jdbcTemplate.getDataSource().getConnection();
-
-			final StringBuilder createTableQuery = IndexUtils.POOLED_STRING_BUILDER.get();
-			createTableQuery.append("CREATE UNLOGGED TABLE ");
-			createTableQuery.append(stagingTable);
-			createTableQuery.append(" (_index VARCHAR(255) NOT NULL, _type VARCHAR(255) NOT NULL, _id VARCHAR(255) NOT NULL, _timestamp BIGINT, ");
-			createTableQuery.append("_bucket1s BIGINT, _bucket1m BIGINT, _bucket1h BIGINT, _bucket1d BIGINT, _source jsonb)");
-			if (tablespace != null && !tablespace.isEmpty()) {
-				createTableQuery.append(" TABLESPACE ");
-				createTableQuery.append(tablespace);
-			}
-			createTableQuery.append(" WITH (autovacuum_enabled=false)");
-
-			PreparedStatement createTableStatement = connection.prepareStatement(createTableQuery.toString());
-			createTableStatement.execute();
-			createTableStatement.close();
-
 			connection.setAutoCommit(false);
 
 			final PgConnection pgConnection = connection.unwrap(PgConnection.class);
@@ -198,6 +176,10 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 				copyIn.endCopy();
 				connection.commit();
 				psqlTime.stop();
+
+				ingestTable.markData(stagingTableId);
+				ingestTable.unlockTable(stagingTableId);
+				stagingTableUnlocked = true;
 			} catch (PSQLException e) {
 				throw e;
 			} catch (Exception e) {
@@ -256,6 +238,9 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 			} catch (SQLException e) {
 			}
 		}
+		if(!stagingTableUnlocked) {
+			ingestTable.unlockTable(stagingTableId);
+		}
 		return results;
 	}
 
@@ -281,10 +266,6 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 
 	public int getSize() {
 		return size;
-	}
-
-	public String getStagingTable() {
-		return stagingTable;
 	}
 
 	public int getTotalFailed() {

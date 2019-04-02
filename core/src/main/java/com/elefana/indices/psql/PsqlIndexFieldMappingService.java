@@ -45,7 +45,7 @@ import java.util.concurrent.*;
 
 @Service
 @DependsOn("nodeSettingsService")
-public class PsqlIndexFieldMappingService implements IndexFieldMappingService, RequestExecutor, Runnable {
+public class PsqlIndexFieldMappingService implements IndexFieldMappingService, RequestExecutor {
 	private static final Logger LOGGER = LoggerFactory.getLogger(IndexFieldMappingService.class);
 
 	private final SortedSet<String> mappingQueue = new ConcurrentSkipListSet<String>();
@@ -72,7 +72,7 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 	private IndexUtils indexUtils;
 
 	private ExecutorService executorService;
-	private ScheduledFuture<?> scheduledTask;
+	private ScheduledFuture<?> mappingScheduledTask, fieldStatsScheduledTask;
 
 	private FieldMapper fieldMapper;
 
@@ -90,15 +90,36 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 
 		final int totalThreads = environment.getProperty("elefana.service.field.threads", Integer.class, 2);
 		executorService = Executors.newFixedThreadPool(totalThreads);
-		
-		scheduledTask = taskScheduler.scheduleWithFixedDelay(this,
-				Math.min(nodeSettingsService.getFieldStatsInterval(), nodeSettingsService.getMappingInterval()));
+
+		mappingScheduledTask = taskScheduler.scheduleAtFixedRate(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					generateMappingsForQueuedTables();
+				} catch (Exception e) {
+					LOGGER.error(e.getMessage(), e);
+				}
+			}
+		}, nodeSettingsService.getMappingInterval());
+		fieldStatsScheduledTask = taskScheduler.scheduleAtFixedRate(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					generateFieldStatsForQueuedTables();
+				} catch (Exception e) {
+					LOGGER.error(e.getMessage(), e);
+				}
+			}
+		}, nodeSettingsService.getFieldStatsInterval());
 	}
 
 	@PreDestroy
 	public void preDestroy() {
-		if (scheduledTask != null) {
-			scheduledTask.cancel(false);
+		if (mappingScheduledTask != null) {
+			mappingScheduledTask.cancel(false);
+		}
+		if (fieldStatsScheduledTask != null) {
+			fieldStatsScheduledTask.cancel(false);
 		}
 		executorService.shutdown();
 	}
@@ -458,16 +479,7 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 		return new HashMap<String, Object>(fieldMapper.getEmptyMapping());
 	}
 
-	@Override
-	public void run() {
-		generateMappingsForQueuedTables();
-		generateFieldStatsForQueuedTables();
-	}
-
 	private void generateMappingsForQueuedTables() {
-		if (System.currentTimeMillis() - lastMapping < nodeSettingsService.getMappingInterval()) {
-			return;
-		}
 		try {
 			while (!mappingQueue.isEmpty()) {
 				String nextIndex = mappingQueue.first();
@@ -566,24 +578,22 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 	}
 
 	private void generateFieldStatsForQueuedTables() {
-		if (System.currentTimeMillis() - lastFieldStats < nodeSettingsService.getFieldStatsInterval()) {
-			return;
-		}
 		try {
 			while (!fieldStatsQueue.isEmpty()) {
 				String nextIndex = fieldStatsQueue.first();
 				generateFieldStatsForIndex(nextIndex);
 				fieldStatsQueue.remove(nextIndex);
 			}
-			lastFieldStats = System.currentTimeMillis();
 
 			while(!delayedFieldStatsQueue.isEmpty()) {
 				final String nextIndex = delayedFieldStatsQueue.first();
 				fieldStatsQueue.add(nextIndex);
 				delayedFieldStatsQueue.remove(nextIndex);
 			}
+
+			lastFieldStats = System.currentTimeMillis();
 		} catch (Exception e) {
-			e.printStackTrace();
+			LOGGER.error(e.getMessage(), e);
 		}
 	}
 

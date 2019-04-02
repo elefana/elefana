@@ -49,9 +49,9 @@ import io.restassured.http.ContentType;
 @SpringBootTest(classes = { ElefanaApplication.class })
 @TestPropertySource(locations = "classpath:es2.properties")
 public class BulkApiTest {
-	private static final int RANDOM_SEED = 12947357;
+	private static final int RANDOM_SEED = 12947358;
 	private static final Random RANDOM = new Random(RANDOM_SEED);
-	private static final long BULK_INDEX_TIMEOUT = 60000L;
+	private static final long BULK_INDEX_TIMEOUT = 30000L;
 	
 	@Before
 	public void setup() {

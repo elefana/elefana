@@ -479,7 +479,7 @@ public class CoreIndexUtils implements IndexUtils {
 		return null;
 	}
 
-	protected static String convertIndexNameToTableName(String indexName) {
+	public static String convertIndexNameToTableName(String indexName) {
 		indexName = indexName.replace(".", "_f_");
 		indexName = indexName.replace("-", "_m_");
 		indexName = indexName.replace(":", "_c_");
@@ -490,7 +490,7 @@ public class CoreIndexUtils implements IndexUtils {
 		return indexName;
 	}
 
-	protected static String convertTableNameToIndexName(String tableName) {
+	public static String convertTableNameToIndexName(String tableName) {
 		tableName = tableName.replace("_f_", ".");
 		tableName = tableName.replace("_m_", "-");
 		tableName = tableName.replace("_c_", ":");

@@ -64,7 +64,6 @@ import com.jsoniter.spi.JsonException;
 
 @Service
 public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor {
-	private static final String[] DEFAULT_TABLESPACES = new String[] { "" };
 	private static final Logger LOGGER = LoggerFactory.getLogger(PsqlBulkIngestService.class);
 	private static final String THREAD_PREFIX = BulkIngestService.class.getSimpleName() + "-";
 	private static final String REQUEST_THREAD_PREFIX = THREAD_PREFIX + "requestHandler" + "-";
@@ -86,25 +85,19 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 	@Autowired
 	protected VersionInfoService versionInfoService;
 	@Autowired
-	private PsqlBulkIndexService bulkIndexService;
+	private IngestTableTracker ingestTableTracker;
 	@Autowired
 	private MetricRegistry metricRegistry;
 
 	private final AtomicInteger tablespaceIndex = new AtomicInteger();
-	private String[] tablespaces;
 	private ExecutorService bulkRequestExecutorService, bulkProcessingExecutorService;
 
-	private Timer bulkIngestTotalTimer, bulkIngestPsqlTimer, bulkIngestSerializationTimer, bulkGatherResultsTimer, bulkQueueTablesTimer;
+	private Timer bulkIngestTotalTimer, bulkIngestPsqlTimer, bulkIngestSerializationTimer, bulkGatherResultsTimer;
 	private Timer psqlBatchBuildTimer, jsonFlattenTimer, jsonEscapeTimer;
 	private Meter bulkOperationsSuccess, bulkOperationsFailed, bulkOperationsBatchSize;
 
 	@PostConstruct
 	public void postConstruct() {
-		tablespaces = environment.getProperty("elefana.service.bulk.tablespaces", "").split(",");
-		if (isEmptyTablespaceList(tablespaces)) {
-			tablespaces = DEFAULT_TABLESPACES;
-		}
-
 		final int totalIngestThreads = environment.getProperty("elefana.service.bulk.ingest.threads", Integer.class,
 				Runtime.getRuntime().availableProcessors());
 		final int totalProcessingThreads = (nodeSettingsService.getBulkParallelisation() * totalIngestThreads) + 1;
@@ -116,7 +109,6 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 				.timer(MetricRegistry.name("bulk", "ingest", "duration", "serialization"));
 		bulkIngestPsqlTimer = metricRegistry.timer(MetricRegistry.name("bulk", "ingest", "duration", "psql"));
 		bulkGatherResultsTimer = metricRegistry.timer(MetricRegistry.name("bulk", "ingest", "duration", "gather"));
-		bulkQueueTablesTimer = metricRegistry.timer(MetricRegistry.name("bulk", "ingest", "duration", "queueTables"));
 
 		bulkOperationsBatchSize = metricRegistry.meter(MetricRegistry.name("bulk", "ingest", "batch", "size"));
 		bulkOperationsSuccess = metricRegistry.meter(MetricRegistry.name("bulk", "ingest", "success"));
@@ -219,6 +211,7 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 	private void bulkIndex(BulkResponse bulkApiResponse, String index, List<BulkIndexOperation> indexOperations)
 			throws ElefanaException {
 		indexUtils.ensureIndexExists(index);
+		final IngestTable ingestTable = ingestTableTracker.getIngestTable(index);
 
 		final int operationSize = Math.max(MINIMUM_BULK_SIZE, indexOperations.size() / nodeSettingsService.getBulkParallelisation());
 		
@@ -226,9 +219,8 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 		List<Future<List<BulkItemResponse>>> results = null;
 
 		for (int i = 0; i < indexOperations.size(); i += operationSize) {
-			final String tablespace = tablespaces[tablespaceIndex.incrementAndGet() % tablespaces.length];
-			final BulkTask task = new BulkTask(jdbcTemplate, indexOperations, tablespace,
-					index, nodeSettingsService.isFlattenJson(), i, operationSize,
+			final BulkTask task = new BulkTask(jdbcTemplate, indexOperations,
+					index, ingestTable, nodeSettingsService.isFlattenJson(), i, operationSize,
 					bulkIngestPsqlTimer, psqlBatchBuildTimer, jsonFlattenTimer, jsonEscapeTimer);
 			bulkTasks.add(task);
 		}
@@ -267,86 +259,24 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 		if(!success) {
 			bulkApiResponse.setErrors(true);
 		}
-
-		final Timer.Context queueTimer = bulkQueueTablesTimer.time();
-
-		Connection connection = null;
-		PreparedStatement batchQueueStatement = null;
 		for (int i = 0; i < results.size(); i++) {
 			try {
-				if(connection == null) {
-					connection = jdbcTemplate.getDataSource().getConnection();
-					connection.setAutoCommit(false);
-				}
-
-				final BulkTask task = bulkTasks.get(i);
 				final List<BulkItemResponse> nextResult = results.get(i).get();
 
-				if(success) {
-					if(batchQueueStatement == null) {
-						batchQueueStatement = connection.prepareStatement("INSERT INTO elefana_bulk_index_queue (_tableName, _queue_id) VALUES (?, nextval('elefana_bulk_index_queue_id'))");
-					}
-
-					batchQueueStatement.setString(1, task.getStagingTable());
-					batchQueueStatement.addBatch();
-				} else {
-					if(batchQueueStatement != null) {
-						batchQueueStatement.executeBatch();
-						batchQueueStatement.close();
-						connection.commit();
-						batchQueueStatement = null;
-					}
+				if(!success) {
 					for(BulkItemResponse response : nextResult) {
 						response.setResult(BulkItemResponse.STATUS_FAILED);
 					}
-
-					PreparedStatement deleteTableStatement = connection.prepareStatement("DROP TABLE " + task.getStagingTable());
-					deleteTableStatement.execute();
-					deleteTableStatement.close();
 				}
-
 				bulkApiResponse.getItems().addAll(nextResult);
 			} catch (Exception e) {
 				LOGGER.error(e.getMessage(), e);
 			}
-		}
-		try {
-			if(batchQueueStatement != null) {
-				batchQueueStatement.executeBatch();
-				batchQueueStatement.close();
-				connection.commit();
-			}
-		} catch (Exception e) {
-			LOGGER.error(e.getMessage(), e);
-		}
-		queueTimer.stop();
-
-		if(connection != null) {
-			try {
-				connection.setAutoCommit(true);
-				connection.close();
-			} catch (Exception e) {}
 		}
 	}
 
 	@Override
 	public <T> Future<T> submit(Callable<T> request) {
 		return bulkRequestExecutorService.submit(request);
-	}
-
-	private boolean isEmptyTablespaceList(String[] tablespaces) {
-		if (tablespaces == null) {
-			return true;
-		}
-		for (int i = 0; i < tablespaces.length; i++) {
-			if (tablespaces[i] == null) {
-				continue;
-			}
-			if (tablespaces[i].isEmpty()) {
-				continue;
-			}
-			return false;
-		}
-		return true;
 	}
 }

@@ -77,8 +77,7 @@ public class IndexMappingTest {
 		while(System.currentTimeMillis() - startTime < TEST_TIMEOUT) {
 			ValidatableResponse response = given().when().get("/" + index + "/_field_names")
 					.then()
-					.statusCode(200)
-					.log().all();
+					.statusCode(200);
 
 			try {
 				List<String> result = response.extract().body().jsonPath().getList("field_names");
@@ -97,8 +96,7 @@ public class IndexMappingTest {
 
 				response = given().when().get("/" + index + "/_field_names/" + type1)
 						.then()
-						.statusCode(200)
-						.log().all();
+						.statusCode(200);
 				result = response.extract().body().jsonPath().getList("field_names");
 				Assert.assertEquals(5, result.size());
 				Assert.assertEquals(true, result.contains("docField"));
@@ -109,8 +107,7 @@ public class IndexMappingTest {
 
 				response = given().when().get("/" + index + "/_field_names/" + type2)
 						.then()
-						.statusCode(200)
-						.log().all();
+						.statusCode(200);
 				result = response.extract().body().jsonPath().getList("field_names");
 				Assert.assertEquals(2, result.size());
 				Assert.assertEquals(true, result.contains("docField"));
@@ -225,7 +222,6 @@ public class IndexMappingTest {
 		.when()
 			.post("/" + index + "/_refresh")
 		.then()
-			.log().all()
 			.statusCode(200).body("_shards.successful", equalTo(1));
 	}
 	
@@ -256,18 +252,17 @@ public class IndexMappingTest {
 
 		final long startTime = System.currentTimeMillis();
 
+		int maxDocValue = 0;
 		while(System.currentTimeMillis() - startTime < TEST_TIMEOUT) {
-			System.out.println(index);
 			final ValidatableResponse response = given()
 					.request()
 					.body("{\"fields\":[\"docField\"]}")
 					.when()
 					.post("/" + index + "/_field_stats")
-					.then().log().all();
+					.then();
 			try {
-				final int maxDocValue = response.extract().body().jsonPath().getInt("indices." + index + ".fields.docField.max_doc");
+				maxDocValue = response.extract().body().jsonPath().getInt("indices." + index + ".fields.docField.max_doc");
 				if(maxDocValue < totalDocuments) {
-					System.out.println(maxDocValue);
 					try {
 						Thread.sleep(500);
 					} catch (Exception e) {}
@@ -281,7 +276,6 @@ public class IndexMappingTest {
 						.post("/" + index + "/_field_stats")
 						.then()
 						.statusCode(200)
-						.log().all()
 						.body("_shards.successful", equalTo(1))
 						.body("indices." + index + ".fields.docField.max_doc", equalTo(totalDocuments))
 						.body("indices." + index + ".fields.docField.doc_count", equalTo(totalDocuments));
@@ -293,7 +287,6 @@ public class IndexMappingTest {
 						.post("/" + index + "/_field_stats")
 						.then()
 						.statusCode(200)
-						.log().all()
 						.body("_shards.successful", equalTo(1))
 						.body("indices." + index + ".fields.emptyField.max_doc", equalTo(totalDocuments))
 						.body("indices." + index + ".fields.emptyField.doc_count", equalTo(totalEmptyFieldDocuments));
@@ -305,6 +298,6 @@ public class IndexMappingTest {
 			} catch (Exception e) {}
 		}
 
-		Assert.fail("Failed to generate stats for " + totalDocuments + " documents");
+		Assert.fail("Failed to generate stats for " + totalDocuments + " documents - only " + maxDocValue + "/" + totalDocuments);
 	}
 }
