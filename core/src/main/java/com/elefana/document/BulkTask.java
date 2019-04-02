@@ -60,15 +60,6 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 	public static final String KEY_INDEX = "_index";
 	public static final String KEY_TYPE = "_type";
 	public static final String KEY_ID = "_id";
-	public static final String KEY_VERSION = "_version";
-	public static final String KEY_SHARDS = "_shards";
-
-	public static final String KEY_RESULT = "result";
-	public static final String VALUE_RESULT_CREATED = "created";
-	public static final String KEY_CREATED = "created";
-	public static final boolean VALUE_CREATED = true;
-	public static final String KEY_STATUS = "status";
-	public static final int VALUE_STATUS_CREATED = 201;
 
 	private static final long ONE_SECOND_IN_MILLIS = 1000L;
 	private static final long ONE_MINUTE_IN_MILLIS = ONE_SECOND_IN_MILLIS * 60L;
@@ -133,7 +124,7 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 		try {
 			connection = jdbcTemplate.getDataSource().getConnection();
 
-			StringBuilder createTableQuery = new StringBuilder();
+			final StringBuilder createTableQuery = IndexUtils.POOLED_STRING_BUILDER.get();
 			createTableQuery.append("CREATE UNLOGGED TABLE ");
 			createTableQuery.append(stagingTable);
 			createTableQuery.append(" (_index VARCHAR(255) NOT NULL, _type VARCHAR(255) NOT NULL, _id VARCHAR(255) NOT NULL, _timestamp BIGINT, ");
@@ -148,20 +139,16 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 			createTableStatement.execute();
 			createTableStatement.close();
 
+			connection.setAutoCommit(false);
+
 			final PgConnection pgConnection = connection.unwrap(PgConnection.class);
 			final CopyManager copyManager = new CopyManager(pgConnection);
 
-			final Timer.Context batchBuildTime = batchBuildTimer.time();
+			final CopyIn copyIn = copyManager.
+					copyIn("COPY " + stagingTable + " FROM STDIN WITH CSV ENCODING 'UTF8' DELIMITER " + DELIMITER_INIT + " QUOTE " + ESCAPE_INIT);
 
-			final StringBuilder batchInsertQuery = new StringBuilder();
-			batchInsertQuery.append("INSERT INTO ");
-			batchInsertQuery.append(stagingTable);
-			batchInsertQuery.append("(_index, _type, _id, _timestamp, _bucket1s, _bucket1m, _bucket1h, _bucket1d, _source)");
-			batchInsertQuery.append(" VALUES (?,?,?,?,?,?,?,?,?)");
-
-			connection.setAutoCommit(false);
-			PreparedStatement batchInsertStatement = connection.prepareStatement(batchInsertQuery.toString());
 			try {
+				final Timer.Context psqlTime = psqlTimer.time();
 				for (int i = from; i < from + size && i < indexOperations.size(); i++) {
 					BulkIndexOperation indexOperation = indexOperations.get(i);
 					final long bucket1s = indexOperation.getTimestamp()
@@ -183,33 +170,37 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 						escapeTime.stop();
 					}
 
-					batchInsertStatement.setString(1, indexOperation.getIndex());
-					batchInsertStatement.setString(2, indexOperation.getType());
-					batchInsertStatement.setString(3, indexOperation.getId());
-					batchInsertStatement.setLong(4, indexOperation.getTimestamp());
-					batchInsertStatement.setLong(5, bucket1s);
-					batchInsertStatement.setLong(6, bucket1m);
-					batchInsertStatement.setLong(7, bucket1h);
-					batchInsertStatement.setLong(8, bucket1d);
+					final StringBuilder rowBuilder = IndexUtils.POOLED_STRING_BUILDER.get();
+					rowBuilder.append(indexOperation.getIndex());
+					rowBuilder.append(DELIMITER);
+					rowBuilder.append(indexOperation.getType());
+					rowBuilder.append(DELIMITER);
+					rowBuilder.append(indexOperation.getId());
+					rowBuilder.append(DELIMITER);
+					rowBuilder.append(indexOperation.getTimestamp());
+					rowBuilder.append(DELIMITER);
+					rowBuilder.append(bucket1s);
+					rowBuilder.append(DELIMITER);
+					rowBuilder.append(bucket1m);
+					rowBuilder.append(DELIMITER);
+					rowBuilder.append(bucket1h);
+					rowBuilder.append(DELIMITER);
+					rowBuilder.append(bucket1d);
+					rowBuilder.append(DELIMITER);
+					rowBuilder.append(ESCAPE);
+					rowBuilder.append(escapedJson);
+					rowBuilder.append(ESCAPE);
+					rowBuilder.append(NEW_LINE);
 
-					PGobject jsonObject = new PGobject();
-					jsonObject.setType("json");
-					jsonObject.setValue(escapedJson);
-
-					batchInsertStatement.setObject(9, jsonObject);
-					batchInsertStatement.addBatch();
+					final byte [] rowBytes = rowBuilder.toString().getBytes(CHARSET);
+					copyIn.writeToCopy(rowBytes, 0, rowBytes.length);
 				}
-				batchBuildTime.stop();
-
-				final Timer.Context psqlTime = psqlTimer.time();
-				batchInsertStatement.executeBatch();
+				copyIn.endCopy();
 				connection.commit();
 				psqlTime.stop();
 			} catch (PSQLException e) {
-				batchBuildTime.stop();
 				throw e;
 			} catch (Exception e) {
-				batchBuildTime.stop();
 				throw e;
 			}
 

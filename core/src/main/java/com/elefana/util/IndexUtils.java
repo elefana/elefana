@@ -471,7 +471,7 @@ public interface IndexUtils {
 	public static ThreadLocal<StringBuilder> POOLED_STRING_BUILDER = new ThreadLocal<StringBuilder>() {
 		@Override
 		protected StringBuilder initialValue() {
-			return new StringBuilder();
+			return new StringBuilder(1024);
 		}
 
 		@Override

@@ -292,6 +292,7 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 				} else {
 					if(batchQueueStatement != null) {
 						batchQueueStatement.executeBatch();
+						batchQueueStatement.close();
 						connection.commit();
 						batchQueueStatement = null;
 					}
@@ -312,6 +313,7 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 		try {
 			if(batchQueueStatement != null) {
 				batchQueueStatement.executeBatch();
+				batchQueueStatement.close();
 				connection.commit();
 			}
 		} catch (Exception e) {
