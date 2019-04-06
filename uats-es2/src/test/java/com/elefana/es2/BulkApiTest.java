@@ -82,7 +82,7 @@ public class BulkApiTest {
 		while(System.currentTimeMillis() - startTime < BULK_INDEX_TIMEOUT) {
 			ValidatableResponse response = given()
 					.request()
-					.body("{\"query\":{\"match_all\":{}}, \"size\":" + totalDocuments + "}")
+					.body("{\"query\":{\"match_all\":{}}, \"size\":" + (totalDocuments + 100) + "}")
 					.when()
 					.post("/" + index + "/_search")
 					.then()
@@ -129,7 +129,7 @@ public class BulkApiTest {
 		while(System.currentTimeMillis() - startTime < BULK_INDEX_TIMEOUT) {
 			ValidatableResponse response = given()
 					.request()
-					.body("{\"query\":{\"match_all\":{}}, \"size\":" + totalDocuments + "}")
+					.body("{\"query\":{\"match_all\":{}}, \"size\":" + (totalDocuments + 100) + "}")
 					.when()
 					.post("/" + index + "/_search")
 					.then()
@@ -168,7 +168,7 @@ public class BulkApiTest {
 		while(System.currentTimeMillis() - startTime < BULK_INDEX_TIMEOUT) {
 			ValidatableResponse response = given()
 					.request()
-					.body("{\"query\":{\"match_all\":{}}, \"size\":" + totalDocuments + "}")
+					.body("{\"query\":{\"match_all\":{}}, \"size\":" + (totalDocuments + 100) + "}")
 					.when()
 					.post("/" + index + "/_search")
 					.then()
@@ -208,7 +208,7 @@ public class BulkApiTest {
 		while(System.currentTimeMillis() - startTime < BULK_INDEX_TIMEOUT) {
 			ValidatableResponse response = given()
 					.request()
-					.body("{\"query\":{\"match_all\":{}}, \"size\":" + totalDocuments + "}")
+					.body("{\"query\":{\"match_all\":{}}, \"size\":" + (totalDocuments + 100) + "}")
 					.when()
 					.post("/" + index + "/_search")
 					.then()
@@ -248,7 +248,7 @@ public class BulkApiTest {
 		while(System.currentTimeMillis() - startTime < BULK_INDEX_TIMEOUT) {
 			ValidatableResponse response = given()
 					.request()
-					.body("{\"query\":{\"match_all\":{}}, \"size\":" + totalDocuments + "}")
+					.body("{\"query\":{\"match_all\":{}}, \"size\":" + (totalDocuments + 100) + "}")
 					.when()
 					.post("/" + index + "/_search")
 					.then()
@@ -288,7 +288,7 @@ public class BulkApiTest {
 		while(System.currentTimeMillis() - startTime < BULK_INDEX_TIMEOUT) {
 			ValidatableResponse response = given()
 					.request()
-					.body("{\"query\":{\"match_all\":{}}, \"size\":" + totalDocuments + "}")
+					.body("{\"query\":{\"match_all\":{}}, \"size\":" + (totalDocuments + 100) + "}")
 					.when()
 					.post("/" + index + "/_search")
 					.then()
@@ -328,7 +328,7 @@ public class BulkApiTest {
 		while(System.currentTimeMillis() - startTime < BULK_INDEX_TIMEOUT) {
 			ValidatableResponse response = given()
 					.request()
-					.body("{\"query\":{\"match_all\":{}}, \"size\":" + totalDocuments + "}")
+					.body("{\"query\":{\"match_all\":{}}, \"size\":" + (totalDocuments + 100) + "}")
 					.when()
 					.post("/" + index + "/_search")
 					.then()
@@ -368,7 +368,7 @@ public class BulkApiTest {
 		while(System.currentTimeMillis() - startTime < BULK_INDEX_TIMEOUT) {
 			ValidatableResponse response = given()
 					.request()
-					.body("{\"query\":{\"match_all\":{}}, \"size\":" + totalDocuments + "}")
+					.body("{\"query\":{\"match_all\":{}}, \"size\":" + (totalDocuments + 100) + "}")
 					.when()
 					.post("/" + index + "/_search")
 					.then()
@@ -408,7 +408,7 @@ public class BulkApiTest {
 		while(System.currentTimeMillis() - startTime < BULK_INDEX_TIMEOUT) {
 			ValidatableResponse response = given()
 					.request()
-					.body("{\"query\":{\"match_all\":{}}, \"size\":" + totalDocuments + "}")
+					.body("{\"query\":{\"match_all\":{}}, \"size\":" + (totalDocuments + 100) + "}")
 					.when()
 					.post("/" + index + "/_search")
 					.then()
@@ -448,7 +448,7 @@ public class BulkApiTest {
 		while(System.currentTimeMillis() - startTime < BULK_INDEX_TIMEOUT) {
 			ValidatableResponse response = given()
 					.request()
-					.body("{\"query\":{\"match_all\":{}}, \"size\":" + totalDocuments + "}")
+					.body("{\"query\":{\"match_all\":{}}, \"size\":" + (totalDocuments + 100) + "}")
 					.when()
 					.post("/" + index + "/_search")
 					.then()
@@ -488,7 +488,7 @@ public class BulkApiTest {
 		while(System.currentTimeMillis() - startTime < BULK_INDEX_TIMEOUT) {
 			ValidatableResponse response = given()
 					.request()
-					.body("{\"query\":{\"match_all\":{}}, \"size\":" + totalDocuments + "}")
+					.body("{\"query\":{\"match_all\":{}}, \"size\":" + (totalDocuments + 100) + "}")
 					.when()
 					.post("/" + index + "/_search")
 					.then()
@@ -530,7 +530,7 @@ public class BulkApiTest {
 		while(System.currentTimeMillis() - startTime < BULK_INDEX_TIMEOUT) {
 			ValidatableResponse response = given()
 					.request()
-					.body("{\"query\":{\"match_all\":{}}, \"size\":" + 2 + "}")
+					.body("{\"query\":{\"match_all\":{}}, \"size\":" + 3 + "}")
 					.when()
 					.post("/" + index + "/_search")
 					.then()
@@ -592,7 +592,7 @@ public class BulkApiTest {
 		while(System.currentTimeMillis() - startTime < BULK_INDEX_TIMEOUT) {
 			ValidatableResponse response = given()
 					.request()
-					.body("{\"query\":{\"match_all\":{}}, \"size\":" + totalDocuments + "}")
+					.body("{\"query\":{\"match_all\":{}}, \"size\":" + (totalDocuments + 100) + "}")
 					.when()
 					.post("/" + index + "/_search")
 					.then()

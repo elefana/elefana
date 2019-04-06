@@ -223,6 +223,7 @@ public class PsqlBulkIndexService implements Runnable {
 							"TRUNCATE TABLE " + stagingTableName);
 					dropTableStatement.execute();
 					dropTableStatement.close();
+					connection.commit();
 					ingestTable.unmarkData(stagingTableId);
 
 					result |= true;
@@ -248,9 +249,8 @@ public class PsqlBulkIndexService implements Runnable {
 	}
 
 	private void mergeStagingTableIntoPartitionTable(Connection connection, String bulkIngestTable, String targetTable) throws IOException, SQLException {
-		LOGGER.info("INSERT INTO " + targetTable + " SELECT * FROM " + bulkIngestTable);
 		PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO " + targetTable + " SELECT * FROM " + bulkIngestTable);
-		preparedStatement.execute();
+		preparedStatement.executeUpdate();
 		preparedStatement.close();
 	}
 

@@ -138,7 +138,7 @@ public class IngestTable {
 	}
 
 	public int lockTable() throws ElefanaException {
-		return lockTable(10L);
+		return lockTable(2L * locks.length);
 	}
 
 	public int lockTable(long timeout) throws ElefanaException {
