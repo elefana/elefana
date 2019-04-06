@@ -179,7 +179,7 @@ public class PsqlBulkIndexService implements Runnable {
 				continue;
 			}
 			if(stagingTableId <= -1) {
-				return false;
+				return result;
 			}
 
 			final String stagingTableName = ingestTable.getIngestionTableName(stagingTableId);
