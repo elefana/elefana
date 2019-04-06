@@ -127,6 +127,7 @@ public class PsqlBulkIndexService implements Runnable {
 
 					if(connection == null) {
 						connection = jdbcTemplate.getDataSource().getConnection();
+						connection.setAutoCommit(false);
 					}
 
 					try {
@@ -140,6 +141,7 @@ public class PsqlBulkIndexService implements Runnable {
 						LOGGER.error(e.getMessage(), e);
 						if (connection != null) {
 							try {
+								connection.setAutoCommit(true);
 								connection.close();
 								connection = null;
 							} catch (SQLException e1) {
@@ -151,6 +153,7 @@ public class PsqlBulkIndexService implements Runnable {
 
 				if (connection != null) {
 					try {
+						connection.setAutoCommit(true);
 						connection.close();
 						connection = null;
 					} catch (SQLException e1) {
@@ -216,6 +219,7 @@ public class PsqlBulkIndexService implements Runnable {
 							"INSERT INTO elefana_duplicate_keys SELECT * FROM " + stagingTableName);
 					transferStatement.execute();
 					transferStatement.close();
+					connection.commit();
 					LOGGER.error("Copied " + stagingTableName + " to elefana_duplicate_keys");
 				default:
 				case SUCCESS: {
@@ -224,6 +228,7 @@ public class PsqlBulkIndexService implements Runnable {
 					dropTableStatement.execute();
 					dropTableStatement.close();
 					connection.commit();
+
 					ingestTable.unmarkData(stagingTableId);
 
 					result |= true;
@@ -252,6 +257,7 @@ public class PsqlBulkIndexService implements Runnable {
 		PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO " + targetTable + " SELECT * FROM " + bulkIngestTable);
 		preparedStatement.executeUpdate();
 		preparedStatement.close();
+		connection.commit();
 	}
 
 	protected enum BulkIndexResult {
