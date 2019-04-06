@@ -7,7 +7,7 @@ buildscript {
 		dockerRunVersion = '0.17.2'
 		jmhVersion = '0.4.8'
 		nexusStagingVersion = '0.9.0'
-		springBootVersion = '2.1.0.RELEASE'
+		springBootVersion = '2.1.4.RELEASE'
 	}
 	repositories {
 		mavenLocal()
@@ -123,7 +123,7 @@ subprojects {
 			events "failed"
 			exceptionFormat "full"
 		}
-		//include "**/*Document*"
+		//include "**/BulkApi*"
 	}
 	
 	if(project.name.contains("core") || project.name.contains("api")) {

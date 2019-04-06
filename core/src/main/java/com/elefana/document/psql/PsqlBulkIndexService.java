@@ -87,8 +87,6 @@ public class PsqlBulkIndexService implements Runnable {
 		bulkIndexTimer = metricRegistry.timer(MetricRegistry.name("bulk", "index", "duration", "total"));
 
 		final int totalThreads = getTotalThreads();
-		final String tmpDirectoryPath = environment.getProperty("elefana.service.bulk.ingest.dir",
-				System.getProperty("java.io.tmpdir"));
 
 		executorService = Executors.newFixedThreadPool(totalThreads);
 		for (int i = 0; i < totalThreads; i++) {
@@ -181,11 +179,11 @@ public class PsqlBulkIndexService implements Runnable {
 				continue;
 			}
 			if(stagingTableId <= -1) {
-				continue;
+				return false;
 			}
 
 			final String stagingTableName = ingestTable.getIngestionTableName(stagingTableId);
-			final String targetTableName = indexUtils.getQueryTarget(connection, ingestTable.getIndex());
+			final String targetTableName = indexUtils.getPartitionTableForIndex(connection, ingestTable.getIndex());
 
 			BulkIndexResult bulkIndexResult = BulkIndexResult.SUCCESS;
 			try {
@@ -250,6 +248,7 @@ public class PsqlBulkIndexService implements Runnable {
 	}
 
 	private void mergeStagingTableIntoPartitionTable(Connection connection, String bulkIngestTable, String targetTable) throws IOException, SQLException {
+		LOGGER.info("INSERT INTO " + targetTable + " SELECT * FROM " + bulkIngestTable);
 		PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO " + targetTable + " SELECT * FROM " + bulkIngestTable);
 		preparedStatement.execute();
 		preparedStatement.close();

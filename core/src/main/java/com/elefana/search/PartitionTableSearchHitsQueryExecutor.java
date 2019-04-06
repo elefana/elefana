@@ -15,12 +15,16 @@
  ******************************************************************************/
 package com.elefana.search;
 
+import com.elefana.search.psql.PsqlSearchService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 
 import com.codahale.metrics.Histogram;
 
 public class PartitionTableSearchHitsQueryExecutor extends SearchHitsQueryExecutor {
+	private static final Logger LOGGER = LoggerFactory.getLogger(PartitionTableSearchHitsQueryExecutor.class);
 
 	public PartitionTableSearchHitsQueryExecutor(JdbcTemplate jdbcTemplate, Histogram searchTime,
 			Histogram searchHits) {

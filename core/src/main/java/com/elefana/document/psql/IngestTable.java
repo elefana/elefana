@@ -38,8 +38,18 @@ public class IngestTable {
 	private final String index;
 	private final ReentrantLock[] locks;
 	private final String [] tableNames;
-	private final AtomicInteger readIndex = new AtomicInteger();
-	private final AtomicInteger writeIndex = new AtomicInteger();
+	private final ThreadLocal<Integer> readIndex = new ThreadLocal<Integer>() {
+		@Override
+		protected Integer initialValue() {
+			return (int) Thread.currentThread().getId() % tableNames.length;
+		}
+	};
+	private final ThreadLocal<Integer> writeIndex = new ThreadLocal<Integer>() {
+		@Override
+		protected Integer initialValue() {
+			return (int) Thread.currentThread().getId() % tableNames.length;
+		}
+	};
 	private final boolean [] dataMarker;
 
 	public IngestTable(JdbcTemplate jdbcTemplate, String [] tablespaces,
@@ -135,7 +145,8 @@ public class IngestTable {
 		final long timestamp = System.currentTimeMillis();
 		while(System.currentTimeMillis() - timestamp < timeout) {
 			for(int i = 0; i < locks.length; i++) {
-				int index = writeIndex.getAndIncrement() % locks.length;
+				int index = writeIndex.get() % locks.length;
+				writeIndex.set(index + 1);
 				if(locks[index].tryLock()) {
 					return index;
 				}
@@ -145,16 +156,17 @@ public class IngestTable {
 	}
 
 	public int lockWrittenTable() throws ElefanaException {
-		return lockWrittenTable(5L * locks.length, 5L);
+		return lockWrittenTable(5L * locks.length);
 	}
 
-	public int lockWrittenTable(long timeout, long timeoutPerLock) throws ElefanaException {
+	public int lockWrittenTable(long timeout) throws ElefanaException {
 		final long timestamp = System.currentTimeMillis();
 		while(System.currentTimeMillis() - timestamp < timeout) {
 			for(int i = 0; i < locks.length; i++) {
-				int index = readIndex.getAndIncrement() % locks.length;
+				int index = readIndex.get() % locks.length;
+				readIndex.set(index + 1);
 				try {
-					if(locks[index].tryLock(timeoutPerLock, TimeUnit.MILLISECONDS)) {
+					if(locks[index].tryLock()) {
 						if(!isDataMarked(index)) {
 							locks[index].unlock();
 							continue;
@@ -164,7 +176,7 @@ public class IngestTable {
 					if(System.currentTimeMillis() - timestamp >= timeout) {
 						return -1;
 					}
-				} catch (InterruptedException e) {
+				} catch (Exception e) {
 					LOGGER.error(e.getMessage(), e);
 				}
 			}
@@ -190,7 +202,7 @@ public class IngestTable {
 		if(locks[index].getHoldCount() == 0) {
 			throw new RuntimeException("Cannot unmark data without lock acquired");
 		}
-		dataMarker[index] = true;
+		dataMarker[index] = false;
 	}
 
 	public void unlockTable(int index) {

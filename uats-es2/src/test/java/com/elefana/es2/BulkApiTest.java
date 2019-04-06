@@ -51,7 +51,7 @@ import io.restassured.http.ContentType;
 public class BulkApiTest {
 	private static final int RANDOM_SEED = 12947358;
 	private static final Random RANDOM = new Random(RANDOM_SEED);
-	private static final long BULK_INDEX_TIMEOUT = 30000L;
+	private static final long BULK_INDEX_TIMEOUT = 10000L;
 	
 	@Before
 	public void setup() {
@@ -62,7 +62,7 @@ public class BulkApiTest {
 
 	@Test
 	public void testBulkIndexing() {
-		final int totalDocuments = RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE * 2);
+		final int totalDocuments = PsqlBulkIngestService.MINIMUM_BULK_SIZE + RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE);
 		final String index = "message-logs-" + UUID.randomUUID().toString();
 		final String type = "test";
 		
@@ -93,7 +93,7 @@ public class BulkApiTest {
 			}
 
 			try {
-				Thread.sleep(100);
+				Thread.sleep(500);
 			} catch (Exception e) {}
 		}
 		Assert.fail("Expected " + totalDocuments + " documents, found " + result);
@@ -101,7 +101,7 @@ public class BulkApiTest {
 
 	@Test
 	public void testBulkIndexingTimeSeries() {
-		final int totalDocuments = RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE * 2);
+		final int totalDocuments = PsqlBulkIngestService.MINIMUM_BULK_SIZE + RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE);
 		final String index = "message-logs-" + UUID.randomUUID().toString();
 		final String type = "test";
 		
@@ -140,7 +140,7 @@ public class BulkApiTest {
 			}
 
 			try {
-				Thread.sleep(100);
+				Thread.sleep(500);
 			} catch (Exception e) {}
 		}
 		Assert.fail("Expected " + totalDocuments + " documents, found " + result);
@@ -148,7 +148,7 @@ public class BulkApiTest {
 
 	@Test
 	public void testBulkIndexingWithLineBreakContent() {
-		final int totalDocuments = RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE * 2);
+		final int totalDocuments = PsqlBulkIngestService.MINIMUM_BULK_SIZE + RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE);
 		final String index = "message-logs-" + UUID.randomUUID().toString();
 		final String type = "test";
 
@@ -180,7 +180,7 @@ public class BulkApiTest {
 			}
 
 			try {
-				Thread.sleep(100);
+				Thread.sleep(500);
 			} catch (Exception e) {}
 		}
 		Assert.fail("Expected " + totalDocuments + " documents, found " + result);
@@ -188,7 +188,7 @@ public class BulkApiTest {
 
 	@Test
 	public void testBulkIndexingWithArabicAndLineBreakContent() {
-		final int totalDocuments = RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE * 2);
+		final int totalDocuments = PsqlBulkIngestService.MINIMUM_BULK_SIZE + RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE);
 		final String index = "message-logs-" + UUID.randomUUID().toString();
 		final String type = "test";
 
@@ -220,7 +220,7 @@ public class BulkApiTest {
 			}
 
 			try {
-				Thread.sleep(100);
+				Thread.sleep(500);
 			} catch (Exception e) {}
 		}
 		Assert.fail("Expected " + totalDocuments + " documents, found " + result);
@@ -228,7 +228,7 @@ public class BulkApiTest {
 
 	@Test
 	public void testBulkIndexingWithPipeContent() {
-		final int totalDocuments = RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE * 2);
+		final int totalDocuments = PsqlBulkIngestService.MINIMUM_BULK_SIZE + RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE);
 		final String index = "message-logs-" + UUID.randomUUID().toString();
 		final String type = "test";
 
@@ -260,7 +260,7 @@ public class BulkApiTest {
 			}
 
 			try {
-				Thread.sleep(100);
+				Thread.sleep(500);
 			} catch (Exception e) {}
 		}
 		Assert.fail("Expected " + totalDocuments + " documents, found " + result);
@@ -268,7 +268,7 @@ public class BulkApiTest {
 
 	@Test
 	public void testBulkIndexingWithNullContent() {
-		final int totalDocuments = RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE * 2);
+		final int totalDocuments = PsqlBulkIngestService.MINIMUM_BULK_SIZE + RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE);
 		final String index = "message-logs-" + UUID.randomUUID().toString();
 		final String type = "test";
 
@@ -300,7 +300,7 @@ public class BulkApiTest {
 			}
 
 			try {
-				Thread.sleep(100);
+				Thread.sleep(500);
 			} catch (Exception e) {}
 		}
 		Assert.fail("Expected " + totalDocuments + " documents, found " + result);
@@ -308,7 +308,7 @@ public class BulkApiTest {
 
 	@Test
 	public void testBulkIndexingWithEscapedUnicodeControl() {
-		final int totalDocuments = RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE * 2);
+		final int totalDocuments = PsqlBulkIngestService.MINIMUM_BULK_SIZE + RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE);
 		final String index = "message-logs-" + UUID.randomUUID().toString();
 		final String type = "test";
 
@@ -340,7 +340,7 @@ public class BulkApiTest {
 			}
 
 			try {
-				Thread.sleep(100);
+				Thread.sleep(500);
 			} catch (Exception e) {}
 		}
 		Assert.fail("Expected " + totalDocuments + " documents, found " + result);
@@ -348,7 +348,7 @@ public class BulkApiTest {
 
 	@Test
 	public void testBulkIndexingWithEmojiContent() {
-		final int totalDocuments = RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE * 2);
+		final int totalDocuments = PsqlBulkIngestService.MINIMUM_BULK_SIZE + RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE);
 		final String index = "message-logs-" + UUID.randomUUID().toString();
 		final String type = "test";
 
@@ -380,7 +380,7 @@ public class BulkApiTest {
 			}
 
 			try {
-				Thread.sleep(100);
+				Thread.sleep(500);
 			} catch (Exception e) {}
 		}
 		Assert.fail("Expected " + totalDocuments + " documents, found " + result);
@@ -388,7 +388,7 @@ public class BulkApiTest {
 
 	@Test
 	public void testBulkIndexingWithCarriageReturnContent() {
-		final int totalDocuments = RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE * 2);
+		final int totalDocuments = PsqlBulkIngestService.MINIMUM_BULK_SIZE + RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE);
 		final String index = "message-logs-" + UUID.randomUUID().toString();
 		final String type = "test";
 
@@ -420,7 +420,7 @@ public class BulkApiTest {
 			}
 
 			try {
-				Thread.sleep(100);
+				Thread.sleep(500);
 			} catch (Exception e) {}
 		}
 		Assert.fail("Expected " + totalDocuments + " documents, found " + result);
@@ -428,7 +428,7 @@ public class BulkApiTest {
 
 	@Test
 	public void testBulkIndexingWithCarriageReturnAndLineBreakContent() {
-		final int totalDocuments = RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE * 2);
+		final int totalDocuments = PsqlBulkIngestService.MINIMUM_BULK_SIZE + RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE);
 		final String index = "message-logs-" + UUID.randomUUID().toString();
 		final String type = "test";
 
@@ -460,7 +460,7 @@ public class BulkApiTest {
 			}
 
 			try {
-				Thread.sleep(100);
+				Thread.sleep(500);
 			} catch (Exception e) {}
 		}
 		Assert.fail("Expected " + totalDocuments + " documents, found " + result);
@@ -468,7 +468,7 @@ public class BulkApiTest {
 
 	@Test
 	public void testBulkIndexingWithTabContent() {
-		final int totalDocuments = RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE * 2);
+		final int totalDocuments = PsqlBulkIngestService.MINIMUM_BULK_SIZE + RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE);
 		final String index = "message-logs-" + UUID.randomUUID().toString();
 		final String type = "test";
 
@@ -500,7 +500,7 @@ public class BulkApiTest {
 			}
 
 			try {
-				Thread.sleep(100);
+				Thread.sleep(500);
 			} catch (Exception e) {}
 		}
 		Assert.fail("Expected " + totalDocuments + " documents, found " + result);
@@ -541,7 +541,7 @@ public class BulkApiTest {
 			}
 
 			try {
-				Thread.sleep(100);
+				Thread.sleep(500);
 			} catch (Exception e) {}
 		}
 		Assert.fail("Expected " + 1 + " documents, found " + result);
@@ -549,7 +549,7 @@ public class BulkApiTest {
 	
 	@Test
 	public void testBulkIndexingWithInvalidData() {
-		final int totalDocuments = RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE * 2);
+		final int totalDocuments = PsqlBulkIngestService.MINIMUM_BULK_SIZE + RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE);
 		final String index = "message-logs-" + UUID.randomUUID().toString();
 		final String type = "test";
 		
@@ -569,7 +569,7 @@ public class BulkApiTest {
 	
 	@Test
 	public void testBulkIndexingFormEncodedData() {
-		final int totalDocuments = RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE * 2);
+		final int totalDocuments = PsqlBulkIngestService.MINIMUM_BULK_SIZE + RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE);
 		final String index = "message-logs-" + UUID.randomUUID().toString();
 		final String type = "test";
 		
@@ -603,7 +603,7 @@ public class BulkApiTest {
 			}
 
 			try {
-				Thread.sleep(100);
+				Thread.sleep(500);
 			} catch (Exception e) {}
 		}
 		Assert.fail("Expected " + totalDocuments + " documents, found " + result);
@@ -611,7 +611,7 @@ public class BulkApiTest {
 	
 	@Test
 	public void testBulkIndexingWithJsonString() {
-		final int totalDocuments = RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE * 2);
+		final int totalDocuments = PsqlBulkIngestService.MINIMUM_BULK_SIZE + RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE);
 		final String index = "message-logs-" + UUID.randomUUID().toString();
 		final String type = "test";
 		
@@ -643,7 +643,7 @@ public class BulkApiTest {
 			}
 
 			try {
-				Thread.sleep(100);
+				Thread.sleep(500);
 			} catch (Exception e) {}
 		}
 		Assert.fail("Expected " + totalDocuments + " documents, found " + result);
