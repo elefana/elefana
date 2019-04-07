@@ -31,9 +31,10 @@ import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class DefaultTimeIngestTable implements TimeIngestTable {
-	private static final Logger LOGGER = LoggerFactory.getLogger(DefaultHashIngestTable.class);
+	private static final Logger LOGGER = LoggerFactory.getLogger(DefaultTimeIngestTable.class);
 
 	private final String index;
+	private final int capacity;
 	private final ReentrantLock[] locks;
 	private final String [] tableNames;
 	private final int [] shardIds;
@@ -42,20 +43,21 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 	private final ThreadLocal<Integer> readIndex = new ThreadLocal<Integer>() {
 		@Override
 		protected Integer initialValue() {
-			return (int) Thread.currentThread().getId() % tableNames.length;
+			return (int) Thread.currentThread().getId() % capacity;
 		}
 	};
 	private final ThreadLocal<Integer> writeIndex = new ThreadLocal<Integer>() {
 		@Override
 		protected Integer initialValue() {
-			return (int) Thread.currentThread().getId() % tableNames.length;
+			return (int) Thread.currentThread().getId() % capacity;
 		}
 	};
 
 	public DefaultTimeIngestTable(JdbcTemplate jdbcTemplate, String [] tablespaces,
-	                              String index, IndexTimeBucket timeBucket, int capacity, List<String> existingTableNames) throws SQLException {
+	                              String index, IndexTimeBucket timeBucket, int bulkParallelisation, List<String> existingTableNames) throws SQLException {
 		super();
 		this.index = index;
+		this.capacity = (timeBucket.getIngestTableCapacity() * bulkParallelisation) + 1;
 
 		locks = new ReentrantLock[capacity];
 		tableNames = new String[capacity];

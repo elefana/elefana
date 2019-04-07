@@ -40,7 +40,7 @@ import java.util.List;
 import java.util.concurrent.Callable;
 
 public abstract class BulkIndexTask implements Callable<List<BulkItemResponse>> {
-	private static final Logger LOGGER = LoggerFactory.getLogger(BulkHashIndexTask.class);
+	private static final Logger LOGGER = LoggerFactory.getLogger(BulkIndexTask.class);
 
 	protected static final String DELIMITER_INIT = "e'\\x1f'";
 	protected static final String DELIMITER = Character.toString((char) 31);

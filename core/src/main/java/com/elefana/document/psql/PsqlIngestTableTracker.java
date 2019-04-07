@@ -23,6 +23,8 @@ import com.elefana.indices.IndexTemplateService;
 import com.elefana.indices.psql.PsqlIndexTemplateService;
 import com.elefana.node.NodeSettingsService;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -36,6 +38,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 @Service
 public class PsqlIngestTableTracker implements IngestTableTracker {
+	private static final Logger LOGGER = LoggerFactory.getLogger(PsqlIngestTableTracker.class);
+
 	private static final String[] DEFAULT_TABLESPACES = new String[] { "" };
 	private static final List<String> EMPTY_ARRAYLIST = new ArrayList<>(1);
 
@@ -124,7 +128,7 @@ public class PsqlIngestTableTracker implements IngestTableTracker {
 
 	protected TimeIngestTable createTimeIngestTable(String index, IndexTimeBucket timeBucket, List<String> existingTables) throws ElefanaException {
 		try {
-			return new DefaultTimeIngestTable(jdbcTemplate, tablespaces, index, timeBucket, defaultCapacity, existingTables);
+			return new DefaultTimeIngestTable(jdbcTemplate, tablespaces, index, timeBucket, nodeSettingsService.getBulkParallelisation(), existingTables);
 		} catch (SQLException e) {
 			throw new ElefanaException(HttpResponseStatus.INTERNAL_SERVER_ERROR, e.getMessage(), e);
 		}
