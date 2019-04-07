@@ -24,6 +24,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import com.jsoniter.JsonIterator;
 import com.jsoniter.any.Any;
@@ -107,7 +108,7 @@ public class BulkApiTest {
 		
 		given()
 			.request()
-			.body("{\"template\": \"" + index + "\",\"storage\": { \"timestamp_path\": \"timestamp\" },\"mappings\": {}}")
+			.body("{\"template\": \"" + index + "\",\"storage\": { \"distribution\": \"TIME\", \"time_bucket\": \"MINUTE\",  \"timestamp_path\": \"timestamp\" },\"mappings\": {}}")
 		.when()
 			.put("/_template/bulkIndexingTimeSeries")
 		.then()
@@ -115,7 +116,7 @@ public class BulkApiTest {
 		
 		given()
 			.request()
-			.body(generateBulkRequest(index, type, totalDocuments))
+			.body(generateBulkRequestWithTimestamp(index, type, totalDocuments))
 		.when().
 			post("/_bulk")
 		.then()
@@ -655,6 +656,20 @@ public class BulkApiTest {
 		for(int i = 0; i < totalDocuments; i++) {
 			result.append("{\"index\": { \"_index\" : \"" + index + "\", \"_type\" : \"" + type + "\" }}\n");
 			result.append("{ \"field\" : \"value\" }\n");
+		}
+		return result.toString();
+	}
+
+	private String generateBulkRequestWithTimestamp(String index, String type, int totalDocuments) {
+		StringBuilder result = new StringBuilder();
+
+		final long timestamp = System.currentTimeMillis();
+		final long timestampFrom = timestamp - (timestamp % TimeUnit.MINUTES.toMillis(1L));
+		final long timestampInc = 60000L / totalDocuments;
+
+		for(int i = 0; i < totalDocuments; i++) {
+			result.append("{\"index\": { \"_index\" : \"" + index + "\", \"_type\" : \"" + type + "\" }}\n");
+			result.append("{ \"field\" : \"value\", \"timestamp\": " + (timestampFrom + (timestampInc * i)) + " }\n");
 		}
 		return result.toString();
 	}

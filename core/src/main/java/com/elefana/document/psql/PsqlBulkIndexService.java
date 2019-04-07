@@ -15,9 +15,7 @@
  ******************************************************************************/
 package com.elefana.document.psql;
 
-import java.io.File;
 import java.io.IOException;
-import java.security.SecureRandom;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -25,32 +23,30 @@ import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 
 import com.codahale.metrics.Timer;
-import com.elefana.api.indices.GetIndexTemplateForIndexRequest;
-import com.elefana.api.indices.GetIndexTemplateForIndexResponse;
+import com.elefana.api.indices.IndexTemplate;
+import com.elefana.document.ingest.HashIngestTable;
+import com.elefana.document.ingest.IngestTable;
+import com.elefana.document.ingest.IngestTableTracker;
+import com.elefana.document.ingest.TimeIngestTable;
 import com.elefana.indices.IndexFieldMappingService;
 import com.elefana.indices.IndexTemplateService;
-import org.apache.commons.collections.map.LRUMap;
+import com.elefana.indices.psql.PsqlIndexTemplateService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.stereotype.Service;
 
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 import com.elefana.api.exception.ElefanaException;
-import com.elefana.api.indices.IndexTemplate;
 import com.elefana.indices.psql.PsqlIndexFieldMappingService;
-import com.elefana.indices.psql.PsqlIndexTemplateService;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.util.IndexUtils;
 
@@ -116,40 +112,15 @@ public class PsqlBulkIndexService implements Runnable {
 	@Override
 	public void run() {
 		try {
-			final Queue<IngestTable> ingestTablesQueue = new LinkedList<IngestTable>();
+			final Queue<HashIngestTable> hashIngestTablesQueue = new LinkedList<HashIngestTable>();
+			final Queue<TimeIngestTable> timeIngestTablesQueue = new LinkedList<TimeIngestTable>();
 			while (running.get()) {
-				ingestTableTracker.getIngestTables(ingestTablesQueue);
+				ingestTableTracker.getHashIngestTables(hashIngestTablesQueue);
+				ingestTableTracker.getTimeIngestTables(timeIngestTablesQueue);
 
 				Connection connection = null;
-
-				while(!ingestTablesQueue.isEmpty()) {
-					final IngestTable nextIngestTable = ingestTablesQueue.poll();
-
-					if(connection == null) {
-						connection = jdbcTemplate.getDataSource().getConnection();
-						connection.setAutoCommit(false);
-					}
-
-					try {
-						if(ingestTable(connection, nextIngestTable)) {
-							if(indexFieldMappingService instanceof PsqlIndexFieldMappingService) {
-								((PsqlIndexFieldMappingService) indexFieldMappingService).
-										scheduleIndexForMappingAndStats(nextIngestTable.getIndex());
-							}
-						}
-					} catch (Exception e) {
-						LOGGER.error(e.getMessage(), e);
-						if (connection != null) {
-							try {
-								connection.setAutoCommit(true);
-								connection.close();
-								connection = null;
-							} catch (SQLException e1) {
-								e1.printStackTrace();
-							}
-						}
-					}
-				}
+				connection = processQueue(connection, hashIngestTablesQueue);
+				connection = processQueue(connection, timeIngestTablesQueue);
 
 				if (connection != null) {
 					try {
@@ -170,13 +141,52 @@ public class PsqlBulkIndexService implements Runnable {
 		executorService.submit(this);
 	}
 
-	protected boolean ingestTable(Connection connection, IngestTable ingestTable) throws SQLException {
+	private <T extends IngestTable> Connection processQueue(Connection connection, Queue<T> queue) throws SQLException {
+		while(!queue.isEmpty()) {
+			final IngestTable nextIngestTable = queue.poll();
+
+			if(connection == null) {
+				connection = jdbcTemplate.getDataSource().getConnection();
+				connection.setAutoCommit(false);
+			}
+
+			try {
+				if(ingestTable(connection, nextIngestTable)) {
+					if(indexFieldMappingService instanceof PsqlIndexFieldMappingService) {
+						((PsqlIndexFieldMappingService) indexFieldMappingService).
+								scheduleIndexForMappingAndStats(nextIngestTable.getIndex());
+					}
+				}
+			} catch (Exception e) {
+				LOGGER.error(e.getMessage(), e);
+				if (connection != null) {
+					try {
+						connection.setAutoCommit(true);
+						connection.close();
+						connection = null;
+					} catch (SQLException e1) {
+						e1.printStackTrace();
+					}
+				}
+			}
+		}
+		return connection;
+	}
+
+	protected boolean ingestTable(Connection connection, IngestTable hashIngestTable) throws Exception {
 		boolean result = false;
 
-		for(int i = 0; i < ingestTable.getCapacity(); i++) {
+		final IndexTemplate indexTemplate;
+		if(indexTemplateService instanceof PsqlIndexTemplateService) {
+			indexTemplate = ((PsqlIndexTemplateService) indexTemplateService).getIndexTemplateForIndex(hashIngestTable.getIndex());
+		} else {
+			indexTemplate = indexTemplateService.prepareGetIndexTemplateForIndex(hashIngestTable.getIndex()).get().getIndexTemplate();
+		}
+
+		for(int i = 0; i < hashIngestTable.getCapacity(); i++) {
 			final int stagingTableId;
 			try {
-				stagingTableId = ingestTable.lockWrittenTable();
+				stagingTableId = hashIngestTable.lockWrittenTable();
 			} catch (Exception e) {
 				LOGGER.error(e.getMessage(), e);
 				continue;
@@ -185,14 +195,15 @@ public class PsqlBulkIndexService implements Runnable {
 				return result;
 			}
 
-			final String stagingTableName = ingestTable.getIngestionTableName(stagingTableId);
-			final String targetTableName = indexUtils.getPartitionTableForIndex(connection, ingestTable.getIndex());
+			final String stagingTableName = hashIngestTable.getIngestionTableName(stagingTableId);
+			final String targetTableName = indexUtils.getPartitionTableForIndex(connection, hashIngestTable.getIndex());
 
 			BulkIndexResult bulkIndexResult = BulkIndexResult.SUCCESS;
 			try {
 				final Timer.Context indexTimer = bulkIndexTimer.time();
 				if (nodeSettingsService.isUsingCitus()) {
-					bulkIndexResult = mergeStagingTableIntoDistributedTable(connection, ingestTable.getIndex(), stagingTableName, targetTableName);
+					bulkIndexResult = mergeStagingTableIntoDistributedTable(connection, indexTemplate,
+							hashIngestTable, stagingTableId, stagingTableName, targetTableName);
 				} else {
 					mergeStagingTableIntoPartitionTable(connection, stagingTableName, targetTableName);
 				}
@@ -229,7 +240,7 @@ public class PsqlBulkIndexService implements Runnable {
 					dropTableStatement.close();
 					connection.commit();
 
-					ingestTable.unmarkData(stagingTableId);
+					hashIngestTable.unmarkData(stagingTableId);
 
 					result |= true;
 					break;
@@ -238,26 +249,65 @@ public class PsqlBulkIndexService implements Runnable {
 			} catch (Exception e) {
 				LOGGER.error(e.getMessage(), e);
 			}
-			ingestTable.unlockTable(stagingTableId);
+			hashIngestTable.unlockTable(stagingTableId);
 		}
 		return result;
 	}
 
-	protected BulkIndexResult mergeStagingTableIntoDistributedTable(Connection connection, String index, String bulkIngestTable, String targetTable)
+	protected BulkIndexResult mergeStagingTableIntoDistributedTable(Connection connection, IndexTemplate indexTemplate, IngestTable hashIngestTable, int ingestTableEntryIndex, String bulkIngestTable, String targetTable)
 			throws ElefanaException, IOException, SQLException {
 		if(nodeSettingsService.isMasterNode()) {
-			mergeStagingTableIntoPartitionTable(connection, bulkIngestTable, targetTable);
+			if(indexTemplate != null && indexTemplate.isTimeSeries()) {
+				mergeStagingTableIntoDistributedTimeTable(connection, indexTemplate, bulkIngestTable, targetTable);
+			} else {
+				mergeStagingTableIntoPartitionTable(connection, bulkIngestTable, targetTable);
+			}
 			return BulkIndexResult.SUCCESS;
 		}
 		LOGGER.info("[Enterprise License Required] Cannot index into " + targetTable + " from non-master node. Data will remain in table " + bulkIngestTable);
 		return BulkIndexResult.ROUTE;
 	}
 
-	private void mergeStagingTableIntoPartitionTable(Connection connection, String bulkIngestTable, String targetTable) throws IOException, SQLException {
+	protected void mergeStagingTableIntoDistributedTimeTable(Connection connection, IndexTemplate indexTemplate, String bulkIngestTable, String targetTable) throws IOException, SQLException {
+		PreparedStatement preparedStatement = connection.prepareStatement("SELECT _timestamp FROM " + bulkIngestTable + " LIMIT 1");
+		final ResultSet resultSet = preparedStatement.executeQuery();
+		if(!resultSet.next()) {
+			preparedStatement.close();
+			return;
+		}
+
+		final long timestamp = resultSet.getLong("_timestamp");
+		preparedStatement.close();
+
+		final int shardOffset = indexTemplate.getStorage().getIndexTimeBucket().getShardOffset(timestamp);
+		final long shardId = getShardId(connection, targetTable, shardOffset);
+
+		final String query = "SELECT master_append_table_to_shard(" + shardId + ", '" + bulkIngestTable
+				+ "', '" + nodeSettingsService.getCitusCoordinatorHost() + "', " + nodeSettingsService.getCitusCoordinatorPort() + ");";
+		PreparedStatement appendShardStatement = connection.prepareStatement(query);
+		appendShardStatement.execute();
+		appendShardStatement.close();
+		connection.commit();
+	}
+
+	protected void mergeStagingTableIntoPartitionTable(Connection connection, String bulkIngestTable, String targetTable) throws IOException, SQLException {
 		PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO " + targetTable + " SELECT * FROM " + bulkIngestTable);
 		preparedStatement.executeUpdate();
 		preparedStatement.close();
 		connection.commit();
+	}
+
+	protected long getShardId(Connection connection, String targetTableName, int shardOffset) throws SQLException {
+		PreparedStatement preparedStatement = connection.prepareStatement("SELECT select_shard('" + targetTableName + "'," + shardOffset + ")");
+		final ResultSet shardResultSet = preparedStatement.executeQuery();
+
+		if (!shardResultSet.next()) {
+			preparedStatement.close();
+			return -1;
+		}
+		final long shardId = shardResultSet.getLong("select_shard");
+		preparedStatement.close();
+		return shardId;
 	}
 
 	protected enum BulkIndexResult {

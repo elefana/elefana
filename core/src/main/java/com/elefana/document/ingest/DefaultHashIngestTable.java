@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package com.elefana.document.psql;
+package com.elefana.document.ingest;
 
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.util.IndexUtils;
@@ -27,13 +27,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class IngestTable {
-	private static final Logger LOGGER = LoggerFactory.getLogger(IngestTable.class);
+public class DefaultHashIngestTable implements HashIngestTable {
+	private static final Logger LOGGER = LoggerFactory.getLogger(DefaultHashIngestTable.class);
 
 	private final String index;
 	private final ReentrantLock[] locks;
@@ -52,8 +49,8 @@ public class IngestTable {
 	};
 	private final boolean [] dataMarker;
 
-	public IngestTable(JdbcTemplate jdbcTemplate, String [] tablespaces,
-	                   String index, int capacity, List<String> existingTableNames) throws SQLException {
+	public DefaultHashIngestTable(JdbcTemplate jdbcTemplate, String [] tablespaces,
+	                              String index, int capacity, List<String> existingTableNames) throws SQLException {
 		super();
 		this.index = index;
 
@@ -193,19 +190,22 @@ public class IngestTable {
 
 	public void markData(int index) {
 		if(locks[index].getHoldCount() == 0) {
-			throw new RuntimeException("Cannot mark data without lock acquired");
+			return;
 		}
 		dataMarker[index] = true;
 	}
 
 	public void unmarkData(int index) {
 		if(locks[index].getHoldCount() == 0) {
-			throw new RuntimeException("Cannot unmark data without lock acquired");
+			return;
 		}
 		dataMarker[index] = false;
 	}
 
 	public void unlockTable(int index) {
+		if(locks[index].getHoldCount() == 0) {
+			return;
+		}
 		locks[index].unlock();
 	}
 

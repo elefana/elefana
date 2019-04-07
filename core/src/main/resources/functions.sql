@@ -2,24 +2,29 @@ CREATE SEQUENCE IF NOT EXISTS elefana_bulk_ingest_table_id MINVALUE -92233720368
 CREATE SEQUENCE IF NOT EXISTS elefana_bulk_index_queue_id MINVALUE -9223372036854775807 START -9223372036854775807 CYCLE;
 
 CREATE TABLE IF NOT EXISTS elefana_bulk_tables (_index VARCHAR(255), _ingestTableName VARCHAR(255) UNIQUE);
-CREATE TABLE IF NOT EXISTS elefana_bulk_worker_index_queue (_queue_id VARCHAR(255) PRIMARY KEY, _targetTableName VARCHAR(255), _workerTableName VARCHAR(255), _timestamp BIGINT, _workerHost VARCHAR(255), _workerPort INT);
+CREATE TABLE IF NOT EXISTS elefana_bulk_worker_index_queue (_queue_id VARCHAR(255) PRIMARY KEY, _targetTableName VARCHAR(255), _workerTableName VARCHAR(255), _timestamp BIGINT, _workerHost VARCHAR(255), _workerPort INT, _shardOffset INT);
 CREATE TABLE IF NOT EXISTS elefana_file_deletion_queue (_filepath VARCHAR(255), _timestamp BIGINT);
 CREATE TABLE IF NOT EXISTS elefana_delayed_table_index_queue (_tableName VARCHAR(255), _timestamp BIGINT, _generationMode VARCHAR(255));
 CREATE TABLE IF NOT EXISTS elefana_delayed_field_index_queue (_tableName VARCHAR(255), _fieldName VARCHAR(255), _timestamp BIGINT, _generationMode VARCHAR(255));
  
-CREATE OR REPLACE FUNCTION select_shard(_distributedTable VARCHAR) RETURNS bigint AS $$
+CREATE OR REPLACE FUNCTION select_shard(_distributedTable VARCHAR, _offset INT) RETURNS bigint AS $$
 DECLARE
   shard_id bigint;
   num_small_shards int;
 BEGIN
   SELECT results.shardid, results.total INTO shard_id, num_small_shards
   FROM (SELECT shardid, count(*) OVER () AS total FROM pg_dist_shard JOIN pg_dist_placement USING (shardid)
-  WHERE logicalrelid = _distributedTable::regclass AND shardlength < 1024*1024*1024
-  GROUP BY shardid ORDER BY RANDOM() ASC) AS results;
+  WHERE logicalrelid = _distributedTable::regclass
+  GROUP BY shardid ORDER BY shardid ASC OFFSET _offset) AS results;
 
-  IF num_small_shards IS NULL OR num_small_shards < 32 THEN
-    SELECT master_create_empty_shard(_distributedTable) INTO shard_id;
-  END IF;
+  WHILE num_small_shards IS NULL OR num_small_shards < _offset LOOP
+   SELECT master_create_empty_shard(_distributedTable) INTO shard_id;
+
+   SELECT results.shardid, results.total INTO shard_id, num_small_shards
+    FROM (SELECT shardid, count(*) OVER () AS total FROM pg_dist_shard JOIN pg_dist_placement USING (shardid)
+    WHERE logicalrelid = _distributedTable::regclass
+    GROUP BY shardid ORDER BY shardid ASC OFFSET _offset) AS results;
+  END LOOP;
 
   RETURN shard_id;
 END;

@@ -15,8 +15,6 @@
  ******************************************************************************/
 package com.elefana.document.psql;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -32,8 +30,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 
+import com.elefana.api.indices.IndexTemplate;
+import com.elefana.api.indices.IndexTimeBucket;
 import com.elefana.api.json.V2BulkResponseEncoder;
 import com.elefana.api.json.V5BulkResponseEncoder;
+import com.elefana.document.*;
+import com.elefana.document.ingest.HashIngestTable;
+import com.elefana.document.ingest.IngestTableTracker;
+import com.elefana.document.ingest.TimeIngestTable;
+import com.elefana.indices.IndexTemplateService;
+import com.elefana.indices.psql.PsqlIndexTemplateService;
 import com.elefana.node.VersionInfoService;
 import com.jsoniter.spi.JsoniterSpi;
 import org.slf4j.Logger;
@@ -51,9 +57,6 @@ import com.elefana.api.document.BulkItemResponse;
 import com.elefana.api.document.BulkRequest;
 import com.elefana.api.document.BulkResponse;
 import com.elefana.api.exception.ElefanaException;
-import com.elefana.document.BulkIndexOperation;
-import com.elefana.document.BulkIngestService;
-import com.elefana.document.BulkTask;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.util.IndexUtils;
 import com.elefana.util.NamedThreadFactory;
@@ -86,6 +89,8 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 	protected VersionInfoService versionInfoService;
 	@Autowired
 	private IngestTableTracker ingestTableTracker;
+	@Autowired
+	private IndexTemplateService indexTemplateService;
 	@Autowired
 	private MetricRegistry metricRegistry;
 
@@ -166,15 +171,15 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 						Any indexOperationTarget = operation.get(OPERATION_INDEX);
 
 						BulkIndexOperation indexOperation = BulkIndexOperation.allocate();
-						indexOperation.setIndex(indexOperationTarget.get(BulkTask.KEY_INDEX).toString());
-						indexOperation.setType(indexOperationTarget.get(BulkTask.KEY_TYPE).toString());
+						indexOperation.setIndex(indexOperationTarget.get(BulkHashIndexTask.KEY_INDEX).toString());
+						indexOperation.setType(indexOperationTarget.get(BulkHashIndexTask.KEY_TYPE).toString());
 						indexOperation.setSource(sourceLine);
 
 						indexOperation.setTimestamp(
 								indexUtils.getTimestamp(indexOperation.getIndex(), indexOperation.getSource()));
 
-						if (!indexOperationTarget.get(BulkTask.KEY_ID).valueType().equals(ValueType.INVALID)) {
-							indexOperation.setId(indexOperationTarget.get(BulkTask.KEY_ID).toString());
+						if (!indexOperationTarget.get(BulkHashIndexTask.KEY_ID).valueType().equals(ValueType.INVALID)) {
+							indexOperation.setId(indexOperationTarget.get(BulkHashIndexTask.KEY_ID).toString());
 						} else {
 							indexOperation.setId(indexUtils.generateDocumentId(indexOperation.getIndex(),
 									indexOperation.getType(), indexOperation.getSource()));
@@ -200,7 +205,23 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 		}
 
 		for (String index : indexOperations.keySet()) {
-			bulkIndex(bulkApiResponse, index, indexOperations.get(index));
+			indexUtils.ensureIndexExists(index);
+
+			if(nodeSettingsService.isUsingCitus()) {
+				final IndexTemplate indexTemplate;
+				if(indexTemplateService instanceof PsqlIndexTemplateService) {
+					indexTemplate = ((PsqlIndexTemplateService) indexTemplateService).getIndexTemplateForIndex(index);
+				} else {
+					indexTemplate = indexTemplateService.prepareGetIndexTemplateForIndex(index).get().getIndexTemplate();
+				}
+				if(indexTemplate != null && indexTemplate.isTimeSeries()) {
+					bulkIndexTime(bulkApiResponse, indexTemplate, index, indexOperations.get(index));
+				} else {
+					bulkIndexHash(bulkApiResponse, index, indexOperations.get(index));
+				}
+			} else {
+				bulkIndexHash(bulkApiResponse, index, indexOperations.get(index));
+			}
 		}
 
 		final long duration = totalTimer.stop();
@@ -208,24 +229,55 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 		return bulkApiResponse;
 	}
 
-	private void bulkIndex(BulkResponse bulkApiResponse, String index, List<BulkIndexOperation> indexOperations)
+	private void bulkIndexTime(BulkResponse bulkApiResponse, IndexTemplate indexTemplate, String index, List<BulkIndexOperation> indexOperations)
 			throws ElefanaException {
-		indexUtils.ensureIndexExists(index);
-		final IngestTable ingestTable = ingestTableTracker.getIngestTable(index);
+		final IndexTimeBucket indexTimeBucket = indexTemplate.getStorage().getIndexTimeBucket();
+		final TimeIngestTable timeIngestTable = ingestTableTracker.getTimeIngestTable(index);
+		final int operationSize = Math.max(MINIMUM_BULK_SIZE, indexOperations.size() / nodeSettingsService.getBulkParallelisation());
 
+		final Map<Integer, List<BulkIndexOperation>> operationsByShard = new HashMap<Integer, List<BulkIndexOperation>>();
+		for(BulkIndexOperation bulkIndexOperation : indexOperations) {
+			final int shard = indexTimeBucket.getShardOffset(bulkIndexOperation.getTimestamp());
+			if(!operationsByShard.containsKey(shard)) {
+				operationsByShard.put(shard, new ArrayList<BulkIndexOperation>());
+			}
+			operationsByShard.get(shard).add(bulkIndexOperation);
+		}
+
+		final List<BulkIndexTask> bulkTimeIndexTasks = new ArrayList<BulkIndexTask>();
+		for(int shard : operationsByShard.keySet()) {
+			final List<BulkIndexOperation> bulkIndexOperations = operationsByShard.get(shard);
+			for (int i = 0; i < bulkIndexOperations.size(); i += operationSize) {
+				final BulkTimeIndexTask task = new BulkTimeIndexTask(jdbcTemplate, bulkIndexOperations,
+						index, timeIngestTable, nodeSettingsService.isFlattenJson(), i, operationSize, shard,
+						bulkIngestPsqlTimer, psqlBatchBuildTimer, jsonFlattenTimer, jsonEscapeTimer);
+				bulkTimeIndexTasks.add(task);
+			}
+		}
+
+		bulkItemResponse(bulkApiResponse, index, bulkTimeIndexTasks);
+	}
+
+	private void bulkIndexHash(BulkResponse bulkApiResponse, String index, List<BulkIndexOperation> indexOperations)
+			throws ElefanaException {
+		final HashIngestTable hashIngestTable = ingestTableTracker.getHashIngestTable(index);
 		final int operationSize = Math.max(MINIMUM_BULK_SIZE, indexOperations.size() / nodeSettingsService.getBulkParallelisation());
 		
-		final List<BulkTask> bulkTasks = new ArrayList<BulkTask>();
-		List<Future<List<BulkItemResponse>>> results = null;
+		final List<BulkIndexTask> bulkHashIndexTasks = new ArrayList<BulkIndexTask>();
 
 		for (int i = 0; i < indexOperations.size(); i += operationSize) {
-			final BulkTask task = new BulkTask(jdbcTemplate, indexOperations,
-					index, ingestTable, nodeSettingsService.isFlattenJson(), i, operationSize,
+			final BulkHashIndexTask task = new BulkHashIndexTask(jdbcTemplate, indexOperations,
+					index, hashIngestTable, nodeSettingsService.isFlattenJson(), i, operationSize,
 					bulkIngestPsqlTimer, psqlBatchBuildTimer, jsonFlattenTimer, jsonEscapeTimer);
-			bulkTasks.add(task);
+			bulkHashIndexTasks.add(task);
 		}
+		bulkItemResponse(bulkApiResponse, index, bulkHashIndexTasks);
+	}
+
+	private void bulkItemResponse(BulkResponse bulkApiResponse, String index, List<BulkIndexTask> bulkIndexTasks ) {
+		List<Future<List<BulkItemResponse>>> results = null;
 		try {
-			results = bulkProcessingExecutorService.invokeAll(bulkTasks);
+			results = bulkProcessingExecutorService.invokeAll(bulkIndexTasks);
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
 		}
@@ -234,7 +286,7 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 
 		boolean success = true;
 		for (int i = 0; i < results.size(); i++) {
-			final BulkTask task = bulkTasks.get(i);
+			final BulkIndexTask task = bulkIndexTasks.get(i);
 			try {
 				final List<BulkItemResponse> nextResult = results.get(i).get();
 				if (nextResult.isEmpty()) {

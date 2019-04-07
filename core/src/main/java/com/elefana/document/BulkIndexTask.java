@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2018 Viridian Software Limited
+ * Copyright 2019 Viridian Software Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,8 @@ import com.codahale.metrics.Timer;
 import com.elefana.api.document.BulkItemResponse;
 import com.elefana.api.document.BulkOpType;
 import com.elefana.api.document.DocumentShardInfo;
-import com.elefana.document.psql.IngestTable;
+import com.elefana.api.exception.ElefanaException;
+import com.elefana.document.ingest.IngestTable;
 import com.elefana.util.IndexUtils;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.spi.JsonException;
@@ -33,47 +34,46 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.nio.charset.Charset;
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-public class BulkTask implements Callable<List<BulkItemResponse>> {
-	private static final Logger LOGGER = LoggerFactory.getLogger(BulkTask.class);
+public abstract class BulkIndexTask implements Callable<List<BulkItemResponse>> {
+	private static final Logger LOGGER = LoggerFactory.getLogger(BulkHashIndexTask.class);
 
-	private static final String DELIMITER_INIT = "e'\\x1f'";
-	private static final String DELIMITER = Character.toString((char) 31);
-	private static final String ESCAPE_INIT = "e'\\x1e'";
-	private static final String ESCAPE = Character.toString((char) 30);
-	private static final String NEW_LINE = "\n";
-	private static final Charset CHARSET = Charset.forName("UTF-8");
+	protected static final String DELIMITER_INIT = "e'\\x1f'";
+	protected static final String DELIMITER = Character.toString((char) 31);
+	protected static final String ESCAPE_INIT = "e'\\x1e'";
+	protected static final String ESCAPE = Character.toString((char) 30);
+	protected static final String NEW_LINE = "\n";
+	protected static final Charset CHARSET = Charset.forName("UTF-8");
 
 	public static final String KEY_INDEX = "_index";
 	public static final String KEY_TYPE = "_type";
 	public static final String KEY_ID = "_id";
 
-	private static final long ONE_SECOND_IN_MILLIS = 1000L;
-	private static final long ONE_MINUTE_IN_MILLIS = ONE_SECOND_IN_MILLIS * 60L;
-	private static final long ONE_HOUR_IN_MILLIS = ONE_MINUTE_IN_MILLIS * 60L;
-	private static final long ONE_DAY_IN_MILLIS = ONE_HOUR_IN_MILLIS * 24L;
+	protected static final long ONE_SECOND_IN_MILLIS = 1000L;
+	protected static final long ONE_MINUTE_IN_MILLIS = ONE_SECOND_IN_MILLIS * 60L;
+	protected static final long ONE_HOUR_IN_MILLIS = ONE_MINUTE_IN_MILLIS * 60L;
+	protected static final long ONE_DAY_IN_MILLIS = ONE_HOUR_IN_MILLIS * 24L;
 
-	private static final DocumentShardInfo SHARDS = new DocumentShardInfo();
+	protected static final DocumentShardInfo SHARDS = new DocumentShardInfo();
 
-	private final Timer psqlTimer, batchBuildTimer, flattenTimer, escapeTimer;
-	private final JdbcTemplate jdbcTemplate;
-	private final List<BulkIndexOperation> indexOperations;
-	private final IngestTable ingestTable;
-	private final String index;
-	private final boolean flatten;
-	private final int from;
-	private final int size;
+	protected final Timer psqlTimer, batchBuildTimer, flattenTimer, escapeTimer;
+	protected final JdbcTemplate jdbcTemplate;
+	protected final List<BulkIndexOperation> indexOperations;
+	protected final IngestTable ingestTable;
+	protected final String index;
+	protected final boolean flatten;
+	protected final int from;
+	protected final int size;
 
-	private volatile int totalFailed, totalSuccess;
+	protected volatile int totalFailed, totalSuccess;
 
-	public BulkTask(JdbcTemplate jdbcTemplate, List<BulkIndexOperation> indexOperations,
-			String index, IngestTable ingestTable, boolean flatten, int from, int size,
-			        Timer psqlTimer, Timer batchBuildTimer, Timer flattenTimer, Timer escapeTimer) {
+	public BulkIndexTask(JdbcTemplate jdbcTemplate, List<BulkIndexOperation> indexOperations,
+	                     String index, IngestTable ingestTable, boolean flatten, int from, int size,
+	                     Timer psqlTimer, Timer batchBuildTimer, Timer flattenTimer, Timer escapeTimer) {
 		super();
 		this.psqlTimer = psqlTimer;
 		this.batchBuildTimer = batchBuildTimer;
@@ -89,6 +89,8 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 		this.size = size;
 	}
 
+	protected abstract int getStagingTableId() throws ElefanaException;
+
 	@Override
 	public List<BulkItemResponse> call() {
 		final List<BulkItemResponse> results = new ArrayList<BulkItemResponse>(1);
@@ -96,7 +98,7 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 
 		final int stagingTableId;
 		try {
-			stagingTableId = ingestTable.lockTable();
+			stagingTableId = getStagingTableId();
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
 
@@ -245,7 +247,7 @@ public class BulkTask implements Callable<List<BulkItemResponse>> {
 	}
 
 	public BulkItemResponse createEntry(int operationIndex, String operation, String index, String type, String id,
-			String resultStatus) {
+	                                    String resultStatus) {
 		BulkOpType opType = BulkOpType.valueOf(operation.toUpperCase());
 		BulkItemResponse result = new BulkItemResponse(operationIndex, opType);
 		result.setIndex(index);

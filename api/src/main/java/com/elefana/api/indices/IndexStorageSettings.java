@@ -20,6 +20,8 @@ import com.jsoniter.annotation.JsonProperty;
 public class IndexStorageSettings {
 	@JsonProperty("distribution")
 	private DistributionMode distributionMode;
+	@JsonProperty("time_bucket")
+	private IndexTimeBucket indexTimeBucket;
 	@JsonProperty("timestamp_path")
 	private String timestampPath;
 	@JsonProperty("index_generation")
@@ -34,6 +36,17 @@ public class IndexStorageSettings {
 
 	public void setDistributionMode(DistributionMode distributionMode) {
 		this.distributionMode = distributionMode;
+	}
+
+	public IndexTimeBucket getIndexTimeBucket() {
+		if(indexTimeBucket == null) {
+			indexTimeBucket = IndexTimeBucket.MINUTE;
+		}
+		return indexTimeBucket;
+	}
+
+	public void setIndexTimeBucket(IndexTimeBucket indexTimeBucket) {
+		this.indexTimeBucket = indexTimeBucket;
 	}
 
 	public String getTimestampPath() {
@@ -60,6 +73,7 @@ public class IndexStorageSettings {
 		final int prime = 31;
 		int result = 1;
 		result = prime * result + ((distributionMode == null) ? 0 : distributionMode.hashCode());
+		result = prime * result + ((indexTimeBucket == null) ? 0 : indexTimeBucket.hashCode());
 		result = prime * result + ((indexGenerationSettings == null) ? 0 : indexGenerationSettings.hashCode());
 		result = prime * result + ((timestampPath == null) ? 0 : timestampPath.hashCode());
 		return result;
@@ -75,6 +89,8 @@ public class IndexStorageSettings {
 			return false;
 		IndexStorageSettings other = (IndexStorageSettings) obj;
 		if (distributionMode != other.distributionMode)
+			return false;
+		if (indexTimeBucket != other.indexTimeBucket)
 			return false;
 		if (indexGenerationSettings == null) {
 			if (other.indexGenerationSettings != null)
