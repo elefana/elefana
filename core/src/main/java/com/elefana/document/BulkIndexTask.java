@@ -183,6 +183,7 @@ public abstract class BulkIndexTask implements Callable<List<BulkItemResponse>> 
 				ingestTable.unlockTable(stagingTableId);
 				stagingTableUnlocked = true;
 			} catch (PSQLException e) {
+				connection.rollback();
 				throw e;
 			} catch (Exception e) {
 				throw e;
