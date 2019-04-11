@@ -218,6 +218,7 @@ public class PsqlBulkIndexService implements Runnable {
 					LOGGER.error(e.getMessage(), e);
 					bulkIndexResult = BulkIndexResult.EXCEPTION;
 				}
+				connection.rollback();
 			}
 
 			try {
@@ -250,6 +251,7 @@ public class PsqlBulkIndexService implements Runnable {
 				}
 			} catch (Exception e) {
 				LOGGER.error(e.getMessage(), e);
+				connection.rollback();
 			}
 			ingestTable.unlockTable(stagingTableId);
 		}
