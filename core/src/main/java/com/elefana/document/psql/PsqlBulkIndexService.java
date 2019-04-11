@@ -195,11 +195,13 @@ public class PsqlBulkIndexService implements Runnable {
 				return result;
 			}
 
-			final String stagingTableName = ingestTable.getIngestionTableName(stagingTableId);
-			final String targetTableName = indexUtils.getPartitionTableForIndex(connection, ingestTable.getIndex());
+			String stagingTableName = null;
 
 			BulkIndexResult bulkIndexResult = BulkIndexResult.SUCCESS;
 			try {
+				stagingTableName = ingestTable.getIngestionTableName(stagingTableId);
+				final String targetTableName = indexUtils.getPartitionTableForIndex(connection, ingestTable.getIndex());
+
 				final Timer.Context indexTimer = bulkIndexTimer.time();
 				if (nodeSettingsService.isUsingCitus()) {
 					bulkIndexResult = mergeStagingTableIntoDistributedTable(connection, indexTemplate,
