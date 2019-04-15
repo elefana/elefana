@@ -27,11 +27,13 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class DefaultHashIngestTable implements HashIngestTable {
 	private static final Logger LOGGER = LoggerFactory.getLogger(DefaultHashIngestTable.class);
 
+	private final JdbcTemplate jdbcTemplate;
 	private final String index;
 	private final ReentrantLock[] locks;
 	private final String [] tableNames;
@@ -48,10 +50,12 @@ public class DefaultHashIngestTable implements HashIngestTable {
 		}
 	};
 	private final boolean [] dataMarker;
+	private final AtomicLong lastUsageTimestamp = new AtomicLong();
 
 	public DefaultHashIngestTable(JdbcTemplate jdbcTemplate, String [] tablespaces,
 	                              String index, int capacity, List<String> existingTableNames) throws SQLException {
 		super();
+		this.jdbcTemplate = jdbcTemplate;
 		this.index = index;
 
 		locks = new ReentrantLock[capacity];
@@ -61,6 +65,7 @@ public class DefaultHashIngestTable implements HashIngestTable {
 		for(int i = 0; i < existingTableNames.size() && i < tableNames.length; i++) {
 			tableNames[i] = existingTableNames.get(i);
 		}
+		lastUsageTimestamp.set(System.currentTimeMillis());
 
 		Connection connection = null;
 
@@ -80,6 +85,63 @@ public class DefaultHashIngestTable implements HashIngestTable {
 			try {
 				connection.close();
 			} catch (Exception e) {}
+		}
+	}
+
+	@Override
+	public boolean prune() {
+		for(int i = 0; i < locks.length; i++) {
+			if(!locks[i].tryLock()) {
+				for(int j = i - 1; i >= 0; i--) {
+					locks[i].unlock();
+				}
+				return false;
+			}
+		}
+
+		Connection connection = null;
+
+		try {
+			connection = jdbcTemplate.getDataSource().getConnection();
+
+			boolean atLeast1Entry = false;
+
+			for(int i = 0; i < locks.length; i++) {
+				PreparedStatement countEntriesStatement = connection.prepareStatement("SELECT COUNT(*) FROM " + tableNames[i]);
+				final ResultSet resultSet = countEntriesStatement.executeQuery();
+				if(resultSet.next()) {
+					atLeast1Entry |= resultSet.getLong(1) > 0;
+				}
+			}
+
+			if(atLeast1Entry) {
+				connection.close();
+				return false;
+			}
+
+			for(int i = 0; i < locks.length; i++) {
+				PreparedStatement dropTableStatement = connection.prepareStatement("DROP TABLE " + tableNames[i]);
+				dropTableStatement.execute();
+				dropTableStatement.close();
+			}
+
+			connection.close();
+			return true;
+		} catch (Exception e) {
+			LOGGER.error(e.getMessage(), e);
+
+			if(connection != null) {
+				try {
+					connection.close();
+				} catch (Exception ex) {}
+			}
+
+			for(int i = 0; i < locks.length; i++) {
+				if(locks[i].getHoldCount() > 0) {
+					locks[i].unlock();
+				}
+			}
+			return false;
 		}
 	}
 
@@ -145,6 +207,7 @@ public class DefaultHashIngestTable implements HashIngestTable {
 				int index = writeIndex.get() % locks.length;
 				writeIndex.set(index + 1);
 				if(locks[index].tryLock()) {
+					lastUsageTimestamp.set(System.currentTimeMillis());
 					return index;
 				}
 			}
@@ -168,6 +231,7 @@ public class DefaultHashIngestTable implements HashIngestTable {
 							locks[index].unlock();
 							continue;
 						}
+						lastUsageTimestamp.set(System.currentTimeMillis());
 						return index;
 					}
 					if(System.currentTimeMillis() - timestamp >= timeout) {
@@ -206,6 +270,7 @@ public class DefaultHashIngestTable implements HashIngestTable {
 		if(locks[index].getHoldCount() == 0) {
 			return;
 		}
+		lastUsageTimestamp.set(System.currentTimeMillis());
 		locks[index].unlock();
 	}
 
@@ -222,5 +287,10 @@ public class DefaultHashIngestTable implements HashIngestTable {
 
 	public int getCapacity() {
 		return dataMarker.length;
+	}
+
+	@Override
+	public long getLastUsageTimestamp() {
+		return lastUsageTimestamp.get();
 	}
 }

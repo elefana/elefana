@@ -28,16 +28,18 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import java.sql.SQLException;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 @Service
-public class PsqlIngestTableTracker implements IngestTableTracker {
+public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 	private static final Logger LOGGER = LoggerFactory.getLogger(PsqlIngestTableTracker.class);
 
 	private static final String[] DEFAULT_TABLESPACES = new String[] { "" };
@@ -51,6 +53,8 @@ public class PsqlIngestTableTracker implements IngestTableTracker {
 	protected JdbcTemplate jdbcTemplate;
 	@Autowired
 	protected IndexTemplateService indexTemplateService;
+	@Autowired
+	private TaskScheduler taskScheduler;
 
 	protected final ReadWriteLock lock = new ReentrantReadWriteLock();
 	protected final Map<String, HashIngestTable> indexToHashIngestTable = new HashMap<String, HashIngestTable>();
@@ -58,9 +62,12 @@ public class PsqlIngestTableTracker implements IngestTableTracker {
 
 	protected String[] tablespaces;
 	protected int defaultCapacity;
+	protected long ingestionTableExpiryMillis;
 
 	@PostConstruct
 	public void postConstruct() throws ElefanaException {
+		ingestionTableExpiryMillis = environment.getProperty("elefana.service.bulk.ingest.tableExpiryMillis", Long.class, TimeUnit.HOURS.toMillis(6L));
+
 		tablespaces = environment.getProperty("elefana.service.bulk.tablespaces", "").split(",");
 		if (isEmptyTablespaceList(tablespaces)) {
 			tablespaces = DEFAULT_TABLESPACES;
@@ -114,6 +121,52 @@ public class PsqlIngestTableTracker implements IngestTableTracker {
 
 			lock.writeLock().unlock();
 		}
+
+		taskScheduler.scheduleAtFixedRate(this, ingestionTableExpiryMillis);
+	}
+
+	@Override
+	public void run() {
+		final long timestamp = System.currentTimeMillis();
+		lock.readLock().lock();
+		try {
+			for(String key : indexToHashIngestTable.keySet()) {
+				final HashIngestTable hashIngestTable = indexToHashIngestTable.get(key);
+				if(hashIngestTable == null) {
+					continue;
+				}
+				if(timestamp - hashIngestTable.getLastUsageTimestamp() < ingestionTableExpiryMillis) {
+					continue;
+				}
+				lock.readLock().unlock();
+				lock.writeLock().lock();
+				indexToHashIngestTable.remove(key);
+				lock.writeLock().unlock();
+				hashIngestTable.prune();
+				lock.readLock().lock();
+			}
+			for(String key : indexToTimeIngestTable.keySet()) {
+				final TimeIngestTable timeIngestTable = indexToTimeIngestTable.get(key);
+				if(timeIngestTable == null) {
+					continue;
+				}
+				if(timestamp - timeIngestTable.getLastUsageTimestamp() < ingestionTableExpiryMillis) {
+					continue;
+				}
+				lock.readLock().unlock();
+
+				if(timeIngestTable.prune()) {
+					lock.writeLock().lock();
+					indexToTimeIngestTable.remove(key);
+					lock.writeLock().unlock();
+				}
+
+				lock.readLock().lock();
+			}
+		} catch (Exception e) {
+			LOGGER.error(e.getMessage(), e);
+		}
+		lock.readLock().unlock();
 	}
 
 	protected TimeIngestTable createTimeIngestTable(String index, List<String> existingTables) throws ElefanaException {

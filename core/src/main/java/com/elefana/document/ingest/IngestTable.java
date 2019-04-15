@@ -35,4 +35,8 @@ public interface IngestTable {
 	public String getIndex();
 
 	public int getCapacity();
+
+	public long getLastUsageTimestamp();
+
+	public boolean prune();
 }

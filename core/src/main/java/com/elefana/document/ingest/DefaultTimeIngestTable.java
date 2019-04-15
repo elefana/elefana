@@ -28,17 +28,20 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class DefaultTimeIngestTable implements TimeIngestTable {
 	private static final Logger LOGGER = LoggerFactory.getLogger(DefaultTimeIngestTable.class);
 
+	private final JdbcTemplate jdbcTemplate;
 	private final String index;
 	private final int capacity;
 	private final ReentrantLock[] locks;
 	private final String [] tableNames;
 	private final int [] shardIds;
 	private final boolean [] dataMarker;
+	private final AtomicLong lastUsageTimestamp = new AtomicLong();
 
 	private final ThreadLocal<Integer> readIndex = new ThreadLocal<Integer>() {
 		@Override
@@ -58,6 +61,7 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 		super();
 		this.index = index;
 		this.capacity = (timeBucket.getIngestTableCapacity() * bulkParallelisation) + 1;
+		this.jdbcTemplate = jdbcTemplate;
 
 		locks = new ReentrantLock[capacity];
 		tableNames = new String[capacity];
@@ -66,6 +70,10 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 
 		for(int i = 0; i < shardIds.length; i++) {
 			shardIds[i] = -1;
+		}
+
+		if(existingTableNames.isEmpty()) {
+			lastUsageTimestamp.set(System.currentTimeMillis());
 		}
 
 		Connection connection = null;
@@ -97,11 +105,74 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 		}
 	}
 
+	@Override
+	public long getLastUsageTimestamp() {
+		return lastUsageTimestamp.get();
+	}
+
+	@Override
+	public boolean prune() {
+		for(int i = 0; i < locks.length; i++) {
+			if(!locks[i].tryLock()) {
+				for(int j = i - 1; i >= 0; i--) {
+					locks[i].unlock();
+				}
+				return false;
+			}
+		}
+
+		Connection connection = null;
+
+		try {
+			connection = jdbcTemplate.getDataSource().getConnection();
+
+			boolean atLeast1Entry = false;
+
+			for(int i = 0; i < locks.length; i++) {
+				PreparedStatement countEntriesStatement = connection.prepareStatement("SELECT COUNT(*) FROM " + tableNames[i]);
+				final ResultSet resultSet = countEntriesStatement.executeQuery();
+				if(resultSet.next()) {
+					atLeast1Entry |= resultSet.getLong(1) > 0;
+				}
+			}
+
+			if(atLeast1Entry) {
+				connection.close();
+				return false;
+			}
+
+			for(int i = 0; i < locks.length; i++) {
+				PreparedStatement dropTableStatement = connection.prepareStatement("DROP TABLE " + tableNames[i]);
+				dropTableStatement.execute();
+				dropTableStatement.close();
+			}
+
+			connection.close();
+			return true;
+		} catch (Exception e) {
+			LOGGER.error(e.getMessage(), e);
+
+			if(connection != null) {
+				try {
+					connection.close();
+				} catch (Exception ex) {}
+			}
+
+			for(int i = 0; i < locks.length; i++) {
+				if(locks[i].getHoldCount() > 0) {
+					locks[i].unlock();
+				}
+			}
+			return false;
+		}
+	}
+
 	private void restoreExistingTable(Connection connection, IndexTimeBucket timeBucket, int arrayIndex, String existingTableName) throws SQLException {
 		PreparedStatement createTableStatement = connection.prepareStatement("SELECT _timestamp FROM " + existingTableName + " LIMIT 1");
 		final ResultSet resultSet = createTableStatement.executeQuery();
 		if(resultSet.next()) {
 			shardIds[arrayIndex] = timeBucket.getShardOffset(resultSet.getLong("_timestamp"));
+			lastUsageTimestamp.set(Math.max(resultSet.getLong("_timestamp"), lastUsageTimestamp.get()));
 		}
 		createTableStatement.close();
 
@@ -176,6 +247,7 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 						shardIds[index] = shardOffset;
 					}
 					if(shardIds[index] == shardOffset) {
+						lastUsageTimestamp.set(System.currentTimeMillis());
 						return index;
 					}
 					locks[index].unlock();
@@ -202,6 +274,7 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 							locks[index].unlock();
 							continue;
 						}
+						lastUsageTimestamp.set(System.currentTimeMillis());
 						return index;
 					}
 					if(System.currentTimeMillis() - timestamp >= timeout) {
@@ -241,6 +314,7 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 		if(locks[index].getHoldCount() == 0) {
 			return;
 		}
+		lastUsageTimestamp.set(System.currentTimeMillis());
 		locks[index].unlock();
 	}
 
