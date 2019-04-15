@@ -115,7 +115,7 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 		for(int i = 0; i < locks.length; i++) {
 			if(!locks[i].tryLock()) {
 				for(int j = i - 1; i >= 0; i--) {
-					locks[i].unlock();
+					locks[j].unlock();
 				}
 				return false;
 			}
