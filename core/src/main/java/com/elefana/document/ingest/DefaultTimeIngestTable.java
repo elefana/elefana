@@ -134,6 +134,7 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 				if(resultSet.next()) {
 					atLeast1Entry |= resultSet.getLong(1) > 0;
 				}
+				countEntriesStatement.close();
 			}
 
 			if(atLeast1Entry) {
