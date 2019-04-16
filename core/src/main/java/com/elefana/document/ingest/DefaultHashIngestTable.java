@@ -124,6 +124,10 @@ public class DefaultHashIngestTable implements HashIngestTable {
 				PreparedStatement dropTableStatement = connection.prepareStatement("DROP TABLE " + tableNames[i]);
 				dropTableStatement.execute();
 				dropTableStatement.close();
+
+				PreparedStatement deleteTableStatement = connection.prepareStatement("DELETE FROM elefana_bulk_tables WHERE _ingestTableName = '" + tableNames[i] + "'");
+				deleteTableStatement.execute();
+				deleteTableStatement.close();
 			}
 
 			connection.close();

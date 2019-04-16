@@ -139,10 +139,13 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 					continue;
 				}
 				lock.readLock().unlock();
-				lock.writeLock().lock();
-				indexToHashIngestTable.remove(key);
-				lock.writeLock().unlock();
-				hashIngestTable.prune();
+
+				if(hashIngestTable.prune()) {
+					lock.writeLock().lock();
+					indexToHashIngestTable.remove(key);
+					lock.writeLock().unlock();
+				}
+
 				lock.readLock().lock();
 			}
 			for(String key : indexToTimeIngestTable.keySet()) {
