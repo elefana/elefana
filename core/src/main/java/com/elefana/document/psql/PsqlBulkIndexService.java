@@ -231,12 +231,22 @@ public class PsqlBulkIndexService implements Runnable {
 					ingestTable.unlockTable(stagingTableId);
 					return result;
 				case DUPLICATE:
-					PreparedStatement transferStatement = connection.prepareStatement(
-							"INSERT INTO elefana_duplicate_keys SELECT * FROM " + stagingTableName);
-					transferStatement.execute();
-					transferStatement.close();
-					connection.commit();
-					LOGGER.error("Copied " + stagingTableName + " to elefana_duplicate_keys");
+					if(nodeSettingsService.isRegenerateDuplicateIds()) {
+						PreparedStatement generateIdStatement = connection.prepareStatement(
+								"UPDATE " + stagingTableName + " SET _id = ('dup_' || CAST (nextval('elefana_dup_key_id') AS VARCHAR))");
+						generateIdStatement.execute();
+						generateIdStatement.close();
+						connection.commit();
+						LOGGER.error("Re-generated ids for " + stagingTableName);
+						break;
+					} else {
+						PreparedStatement transferStatement = connection.prepareStatement(
+								"INSERT INTO elefana_duplicate_keys SELECT * FROM " + stagingTableName);
+						transferStatement.execute();
+						transferStatement.close();
+						connection.commit();
+						LOGGER.error("Copied " + stagingTableName + " to elefana_duplicate_keys");
+					}
 				default:
 				case SUCCESS: {
 					PreparedStatement dropTableStatement = connection.prepareStatement(

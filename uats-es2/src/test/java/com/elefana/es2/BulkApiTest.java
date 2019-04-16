@@ -33,6 +33,7 @@ import io.restassured.config.EncoderConfig;
 import io.restassured.response.ValidatableResponse;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -546,6 +547,48 @@ public class BulkApiTest {
 			} catch (Exception e) {}
 		}
 		Assert.fail("Expected " + 1 + " documents, found " + result);
+	}
+
+	@Test
+	@Ignore
+	public void testBulkIndexingWithDuplicateKeyAllowed() {
+		final String index = "logs-" + UUID.randomUUID().toString();
+		final String type = "test";
+
+		final String bulkRequest = generateBulkRequestWithFixedId(index, type);
+		for(int i = 0; i < 4; i++) {
+			given()
+					.request()
+					.body(bulkRequest)
+					.when().
+					post("/_bulk")
+					.then()
+					.statusCode(200)
+					.body("errors", equalTo(false))
+					.body("items.size()", equalTo(1));
+		}
+
+		final long startTime = System.currentTimeMillis();
+		int result = 0;
+
+		while(System.currentTimeMillis() - startTime < BULK_INDEX_TIMEOUT) {
+			ValidatableResponse response = given()
+					.request()
+					.body("{\"query\":{\"match_all\":{}}, \"size\":" + 3 + "}")
+					.when()
+					.post("/" + index + "/_search")
+					.then()
+					.statusCode(200);
+			result = response.extract().body().jsonPath().getInt("hits.total");
+			if(result == 4) {
+				return;
+			}
+
+			try {
+				Thread.sleep(200);
+			} catch (Exception e) {}
+		}
+		Assert.fail("Expected " + 4 + " documents, found " + result);
 	}
 	
 	@Test

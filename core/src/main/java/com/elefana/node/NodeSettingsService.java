@@ -75,6 +75,7 @@ public class NodeSettingsService {
 	private int citusWorkerPort = 5432;
 
 	private boolean flattenJson;
+	private boolean regenerateDuplicateIds;
 	private int bulkParallelisation;
 	private long fieldStatsInterval;
 	private long mappingInterval;
@@ -129,6 +130,7 @@ public class NodeSettingsService {
 		fallbackMappingSampleSize = environment.getRequiredProperty("elefana.fallbackMappingSampleSize", Integer.class);
 		garbageCollectionInterval = environment.getRequiredProperty("elefana.gcInterval", Long.class);
 		brinPagesPerRange = Integer.parseInt(environment.getProperty("elefana.brinPagesPerRange", DEFAULT_BRIN_PAGES_PER_RANGE));
+		regenerateDuplicateIds = environment.getProperty("elefana.regenerateDuplicateIds", Boolean.class, false);
 
 		masterNode = checkIfMasterNode();
 		dataNode = checkIfDataNode();
@@ -362,6 +364,10 @@ public class NodeSettingsService {
 
 	public boolean isFlattenJson() {
 		return flattenJson;
+	}
+
+	public boolean isRegenerateDuplicateIds() {
+		return regenerateDuplicateIds;
 	}
 
 	public boolean isMasterNode() {
