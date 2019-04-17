@@ -34,6 +34,7 @@ import org.springframework.stereotype.Service;
 import javax.annotation.PostConstruct;
 import java.sql.SQLException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -57,8 +58,8 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 	private TaskScheduler taskScheduler;
 
 	protected final ReadWriteLock lock = new ReentrantReadWriteLock();
-	protected final Map<String, HashIngestTable> indexToHashIngestTable = new HashMap<String, HashIngestTable>();
-	protected final Map<String, TimeIngestTable> indexToTimeIngestTable = new HashMap<String, TimeIngestTable>();
+	protected final Map<String, HashIngestTable> indexToHashIngestTable = new ConcurrentHashMap<String, HashIngestTable>();
+	protected final Map<String, TimeIngestTable> indexToTimeIngestTable = new ConcurrentHashMap<String, TimeIngestTable>();
 
 	protected String[] tablespaces;
 	protected int defaultCapacity;
