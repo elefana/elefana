@@ -92,7 +92,7 @@ public class DefaultHashIngestTable implements HashIngestTable {
 	public boolean prune() {
 		for(int i = 0; i < locks.length; i++) {
 			if(!locks[i].tryLock()) {
-				for(int j = i - 1; i >= 0; i--) {
+				for(int j = i - 1; j >= 0; j--) {
 					locks[j].unlock();
 				}
 				return false;
