@@ -88,8 +88,7 @@ public class DefaultHashIngestTable implements HashIngestTable {
 		}
 	}
 
-	@Override
-	public boolean prune() {
+	private boolean tryLockAll() {
 		for(int i = 0; i < locks.length; i++) {
 			if(!locks[i].tryLock()) {
 				for(int j = i - 1; j >= 0; j--) {
@@ -97,6 +96,22 @@ public class DefaultHashIngestTable implements HashIngestTable {
 				}
 				return false;
 			}
+		}
+		return true;
+	}
+
+	private void unlockAll() {
+		for(int i = 0; i < locks.length; i++) {
+			if(locks[i].getHoldCount() > 0) {
+				locks[i].unlock();
+			}
+		}
+	}
+
+	@Override
+	public boolean prune() {
+		if(!tryLockAll()) {
+			return false;
 		}
 
 		Connection connection = null;
@@ -117,6 +132,7 @@ public class DefaultHashIngestTable implements HashIngestTable {
 
 			if(atLeast1Entry) {
 				connection.close();
+				unlockAll();
 				return false;
 			}
 
@@ -141,11 +157,7 @@ public class DefaultHashIngestTable implements HashIngestTable {
 				} catch (Exception ex) {}
 			}
 
-			for(int i = 0; i < locks.length; i++) {
-				if(locks[i].getHoldCount() > 0) {
-					locks[i].unlock();
-				}
-			}
+			unlockAll();
 			return false;
 		}
 	}

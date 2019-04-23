@@ -110,8 +110,7 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 		return lastUsageTimestamp.get();
 	}
 
-	@Override
-	public boolean prune() {
+	private boolean tryLockAll() {
 		for(int i = 0; i < locks.length; i++) {
 			if(!locks[i].tryLock()) {
 				for(int j = i - 1; j >= 0; j--) {
@@ -119,6 +118,22 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 				}
 				return false;
 			}
+		}
+		return true;
+	}
+
+	private void unlockAll() {
+		for(int i = 0; i < locks.length; i++) {
+			if(locks[i].getHoldCount() > 0) {
+				locks[i].unlock();
+			}
+		}
+	}
+
+	@Override
+	public boolean prune() {
+		if(!tryLockAll()) {
+			return false;
 		}
 
 		Connection connection = null;
@@ -139,6 +154,7 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 
 			if(atLeast1Entry) {
 				connection.close();
+				unlockAll();
 				return false;
 			}
 
@@ -163,11 +179,7 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 				} catch (Exception ex) {}
 			}
 
-			for(int i = 0; i < locks.length; i++) {
-				if(locks[i].getHoldCount() > 0) {
-					locks[i].unlock();
-				}
-			}
+			unlockAll();
 			return false;
 		}
 	}
