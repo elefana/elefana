@@ -34,7 +34,7 @@ subprojects {
 	apply plugin: 'org.springframework.boot'
 
 	group = 'com.elefana'
-	version = '1.0.0-rc18'
+	version = '1.0.0-rc19'
 
 	sourceCompatibility = 1.8
 	targetCompatibility = 1.8
