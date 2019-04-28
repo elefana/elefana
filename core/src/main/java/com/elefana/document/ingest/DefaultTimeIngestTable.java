@@ -88,13 +88,13 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 
 		for(int i = 0; i < capacity; i++) {
 			locks[i] = new ReentrantLock();
-			dataMarker[i] = false;
 
 			if(tableNames[i] == null) {
 				if(connection == null) {
 					connection = jdbcTemplate.getDataSource().getConnection();
 				}
 				tableNames[i] = createAndStoreStagingTable(connection, tablespaces.length > 0 ? tablespaces[i % tablespaces.length] : null);
+				dataMarker[i] = false;
 			}
 		}
 
@@ -190,6 +190,7 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 		if(resultSet.next()) {
 			shardIds[arrayIndex] = timeBucket.getShardOffset(resultSet.getLong("_timestamp"));
 			lastUsageTimestamp.set(Math.max(resultSet.getLong("_timestamp"), lastUsageTimestamp.get()));
+			dataMarker[arrayIndex] = true;
 		}
 		createTableStatement.close();
 

@@ -62,22 +62,27 @@ public class DefaultHashIngestTable implements HashIngestTable {
 		tableNames = new String[capacity];
 		dataMarker = new boolean[capacity];
 
+		Connection connection = null;
+
 		for(int i = 0; i < existingTableNames.size() && i < tableNames.length; i++) {
 			tableNames[i] = existingTableNames.get(i);
+
+			if(connection == null) {
+				connection = jdbcTemplate.getDataSource().getConnection();
+			}
+			dataMarker[i] = getExistingTableCount(connection, tableNames[i]) > 0;
 		}
 		lastUsageTimestamp.set(System.currentTimeMillis());
 
-		Connection connection = null;
-
 		for(int i = 0; i < capacity; i++) {
 			locks[i] = new ReentrantLock();
-			dataMarker[i] = false;
 
 			if(tableNames[i] == null) {
 				if(connection == null) {
 					connection = jdbcTemplate.getDataSource().getConnection();
 				}
 				tableNames[i] = createAndStoreStagingTable(connection, tablespaces.length > 0 ? tablespaces[i % tablespaces.length] : null);
+				dataMarker[i] = false;
 			}
 		}
 
@@ -192,6 +197,17 @@ public class DefaultHashIngestTable implements HashIngestTable {
 		preparedStatement.setString(2, tableName);
 		preparedStatement.execute();
 		preparedStatement.close();
+	}
+
+	private int getExistingTableCount(Connection connection, String tableName) throws SQLException {
+		PreparedStatement preparedStatement = connection.prepareStatement("SELECT COUNT(*) FROM " + tableName);
+		final ResultSet resultSet = preparedStatement.executeQuery();
+		int result = 0;
+		if(resultSet.next()) {
+			result = resultSet.getInt("count");
+		}
+		preparedStatement.close();
+		return result;
 	}
 
 	private String getNextStagingTable(Connection connection) throws SQLException {
