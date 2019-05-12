@@ -601,9 +601,12 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 		final Map<String, V2FieldStats> fieldStats = new HashMap<String, V2FieldStats>();
 		final List<String> types = getTypesForIndex(indexName);
 
+		final String queryTarget = nodeSettingsService.isUsingCitus() ? indexUtils.getQueryTarget(indexName) : IndexUtils.DATA_TABLE;
+		jdbcTemplate.execute("ANALYZE " + queryTarget);
+
 		final String totalDocsQuery = nodeSettingsService.isUsingCitus()
-				? "SELECT COUNT(_id) FROM " + indexUtils.getQueryTarget(indexName)
-				: "SELECT COUNT(_id) FROM " + IndexUtils.DATA_TABLE + " WHERE _index='" + indexName + "'";
+				? "SELECT COUNT(_id) FROM " + queryTarget
+				: "SELECT COUNT(_id) FROM " + queryTarget + " WHERE _index='" + indexName + "'";
 
 		final long totalDocs = (long) jdbcTemplate.queryForList(totalDocsQuery).get(0).get("count");
 
@@ -616,9 +619,9 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 					continue;
 				}
 				final String totalDocsWithFieldQuery = nodeSettingsService.isUsingCitus()
-						? "SELECT COUNT(*) FROM " + indexUtils.getQueryTarget(indexName) + " WHERE _source ? '"
+						? "SELECT COUNT(*) FROM " + queryTarget + " WHERE _source ? '"
 								+ fieldName + "'"
-						: "SELECT COUNT(*) FROM " + IndexUtils.DATA_TABLE + " WHERE _index='" + indexName
+						: "SELECT COUNT(*) FROM " + queryTarget + " WHERE _index='" + indexName
 								+ "' AND _source ? '" + fieldName + "'";
 
 				final long totalDocsWithField = (long) jdbcTemplate.queryForList(totalDocsWithFieldQuery).get(0).get("count");
