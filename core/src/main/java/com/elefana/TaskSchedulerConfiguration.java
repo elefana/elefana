@@ -37,7 +37,7 @@ public class TaskSchedulerConfiguration implements SchedulingConfigurer {
 	@Bean
     public TaskScheduler taskScheduler() {
         final ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
-        taskScheduler.setPoolSize(2);
+        taskScheduler.setPoolSize(4);
         return taskScheduler;
     }
 }

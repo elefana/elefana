@@ -36,6 +36,7 @@ import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -96,28 +97,37 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 				existingTablesByIndex.get(index).add(tableName);
 			}
 
-			for(String index : existingTablesByIndex.keySet()) {
-				final List<String> existingTablesForIndex = existingTablesByIndex.get(index);
+			final AtomicReference<ElefanaException> exception = new AtomicReference<ElefanaException>();
+			existingTablesByIndex.keySet().parallelStream().forEach(index -> {
+				try {
+					final List<String> existingTablesForIndex = existingTablesByIndex.get(index);
 
-				if(nodeSettingsService.isUsingCitus()) {
-					final IndexTemplate indexTemplate;
-					if(indexTemplateService instanceof PsqlIndexTemplateService) {
-						indexTemplate = ((PsqlIndexTemplateService) indexTemplateService).getIndexTemplateForIndex(index);
-					} else {
-						indexTemplate = indexTemplateService.prepareGetIndexTemplateForIndex(index).get().getIndexTemplate();
-					}
+					if(nodeSettingsService.isUsingCitus()) {
+						final IndexTemplate indexTemplate;
+						if(indexTemplateService instanceof PsqlIndexTemplateService) {
+							indexTemplate = ((PsqlIndexTemplateService) indexTemplateService).getIndexTemplateForIndex(index);
+						} else {
+							indexTemplate = indexTemplateService.prepareGetIndexTemplateForIndex(index).get().getIndexTemplate();
+						}
 
-					if(indexTemplate != null && indexTemplate.isTimeSeries()) {
-						final TimeIngestTable restoredTable = createTimeIngestTable(index, indexTemplate.getStorage().getIndexTimeBucket(), existingTablesForIndex);
-						indexToTimeIngestTable.put(index, restoredTable);
+						if(indexTemplate != null && indexTemplate.isTimeSeries()) {
+							final TimeIngestTable restoredTable = createTimeIngestTable(index, indexTemplate.getStorage().getIndexTimeBucket(), existingTablesForIndex);
+							indexToTimeIngestTable.put(index, restoredTable);
+						} else {
+							final HashIngestTable restoredTable = createHashIngestTable(index, existingTablesForIndex);
+							indexToHashIngestTable.put(index, restoredTable);
+						}
 					} else {
 						final HashIngestTable restoredTable = createHashIngestTable(index, existingTablesForIndex);
 						indexToHashIngestTable.put(index, restoredTable);
 					}
-				} else {
-					final HashIngestTable restoredTable = createHashIngestTable(index, existingTablesForIndex);
-					indexToHashIngestTable.put(index, restoredTable);
+				} catch (ElefanaException e) {
+					exception.set(e);
 				}
+			});
+
+			if(exception.get() != null) {
+				throw exception.get();
 			}
 
 			lock.writeLock().unlock();
