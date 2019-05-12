@@ -296,23 +296,28 @@ public interface IndexUtils {
 		boolean appendedField = false;
 		while(iterator.hasNext()) {
 			final Map.Entry<String, JsonNode> field = iterator.next();
+
+			if (appendedField) {
+				stringBuilder.append(',');
+			}
+
 			if(field.getValue().isArray()) {
 				if (field.getValue().size() > 0) {
-					if(appendedField) {
-						stringBuilder.append(',');
-					}
-
 					final String key = field.getKey();
 					final StringBuilder newPrefix = new StringBuilder(prefix.length() + key.length() + 1);
 					newPrefix.append(prefix);
 					newPrefix.append(key);
 					appendedField = flattenJson(newPrefix.toString(), field.getValue().elements(), stringBuilder);
+				} else {
+					stringBuilder.append('\"');
+					stringBuilder.append(prefix);
+					stringBuilder.append(field.getKey());
+					stringBuilder.append('\"');
+					stringBuilder.append(':');
+					stringBuilder.append("null");
+					appendedField = true;
 				}
 			} else if(field.getValue().isObject()) {
-				if(appendedField) {
-					stringBuilder.append(',');
-				}
-				
 				if(field.getValue().size() > 0) {
 					final String key = field.getKey();
 					final StringBuilder newPrefix = new StringBuilder(prefix.length() + key.length() + 2);
@@ -329,44 +334,38 @@ public interface IndexUtils {
 					stringBuilder.append("null");
 					appendedField = true;
 				}
+			} else if(field.getValue().isNull()) {
+				stringBuilder.append('\"');
+				stringBuilder.append(prefix);
+				stringBuilder.append(field.getKey());
+				stringBuilder.append('\"');
+				stringBuilder.append(':');
+				stringBuilder.append("null");
+				appendedField = true;
+			} else if(field.getValue().isNumber()) {
+				stringBuilder.append('\"');
+				stringBuilder.append(prefix);
+				stringBuilder.append(field.getKey());
+				stringBuilder.append('\"');
+				stringBuilder.append(':');
+				stringBuilder.append(field.getValue().numberValue());
+				appendedField = true;
+			} else if(field.getValue().isBoolean()) {
+				stringBuilder.append('\"');
+				stringBuilder.append(prefix);
+				stringBuilder.append(field.getKey());
+				stringBuilder.append('\"');
+				stringBuilder.append(':');
+				stringBuilder.append(field.getValue().booleanValue());
+				appendedField = true;
 			} else {
-				if(appendedField) {
-					stringBuilder.append(',');
-				}
-
-				if(field.getValue().isNull()) {
-					stringBuilder.append('\"');
-					stringBuilder.append(prefix);
-					stringBuilder.append(field.getKey());
-					stringBuilder.append('\"');
-					stringBuilder.append(':');
-					stringBuilder.append("null");
-					appendedField = true;
-				} else if(field.getValue().isNumber()) {
-					stringBuilder.append('\"');
-					stringBuilder.append(prefix);
-					stringBuilder.append(field.getKey());
-					stringBuilder.append('\"');
-					stringBuilder.append(':');
-					stringBuilder.append(field.getValue().numberValue());
-					appendedField = true;
-				} else if(field.getValue().isBoolean()) {
-					stringBuilder.append('\"');
-					stringBuilder.append(prefix);
-					stringBuilder.append(field.getKey());
-					stringBuilder.append('\"');
-					stringBuilder.append(':');
-					stringBuilder.append(field.getValue().booleanValue());
-					appendedField = true;
-				} else {
-					stringBuilder.append('\"');
-					stringBuilder.append(prefix);
-					stringBuilder.append(field.getKey());
-					stringBuilder.append('\"');
-					stringBuilder.append(':');
-					stringBuilder.append(field.getValue().toString());
-					appendedField = true;
-				}
+				stringBuilder.append('\"');
+				stringBuilder.append(prefix);
+				stringBuilder.append(field.getKey());
+				stringBuilder.append('\"');
+				stringBuilder.append(':');
+				stringBuilder.append(field.getValue().toString());
+				appendedField = true;
 			}
 		}
 		return appendedField;
@@ -378,23 +377,28 @@ public interface IndexUtils {
 		while(list.hasNext()) {
 			final JsonNode nextNode = list.next();
 
+			if(appendedField) {
+				stringBuilder.append(',');
+			}
+
 			if(nextNode.isArray()) {
 				if (nextNode.size() > 0) {
-					if(appendedField) {
-						stringBuilder.append(',');
-					}
-
 					final StringBuilder newPrefix = new StringBuilder(prefix.length() + 3);
 					newPrefix.append(prefix);
 					newPrefix.append('_');
 					newPrefix.append(i);
 					appendedField = flattenJson(newPrefix.toString(), nextNode.elements(), stringBuilder);
+				} else {
+					stringBuilder.append('\"');
+					stringBuilder.append(prefix);
+					stringBuilder.append('_');
+					stringBuilder.append(i);
+					stringBuilder.append('\"');
+					stringBuilder.append(':');
+					stringBuilder.append("null");
+					appendedField = true;
 				}
 			} else if(nextNode.isObject()) {
-				if(appendedField) {
-					stringBuilder.append(',');
-				}
-
 				if(nextNode.size() > 0) {
 					final StringBuilder newPrefix = new StringBuilder(prefix.length() + 4);
 					newPrefix.append(prefix);
@@ -412,48 +416,42 @@ public interface IndexUtils {
 					stringBuilder.append("null");
 					appendedField = true;
 				}
+			} else if(nextNode.isNull()) {
+				stringBuilder.append('\"');
+				stringBuilder.append(prefix);
+				stringBuilder.append('_');
+				stringBuilder.append(i);
+				stringBuilder.append('\"');
+				stringBuilder.append(':');
+				stringBuilder.append("null");
+				appendedField = true;
+			} else if(nextNode.isNumber()) {
+				stringBuilder.append('\"');
+				stringBuilder.append(prefix);
+				stringBuilder.append('_');
+				stringBuilder.append(i);
+				stringBuilder.append('\"');
+				stringBuilder.append(':');
+				stringBuilder.append(nextNode.numberValue());
+				appendedField = true;
+			} else if(nextNode.isBoolean()) {
+				stringBuilder.append('\"');
+				stringBuilder.append(prefix);
+				stringBuilder.append('_');
+				stringBuilder.append(i);
+				stringBuilder.append('\"');
+				stringBuilder.append(':');
+				stringBuilder.append(nextNode.booleanValue());
+				appendedField = true;
 			} else {
-				if(appendedField) {
-					stringBuilder.append(',');
-				}
-
-				if(nextNode.isNull()) {
-					stringBuilder.append('\"');
-					stringBuilder.append(prefix);
-					stringBuilder.append('_');
-					stringBuilder.append(i);
-					stringBuilder.append('\"');
-					stringBuilder.append(':');
-					stringBuilder.append("null");
-					appendedField = true;
-				} else if(nextNode.isNumber()) {
-					stringBuilder.append('\"');
-					stringBuilder.append(prefix);
-					stringBuilder.append('_');
-					stringBuilder.append(i);
-					stringBuilder.append('\"');
-					stringBuilder.append(':');
-					stringBuilder.append(nextNode.numberValue());
-					appendedField = true;
-				} else if(nextNode.isBoolean()) {
-					stringBuilder.append('\"');
-					stringBuilder.append(prefix);
-					stringBuilder.append('_');
-					stringBuilder.append(i);
-					stringBuilder.append('\"');
-					stringBuilder.append(':');
-					stringBuilder.append(nextNode.booleanValue());
-					appendedField = true;
-				} else {
-					stringBuilder.append('\"');
-					stringBuilder.append(prefix);
-					stringBuilder.append('_');
-					stringBuilder.append(i);
-					stringBuilder.append('\"');
-					stringBuilder.append(':');
-					stringBuilder.append(nextNode.toString());
-					appendedField = true;
-				}
+				stringBuilder.append('\"');
+				stringBuilder.append(prefix);
+				stringBuilder.append('_');
+				stringBuilder.append(i);
+				stringBuilder.append('\"');
+				stringBuilder.append(':');
+				stringBuilder.append(nextNode.toString());
+				appendedField = true;
 			}
 			i++;
 		}
