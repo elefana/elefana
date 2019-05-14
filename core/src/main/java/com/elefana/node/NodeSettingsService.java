@@ -156,7 +156,7 @@ public class NodeSettingsService {
 		for (int i = 0; i < roles.size(); i++) {
 			this.roles[i] = roles.get(i);
 		}
-		LOGGER.info("Master: " + masterNode + ", Data: " + dataNode + ", Ingest: " + ingestNode);
+		LOGGER.info("Node: " + nodeName +  ", Master: " + masterNode + ", Data: " + dataNode + ", Ingest: " + ingestNode);
 	}
 
 	protected boolean checkIfMasterNode() {
