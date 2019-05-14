@@ -164,6 +164,9 @@ public class NodeSettingsService {
 			return true;
 		}
 		final String jdbcUrl = environment.getProperty("spring.datasource.url", "");
+		if (!jdbcUrl.contains(":" + citusCoordinatorPort)) {
+			return false;
+		}
 		if (jdbcUrl.contains(citusCoordinatorHost)) {
 			return true;
 		}
