@@ -61,8 +61,9 @@ public class ElefanaApplication implements ApplicationListener<ContextRefreshedE
 		String configDirectory = null;
 		if(args.length > 0) {
 			for(int i = 0; i < args.length; i++) {
-				if(args[i].startsWith("--spring.config.location=")) {
-					configDirectory = args[i].substring(args[i].lastIndexOf('=') + 1);
+				if(args[i].startsWith("--spring.config.location=file:")) {
+					configDirectory = args[i].substring(args[i].lastIndexOf(':') + 1);
+					LOGGER.info(configDirectory);
 					break;
 				}
 			}
