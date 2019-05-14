@@ -58,19 +58,8 @@ public class ElefanaApplication implements ApplicationListener<ContextRefreshedE
 	public static void main(String[] args) {
 		JsonIterator.setMode(DecodingMode.REFLECTION_MODE);
 
-		String configDirectory = null;
-		if(args.length > 0) {
-			for(int i = 0; i < args.length; i++) {
-				if(args[i].startsWith("--spring.config.location=file:")) {
-					configDirectory = args[i].substring(args[i].lastIndexOf(':') + 1);
-					LOGGER.info(configDirectory);
-					break;
-				}
-			}
-		}
-		
 		SpringApplicationBuilder springApplicationBuilder = new SpringApplicationBuilder(ElefanaApplication.class);
-		APP_CONTEXT = springApplicationBuilder.sources(ElefanaApplication.class).properties(getProperties(configDirectory)).bannerMode(Mode.OFF)
+		APP_CONTEXT = springApplicationBuilder.sources(ElefanaApplication.class).properties(getProperties(null)).bannerMode(Mode.OFF)
 				.run(args);
 	}
 
