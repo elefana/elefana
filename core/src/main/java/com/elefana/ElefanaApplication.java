@@ -40,9 +40,9 @@ import com.jsoniter.spi.DecodingMode;
 public class ElefanaApplication implements ApplicationListener<ContextRefreshedEvent> {
 	private static final Logger LOGGER = LoggerFactory.getLogger(ElefanaApplication.class);
 	
-	private static final String LINUX_CONFIGURATION_PATH = "/etc/elefana";
-	private static final String MAC_CONFIGURATION_PATH = "/etc/elefana";
-	private static final String WINDOWS_CONFIGURATION_PATH = "C:\\Program Files\\elefana";
+	private static final String LINUX_CONFIGURATION_PATH = "/etc/elefana/";
+	private static final String MAC_CONFIGURATION_PATH = "/etc/elefana/";
+	private static final String WINDOWS_CONFIGURATION_PATH = "C:\\Program Files\\elefana\\";
 	
 	private static boolean APPLICATION_STARTED = false;
 	private static ConfigurableApplicationContext APP_CONTEXT;
@@ -57,6 +57,17 @@ public class ElefanaApplication implements ApplicationListener<ContextRefreshedE
 
 	public static void main(String[] args) {
 		JsonIterator.setMode(DecodingMode.REFLECTION_MODE);
+
+		String configDirectory = null;
+		if(args.length > 0) {
+			for(int i = 0; i < args.length; i++) {
+				if(args[i].startsWith("--spring.config.location=file:")) {
+					configDirectory = args[i].substring(args[i].lastIndexOf(':') + 1);
+					LOGGER.info(configDirectory);
+					break;
+				}
+			}
+		}
 
 		SpringApplicationBuilder springApplicationBuilder = new SpringApplicationBuilder(ElefanaApplication.class);
 		APP_CONTEXT = springApplicationBuilder.sources(ElefanaApplication.class).properties(getProperties(null)).bannerMode(Mode.OFF)
@@ -83,7 +94,11 @@ public class ElefanaApplication implements ApplicationListener<ContextRefreshedE
 	static Properties getProperties(String configDirectory) {
 		Properties props = new Properties();
 		if (configDirectory != null) {
-			props.put("spring.config.location", "file:" + configDirectory);
+			if(!configDirectory.endsWith("/")) {
+				props.put("spring.config.location", "file:" + configDirectory + "/");
+			} else {
+				props.put("spring.config.location", "file:" + configDirectory);
+			}
 		} else {
 			switch (OsInformation.getOs()) {
 			case WINDOWS:
