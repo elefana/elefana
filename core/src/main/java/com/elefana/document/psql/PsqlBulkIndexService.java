@@ -198,18 +198,17 @@ public class PsqlBulkIndexService implements Runnable {
 			String stagingTableName = null;
 
 			BulkIndexResult bulkIndexResult = BulkIndexResult.SUCCESS;
+			final Timer.Context indexTimer = bulkIndexTimer.time();
 			try {
 				stagingTableName = ingestTable.getIngestionTableName(stagingTableId);
 				final String targetTableName = indexUtils.getPartitionTableForIndex(connection, ingestTable.getIndex());
 
-				final Timer.Context indexTimer = bulkIndexTimer.time();
 				if (nodeSettingsService.isUsingCitus()) {
 					bulkIndexResult = mergeStagingTableIntoDistributedTable(connection, indexTemplate,
 							ingestTable, stagingTableId, stagingTableName, targetTableName);
 				} else {
 					mergeStagingTableIntoPartitionTable(connection, stagingTableName, targetTableName);
 				}
-				indexTimer.stop();
 			} catch (Exception e) {
 				if(e.getMessage() != null && e.getMessage().contains("duplicate key") &&
 					!e.getMessage().contains("pg_type_")) {
@@ -222,6 +221,7 @@ public class PsqlBulkIndexService implements Runnable {
 				}
 				connection.rollback();
 			}
+			indexTimer.stop();
 
 			try {
 				switch(bulkIndexResult) {

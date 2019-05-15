@@ -15,6 +15,7 @@
  ******************************************************************************/
 package com.elefana.document.psql;
 
+import com.codahale.metrics.MetricRegistry;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.indices.IndexTemplate;
 import com.elefana.api.indices.IndexTimeBucket;
@@ -56,7 +57,9 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 	@Autowired
 	protected IndexTemplateService indexTemplateService;
 	@Autowired
-	private TaskScheduler taskScheduler;
+	protected TaskScheduler taskScheduler;
+	@Autowired
+	protected MetricRegistry metricRegistry;
 
 	protected final ReadWriteLock lock = new ReentrantReadWriteLock();
 	protected final Map<String, HashIngestTable> indexToHashIngestTable = new ConcurrentHashMap<String, HashIngestTable>();
