@@ -156,6 +156,24 @@ public class PsqlBackedQueueTest{
 		Assert.assertEquals(MAX_CAPACITY, queue.queueSize());
 		Assert.assertEquals(0, queue.writeQueueSize());
 		Assert.assertEquals(HALF_CAPACITY + (MAX_CAPACITY * 2), queue.getTotalDatabaseEntries());
+
+		for(int i = 0; i < HALF_CAPACITY; i++) {
+			Assert.assertEquals("Test " + (i + HALF_CAPACITY), queue.poll());
+		}
+
+		Assert.assertEquals(HALF_CAPACITY, queue.queueSize());
+		Assert.assertEquals(0, queue.writeQueueSize());
+		Assert.assertEquals(HALF_CAPACITY + (MAX_CAPACITY * 2), queue.getTotalDatabaseEntries());
+
+		queue.run();
+		Assert.assertEquals(MAX_CAPACITY, queue.queueSize());
+		Assert.assertEquals(0, queue.writeQueueSize());
+		Assert.assertEquals(MAX_CAPACITY * 2, queue.getTotalDatabaseEntries());
+
+
+		for(int i = 0; i < MAX_CAPACITY; i++) {
+			Assert.assertEquals("Test " + (i + MAX_CAPACITY), queue.poll());
+		}
 	}
 
 
