@@ -23,19 +23,26 @@ import java.util.*;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 public abstract class HashPsqlBackedQueue<T> extends PsqlBackedQueue<T> {
-	private final Set<T> uniqueElements = new ConcurrentSkipListSet<T>();
-	private final List<T> tmpElements;
+	private Set<T> uniqueElements;
+	private List<T> tmpElements;
 
 	public HashPsqlBackedQueue(JdbcTemplate jdbcTemplate, TaskScheduler taskScheduler,
 	                           long ioIntervalMillis, int maxCapacity) throws SQLException {
 		super(jdbcTemplate, taskScheduler, ioIntervalMillis, maxCapacity);
-		tmpElements = new ArrayList<T>(maxCapacity + 1);
+
 	}
 
 	protected abstract void fetchFromDatabaseUnique(JdbcTemplate jdbcTemplate, List<T> results, int from, int limit) throws SQLException;
 
 	@Override
 	public void fetchFromDatabase(JdbcTemplate jdbcTemplate, List<T> results, int from, int limit) throws SQLException {
+		if(tmpElements == null) {
+			tmpElements = new ArrayList<T>(maxCapacity);
+		}
+		if(uniqueElements == null) {
+			uniqueElements = new ConcurrentSkipListSet<T>();
+		}
+
 		tmpElements.clear();
 		fetchFromDatabaseUnique(jdbcTemplate, tmpElements, from, limit);
 
