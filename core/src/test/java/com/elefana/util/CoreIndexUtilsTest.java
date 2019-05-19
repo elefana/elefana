@@ -16,14 +16,14 @@
 package com.elefana.util;
 
 import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -41,6 +41,11 @@ public class CoreIndexUtilsTest {
 	public void setUp() {
 		jdbcTemplate = mock(JdbcTemplate.class);
 		indexUtils.setJdbcTemplate(jdbcTemplate);
+	}
+
+	@After
+	public void teardown() {
+		validateMockitoUsage();
 	}
 	
 	@Test

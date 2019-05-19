@@ -13,22 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package com.elefana.util;
+package com.elefana.table;
 
 import com.elefana.api.indices.IndexGenerationMode;
 import com.elefana.api.indices.IndexGenerationSettings;
-import com.elefana.indices.IndexTemplateService;
 import com.elefana.node.NodeInfoService;
 import com.elefana.node.NodeSettingsService;
+import com.elefana.util.IndexUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -44,39 +44,29 @@ import java.util.concurrent.*;
 public class TableIndexCreator implements Runnable {
 	private static final Logger LOGGER = LoggerFactory.getLogger(TableIndexCreator.class);
 
-	private final Queue<String> tableIndexQueue = new LinkedList<String>();
-	private final Map<String, IndexGenerationMode> tableIndexModes = new HashMap<String, IndexGenerationMode>();
-
-	private final Queue<String> tableFieldIndexQueue = new LinkedList<String>();
-	private final Queue<String> fieldIndexQueue = new LinkedList<String>();
-	private final Map<String, IndexGenerationMode> tableFieldIndexModes = new HashMap<String, IndexGenerationMode>();
-
-	private final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
-
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 	@Autowired
 	private NodeInfoService nodeInfoService;
 	@Autowired
 	private NodeSettingsService nodeSettingsService;
+	@Autowired
+	private TaskScheduler taskScheduler;
+
+	private Queue<TableIndexDelay> tableIndexQueue;
+	private Queue<TableFieldIndexDelay> fieldIndexQueue;
 
 	@PostConstruct
 	public void postConstruct() throws SQLException {
 		if(!nodeInfoService.isMasterNode()) {
 			//Only master node can create indices
-			scheduledExecutorService.shutdown();
 			return;
 		}
 		final long interval = Math.min(nodeSettingsService.getFieldStatsInterval(), nodeSettingsService.getMappingInterval());
-		scheduledExecutorService.scheduleAtFixedRate(this, 30000L, Math.max(1000, interval), TimeUnit.MILLISECONDS);
-	}
 
-	@PreDestroy
-	public void preDestroy() {
-		if(!nodeInfoService.isMasterNode()) {
-			return;
-		}
-		scheduledExecutorService.shutdown();
+		tableIndexQueue = new TableIndexQueue(jdbcTemplate, taskScheduler, interval);
+		fieldIndexQueue = new TableFieldIndexQueue(jdbcTemplate, taskScheduler, interval);
+		taskScheduler.scheduleAtFixedRate(this, Math.max(1000, interval));
 	}
 
 	@Override
@@ -99,22 +89,10 @@ public class TableIndexCreator implements Runnable {
 		if(connection == null) {
 			connection = jdbcTemplate.getDataSource().getConnection();
 		}
-		final String fetchQueueQuery = "SELECT * FROM elefana_delayed_table_index_queue WHERE _timestamp <= " + System.currentTimeMillis();
-		PreparedStatement preparedStatement = connection.prepareStatement(fetchQueueQuery);
-		final ResultSet resultSet = preparedStatement.executeQuery();
-		while(resultSet.next()) {
-			final String tableName = resultSet.getString("_tableName");
-			final IndexGenerationMode indexGenerationMode = IndexGenerationMode.valueOf(resultSet.getString("_generationMode"));
-			tableIndexQueue.offer(tableName);
-			tableIndexModes.put(tableName, indexGenerationMode);
-		}
-		preparedStatement.close();
 
 		while(!tableIndexQueue.isEmpty()) {
-			final String tableName = tableIndexQueue.poll();
-			final IndexGenerationMode indexGenerationMode = tableIndexModes.remove(tableName);
-
-			internalCreatePsqlTableIndices(connection, tableName, indexGenerationMode);
+			final TableIndexDelay tableIndexDelay = tableIndexQueue.poll();
+			internalCreatePsqlTableIndices(connection, tableIndexDelay.getTableName(), tableIndexDelay.getMode());
 		}
 		return connection;
 	}
@@ -123,28 +101,12 @@ public class TableIndexCreator implements Runnable {
 		if(connection == null) {
 			connection = jdbcTemplate.getDataSource().getConnection();
 		}
-		final String fetchQueueQuery = "SELECT * FROM elefana_delayed_field_index_queue WHERE _timestamp <= " + System.currentTimeMillis();
-		PreparedStatement preparedStatement = connection.prepareStatement(fetchQueueQuery);
-		final ResultSet resultSet = preparedStatement.executeQuery();
-		while(resultSet.next()) {
-			final String tableName = resultSet.getString("_tableName");
-			final String fieldName = resultSet.getString("_fieldName");
-			final IndexGenerationMode indexGenerationMode = IndexGenerationMode.valueOf(resultSet.getString("_generationMode"));
-			tableFieldIndexQueue.offer(tableName);
-			fieldIndexQueue.offer(fieldName);
-			tableFieldIndexModes.put(tableName, indexGenerationMode);
+
+		while(!fieldIndexQueue.isEmpty()) {
+			final TableFieldIndexDelay fieldIndexDelay = fieldIndexQueue.poll();
+			internalCreatePsqlFieldIndex(connection, fieldIndexDelay.getTableName(),
+					fieldIndexDelay.getFieldName(), fieldIndexDelay.getMode());
 		}
-		preparedStatement.close();
-
-		while(!tableFieldIndexQueue.isEmpty()) {
-			final String tableName = tableFieldIndexQueue.poll();
-			final String fieldName = fieldIndexQueue.poll();
-			final IndexGenerationMode indexGenerationMode = tableFieldIndexModes.get(tableName);
-
-			internalCreatePsqlFieldIndex(connection, tableName, fieldName, indexGenerationMode);
-		}
-
-		tableFieldIndexModes.clear();
 		return connection;
 	}
 
@@ -153,8 +115,7 @@ public class TableIndexCreator implements Runnable {
 			internalCreatePsqlTableIndices(connection, tableName, indexGenerationSettings.getMode());
 		} else {
 			final long indexTimestamp = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(indexGenerationSettings.getIndexDelaySeconds());
-			jdbcTemplate.execute("INSERT INTO elefana_delayed_table_index_queue (_tableName, _timestamp, _generationMode) VALUES ('" +
-					tableName + "', " + indexTimestamp + ", '" + indexGenerationSettings.getMode().name() + "')");
+			tableIndexQueue.offer(new TableIndexDelay(tableName, indexTimestamp, indexGenerationSettings.getMode()));
 		}
 	}
 
@@ -163,8 +124,7 @@ public class TableIndexCreator implements Runnable {
 			internalCreatePsqlFieldIndex(connection, tableName, fieldName, indexGenerationSettings.getMode());
 		} else {
 			final long indexTimestamp = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(indexGenerationSettings.getIndexDelaySeconds());
-			jdbcTemplate.execute("INSERT INTO elefana_delayed_field_index_queue (_tableName, _fieldName, _timestamp, _generationMode) VALUES ('" +
-					tableName + "', '" + fieldName + "', " + indexTimestamp + ", '" + indexGenerationSettings.getMode().name() + "')");
+			fieldIndexQueue.offer(new TableFieldIndexDelay(tableName, fieldName, indexTimestamp, indexGenerationSettings.getMode()));
 		}
 	}
 

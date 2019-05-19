@@ -13,26 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package com.elefana.util;
+package com.elefana.table;
 
-public class CumulativeAverage {
-	private int entries = 0;
-	private int average = 0;
+import com.elefana.api.indices.IndexGenerationMode;
 
-	public CumulativeAverage() {
-		super();
+public class TableIndexDelay {
+	private final String tableName;
+	private final long indexTimestamp;
+	private final IndexGenerationMode mode;
+
+	public TableIndexDelay(String tableName, long indexTimestamp, IndexGenerationMode mode) {
+		this.tableName = tableName;
+		this.indexTimestamp = indexTimestamp;
+		this.mode = mode;
 	}
 
-	public CumulativeAverage(int initialValue) {
-		super();
-		add(initialValue);
+	public String getTableName() {
+		return tableName;
 	}
 
-	public synchronized int add(int x) {
-		return average += (x - average) / ++entries;
+	public long getIndexTimestamp() {
+		return indexTimestamp;
 	}
 
-	public synchronized int avg() {
-		return average;
+	public IndexGenerationMode getMode() {
+		return mode;
 	}
 }

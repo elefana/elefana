@@ -58,7 +58,7 @@ import com.elefana.search.SearchHitsQueryExecutor;
 import com.elefana.search.SearchQueryBuilder;
 import com.elefana.search.SearchService;
 import com.elefana.util.IndexUtils;
-import com.elefana.util.TableGarbageCollector;
+import com.elefana.table.TableGarbageCollector;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.spi.TypeLiteral;
 

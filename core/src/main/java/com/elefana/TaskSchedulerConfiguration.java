@@ -15,8 +15,10 @@
  ******************************************************************************/
 package com.elefana;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -28,6 +30,8 @@ import org.springframework.scheduling.config.ScheduledTaskRegistrar;
 @EnableAsync
 @EnableScheduling
 public class TaskSchedulerConfiguration implements SchedulingConfigurer {
+	@Autowired
+	Environment environment;
 
 	@Override
 	public void configureTasks(ScheduledTaskRegistrar taskRegistrar) {
@@ -37,7 +41,8 @@ public class TaskSchedulerConfiguration implements SchedulingConfigurer {
 	@Bean
     public TaskScheduler taskScheduler() {
         final ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
-        taskScheduler.setPoolSize(4);
+        taskScheduler.setPoolSize(Math.max(4, environment.getProperty("elefana.scheduler.pool.size",
+		        Integer.class, Runtime.getRuntime().availableProcessors() - 1)));
         return taskScheduler;
     }
 }
