@@ -47,7 +47,10 @@ public class TableFieldIndexQueue extends PsqlBackedQueue<TableFieldIndexDelay> 
 
 	@Override
 	public void removeFromDatabase(JdbcTemplate jdbcTemplate, int size) throws SQLException {
-
+		final String deleteQuery = "DELETE FROM elefana_delayed_table_index_queue WHERE _tableName IN (" +
+				"SELECT _tableName FROM elefana_delayed_table_index_queue ORDER BY _timestamp ASC LIMIT " + size + ") AND _fieldName IN (" +
+				"SELECT _fieldName FROM elefana_delayed_table_index_queue ORDER BY _timestamp ASC LIMIT " + size + ")";
+		jdbcTemplate.execute(deleteQuery);
 	}
 
 	@Override

@@ -48,6 +48,7 @@ public class TableIndexQueue extends PsqlBackedQueue<TableIndexDelay> {
 	public void removeFromDatabase(JdbcTemplate jdbcTemplate, int size) throws SQLException {
 		final String deleteQuery = "DELETE FROM elefana_delayed_table_index_queue WHERE _tableName IN (" +
 				"SELECT _tableName FROM elefana_delayed_table_index_queue ORDER BY _timestamp ASC LIMIT " + size + ")";
+		jdbcTemplate.execute(deleteQuery);
 	}
 
 	@Override
