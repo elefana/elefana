@@ -39,8 +39,9 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 	private final TaskScheduler taskScheduler;
 	private final AtomicBoolean dirty = new AtomicBoolean();
 
+	protected int previousQueueSize = 0;
 	protected int databaseCursor = 0;
-	protected int writeQueueRemainder = 0;
+	protected boolean writeQueueInMemory = true;
 
 	public PsqlBackedQueue(JdbcTemplate jdbcTemplate, TaskScheduler taskScheduler,
 	                       long ioIntervalMillis, int maxCapacity)
@@ -50,8 +51,8 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 		this.jdbcTemplate = jdbcTemplate;
 		this.taskScheduler = taskScheduler;
 
-		queue = new ArrayList<T>(maxCapacity + 1);
-		writeQueue = new ArrayList<T>(maxCapacity + 1);
+		queue = new ArrayList<T>(maxCapacity + 2);
+		writeQueue = new ArrayList<T>(maxCapacity + 2);
 
 		fetchFromDatabase(0);
 
@@ -65,13 +66,15 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 	public abstract void appendToDatabase(JdbcTemplate jdbcTemplate, List<T> elements) throws SQLException;
 
 	private void fetchFromDatabase(int from) throws SQLException {
-		fetchFromDatabase(jdbcTemplate, queue, from, maxCapacity - from);
-		databaseCursor = queue.size();
+		int previousSize = queue.size();
+		fetchFromDatabase(jdbcTemplate, queue, from, maxCapacity - previousSize);
+		databaseCursor += queue.size() - previousSize;
+		previousQueueSize = queue.size();
 	}
 
 	private void syncToDatabase() throws SQLException {
-		if(queue.size() < databaseCursor) {
-			int delta = databaseCursor - queue.size();
+		if(queue.size() < previousQueueSize) {
+			int delta = previousQueueSize - queue.size();
 			removeFromDatabase(jdbcTemplate, delta);
 			databaseCursor -= delta;
 		}
@@ -81,28 +84,27 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 		}
 
 		if(queue.size() < maxCapacity) {
-			if(writeQueueRemainder > 0 || writeQueue.isEmpty()) {
+			if(!writeQueueInMemory || writeQueue.isEmpty()) {
 				//Next entries need to come from database
 				fetchFromDatabase(databaseCursor);
-
-				writeQueueRemainder = databaseCursor >= maxCapacity ? writeQueueRemainder = 1 : 0;
+				writeQueueInMemory = false;
 			} else {
 				//Entries are already in memory
-				for(int i = databaseCursor; i < maxCapacity; i++) {
+				while(queue.size() < maxCapacity) {
 					if(writeQueue.isEmpty()) {
-						writeQueueRemainder = 0;
 						break;
 					}
 					queue.add(writeQueue.remove(0));
-
-					if(i == maxCapacity - 1) {
-						writeQueueRemainder = writeQueue.size();
-					}
+					databaseCursor++;
 				}
-				databaseCursor = queue.size();
+
+				writeQueueInMemory &= writeQueue.isEmpty();
 			}
+		} else if(writeQueue.size() > 0) {
+			writeQueueInMemory = false;
 		}
 		writeQueue.clear();
+		previousQueueSize = queue.size();
 	}
 
 	@Override
