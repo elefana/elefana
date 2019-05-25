@@ -54,7 +54,11 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 		queue = new ArrayList<T>(maxCapacity + 2);
 		writeQueue = new ArrayList<T>(maxCapacity + 2);
 
-		fetchFromDatabase(0);
+		try {
+			fetchFromDatabase(0);
+		} catch (Exception e) {
+			LOGGER.error(e.getMessage(), e);
+		}
 
 		taskScheduler.scheduleAtFixedRate(this, ioIntervalMillis);
 	}
