@@ -7,7 +7,10 @@ CREATE TABLE IF NOT EXISTS elefana_bulk_worker_index_queue (_queue_id VARCHAR(25
 CREATE TABLE IF NOT EXISTS elefana_file_deletion_queue (_filepath VARCHAR(255), _timestamp BIGINT);
 CREATE TABLE IF NOT EXISTS elefana_delayed_table_index_queue (_tableName VARCHAR(255), _timestamp BIGINT, _generationMode VARCHAR(255));
 CREATE TABLE IF NOT EXISTS elefana_delayed_field_index_queue (_tableName VARCHAR(255), _fieldName VARCHAR(255), _timestamp BIGINT, _generationMode VARCHAR(255));
- 
+
+CREATE TABLE IF NOT EXISTS elefana_index_field_mapping_queue (_index VARCHAR(255) UNIQUE, _timestamp BIGINT);
+CREATE TABLE IF NOT EXISTS elefana_index_field_stats_queue (_index VARCHAR(255) UNIQUE, _timestamp BIGINT);
+
 CREATE OR REPLACE FUNCTION select_shard(_distributedTable VARCHAR, _offset INT) RETURNS bigint AS $$
 DECLARE
   shard_id bigint;

@@ -22,7 +22,7 @@ import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.ConcurrentSkipListSet;
 
-public abstract class HashPsqlBackedQueue<T> extends PsqlBackedQueue<T> {
+public abstract class HashPsqlBackedQueue<T extends Comparable<T>> extends PsqlBackedQueue<T> {
 	private Set<T> uniqueElements;
 	private List<T> tmpElements;
 

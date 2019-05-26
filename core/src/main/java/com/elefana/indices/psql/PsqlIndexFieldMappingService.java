@@ -40,6 +40,7 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
+import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -47,11 +48,6 @@ import java.util.concurrent.*;
 @DependsOn("nodeSettingsService")
 public class PsqlIndexFieldMappingService implements IndexFieldMappingService, RequestExecutor {
 	private static final Logger LOGGER = LoggerFactory.getLogger(IndexFieldMappingService.class);
-
-	private final SortedSet<String> mappingQueue = new ConcurrentSkipListSet<String>();
-	private final SortedSet<String> fieldStatsQueue = new ConcurrentSkipListSet<String>();
-	private final SortedSet<String> delayedMappingQueue = new ConcurrentSkipListSet<String>();
-	private final SortedSet<String> delayedFieldStatsQueue = new ConcurrentSkipListSet<String>();
 
 	private long lastMapping = -1L;
 	private long lastFieldStats = -1L;
@@ -71,13 +67,16 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 	@Autowired
 	private IndexUtils indexUtils;
 
+	private IndexMappingQueue mappingQueue;
+	private IndexFieldStatsQueue fieldStatsQueue;
+
 	private ExecutorService executorService;
 	private ScheduledFuture<?> mappingScheduledTask, fieldStatsScheduledTask;
 
 	private FieldMapper fieldMapper;
 
 	@PostConstruct
-	public void postConstruct() {
+	public void postConstruct() throws SQLException {
 		switch (versionInfoService.getApiVersion()) {
 		case V_2_4_3:
 			fieldMapper = new V2FieldMapper();
@@ -87,6 +86,9 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 			fieldMapper = new V5FieldMapper();
 			break;
 		}
+
+		mappingQueue = new IndexMappingQueue(jdbcTemplate, taskScheduler, environment.getProperty("elefana.service.field.queue.io.interval", Long.class, TimeUnit.MINUTES.toMillis(15L)));
+		fieldStatsQueue = new IndexFieldStatsQueue(jdbcTemplate, taskScheduler, environment.getProperty("elefana.service.field.queue.io.interval", Long.class, TimeUnit.MINUTES.toMillis(15L)));
 
 		final int totalThreads = environment.getProperty("elefana.service.field.threads", Integer.class, 2);
 		executorService = Executors.newFixedThreadPool(totalThreads);
@@ -482,48 +484,43 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 	private void generateMappingsForQueuedTables() {
 		try {
 			while (!mappingQueue.isEmpty()) {
-				String nextIndex = mappingQueue.first();
+				QueuedIndex nextIndex = mappingQueue.poll();
 
-				Map<String, Object> mapping = getIndexTypeMappings(nextIndex);
+				Map<String, Object> mapping = getIndexTypeMappings(nextIndex.getIndex());
 
 				if (mapping.isEmpty()) {
-					IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndex(nextIndex);
+					IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndex(nextIndex.getIndex());
 
-					SqlRowSet rowSet = getSampleDocuments(nextIndex);
-					int totalSamples = generateMappingsForAllTypes(indexTemplate, mapping, nextIndex, rowSet);
+					SqlRowSet rowSet = getSampleDocuments(nextIndex.getIndex());
+					int totalSamples = generateMappingsForAllTypes(indexTemplate, mapping, nextIndex.getIndex(), rowSet);
 					if (totalSamples == 0) {
 						rowSet = jdbcTemplate.queryForRowSet("SELECT _type, _source FROM " + IndexUtils.DATA_TABLE
 								+ " WHERE _index = ? LIMIT " + nodeSettingsService.getFallbackMappingSampleSize(),
 								nextIndex);
-						generateMappingsForAllTypes(indexTemplate, mapping, nextIndex, rowSet);
+						generateMappingsForAllTypes(indexTemplate, mapping, nextIndex.getIndex(), rowSet);
 					}
 				} else {
 					for (String type : mapping.keySet()) {
-						final Set<String> existingFieldNames = getFieldNames(nextIndex, type);
+						final Set<String> existingFieldNames = getFieldNames(nextIndex.getIndex(), type);
 
 						Map<String, Object> typeMappings = (Map) mapping.get(type);
-						SqlRowSet rowSet = getSampleDocuments(nextIndex, type);
-						int totalSamples = generateMappingsForType(typeMappings, existingFieldNames, nextIndex, type, rowSet);
+						SqlRowSet rowSet = getSampleDocuments(nextIndex.getIndex(), type);
+						int totalSamples = generateMappingsForType(typeMappings, existingFieldNames, nextIndex.getIndex(), type, rowSet);
 						if (totalSamples == 0) {
 							rowSet = jdbcTemplate.queryForRowSet("SELECT _source FROM " + IndexUtils.DATA_TABLE
 									+ " WHERE _index = ? AND _type = ? LIMIT "
 									+ nodeSettingsService.getFallbackMappingSampleSize(), nextIndex, type);
-							generateMappingsForType(typeMappings, existingFieldNames, nextIndex, type, rowSet);
+							generateMappingsForType(typeMappings, existingFieldNames, nextIndex.getIndex(), type, rowSet);
 						}
 					}
 				}
-				generateFieldCapabilitiesForIndex(nextIndex);
+				generateFieldCapabilitiesForIndex(nextIndex.getIndex());
 
 				mappingQueue.remove(nextIndex);
 			}
 			lastMapping = System.currentTimeMillis();
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
-		}
-		while(!delayedMappingQueue.isEmpty()) {
-			final String nextIndex = delayedMappingQueue.first();
-			mappingQueue.add(nextIndex);
-			delayedMappingQueue.remove(nextIndex);
 		}
 	}
 
@@ -580,15 +577,9 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 	private void generateFieldStatsForQueuedTables() {
 		try {
 			while (!fieldStatsQueue.isEmpty()) {
-				String nextIndex = fieldStatsQueue.first();
-				generateFieldStatsForIndex(nextIndex);
+				QueuedIndex nextIndex = fieldStatsQueue.poll();
+				generateFieldStatsForIndex(nextIndex.getIndex());
 				fieldStatsQueue.remove(nextIndex);
-			}
-
-			while(!delayedFieldStatsQueue.isEmpty()) {
-				final String nextIndex = delayedFieldStatsQueue.first();
-				fieldStatsQueue.add(nextIndex);
-				delayedFieldStatsQueue.remove(nextIndex);
 			}
 
 			lastFieldStats = System.currentTimeMillis();
@@ -723,29 +714,19 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 	}
 
 	public void scheduleIndexForStats(String index) {
-		if(nodeSettingsService.isUsingCitus()) {
-			delayedFieldStatsQueue.add(index);
-		} else {
-			fieldStatsQueue.add(index);
-		}
+		final QueuedIndex queuedIndex = new QueuedIndex(index, System.currentTimeMillis() + 1000L);
+		fieldStatsQueue.add(queuedIndex);
 	}
 
 	public void scheduleIndexForMapping(String index) {
-		if(nodeSettingsService.isUsingCitus()) {
-			delayedMappingQueue.add(index);
-		} else {
-			mappingQueue.add(index);
-		}
+		final QueuedIndex queuedIndex = new QueuedIndex(index, System.currentTimeMillis() + 1000L);
+		mappingQueue.add(queuedIndex);
 	}
 
 	public void scheduleIndexForMappingAndStats(String index) {
-		if(nodeSettingsService.isUsingCitus()) {
-			delayedMappingQueue.add(index);
-			delayedFieldStatsQueue.add(index);
-		} else {
-			mappingQueue.add(index);
-			fieldStatsQueue.add(index);
-		}
+		final QueuedIndex queuedIndex = new QueuedIndex(index, System.currentTimeMillis() + 1000L);
+		mappingQueue.add(queuedIndex);
+		fieldStatsQueue.add(queuedIndex);
 	}
 
 	private void saveFieldNames(String index, String type, Set<String> fieldNames) throws ElefanaException {
