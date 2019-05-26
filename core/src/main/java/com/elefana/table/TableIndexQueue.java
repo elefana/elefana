@@ -66,7 +66,10 @@ public class TableIndexQueue extends PsqlBackedQueue<TableIndexDelay> {
 			PreparedStatement preparedStatement = connection.prepareStatement(
 					"INSERT INTO elefana_delayed_table_index_queue (_tableName, _timestamp, _generationMode) VALUES (?, ?, ?) ON CONFLICT (_tableName) DO NOTHING;");
 
+			final int batchSize = 100;
 			int count = 0;
+			int batched = 0;
+
 			for(TableIndexDelay indexDelay : elements) {
 				preparedStatement.setString(1, indexDelay.getTableName());
 				preparedStatement.setLong(2, indexDelay.getIndexTimestamp());
@@ -75,12 +78,15 @@ public class TableIndexQueue extends PsqlBackedQueue<TableIndexDelay> {
 
 				count++;
 
-				if(count % 100 == 0) {
+				if(count % batchSize == 0) {
 					preparedStatement.executeBatch();
+
+					batched += count;
+					count -= batchSize;
 				}
 			}
 
-			if(count < elements.size()) {
+			if(batched < elements.size()) {
 				preparedStatement.executeBatch();
 			}
 			preparedStatement.close();

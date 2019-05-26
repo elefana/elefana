@@ -20,6 +20,7 @@ import static org.hamcrest.Matchers.equalTo;
 
 import java.util.UUID;
 
+import com.elefana.TestUtils;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -38,6 +39,8 @@ public class MatchAllQueryTest extends AbstractQueryTest {
 	public void testDefaultToMatchAllQuery() {
 		final String index = UUID.randomUUID().toString();
 		final String type = "test";
+
+		TestUtils.disableMappingAndStatsForIndex(index);
 		
 		generateTermDocuments(DOCUMENT_QUANTITY, index, type);
 		
@@ -52,6 +55,8 @@ public class MatchAllQueryTest extends AbstractQueryTest {
 	public void testDefaultToMatchAllQueryWithGet() {
 		final String index = UUID.randomUUID().toString();
 		final String type = "test";
+
+		TestUtils.disableMappingAndStatsForIndex(index);
 		
 		generateTermDocuments(DOCUMENT_QUANTITY, index, type);
 		
@@ -66,6 +71,8 @@ public class MatchAllQueryTest extends AbstractQueryTest {
 	public void testMatchAllQuery() {
 		final String index = UUID.randomUUID().toString();
 		final String type = "test";
+
+		TestUtils.disableMappingAndStatsForIndex(index);
 		
 		generateTermDocuments(DOCUMENT_QUANTITY, index, type);
 		

@@ -38,8 +38,8 @@ public class IndexMappingQueue extends HashPsqlBackedQueue<QueuedIndex> {
 
 	@Override
 	protected void fetchFromDatabaseUnique(JdbcTemplate jdbcTemplate, List<QueuedIndex> results, int from, int limit) throws SQLException {
-		final SqlRowSet rowSet = jdbcTemplate.queryForRowSet("SELECT * FROM elefana_index_field_mapping_queue WHERE _timestamp <= " +
-				System.currentTimeMillis() + " ORDER BY _timestamp ASC LIMIT " + limit + " OFFSET " + from);
+		final SqlRowSet rowSet = jdbcTemplate.queryForRowSet(
+				"SELECT * FROM elefana_index_field_mapping_queue ORDER BY _timestamp ASC LIMIT " + limit + " OFFSET " + from);
 		while(rowSet.next()) {
 			results.add(new QueuedIndex(rowSet.getString("_index"),
 					rowSet.getLong("_timestamp")));
@@ -54,14 +54,17 @@ public class IndexMappingQueue extends HashPsqlBackedQueue<QueuedIndex> {
 	}
 
 	@Override
-	public void appendToDatabase(JdbcTemplate jdbcTemplate, List<QueuedIndex> elements) throws SQLException {
+	public void appendToDatabaseUnique(JdbcTemplate jdbcTemplate, List<QueuedIndex> elements) throws SQLException {
 		Connection connection = jdbcTemplate.getDataSource().getConnection();
 
 		try {
 			PreparedStatement preparedStatement = connection.prepareStatement(
 					"INSERT INTO elefana_index_field_mapping_queue (_index, _timestamp) VALUES (?, ?) ON CONFLICT (_index) DO NOTHING;");
 
+			final int batchSize = 100;
 			int count = 0;
+			int batched = 0;
+
 			for(QueuedIndex queuedIndex : elements) {
 				preparedStatement.setString(1, queuedIndex.getIndex());
 				preparedStatement.setLong(2, queuedIndex.getTimestamp());
@@ -69,12 +72,14 @@ public class IndexMappingQueue extends HashPsqlBackedQueue<QueuedIndex> {
 
 				count++;
 
-				if(count % 100 == 0) {
+				if(count % batchSize == 0) {
 					preparedStatement.executeBatch();
+					batched += count;
+					count -= batchSize;
 				}
 			}
 
-			if(count < elements.size()) {
+			if(batched < elements.size()) {
 				preparedStatement.executeBatch();
 			}
 			preparedStatement.close();

@@ -69,6 +69,10 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 
 	public abstract void appendToDatabase(JdbcTemplate jdbcTemplate, List<T> elements) throws SQLException;
 
+	protected void transferInMemory(T element) {
+		queue.add(element);
+	}
+
 	private void fetchFromDatabase(int from) throws SQLException {
 		int previousSize = queue.size();
 		fetchFromDatabase(jdbcTemplate, queue, from, maxCapacity - previousSize);
@@ -98,7 +102,7 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 					if(writeQueue.isEmpty()) {
 						break;
 					}
-					queue.add(writeQueue.remove(0));
+					transferInMemory(writeQueue.remove(0));
 					databaseCursor++;
 				}
 

@@ -20,6 +20,7 @@ import static org.hamcrest.Matchers.equalTo;
 
 import java.util.UUID;
 
+import com.elefana.TestUtils;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -38,6 +39,8 @@ public class BoolQueryTest extends AbstractQueryTest {
 	public void testBoolQuery() {
 		final String index = UUID.randomUUID().toString();
 		final String type = "test";
+
+		TestUtils.disableMappingAndStatsForIndex(index);
 		
 		generatePhraseDocuments(index, type);
 		
@@ -73,6 +76,8 @@ public class BoolQueryTest extends AbstractQueryTest {
 	public void testBoolQueryWithQueryString() {
 		final String index = UUID.randomUUID().toString();
 		final String type = "test";
+
+		TestUtils.disableMappingAndStatsForIndex(index);
 
 		generatePhraseDocuments(index, type);
 

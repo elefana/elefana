@@ -17,6 +17,8 @@ package com.elefana.api.indices;
 
 import com.jsoniter.annotation.JsonProperty;
 
+import java.util.Objects;
+
 public class IndexStorageSettings {
 	@JsonProperty("distribution")
 	private DistributionMode distributionMode;
@@ -26,7 +28,11 @@ public class IndexStorageSettings {
 	private String timestampPath;
 	@JsonProperty("index_generation")
 	private IndexGenerationSettings indexGenerationSettings;
-	
+	@JsonProperty("field_stats_disabled")
+	private boolean fieldStatsDisabled = false;
+	@JsonProperty("mapping_disabled")
+	private boolean mappingDisabled = false;
+
 	public DistributionMode getDistributionMode() {
 		if(distributionMode == null) {
 			distributionMode = DistributionMode.HASH;
@@ -68,40 +74,38 @@ public class IndexStorageSettings {
 		this.indexGenerationSettings = indexGenerationSettings;
 	}
 
+	public boolean isFieldStatsDisabled() {
+		return fieldStatsDisabled;
+	}
+
+	public void setFieldStatsDisabled(boolean fieldStatsDisabled) {
+		this.fieldStatsDisabled = fieldStatsDisabled;
+	}
+
+	public boolean isMappingDisabled() {
+		return mappingDisabled;
+	}
+
+	public void setMappingDisabled(boolean mappingDisabled) {
+		this.mappingDisabled = mappingDisabled;
+	}
+
+
 	@Override
-	public int hashCode() {
-		final int prime = 31;
-		int result = 1;
-		result = prime * result + ((distributionMode == null) ? 0 : distributionMode.hashCode());
-		result = prime * result + ((indexTimeBucket == null) ? 0 : indexTimeBucket.hashCode());
-		result = prime * result + ((indexGenerationSettings == null) ? 0 : indexGenerationSettings.hashCode());
-		result = prime * result + ((timestampPath == null) ? 0 : timestampPath.hashCode());
-		return result;
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		IndexStorageSettings that = (IndexStorageSettings) o;
+		return fieldStatsDisabled == that.fieldStatsDisabled &&
+				mappingDisabled == that.mappingDisabled &&
+				distributionMode == that.distributionMode &&
+				indexTimeBucket == that.indexTimeBucket &&
+				Objects.equals(timestampPath, that.timestampPath) &&
+				Objects.equals(indexGenerationSettings, that.indexGenerationSettings);
 	}
 
 	@Override
-	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		IndexStorageSettings other = (IndexStorageSettings) obj;
-		if (distributionMode != other.distributionMode)
-			return false;
-		if (indexTimeBucket != other.indexTimeBucket)
-			return false;
-		if (indexGenerationSettings == null) {
-			if (other.indexGenerationSettings != null)
-				return false;
-		} else if (!indexGenerationSettings.equals(other.indexGenerationSettings))
-			return false;
-		if (timestampPath == null) {
-			if (other.timestampPath != null)
-				return false;
-		} else if (!timestampPath.equals(other.timestampPath))
-			return false;
-		return true;
+	public int hashCode() {
+		return Objects.hash(distributionMode, indexTimeBucket, timestampPath, indexGenerationSettings, fieldStatsDisabled, mappingDisabled);
 	}
 }

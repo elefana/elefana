@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
+import com.elefana.TestUtils;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -47,6 +48,8 @@ public class RangeQueryTest extends AbstractQueryTest {
 		
 		final String index = UUID.randomUUID().toString();
 		final String type = "test";
+
+		TestUtils.disableMappingAndStatsForIndex(index);
 		
 		generateRangeDocuments(index, type);
 		

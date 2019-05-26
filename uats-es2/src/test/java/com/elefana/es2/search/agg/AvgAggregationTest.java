@@ -20,6 +20,7 @@ import static org.hamcrest.Matchers.equalTo;
 
 import java.util.UUID;
 
+import com.elefana.TestUtils;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -48,6 +49,8 @@ public class AvgAggregationTest extends AbstractAggregationTest {
 		
 		final String index = UUID.randomUUID().toString();
 		final String type = "test";
+
+		TestUtils.disableMappingAndStatsForIndex(index);
 		
 		generateDocuments(index, type);
 		

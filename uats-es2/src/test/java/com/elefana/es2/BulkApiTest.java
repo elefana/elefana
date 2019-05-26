@@ -26,6 +26,7 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+import com.elefana.TestUtils;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.any.Any;
 import io.restassured.config.DecoderConfig;
@@ -67,7 +68,9 @@ public class BulkApiTest {
 		final int totalDocuments = PsqlBulkIngestService.MINIMUM_BULK_SIZE + RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE);
 		final String index = "logs-" + UUID.randomUUID().toString();
 		final String type = "test";
-		
+
+		TestUtils.disableMappingAndStatsForIndex(index);
+
 		given()
 			.request()
 			.body(generateBulkRequest(index, type, totalDocuments))
@@ -106,6 +109,8 @@ public class BulkApiTest {
 		final int totalDocuments = PsqlBulkIngestService.MINIMUM_BULK_SIZE + RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE);
 		final String index = "logs-" + UUID.randomUUID().toString();
 		final String type = "test";
+
+		TestUtils.disableMappingAndStatsForIndex(index);
 		
 		given()
 			.request()
@@ -154,6 +159,8 @@ public class BulkApiTest {
 		final String index = "logs-" + UUID.randomUUID().toString();
 		final String type = "test";
 
+		TestUtils.disableMappingAndStatsForIndex(index);
+
 		given()
 				.request()
 				.body(generateBulkRequestWithLineBreak(index, type, totalDocuments))
@@ -193,6 +200,8 @@ public class BulkApiTest {
 		final int totalDocuments = PsqlBulkIngestService.MINIMUM_BULK_SIZE + RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE);
 		final String index = "logs-" + UUID.randomUUID().toString();
 		final String type = "test";
+
+		TestUtils.disableMappingAndStatsForIndex(index);
 
 		given()
 				.request()
@@ -234,6 +243,8 @@ public class BulkApiTest {
 		final String index = "logs-" + UUID.randomUUID().toString();
 		final String type = "test";
 
+		TestUtils.disableMappingAndStatsForIndex(index);
+
 		given()
 				.request()
 				.body(generateBulkRequestWithPipe(index, type, totalDocuments))
@@ -273,6 +284,8 @@ public class BulkApiTest {
 		final int totalDocuments = PsqlBulkIngestService.MINIMUM_BULK_SIZE + RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE);
 		final String index = "logs-" + UUID.randomUUID().toString();
 		final String type = "test";
+
+		TestUtils.disableMappingAndStatsForIndex(index);
 
 		given()
 				.request()
@@ -314,6 +327,8 @@ public class BulkApiTest {
 		final String index = "logs-" + UUID.randomUUID().toString();
 		final String type = "test";
 
+		TestUtils.disableMappingAndStatsForIndex(index);
+
 		given()
 				.request()
 				.body(generateBulkRequestWithEscapedNull(index, type, totalDocuments))
@@ -353,6 +368,8 @@ public class BulkApiTest {
 		final int totalDocuments = PsqlBulkIngestService.MINIMUM_BULK_SIZE + RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE);
 		final String index = "logs-" + UUID.randomUUID().toString();
 		final String type = "test";
+
+		TestUtils.disableMappingAndStatsForIndex(index);
 
 		given()
 				.request()
@@ -394,6 +411,8 @@ public class BulkApiTest {
 		final String index = "logs-" + UUID.randomUUID().toString();
 		final String type = "test";
 
+		TestUtils.disableMappingAndStatsForIndex(index);
+
 		given()
 				.request()
 				.body(generateBulkRequestWithCarriageReturn(index, type, totalDocuments))
@@ -433,6 +452,8 @@ public class BulkApiTest {
 		final int totalDocuments = PsqlBulkIngestService.MINIMUM_BULK_SIZE + RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE);
 		final String index = "logs-" + UUID.randomUUID().toString();
 		final String type = "test";
+
+		TestUtils.disableMappingAndStatsForIndex(index);
 
 		given()
 				.request()
@@ -474,6 +495,8 @@ public class BulkApiTest {
 		final String index = "logs-" + UUID.randomUUID().toString();
 		final String type = "test";
 
+		TestUtils.disableMappingAndStatsForIndex(index);
+
 		given()
 				.request()
 				.body(generateBulkRequestWithTab(index, type, totalDocuments))
@@ -512,6 +535,8 @@ public class BulkApiTest {
 	public void testBulkIndexingWithDuplicateKey() {
 		final String index = "logs-" + UUID.randomUUID().toString();
 		final String type = "test";
+
+		TestUtils.disableMappingAndStatsForIndex(index);
 
 		final String bulkRequest = generateBulkRequestWithFixedId(index, type);
 		for(int i = 0; i < 4; i++) {
@@ -555,6 +580,8 @@ public class BulkApiTest {
 		final String index = "logs-" + UUID.randomUUID().toString();
 		final String type = "test";
 
+		TestUtils.disableMappingAndStatsForIndex(index);
+
 		final String bulkRequest = generateBulkRequestWithFixedId(index, type);
 		for(int i = 0; i < 4; i++) {
 			given()
@@ -596,6 +623,8 @@ public class BulkApiTest {
 		final int totalDocuments = PsqlBulkIngestService.MINIMUM_BULK_SIZE + RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE);
 		final String index = "logs-" + UUID.randomUUID().toString();
 		final String type = "test";
+
+		TestUtils.disableMappingAndStatsForIndex(index);
 		
 		String data = generateBulkRequest(index, type, totalDocuments);
 		data = data.substring(0, data.length() - 5);
@@ -616,7 +645,9 @@ public class BulkApiTest {
 		final int totalDocuments = PsqlBulkIngestService.MINIMUM_BULK_SIZE + RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE);
 		final String index = "logs-" + UUID.randomUUID().toString();
 		final String type = "test";
-		
+
+		TestUtils.disableMappingAndStatsForIndex(index);
+
 		final String requestBody = generateBulkRequest(index, type, totalDocuments);
 		
 		given()
@@ -658,6 +689,8 @@ public class BulkApiTest {
 		final int totalDocuments = PsqlBulkIngestService.MINIMUM_BULK_SIZE + RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE);
 		final String index = "logs-" + UUID.randomUUID().toString();
 		final String type = "test";
+
+		TestUtils.disableMappingAndStatsForIndex(index);
 		
 		given()
 			.request()

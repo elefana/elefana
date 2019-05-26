@@ -21,6 +21,7 @@ import static org.hamcrest.Matchers.equalTo;
 import java.util.List;
 import java.util.UUID;
 
+import com.elefana.TestUtils;
 import io.restassured.path.json.exception.JsonPathException;
 import io.restassured.response.Response;
 import io.restassured.response.ValidatableResponse;
@@ -208,6 +209,8 @@ public class IndexMappingTest {
 	public void testIndexRefresh() {
 		final String index = UUID.randomUUID().toString();
 		final String type = "test";
+
+		TestUtils.disableMappingAndStatsForIndex(index);
 		
 		given()
 			.request()

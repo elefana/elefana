@@ -22,6 +22,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
+import com.elefana.TestUtils;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -45,7 +46,9 @@ public class CardinalityAggregationTest extends AbstractAggregationTest {
 		
 		final String index = UUID.randomUUID().toString();
 		final String type = "test";
-		
+
+		TestUtils.disableMappingAndStatsForIndex(index);
+
 		generateDocuments(index, type);
 		
 		given()

@@ -20,6 +20,7 @@ import static org.hamcrest.Matchers.equalTo;
 
 import java.util.UUID;
 
+import com.elefana.TestUtils;
 import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 import org.apache.commons.math3.stat.descriptive.rank.Percentile.EstimationType;
 import org.junit.Assert;
@@ -56,6 +57,8 @@ public class PercentilesAggregationTest extends AbstractAggregationTest {
 		
 		final String index = UUID.randomUUID().toString();
 		final String type = "test";
+
+		TestUtils.disableMappingAndStatsForIndex(index);
 		
 		generateDocuments(index, type);
 		

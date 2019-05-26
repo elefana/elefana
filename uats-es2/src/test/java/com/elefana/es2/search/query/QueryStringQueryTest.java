@@ -20,6 +20,7 @@ import static org.hamcrest.Matchers.equalTo;
 
 import java.util.UUID;
 
+import com.elefana.TestUtils;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -39,6 +40,8 @@ public class QueryStringQueryTest extends AbstractQueryTest {
 	public void testBasicQueryString() {
 		final String index = UUID.randomUUID().toString();
 		final String type = "test";
+
+		TestUtils.disableMappingAndStatsForIndex(index);
 		
 		generatePhraseDocuments(index, type);
 		
@@ -56,6 +59,8 @@ public class QueryStringQueryTest extends AbstractQueryTest {
 	public void testBasicQueryStringNoDefaultField() {
 		final String index = UUID.randomUUID().toString();
 		final String type = "test";
+
+		TestUtils.disableMappingAndStatsForIndex(index);
 		
 		generatePhraseDocuments(index, type);
 		

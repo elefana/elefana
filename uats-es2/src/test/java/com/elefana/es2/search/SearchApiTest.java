@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.elefana.TestUtils;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -45,6 +46,8 @@ public class SearchApiTest extends AbstractQueryTest {
 		final String index = UUID.randomUUID().toString();
 		final String type = "test";
 		final int totalDocuments = 10;
+
+		TestUtils.disableMappingAndStatsForIndex(index);
 		
 		generateRangeDocuments(index, type);
 		

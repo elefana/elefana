@@ -33,6 +33,8 @@ public abstract class HashPsqlBackedQueue<T extends Comparable<T>> extends PsqlB
 
 	protected abstract void fetchFromDatabaseUnique(JdbcTemplate jdbcTemplate, List<T> results, int from, int limit) throws SQLException;
 
+	protected abstract void appendToDatabaseUnique(JdbcTemplate jdbcTemplate, List<T> elements) throws SQLException;
+
 	@Override
 	public void fetchFromDatabase(JdbcTemplate jdbcTemplate, List<T> results, int from, int limit) throws SQLException {
 		if(tmpElements == null) {
@@ -50,6 +52,19 @@ public abstract class HashPsqlBackedQueue<T extends Comparable<T>> extends PsqlB
 				results.add(element);
 			}
  		}
+	}
+
+
+	@Override
+	public void appendToDatabase(JdbcTemplate jdbcTemplate, List<T> elements) throws SQLException {
+		appendToDatabaseUnique(jdbcTemplate, elements);
+		uniqueElements.removeAll(elements);
+	}
+
+	@Override
+	protected void transferInMemory(T element) {
+		uniqueElements.add(element);
+		super.transferInMemory(element);
 	}
 
 	@Override

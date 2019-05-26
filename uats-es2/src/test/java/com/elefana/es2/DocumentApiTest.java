@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Scanner;
 import java.util.UUID;
 
+import com.elefana.TestUtils;
 import io.restassured.path.json.exception.JsonPathException;
 import org.junit.Assert;
 import org.junit.Before;
@@ -53,6 +54,8 @@ public class DocumentApiTest extends DocumentedTest {
 	@Before
 	public void setup() {
 		RestAssured.baseURI = "http://localhost:9201";
+
+		TestUtils.disableMappingAndStatsForIndex(INDEX);
 	}
 	
 	@Test

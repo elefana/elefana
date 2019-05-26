@@ -22,6 +22,7 @@ import static org.hamcrest.Matchers.equalTo;
 import java.util.List;
 import java.util.UUID;
 
+import com.elefana.TestUtils;
 import io.restassured.path.json.exception.JsonPathException;
 import io.restassured.response.ValidatableResponse;
 import org.junit.Assert;
@@ -43,7 +44,7 @@ public class DateHistogramAggregationTest extends AbstractAggregationTest {
 	public void testDateHistogramAggregationByDays() {
 		final String index = UUID.randomUUID().toString();
 		final String type = "test";
-		
+
 		generateDocuments(index, type);
 
 		final long startTime = System.currentTimeMillis();
@@ -85,7 +86,7 @@ public class DateHistogramAggregationTest extends AbstractAggregationTest {
 	public void testDateHistogramAggregationByDaysWithSubAggregation() {
 		final String index = UUID.randomUUID().toString();
 		final String type = "test";
-		
+
 		generateDocuments(index, type);
 
 		final long startTime = System.currentTimeMillis();
@@ -128,7 +129,7 @@ public class DateHistogramAggregationTest extends AbstractAggregationTest {
 	public void testDateHistogramAggregationWithNoResults() {
 		final String index = UUID.randomUUID().toString();
 		final String type = "test";
-		
+
 		try {
 			Thread.sleep(1000L);
 		} catch (Exception e) {}

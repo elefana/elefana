@@ -491,17 +491,20 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 				}
 				nextIndex = mappingQueue.poll();
 
+				final IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndex(nextIndex.getIndex());
+				if(indexTemplate != null && indexTemplate.getStorage() != null && indexTemplate.getStorage().isMappingDisabled()) {
+					continue;
+				}
+
 				Map<String, Object> mapping = getIndexTypeMappings(nextIndex.getIndex());
 
 				if (mapping.isEmpty()) {
-					IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndex(nextIndex.getIndex());
-
 					SqlRowSet rowSet = getSampleDocuments(nextIndex.getIndex());
 					int totalSamples = generateMappingsForAllTypes(indexTemplate, mapping, nextIndex.getIndex(), rowSet);
 					if (totalSamples == 0) {
 						rowSet = jdbcTemplate.queryForRowSet("SELECT _type, _source FROM " + IndexUtils.DATA_TABLE
 								+ " WHERE _index = ? LIMIT " + nodeSettingsService.getFallbackMappingSampleSize(),
-								nextIndex);
+								nextIndex.getIndex());
 						generateMappingsForAllTypes(indexTemplate, mapping, nextIndex.getIndex(), rowSet);
 					}
 				} else {
@@ -514,7 +517,7 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 						if (totalSamples == 0) {
 							rowSet = jdbcTemplate.queryForRowSet("SELECT _source FROM " + IndexUtils.DATA_TABLE
 									+ " WHERE _index = ? AND _type = ? LIMIT "
-									+ nodeSettingsService.getFallbackMappingSampleSize(), nextIndex, type);
+									+ nodeSettingsService.getFallbackMappingSampleSize(), nextIndex.getIndex(), type);
 							generateMappingsForType(typeMappings, existingFieldNames, nextIndex.getIndex(), type, rowSet);
 						}
 					}
@@ -601,7 +604,13 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 		final List<String> types = getTypesForIndex(indexName);
 
 		final String queryTarget = nodeSettingsService.isUsingCitus() ? indexUtils.getQueryTarget(indexName) : IndexUtils.DATA_TABLE;
+
 		jdbcTemplate.execute("ANALYZE " + queryTarget);
+
+		final IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndex(indexName);
+		if(indexTemplate != null && indexTemplate.getStorage() != null && indexTemplate.getStorage().isFieldStatsDisabled()) {
+			return;
+		}
 
 		final String totalDocsQuery = nodeSettingsService.isUsingCitus()
 				? "SELECT COUNT(_id) FROM " + queryTarget
@@ -722,11 +731,11 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 	}
 
 	public void scheduleIndexForStats(String index) {
-		fieldStatsQueue.add(new QueuedIndex(index, System.currentTimeMillis() + nodeSettingsService.getFieldStatsInterval()));
+		fieldStatsQueue.offer(new QueuedIndex(index, System.currentTimeMillis() + nodeSettingsService.getFieldStatsInterval()));
 	}
 
 	public void scheduleIndexForMapping(String index) {
-		mappingQueue.add(new QueuedIndex(index, System.currentTimeMillis() + nodeSettingsService.getMappingInterval()));
+		mappingQueue.offer(new QueuedIndex(index, System.currentTimeMillis() + nodeSettingsService.getMappingInterval()));
 	}
 
 	public void scheduleIndexForMappingAndStats(String index) {
