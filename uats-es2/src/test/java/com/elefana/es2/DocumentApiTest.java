@@ -54,8 +54,6 @@ public class DocumentApiTest extends DocumentedTest {
 	@Before
 	public void setup() {
 		RestAssured.baseURI = "http://localhost:9201";
-
-		TestUtils.disableMappingAndStatsForIndex(INDEX);
 	}
 	
 	@Test
