@@ -142,6 +142,8 @@ public class PsqlBulkIndexService implements Runnable {
 	}
 
 	private <T extends IngestTable> Connection processQueue(Connection connection, Queue<T> queue) throws SQLException {
+		boolean atLeast1Ingestion = false;
+
 		while(!queue.isEmpty()) {
 			final IngestTable nextIngestTable = queue.poll();
 
@@ -156,6 +158,8 @@ public class PsqlBulkIndexService implements Runnable {
 						((PsqlIndexFieldMappingService) indexFieldMappingService).
 								scheduleIndexForMappingAndStats(nextIngestTable.getIndex());
 					}
+
+					atLeast1Ingestion = true;
 				}
 			} catch (Exception e) {
 				LOGGER.error(e.getMessage(), e);
@@ -170,6 +174,13 @@ public class PsqlBulkIndexService implements Runnable {
 				}
 			}
 		}
+
+		if(!atLeast1Ingestion) {
+			try {
+				Thread.sleep(10L);
+			} catch (Exception e) {}
+		}
+
 		return connection;
 	}
 

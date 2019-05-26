@@ -230,12 +230,12 @@ public class DefaultHashIngestTable implements HashIngestTable {
 	}
 
 	public int lockTable() throws ElefanaException {
-		return lockTable(2L * locks.length);
+		return lockTable(1L);
 	}
 
-	public int lockTable(long timeout) throws ElefanaException {
+	public int lockTable(long timeoutMillis) throws ElefanaException {
 		final long timestamp = System.currentTimeMillis();
-		while(System.currentTimeMillis() - timestamp < timeout) {
+		while(System.currentTimeMillis() - timestamp < timeoutMillis) {
 			for(int i = 0; i < locks.length; i++) {
 				int index = writeIndex.get() % locks.length;
 				writeIndex.set(index + 1);
@@ -249,12 +249,12 @@ public class DefaultHashIngestTable implements HashIngestTable {
 	}
 
 	public int lockWrittenTable() throws ElefanaException {
-		return lockWrittenTable(5L * locks.length);
+		return lockWrittenTable(100000L);
 	}
 
-	public int lockWrittenTable(long timeout) throws ElefanaException {
-		final long timestamp = System.currentTimeMillis();
-		while(System.currentTimeMillis() - timestamp < timeout) {
+	public int lockWrittenTable(long timeoutNanos) throws ElefanaException {
+		final long timestamp = System.nanoTime();
+		while(System.nanoTime() - timestamp < timeoutNanos) {
 			for(int i = 0; i < locks.length; i++) {
 				int index = readIndex.get() % locks.length;
 				readIndex.set(index + 1);
@@ -267,7 +267,7 @@ public class DefaultHashIngestTable implements HashIngestTable {
 						lastUsageTimestamp.set(System.currentTimeMillis());
 						return index;
 					}
-					if(System.currentTimeMillis() - timestamp >= timeout) {
+					if(System.nanoTime() - timestamp >= timeoutNanos) {
 						return -1;
 					}
 				} catch (Exception e) {
