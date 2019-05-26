@@ -16,15 +16,22 @@
 package com.elefana.table;
 
 import com.elefana.api.indices.IndexGenerationMode;
+import com.elefana.indices.psql.IndexMappingQueue;
+import com.elefana.indices.psql.QueuedIndex;
 import com.elefana.util.PsqlBackedQueue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.scheduling.TaskScheduler;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.List;
 
 public class TableIndexQueue extends PsqlBackedQueue<TableIndexDelay> {
+	private static final Logger LOGGER = LoggerFactory.getLogger(TableIndexQueue.class);
 	private static final int MAX_CAPACITY = 100;
 
 	public TableIndexQueue(JdbcTemplate jdbcTemplate, TaskScheduler taskScheduler, long ioIntervalMillis) throws SQLException {
@@ -53,9 +60,35 @@ public class TableIndexQueue extends PsqlBackedQueue<TableIndexDelay> {
 
 	@Override
 	public void appendToDatabase(JdbcTemplate jdbcTemplate, List<TableIndexDelay> elements) throws SQLException {
-		for(TableIndexDelay indexDelay : elements) {
-			jdbcTemplate.execute("INSERT INTO elefana_delayed_table_index_queue (_tableName, _timestamp, _generationMode) VALUES ('" +
-					indexDelay.getTableName() + "', " + indexDelay.getIndexTimestamp() + ", '" + indexDelay.getMode().name() + "')");
+		Connection connection = jdbcTemplate.getDataSource().getConnection();
+
+		try {
+			PreparedStatement preparedStatement = connection.prepareStatement(
+					"INSERT INTO elefana_delayed_table_index_queue (_tableName, _timestamp, _generationMode) VALUES (?, ?, ?) ON CONFLICT (_tableName) DO NOTHING;");
+
+			int count = 0;
+			for(TableIndexDelay indexDelay : elements) {
+				preparedStatement.setString(1, indexDelay.getTableName());
+				preparedStatement.setLong(2, indexDelay.getIndexTimestamp());
+				preparedStatement.setString(3, indexDelay.getMode().name());
+				preparedStatement.addBatch();
+
+				count++;
+
+				if(count % 100 == 0) {
+					preparedStatement.executeBatch();
+				}
+			}
+
+			if(count < elements.size()) {
+				preparedStatement.executeBatch();
+			}
+			preparedStatement.close();
+			connection.close();
+		} catch (Exception e) {
+			LOGGER.error(e.getMessage(), e);
+			connection.close();
+			throw e;
 		}
 	}
 }

@@ -484,7 +484,12 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 	private void generateMappingsForQueuedTables() {
 		try {
 			while (!mappingQueue.isEmpty()) {
-				QueuedIndex nextIndex = mappingQueue.poll();
+				QueuedIndex nextIndex = mappingQueue.peek();
+				if(nextIndex.getTimestamp() > System.currentTimeMillis()) {
+					lastMapping = System.currentTimeMillis();
+					return;
+				}
+				nextIndex = mappingQueue.poll();
 
 				Map<String, Object> mapping = getIndexTypeMappings(nextIndex.getIndex());
 
@@ -515,8 +520,6 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 					}
 				}
 				generateFieldCapabilitiesForIndex(nextIndex.getIndex());
-
-				mappingQueue.remove(nextIndex);
 			}
 			lastMapping = System.currentTimeMillis();
 		} catch (Exception e) {
@@ -577,9 +580,14 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 	private void generateFieldStatsForQueuedTables() {
 		try {
 			while (!fieldStatsQueue.isEmpty()) {
-				QueuedIndex nextIndex = fieldStatsQueue.poll();
+				QueuedIndex nextIndex = fieldStatsQueue.peek();
+				if(nextIndex.getTimestamp() > System.currentTimeMillis()) {
+					lastFieldStats = System.currentTimeMillis();
+					return;
+				}
+				nextIndex = fieldStatsQueue.poll();
+
 				generateFieldStatsForIndex(nextIndex.getIndex());
-				fieldStatsQueue.remove(nextIndex);
 			}
 
 			lastFieldStats = System.currentTimeMillis();
@@ -714,19 +722,16 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 	}
 
 	public void scheduleIndexForStats(String index) {
-		final QueuedIndex queuedIndex = new QueuedIndex(index, System.currentTimeMillis() + 1000L);
-		fieldStatsQueue.add(queuedIndex);
+		fieldStatsQueue.add(new QueuedIndex(index, System.currentTimeMillis() + nodeSettingsService.getFieldStatsInterval()));
 	}
 
 	public void scheduleIndexForMapping(String index) {
-		final QueuedIndex queuedIndex = new QueuedIndex(index, System.currentTimeMillis() + 1000L);
-		mappingQueue.add(queuedIndex);
+		mappingQueue.add(new QueuedIndex(index, System.currentTimeMillis() + nodeSettingsService.getMappingInterval()));
 	}
 
 	public void scheduleIndexForMappingAndStats(String index) {
-		final QueuedIndex queuedIndex = new QueuedIndex(index, System.currentTimeMillis() + 1000L);
-		mappingQueue.add(queuedIndex);
-		fieldStatsQueue.add(queuedIndex);
+		scheduleIndexForMapping(index);
+		scheduleIndexForStats(index);
 	}
 
 	private void saveFieldNames(String index, String type, Set<String> fieldNames) throws ElefanaException {

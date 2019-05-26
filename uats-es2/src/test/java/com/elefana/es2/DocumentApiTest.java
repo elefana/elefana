@@ -107,9 +107,18 @@ public class DocumentApiTest extends DocumentedTest {
 				.then()
 				.statusCode(200);
 
+		try {
+			Thread.sleep(50);
+		} catch (Exception e) {}
+
 		given().when().delete("/" + INDEX + "/" + TYPE + "/" + id)
 				.then()
-				.statusCode(200);
+				.statusCode(200)
+				.body("result", equalTo("deleted"));
+
+		try {
+			Thread.sleep(50);
+		} catch (Exception e) {}
 
 		given().when().get("/" + INDEX + "/" + TYPE + "/" + id)
 				.then()

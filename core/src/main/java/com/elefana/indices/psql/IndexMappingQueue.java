@@ -16,14 +16,19 @@
 package com.elefana.indices.psql;
 
 import com.elefana.util.HashPsqlBackedQueue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.scheduling.TaskScheduler;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.List;
 
 public class IndexMappingQueue extends HashPsqlBackedQueue<QueuedIndex> {
+	private static final Logger LOGGER = LoggerFactory.getLogger(IndexMappingQueue.class);
 	private static final int MAX_CAPACITY = 60 * 60;
 
 	public IndexMappingQueue(JdbcTemplate jdbcTemplate, TaskScheduler taskScheduler,
@@ -50,9 +55,34 @@ public class IndexMappingQueue extends HashPsqlBackedQueue<QueuedIndex> {
 
 	@Override
 	public void appendToDatabase(JdbcTemplate jdbcTemplate, List<QueuedIndex> elements) throws SQLException {
-		for(QueuedIndex queuedIndex : elements) {
-			jdbcTemplate.execute("INSERT INTO elefana_index_field_mapping_queue (_index, _timestamp) VALUES ('" +
-					queuedIndex.getIndex() + "', " + queuedIndex.getTimestamp() + ") ON CONFLICT (_index) DO NOTHING");
+		Connection connection = jdbcTemplate.getDataSource().getConnection();
+
+		try {
+			PreparedStatement preparedStatement = connection.prepareStatement(
+					"INSERT INTO elefana_index_field_mapping_queue (_index, _timestamp) VALUES (?, ?) ON CONFLICT (_index) DO NOTHING;");
+
+			int count = 0;
+			for(QueuedIndex queuedIndex : elements) {
+				preparedStatement.setString(1, queuedIndex.getIndex());
+				preparedStatement.setLong(2, queuedIndex.getTimestamp());
+				preparedStatement.addBatch();
+
+				count++;
+
+				if(count % 100 == 0) {
+					preparedStatement.executeBatch();
+				}
+			}
+
+			if(count < elements.size()) {
+				preparedStatement.executeBatch();
+			}
+			preparedStatement.close();
+			connection.close();
+		} catch (Exception e) {
+			LOGGER.error(e.getMessage(), e);
+			connection.close();
+			throw e;
 		}
 	}
 }

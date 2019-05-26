@@ -29,7 +29,6 @@ public abstract class HashPsqlBackedQueue<T extends Comparable<T>> extends PsqlB
 	public HashPsqlBackedQueue(JdbcTemplate jdbcTemplate, TaskScheduler taskScheduler,
 	                           long ioIntervalMillis, int maxCapacity) throws SQLException {
 		super(jdbcTemplate, taskScheduler, ioIntervalMillis, maxCapacity);
-
 	}
 
 	protected abstract void fetchFromDatabaseUnique(JdbcTemplate jdbcTemplate, List<T> results, int from, int limit) throws SQLException;
