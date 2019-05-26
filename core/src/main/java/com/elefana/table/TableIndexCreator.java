@@ -135,7 +135,7 @@ public class TableIndexCreator implements Runnable {
 		case PRESET:
 		case DYNAMIC:
 			final String btreeIndexName = IndexUtils.BTREE_INDEX_PREFIX + tableName + "_" + fieldName;
-			final String createGinFieldIndexQuery = "CREATE INDEX IF NOT EXISTS " + btreeIndexName + " ON " + tableName + " USING BTREE ((_source->>'" + fieldName + "'));";
+			final String createGinFieldIndexQuery = "CREATE INDEX CONCURRENTLY IF NOT EXISTS " + btreeIndexName + " ON " + tableName + " USING BTREE ((_source->>'" + fieldName + "'));";
 			LOGGER.info(createGinFieldIndexQuery);
 			PreparedStatement preparedStatement = connection.prepareStatement(createGinFieldIndexQuery);
 			preparedStatement.execute();
@@ -151,7 +151,7 @@ public class TableIndexCreator implements Runnable {
 		PreparedStatement preparedStatement;
 
 		if(indexGenerationMode.equals(IndexGenerationMode.ALL)) {
-			final String createGinIndexQuery = "CREATE INDEX IF NOT EXISTS " + ginIndexName + " ON " + tableName
+			final String createGinIndexQuery = "CREATE INDEX CONCURRENTLY IF NOT EXISTS " + ginIndexName + " ON " + tableName
 					+ " USING GIN (_source jsonb_ops)";
 			LOGGER.info(createGinIndexQuery);
 			preparedStatement = connection.prepareStatement(createGinIndexQuery);
@@ -159,7 +159,7 @@ public class TableIndexCreator implements Runnable {
 			preparedStatement.close();
 		}
 
-		final String createTimestampIndexQuery = "CREATE INDEX IF NOT EXISTS " + brinIndexName + " ON "
+		final String createTimestampIndexQuery = "CREATE INDEX CONCURRENTLY IF NOT EXISTS " + brinIndexName + " ON "
 				+ tableName + " USING BRIN (_timestamp, _bucket1s, _bucket1m, _bucket1h, _bucket1d) WITH (pages_per_range = " + nodeSettingsService.getBrinPagesPerRange() + ")";
 		LOGGER.info(createTimestampIndexQuery);
 		preparedStatement = connection.prepareStatement(createTimestampIndexQuery);
