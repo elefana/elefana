@@ -419,22 +419,10 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 		for (String index : indexUtils.listIndicesForIndexPattern(indexPattern)) {
 			final String queryTarget = indexUtils.getQueryTarget(index);
 
-			for (String type : indexFieldMappingService.getTypesForIndex(index, typePattern)) {
+			if(typePattern.equals("*") && nodeSettingsService.isUsingCitus()) {
 				StringBuilder queryBuilder = new StringBuilder();
-				queryBuilder.append("DELETE FROM ");
+				queryBuilder.append("TRUNCATE ");
 				queryBuilder.append(queryTarget);
-				queryBuilder.append(" WHERE ");
-
-				if (!nodeSettingsService.isUsingCitus()) {
-					queryBuilder.append("_index = '");
-					queryBuilder.append(index);
-					queryBuilder.append("'");
-					queryBuilder.append(" AND ");
-				}
-
-				queryBuilder.append("_type = '");
-				queryBuilder.append(type);
-				queryBuilder.append("'");
 
 				try {
 					LOGGER.info(queryBuilder.toString());
@@ -444,6 +432,34 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 					}
 				} catch (Exception e) {
 					LOGGER.error(e.getMessage(), e);
+				}
+			} else {
+				for (String type : indexFieldMappingService.getTypesForIndex(index, typePattern)) {
+					StringBuilder queryBuilder = new StringBuilder();
+					queryBuilder.append("DELETE FROM ");
+					queryBuilder.append(queryTarget);
+					queryBuilder.append(" WHERE ");
+
+					if (!nodeSettingsService.isUsingCitus()) {
+						queryBuilder.append("_index = '");
+						queryBuilder.append(index);
+						queryBuilder.append("'");
+						queryBuilder.append(" AND ");
+					}
+
+					queryBuilder.append("_type = '");
+					queryBuilder.append(type);
+					queryBuilder.append("'");
+
+					try {
+						LOGGER.info(queryBuilder.toString());
+						rows += jdbcTemplate.update(queryBuilder.toString());
+						if(rows > 0) {
+							indexFieldMappingService.scheduleIndexForMappingAndStats(index);
+						}
+					} catch (Exception e) {
+						LOGGER.error(e.getMessage(), e);
+					}
 				}
 			}
 		}
