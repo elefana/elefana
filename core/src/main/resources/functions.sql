@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS elefana_index_field_mapping_queue (_index VARCHAR(255
 CREATE TABLE IF NOT EXISTS elefana_index_field_stats_queue (_index VARCHAR(255) UNIQUE, _timestamp BIGINT);
 
 CREATE OR REPLACE FUNCTION create_required_shards(_distributedTable VARCHAR, _totalShards INT) RETURNS bigint AS $$
+DECLARE
+  num_shards bigint;
 BEGIN
     SELECT results.total INTO num_shards
         FROM (SELECT shardid, count(*) OVER () AS total FROM pg_dist_shard JOIN pg_dist_placement USING (shardid)
@@ -19,13 +21,15 @@ BEGIN
         GROUP BY shardid) AS results;
 
     WHILE num_shards IS NULL OR num_shards < _totalShards LOOP
-        SELECT master_create_empty_shard(_distributedTable) INTO shard_id;
+        SELECT master_create_empty_shard(_distributedTable);
 
         SELECT results.total INTO num_shards
             FROM (SELECT shardid, count(*) OVER () AS total FROM pg_dist_shard JOIN pg_dist_placement USING (shardid)
             WHERE logicalrelid = _distributedTable::regclass
             GROUP BY shardid) AS results;
     END LOOP;
+
+    RETURN num_shards;
 END;
 $$ LANGUAGE plpgsql;
 
