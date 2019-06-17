@@ -21,7 +21,7 @@ BEGIN
         GROUP BY shardid) AS results;
 
     WHILE num_shards IS NULL OR num_shards < _totalShards LOOP
-        SELECT master_create_empty_shard(_distributedTable);
+        PERFORM master_create_empty_shard(_distributedTable);
 
         SELECT results.total INTO num_shards
             FROM (SELECT shardid, count(*) OVER () AS total FROM pg_dist_shard JOIN pg_dist_placement USING (shardid)
