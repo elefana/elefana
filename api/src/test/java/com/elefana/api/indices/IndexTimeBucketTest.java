@@ -31,6 +31,11 @@ public class IndexTimeBucketTest {
 		}
 		Assert.assertEquals(0, IndexTimeBucket.MINUTE.getShardOffset(timestamp));
 		Assert.assertEquals(59, IndexTimeBucket.MINUTE.getShardOffset(timestamp - 1L));
+
+		Assert.assertEquals(54, IndexTimeBucket.MINUTE.getShardOffset(1550503374995L));
+		Assert.assertEquals(59, IndexTimeBucket.MINUTE.getShardOffset(1550464139989L));
+		Assert.assertEquals(0, IndexTimeBucket.MINUTE.getShardOffset(1550462400001L));
+		Assert.assertEquals(59, IndexTimeBucket.MINUTE.getShardOffset(1550462459012L));
 	}
 
 	@Test
@@ -42,6 +47,11 @@ public class IndexTimeBucketTest {
 		}
 		Assert.assertEquals(0, IndexTimeBucket.HOUR.getShardOffset(timestamp));
 		Assert.assertEquals(59, IndexTimeBucket.HOUR.getShardOffset(timestamp - 1L));
+
+		Assert.assertEquals(22, IndexTimeBucket.HOUR.getShardOffset(1550503374995L));
+		Assert.assertEquals(28, IndexTimeBucket.HOUR.getShardOffset(1550464139989L));
+		Assert.assertEquals(0, IndexTimeBucket.HOUR.getShardOffset(1550462400001L));
+		Assert.assertEquals(0, IndexTimeBucket.HOUR.getShardOffset(1550462459012L));
 	}
 
 	@Test
