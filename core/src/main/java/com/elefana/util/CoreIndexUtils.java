@@ -381,10 +381,16 @@ public class CoreIndexUtils implements IndexUtils {
 
 			if (nodeSettingsService.isUsingCitus()) {
 				if (timeSeries) {
-					preparedStatement = connection.prepareStatement(
-							"SELECT create_distributed_table('" + tableName + "', '_timestamp', 'append');");
-					preparedStatement.execute();
-					preparedStatement.close();
+					try {
+						preparedStatement = connection.prepareStatement(
+								"SELECT create_distributed_table('" + tableName + "', '_timestamp', 'append');");
+						preparedStatement.execute();
+						preparedStatement.close();
+					} catch (Exception e) {
+						if(!e.getMessage().contains("already distributed")) {
+							throw e;
+						}
+					}
 
 					int totalShards;
 					if(indexTemplate.getStorage() != null && indexTemplate.getStorage().getIndexTimeBucket() != null) {
@@ -398,10 +404,16 @@ public class CoreIndexUtils implements IndexUtils {
 					preparedStatement.execute();
 					preparedStatement.close();
 				} else {
-					preparedStatement = connection
-							.prepareStatement("SELECT create_distributed_table('" + tableName + "', '_id');");
-					preparedStatement.execute();
-					preparedStatement.close();
+					try {
+						preparedStatement = connection
+								.prepareStatement("SELECT create_distributed_table('" + tableName + "', '_id');");
+						preparedStatement.execute();
+						preparedStatement.close();
+					} catch (Exception e) {
+						if(!e.getMessage().contains("already distributed")) {
+							throw e;
+						}
+					}
 				}
 			}
 
