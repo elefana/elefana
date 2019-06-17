@@ -29,6 +29,7 @@ public class IndexTimeBucketTest {
 			final int expectedOffset = (int) (l >= 60000 ? (l - 60000) / 1000 : l / 1000);
 			Assert.assertEquals(expectedOffset, IndexTimeBucket.MINUTE.getShardOffset(timestamp + l));
 		}
+		Assert.assertEquals(0, IndexTimeBucket.MINUTE.getShardOffset(timestamp));
 		Assert.assertEquals(59, IndexTimeBucket.MINUTE.getShardOffset(timestamp - 1L));
 	}
 
@@ -39,6 +40,7 @@ public class IndexTimeBucketTest {
 			final int expectedOffset = (int) (l >= TimeUnit.HOURS.toMillis(1) ? (l - TimeUnit.HOURS.toMillis(1)) / (1000 * 60) : l / (1000 * 60));
 			Assert.assertEquals(expectedOffset, IndexTimeBucket.HOUR.getShardOffset(timestamp + l));
 		}
+		Assert.assertEquals(0, IndexTimeBucket.HOUR.getShardOffset(timestamp));
 		Assert.assertEquals(59, IndexTimeBucket.HOUR.getShardOffset(timestamp - 1L));
 	}
 
@@ -49,6 +51,7 @@ public class IndexTimeBucketTest {
 			final int expectedOffset = (int) (l >= TimeUnit.DAYS.toMillis(1) ? (l - TimeUnit.DAYS.toMillis(1)) / (1000 * 60 * 60) : l / (1000 * 60 * 60));
 			Assert.assertEquals(expectedOffset, IndexTimeBucket.DAY.getShardOffset(timestamp + l));
 		}
+		Assert.assertEquals(0, IndexTimeBucket.DAY.getShardOffset(timestamp));
 		Assert.assertEquals(23, IndexTimeBucket.DAY.getShardOffset(timestamp - 1L));
 	}
 }

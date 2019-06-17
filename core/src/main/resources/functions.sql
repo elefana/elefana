@@ -11,24 +11,32 @@ CREATE TABLE IF NOT EXISTS elefana_delayed_field_index_queue (_tableName VARCHAR
 CREATE TABLE IF NOT EXISTS elefana_index_field_mapping_queue (_index VARCHAR(255) UNIQUE, _timestamp BIGINT);
 CREATE TABLE IF NOT EXISTS elefana_index_field_stats_queue (_index VARCHAR(255) UNIQUE, _timestamp BIGINT);
 
+CREATE OR REPLACE FUNCTION create_required_shards(_distributedTable VARCHAR, _totalShards INT) RETURNS bigint AS $$
+BEGIN
+    SELECT results.total INTO num_shards
+        FROM (SELECT shardid, count(*) OVER () AS total FROM pg_dist_shard JOIN pg_dist_placement USING (shardid)
+        WHERE logicalrelid = _distributedTable::regclass
+        GROUP BY shardid) AS results;
+
+    WHILE num_shards IS NULL OR num_shards < _totalShards LOOP
+        SELECT master_create_empty_shard(_distributedTable) INTO shard_id;
+
+        SELECT results.total INTO num_shards
+            FROM (SELECT shardid, count(*) OVER () AS total FROM pg_dist_shard JOIN pg_dist_placement USING (shardid)
+            WHERE logicalrelid = _distributedTable::regclass
+            GROUP BY shardid) AS results;
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE OR REPLACE FUNCTION select_shard(_distributedTable VARCHAR, _offset INT) RETURNS bigint AS $$
 DECLARE
   shard_id bigint;
-  num_small_shards int;
 BEGIN
-  SELECT results.shardid, results.total INTO shard_id, num_small_shards
-  FROM (SELECT shardid, count(*) OVER () AS total FROM pg_dist_shard JOIN pg_dist_placement USING (shardid)
+  SELECT results.shardid INTO shard_id
+  FROM (SELECT shardid FROM pg_dist_shard JOIN pg_dist_placement USING (shardid)
   WHERE logicalrelid = _distributedTable::regclass
-  GROUP BY shardid ORDER BY shardid ASC OFFSET _offset) AS results;
-
-  WHILE num_small_shards IS NULL OR num_small_shards < _offset LOOP
-   SELECT master_create_empty_shard(_distributedTable) INTO shard_id;
-
-   SELECT results.shardid, results.total INTO shard_id, num_small_shards
-    FROM (SELECT shardid, count(*) OVER () AS total FROM pg_dist_shard JOIN pg_dist_placement USING (shardid)
-    WHERE logicalrelid = _distributedTable::regclass
-    GROUP BY shardid ORDER BY shardid ASC OFFSET _offset) AS results;
-  END LOOP;
+  GROUP BY shardid ORDER BY shardid ASC) AS results OFFSET _offset;
 
   RETURN shard_id;
 END;

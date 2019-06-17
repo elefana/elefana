@@ -385,6 +385,18 @@ public class CoreIndexUtils implements IndexUtils {
 							"SELECT create_distributed_table('" + tableName + "', '_timestamp', 'append');");
 					preparedStatement.execute();
 					preparedStatement.close();
+
+					int totalShards;
+					if(indexTemplate.getStorage() != null && indexTemplate.getStorage().getIndexTimeBucket() != null) {
+						totalShards = indexTemplate.getStorage().getIndexTimeBucket().getIngestTableCapacity();
+					} else {
+						totalShards = 60;
+					}
+
+					preparedStatement = connection.prepareStatement(
+							"SELECT create_required_shards('" + tableName + "', " + totalShards + ");");
+					preparedStatement.execute();
+					preparedStatement.close();
 				} else {
 					preparedStatement = connection
 							.prepareStatement("SELECT create_distributed_table('" + tableName + "', '_id');");
