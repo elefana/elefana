@@ -36,6 +36,7 @@ import com.elefana.document.ingest.TimeIngestTable;
 import com.elefana.indices.IndexFieldMappingService;
 import com.elefana.indices.IndexTemplateService;
 import com.elefana.indices.psql.PsqlIndexTemplateService;
+import com.elefana.util.CitusShardMetadataMaintainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -70,6 +71,8 @@ public class PsqlBulkIndexService implements Runnable {
 	protected IngestTableTracker ingestTableTracker;
 	@Autowired
 	protected MetricRegistry metricRegistry;
+	@Autowired
+	protected CitusShardMetadataMaintainer shardMetadataMaintainer;
 
 	protected final AtomicBoolean running = new AtomicBoolean(true);
 	protected ExecutorService executorService;
@@ -281,11 +284,11 @@ public class PsqlBulkIndexService implements Runnable {
 		return result;
 	}
 
-	protected BulkIndexResult mergeStagingTableIntoDistributedTable(Connection connection, IndexTemplate indexTemplate, IngestTable hashIngestTable, int ingestTableEntryIndex, String bulkIngestTable, String targetTable)
+	protected BulkIndexResult mergeStagingTableIntoDistributedTable(Connection connection, IndexTemplate indexTemplate, IngestTable ingestTable, int ingestTableEntryIndex, String bulkIngestTable, String targetTable)
 			throws ElefanaException, IOException, SQLException {
 		if(nodeSettingsService.isMasterNode()) {
 			if(indexTemplate != null && indexTemplate.isTimeSeries()) {
-				return mergeStagingTableIntoDistributedTimeTable(connection, indexTemplate, bulkIngestTable, targetTable);
+				return mergeStagingTableIntoDistributedTimeTable(connection, indexTemplate, ingestTable.getIndex(), bulkIngestTable, targetTable);
 			} else {
 				return mergeStagingTableIntoPartitionTable(connection, bulkIngestTable, targetTable);
 			}
@@ -294,7 +297,7 @@ public class PsqlBulkIndexService implements Runnable {
 		return BulkIndexResult.ROUTE;
 	}
 
-	protected BulkIndexResult mergeStagingTableIntoDistributedTimeTable(Connection connection, IndexTemplate indexTemplate, String bulkIngestTable, String targetTable) throws IOException, SQLException {
+	protected BulkIndexResult mergeStagingTableIntoDistributedTimeTable(Connection connection, IndexTemplate indexTemplate, String indexName, String bulkIngestTable, String targetTable) throws IOException, SQLException {
 		PreparedStatement preparedStatement = connection.prepareStatement("SELECT _timestamp FROM " + bulkIngestTable + " LIMIT 1");
 		final ResultSet resultSet = preparedStatement.executeQuery();
 		if(!resultSet.next()) {
@@ -319,6 +322,8 @@ public class PsqlBulkIndexService implements Runnable {
 		appendShardStatement.execute();
 		appendShardStatement.close();
 		connection.commit();
+
+		shardMetadataMaintainer.queueTimeSeriesIndexForShardMaintenance(indexName, targetTable, timestamp);
 		return BulkIndexResult.SUCCESS;
 	}
 
