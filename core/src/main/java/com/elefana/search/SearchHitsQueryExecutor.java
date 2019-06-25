@@ -81,7 +81,7 @@ public abstract class SearchHitsQueryExecutor {
 				if(size > 0) {
 					ResultSet resultSet = null;
 					try {
-						queryHits(statement, queryComponents, startTime, from, size);
+						resultSet = queryHits(statement, queryComponents, startTime, from, size);
 					} catch (Exception e) {
 						e.printStackTrace();
 						if (!e.getMessage().contains("No results")) {
