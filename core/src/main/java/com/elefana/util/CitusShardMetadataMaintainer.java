@@ -15,7 +15,6 @@
  ******************************************************************************/
 package com.elefana.util;
 
-import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.indices.IndexTemplate;
 import com.elefana.api.indices.IndexTimeBucket;
 import com.elefana.indices.IndexTemplateService;

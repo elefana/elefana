@@ -15,10 +15,10 @@
  ******************************************************************************/
 package com.elefana.cluster.psql;
 
-import java.util.concurrent.Callable;
-
 import com.elefana.api.cluster.ClusterInfoRequest;
 import com.elefana.api.cluster.ClusterInfoResponse;
+
+import java.util.concurrent.Callable;
 
 public class PsqlClusterInfoRequest extends ClusterInfoRequest implements Callable<ClusterInfoResponse> {
 	private final PsqlClusterService clusterService;

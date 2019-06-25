@@ -15,10 +15,10 @@
  ******************************************************************************/
 package com.elefana.document.psql;
 
-import java.util.concurrent.Callable;
-
 import com.elefana.api.document.IndexRequest;
 import com.elefana.api.document.IndexResponse;
+
+import java.util.concurrent.Callable;
 
 public class PsqlIndexRequest extends IndexRequest implements Callable<IndexResponse> {
 	private final PsqlDocumentService documentService;

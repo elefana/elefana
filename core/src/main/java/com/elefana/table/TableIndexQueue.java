@@ -16,8 +16,6 @@
 package com.elefana.table;
 
 import com.elefana.api.indices.IndexGenerationMode;
-import com.elefana.indices.psql.IndexMappingQueue;
-import com.elefana.indices.psql.QueuedIndex;
 import com.elefana.util.PsqlBackedQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

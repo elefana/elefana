@@ -15,14 +15,14 @@
  ******************************************************************************/
 package com.elefana.indices;
 
+import com.elefana.api.indices.IndexTemplate;
+import com.elefana.es.compat.date.FormatDateTimeFormatter;
+import com.elefana.es.compat.date.JodaUtils;
+
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-
-import com.elefana.api.indices.IndexTemplate;
-import com.elefana.es.compat.date.FormatDateTimeFormatter;
-import com.elefana.es.compat.date.JodaUtils;
 
 public abstract class FieldMapper {
 	public static final FormatDateTimeFormatter DEFAULT_DATE_TIME_FORMATTER = JodaUtils.forPattern(

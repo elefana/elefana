@@ -15,10 +15,10 @@
  ******************************************************************************/
 package com.elefana.node.psql;
 
-import java.util.concurrent.Callable;
-
 import com.elefana.api.node.NodesInfoRequest;
 import com.elefana.api.node.NodesInfoResponse;
+
+import java.util.concurrent.Callable;
 
 public class PsqlNodesInfoRequest extends NodesInfoRequest implements Callable<NodesInfoResponse> {
 	private final PsqlNodesService nodesService;

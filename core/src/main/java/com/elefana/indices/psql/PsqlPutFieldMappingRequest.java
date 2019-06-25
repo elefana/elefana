@@ -15,10 +15,10 @@
  ******************************************************************************/
 package com.elefana.indices.psql;
 
-import java.util.concurrent.Callable;
-
 import com.elefana.api.indices.PutFieldMappingRequest;
 import com.elefana.api.indices.PutFieldMappingResponse;
+
+import java.util.concurrent.Callable;
 
 public class PsqlPutFieldMappingRequest extends PutFieldMappingRequest implements Callable<PutFieldMappingResponse> {
 	private final PsqlIndexFieldMappingService indexFieldMappingService;

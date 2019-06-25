@@ -15,16 +15,15 @@
  ******************************************************************************/
 package com.elefana.search;
 
+import com.elefana.api.exception.ShardFailedException;
+import com.elefana.api.indices.IndexTemplate;
+import com.elefana.util.IndexUtils;
+import org.springframework.jdbc.core.JdbcTemplate;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.List;
-
-import com.elefana.api.exception.ShardFailedException;
-import org.springframework.jdbc.core.JdbcTemplate;
-
-import com.elefana.api.indices.IndexTemplate;
-import com.elefana.util.IndexUtils;
 
 public class CitusSearchQueryBuilder implements SearchQueryBuilder {
 	private final JdbcTemplate jdbcTemplate;

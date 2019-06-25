@@ -15,10 +15,10 @@
  ******************************************************************************/
 package com.elefana.document.psql;
 
-import java.util.concurrent.Callable;
-
 import com.elefana.api.document.GetRequest;
 import com.elefana.api.document.GetResponse;
+
+import java.util.concurrent.Callable;
 
 public class PsqlGetRequest extends GetRequest implements Callable<GetResponse> {
 	private final PsqlDocumentService documentService;

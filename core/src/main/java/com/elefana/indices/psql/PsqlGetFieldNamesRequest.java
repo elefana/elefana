@@ -15,7 +15,6 @@
  ******************************************************************************/
 package com.elefana.indices.psql;
 
-import com.elefana.api.RequestExecutor;
 import com.elefana.api.indices.GetFieldNamesRequest;
 import com.elefana.api.indices.GetFieldNamesResponse;
 

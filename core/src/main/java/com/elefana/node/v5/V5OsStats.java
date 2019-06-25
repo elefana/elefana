@@ -15,9 +15,9 @@
  ******************************************************************************/
 package com.elefana.node.v5;
 
-import java.util.Map;
-
 import com.elefana.node.OsStats;
+
+import java.util.Map;
 
 public class V5OsStats extends OsStats {
 

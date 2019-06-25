@@ -1,7 +1,6 @@
 package com.elefana.indices.psql;
 
 import com.elefana.api.ImmediateRequestExecutor;
-import com.elefana.api.RequestExecutor;
 import com.elefana.api.indices.GetIndexTemplateForIndexRequest;
 import com.elefana.api.indices.GetIndexTemplateForIndexResponse;
 import com.elefana.api.indices.IndexTemplate;

@@ -15,14 +15,13 @@
  ******************************************************************************/
 package com.elefana;
 
-import java.io.File;
-import java.util.Properties;
-
+import com.jsoniter.JsonIterator;
+import com.jsoniter.extra.PreciseFloatSupport;
+import com.jsoniter.spi.DecodingMode;
 import org.mini2Dx.natives.OsInformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.Banner.Mode;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.builder.SpringApplicationBuilder;
@@ -31,9 +30,8 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.event.ContextRefreshedEvent;
 
-import com.jsoniter.JsonIterator;
-import com.jsoniter.extra.PreciseFloatSupport;
-import com.jsoniter.spi.DecodingMode;
+import java.io.File;
+import java.util.Properties;
 
 @SpringBootApplication(exclude= { DataSourceAutoConfiguration.class })
 @ComponentScan(basePackages = { "com.elefana" })

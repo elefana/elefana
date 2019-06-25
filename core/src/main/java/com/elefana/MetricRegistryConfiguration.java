@@ -3,22 +3,20 @@
  */
 package com.elefana;
 
-import java.net.InetSocketAddress;
-import java.util.concurrent.TimeUnit;
-
-import javax.annotation.PreDestroy;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
-import org.springframework.core.env.Environment;
-import org.springframework.stereotype.Component;
-
 import com.codahale.metrics.ConsoleReporter;
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.ScheduledReporter;
 import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteReporter;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.core.env.Environment;
+import org.springframework.stereotype.Component;
+
+import javax.annotation.PreDestroy;
+import java.net.InetSocketAddress;
+import java.util.concurrent.TimeUnit;
 
 @Component
 public class MetricRegistryConfiguration {

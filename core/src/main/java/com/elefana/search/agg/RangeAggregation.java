@@ -15,20 +15,14 @@
  ******************************************************************************/
 package com.elefana.search.agg;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.search.PsqlQueryComponents;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.*;
 
 public class RangeAggregation extends BucketAggregation {
 	private static final Logger LOGGER = LoggerFactory.getLogger(RangeAggregation.class);

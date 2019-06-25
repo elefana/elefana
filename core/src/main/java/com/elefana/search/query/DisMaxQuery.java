@@ -15,13 +15,13 @@
  ******************************************************************************/
 package com.elefana.search.query;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.indices.IndexTemplate;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class DisMaxQuery extends Query {
 	private static final String KEY_QUERIES = "queries";

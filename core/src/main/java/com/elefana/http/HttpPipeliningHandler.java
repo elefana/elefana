@@ -15,13 +15,13 @@
  ******************************************************************************/
 package com.elefana.http;
 
-import java.util.PriorityQueue;
-import java.util.Queue;
-
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.http.LastHttpContent;
+
+import java.util.PriorityQueue;
+import java.util.Queue;
 
 /**
  * Based on https://github.com/typesafehub/netty-http-pipelining and

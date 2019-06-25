@@ -15,9 +15,9 @@
  ******************************************************************************/
 package com.elefana.node.v5;
 
-import java.util.Map;
-
 import com.elefana.node.ProcessStats;
+
+import java.util.Map;
 
 public class V5ProcessStats extends ProcessStats {
 

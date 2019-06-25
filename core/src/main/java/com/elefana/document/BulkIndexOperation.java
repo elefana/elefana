@@ -15,10 +15,10 @@
  ******************************************************************************/
 package com.elefana.document;
 
+import com.jsoniter.annotation.JsonIgnore;
+
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
-
-import com.jsoniter.annotation.JsonIgnore;
 
 public class BulkIndexOperation {
 	@JsonIgnore

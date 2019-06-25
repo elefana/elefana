@@ -3,22 +3,6 @@
  */
 package com.elefana.node;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.DependsOn;
-import org.springframework.core.env.Environment;
-import org.springframework.stereotype.Service;
-
 import com.elefana.api.json.EmptyJsonObject;
 import com.elefana.api.node.NodeInfo;
 import com.elefana.api.node.v2.V2NodeInfo;
@@ -28,6 +12,20 @@ import com.elefana.node.v2.V2ProcessStats;
 import com.elefana.node.v5.V5JvmStats;
 import com.elefana.node.v5.V5OsStats;
 import com.elefana.node.v5.V5ProcessStats;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.DependsOn;
+import org.springframework.core.env.Environment;
+import org.springframework.stereotype.Service;
+
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 @Service("nodeInfoService")
 @DependsOn("nodeSettingsService")

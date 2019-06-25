@@ -15,10 +15,10 @@
  ******************************************************************************/
 package com.elefana.document.psql;
 
-import java.util.concurrent.Callable;
-
 import com.elefana.api.document.MultiGetRequest;
 import com.elefana.api.document.MultiGetResponse;
+
+import java.util.concurrent.Callable;
 
 public class PsqlMultiGetRequest extends MultiGetRequest implements Callable<MultiGetResponse> {
 	private final PsqlDocumentService documentService;

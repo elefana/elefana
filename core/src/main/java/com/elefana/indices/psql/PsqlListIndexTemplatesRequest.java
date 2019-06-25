@@ -15,11 +15,10 @@
  ******************************************************************************/
 package com.elefana.indices.psql;
 
-import java.util.concurrent.FutureTask;
-
-import com.elefana.api.indices.IndexTemplate;
 import com.elefana.api.indices.ListIndexTemplatesRequest;
 import com.elefana.api.indices.ListIndexTemplatesResponse;
+
+import java.util.concurrent.FutureTask;
 
 public class PsqlListIndexTemplatesRequest extends ListIndexTemplatesRequest {
 	private final PsqlIndexTemplateService indexTemplateService;

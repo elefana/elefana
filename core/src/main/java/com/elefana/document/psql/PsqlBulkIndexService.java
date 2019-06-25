@@ -15,19 +15,10 @@
  ******************************************************************************/
 package com.elefana.document.psql;
 
-import java.io.IOException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
-
+import com.codahale.metrics.Counter;
+import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
+import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.indices.IndexTemplate;
 import com.elefana.document.ingest.HashIngestTable;
 import com.elefana.document.ingest.IngestTable;
@@ -35,8 +26,11 @@ import com.elefana.document.ingest.IngestTableTracker;
 import com.elefana.document.ingest.TimeIngestTable;
 import com.elefana.indices.IndexFieldMappingService;
 import com.elefana.indices.IndexTemplateService;
+import com.elefana.indices.psql.PsqlIndexFieldMappingService;
 import com.elefana.indices.psql.PsqlIndexTemplateService;
+import com.elefana.node.NodeSettingsService;
 import com.elefana.util.CitusShardMetadataMaintainer;
+import com.elefana.util.IndexUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,12 +38,18 @@ import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
-import com.codahale.metrics.Counter;
-import com.codahale.metrics.MetricRegistry;
-import com.elefana.api.exception.ElefanaException;
-import com.elefana.indices.psql.PsqlIndexFieldMappingService;
-import com.elefana.node.NodeSettingsService;
-import com.elefana.util.IndexUtils;
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
 public class PsqlBulkIndexService implements Runnable {

@@ -15,10 +15,10 @@
  ******************************************************************************/
 package com.elefana.indices.psql;
 
-import java.util.concurrent.Callable;
-
 import com.elefana.api.indices.GetFieldCapabilitiesRequest;
 import com.elefana.api.indices.GetFieldCapabilitiesResponse;
+
+import java.util.concurrent.Callable;
 
 public class PsqlGetFieldCapabilitiesRequest extends GetFieldCapabilitiesRequest implements Callable<GetFieldCapabilitiesResponse> {
 	private final PsqlIndexFieldMappingService indexFieldMappingService;

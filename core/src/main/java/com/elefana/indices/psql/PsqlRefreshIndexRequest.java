@@ -15,10 +15,10 @@
  ******************************************************************************/
 package com.elefana.indices.psql;
 
-import java.util.concurrent.Callable;
-
 import com.elefana.api.indices.RefreshIndexRequest;
 import com.elefana.api.indices.RefreshIndexResponse;
+
+import java.util.concurrent.Callable;
 
 public class PsqlRefreshIndexRequest extends RefreshIndexRequest implements Callable<RefreshIndexResponse> {
 	private final PsqlIndexFieldMappingService indexFieldMappingService;

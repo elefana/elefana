@@ -15,14 +15,13 @@
  ******************************************************************************/
 package com.elefana.search.agg;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+import com.jsoniter.any.Any;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.jsoniter.any.Any;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class SumAggregation extends Aggregation {
 	private static final Logger LOGGER = LoggerFactory.getLogger(SumAggregation.class);

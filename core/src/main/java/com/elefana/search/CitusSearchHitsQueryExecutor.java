@@ -15,13 +15,14 @@
  ******************************************************************************/
 package com.elefana.search;
 
+import com.codahale.metrics.Histogram;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.support.rowset.SqlRowSet;
 
-import com.codahale.metrics.Histogram;
-import com.elefana.search.psql.PsqlSearchService;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 
 public class CitusSearchHitsQueryExecutor extends SearchHitsQueryExecutor {
 	private static final Logger LOGGER = LoggerFactory.getLogger(CitusSearchHitsQueryExecutor.class);
@@ -31,7 +32,20 @@ public class CitusSearchHitsQueryExecutor extends SearchHitsQueryExecutor {
 	}
 
 	@Override
-	public SqlRowSet queryHits(PsqlQueryComponents queryComponents, long startTime, int from, int size) {
+	public ResultSet queryHitsCount(Statement statement, PsqlQueryComponents queryComponents, long startTime, int from, int size) throws SQLException {
+		final StringBuilder queryBuilder = new StringBuilder();
+		queryBuilder.append("SELECT ");
+		queryBuilder.append("COUNT(_id)");
+		queryBuilder.append(" FROM ");
+		queryBuilder.append(queryComponents.getFromComponent());
+		queryBuilder.append(" AS ");
+		queryBuilder.append("hit_results");
+		LOGGER.info(queryBuilder.toString());
+		return statement.executeQuery(queryBuilder.toString());
+	}
+
+	@Override
+	public ResultSet queryHits(Statement statement, PsqlQueryComponents queryComponents, long startTime, int from, int size) throws SQLException {
 		final StringBuilder queryBuilder = new StringBuilder();
 		queryBuilder.append("SELECT ");
 		queryBuilder.append("*");
@@ -39,7 +53,7 @@ public class CitusSearchHitsQueryExecutor extends SearchHitsQueryExecutor {
 		queryBuilder.append(queryComponents.getFromComponent());
 		queryBuilder.append(" AS ");
 		queryBuilder.append("hit_results");
-		
+
 		if(!queryComponents.getOrderByComponent().isEmpty()) {
 			queryBuilder.append(" ORDER BY ");
 			queryBuilder.append(queryComponents.getOrderByComponent());
@@ -53,20 +67,6 @@ public class CitusSearchHitsQueryExecutor extends SearchHitsQueryExecutor {
 			queryBuilder.append(from);
 		}
 		LOGGER.info(queryBuilder.toString());
-		return jdbcTemplate.queryForRowSet(queryBuilder.toString());
+		return statement.executeQuery(queryBuilder.toString());
 	}
-
-	@Override
-	public SqlRowSet queryHitsCount(PsqlQueryComponents queryComponents, long startTime, int from, int size) {
-		final StringBuilder queryBuilder = new StringBuilder();
-		queryBuilder.append("SELECT ");
-		queryBuilder.append("COUNT(_id)");
-		queryBuilder.append(" FROM ");
-		queryBuilder.append(queryComponents.getFromComponent());
-		queryBuilder.append(" AS ");
-		queryBuilder.append("hit_results");
-		LOGGER.info(queryBuilder.toString());
-		return jdbcTemplate.queryForRowSet(queryBuilder.toString());
-	}
-
 }

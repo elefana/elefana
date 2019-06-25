@@ -15,6 +15,31 @@
  ******************************************************************************/
 package com.elefana.document.psql;
 
+import com.elefana.api.AckResponse;
+import com.elefana.api.RequestExecutor;
+import com.elefana.api.document.*;
+import com.elefana.api.exception.DocumentAlreadyExistsException;
+import com.elefana.api.exception.ElefanaException;
+import com.elefana.api.exception.ShardFailedException;
+import com.elefana.api.indices.DeleteIndexRequest;
+import com.elefana.document.DocumentService;
+import com.elefana.indices.psql.PsqlIndexFieldMappingService;
+import com.elefana.node.NodeSettingsService;
+import com.elefana.node.VersionInfoService;
+import com.elefana.util.IndexUtils;
+import com.jsoniter.JsonIterator;
+import com.jsoniter.spi.TypeLiteral;
+import org.postgresql.util.PGobject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.support.rowset.SqlRowSet;
+import org.springframework.stereotype.Service;
+
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -27,34 +52,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
-
-import com.elefana.api.AckResponse;
-import com.elefana.api.document.*;
-import com.elefana.api.indices.DeleteIndexRequest;
-import org.postgresql.util.PGobject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.env.Environment;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.support.rowset.SqlRowSet;
-import org.springframework.stereotype.Service;
-
-import com.elefana.api.RequestExecutor;
-import com.elefana.api.exception.DocumentAlreadyExistsException;
-import com.elefana.api.exception.ElefanaException;
-import com.elefana.api.exception.ShardFailedException;
-import com.elefana.document.DocumentService;
-import com.elefana.indices.IndexTemplateService;
-import com.elefana.indices.psql.PsqlIndexFieldMappingService;
-import com.elefana.node.NodeSettingsService;
-import com.elefana.node.VersionInfoService;
-import com.elefana.util.IndexUtils;
-import com.jsoniter.JsonIterator;
-import com.jsoniter.spi.TypeLiteral;
 
 @Service
 public class PsqlDocumentService implements DocumentService, RequestExecutor {

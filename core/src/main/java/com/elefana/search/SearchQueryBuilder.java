@@ -15,10 +15,10 @@
  ******************************************************************************/
 package com.elefana.search;
 
-import java.util.List;
-
 import com.elefana.api.exception.ShardFailedException;
 import com.elefana.api.indices.IndexTemplate;
+
+import java.util.List;
 
 /**
  *

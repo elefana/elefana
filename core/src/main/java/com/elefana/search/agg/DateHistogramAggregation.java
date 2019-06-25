@@ -15,25 +15,19 @@
  ******************************************************************************/
 package com.elefana.search.agg;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.jdbc.support.rowset.SqlRowSet;
-
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.InvalidAggregationFieldType;
 import com.elefana.api.exception.NoSuchMappingException;
 import com.elefana.api.search.SearchResponse;
 import com.elefana.search.PsqlQueryComponents;
 import com.jsoniter.any.Any;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.jdbc.support.rowset.SqlRowSet;
+
+import java.util.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class DateHistogramAggregation extends BucketAggregation {
 	private static final Logger LOGGER = LoggerFactory.getLogger(DateHistogramAggregation.class);

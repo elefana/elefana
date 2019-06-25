@@ -15,12 +15,8 @@
  ******************************************************************************/
 package com.elefana.util;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.util.List;
-import java.util.Map;
-
+import com.elefana.indices.IndexFieldMappingService;
+import com.elefana.node.NodeSettingsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,8 +26,11 @@ import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.springframework.stereotype.Component;
 
-import com.elefana.indices.IndexFieldMappingService;
-import com.elefana.node.NodeSettingsService;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.Map;
 
 @Component
 public class CoreDbInitializer implements DbInitializer {

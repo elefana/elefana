@@ -15,19 +15,18 @@
  ******************************************************************************/
 package com.elefana.indices.psql;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
-
 import com.elefana.api.AckResponse;
+import com.elefana.api.RequestExecutor;
+import com.elefana.api.exception.BadRequestException;
+import com.elefana.api.exception.ElefanaException;
+import com.elefana.api.exception.NoSuchTemplateException;
+import com.elefana.api.exception.ShardFailedException;
+import com.elefana.api.indices.*;
+import com.elefana.indices.IndexTemplateService;
+import com.jsoniter.JsonIterator;
+import com.jsoniter.ValueType;
+import com.jsoniter.any.Any;
+import com.jsoniter.spi.TypeLiteral;
 import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,22 +36,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.stereotype.Service;
 
-import com.elefana.api.RequestExecutor;
-import com.elefana.api.exception.BadRequestException;
-import com.elefana.api.exception.ElefanaException;
-import com.elefana.api.exception.NoSuchTemplateException;
-import com.elefana.api.exception.ShardFailedException;
-import com.elefana.api.indices.GetIndexTemplateForIndexRequest;
-import com.elefana.api.indices.GetIndexTemplateRequest;
-import com.elefana.api.indices.IndexStorageSettings;
-import com.elefana.api.indices.IndexTemplate;
-import com.elefana.api.indices.ListIndexTemplatesRequest;
-import com.elefana.api.indices.PutIndexTemplateRequest;
-import com.elefana.indices.IndexTemplateService;
-import com.jsoniter.JsonIterator;
-import com.jsoniter.ValueType;
-import com.jsoniter.any.Any;
-import com.jsoniter.spi.TypeLiteral;
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.*;
 
 @Service
 public class PsqlIndexTemplateService implements IndexTemplateService, RequestExecutor {

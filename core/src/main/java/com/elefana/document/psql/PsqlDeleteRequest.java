@@ -15,7 +15,6 @@
  ******************************************************************************/
 package com.elefana.document.psql;
 
-import com.elefana.api.RequestExecutor;
 import com.elefana.api.document.DeleteRequest;
 import com.elefana.api.document.DeleteResponse;
 

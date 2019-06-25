@@ -15,10 +15,10 @@
  ******************************************************************************/
 package com.elefana.search.psql;
 
-import java.util.concurrent.Callable;
-
 import com.elefana.api.search.MultiSearchRequest;
 import com.elefana.api.search.MultiSearchResponse;
+
+import java.util.concurrent.Callable;
 
 public class PsqlMultiSearchRequest extends MultiSearchRequest implements Callable<MultiSearchResponse> {
 	private final PsqlSearchService searchService;

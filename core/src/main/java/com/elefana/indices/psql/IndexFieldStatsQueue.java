@@ -16,7 +16,6 @@
 package com.elefana.indices.psql;
 
 import com.elefana.util.HashPsqlBackedQueue;
-import com.elefana.util.PsqlBackedQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -26,7 +25,6 @@ import org.springframework.scheduling.TaskScheduler;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.util.Collection;
 import java.util.List;
 
 public class IndexFieldStatsQueue extends HashPsqlBackedQueue<QueuedIndex> {

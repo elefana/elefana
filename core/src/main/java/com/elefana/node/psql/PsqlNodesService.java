@@ -15,23 +15,21 @@
  ******************************************************************************/
 package com.elefana.node.psql;
 
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.env.Environment;
-import org.springframework.stereotype.Service;
-
 import com.elefana.api.RequestExecutor;
 import com.elefana.api.node.NodesInfoRequest;
 import com.elefana.api.node.NodesInfoResponse;
 import com.elefana.node.NodeInfoService;
 import com.elefana.node.NodesService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
+import org.springframework.stereotype.Service;
+
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 @Service
 public class PsqlNodesService implements NodesService, RequestExecutor {

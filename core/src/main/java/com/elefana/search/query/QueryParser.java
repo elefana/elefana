@@ -15,14 +15,13 @@
  ******************************************************************************/
 package com.elefana.search.query;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.UnsupportedQueryTypeException;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class QueryParser {
 	private static final Logger LOGGER = LoggerFactory.getLogger(QueryParser.class);

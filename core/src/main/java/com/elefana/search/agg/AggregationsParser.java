@@ -15,17 +15,16 @@
  ******************************************************************************/
 package com.elefana.search.agg;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.UnsupportedAggregationTypeException;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class AggregationsParser {
 	private static final Logger LOGGER = LoggerFactory.getLogger(AggregationsParser.class);

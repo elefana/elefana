@@ -15,15 +15,10 @@
  ******************************************************************************/
 package com.elefana.indices;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+import com.elefana.api.indices.IndexTemplate;
 import org.joda.time.DateTime;
 
-import com.elefana.api.indices.IndexTemplate;
+import java.util.*;
 
 public class V5FieldMapper extends FieldMapper {
 	private static final Map<String, Object> EMPTY_MAPPING = new HashMap<String, Object>();

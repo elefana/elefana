@@ -15,17 +15,11 @@
  ******************************************************************************/
 package com.elefana.cluster.psql;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-
-import javax.annotation.PostConstruct;
-
+import com.elefana.api.RequestExecutor;
+import com.elefana.api.cluster.*;
+import com.elefana.cluster.ClusterService;
+import com.elefana.node.NodeSettingsService;
+import com.elefana.node.VersionInfoService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,16 +28,15 @@ import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
-import com.elefana.api.RequestExecutor;
-import com.elefana.api.cluster.ClusterHealthRequest;
-import com.elefana.api.cluster.ClusterHealthResponse;
-import com.elefana.api.cluster.ClusterInfoRequest;
-import com.elefana.api.cluster.ClusterInfoResponse;
-import com.elefana.api.cluster.ClusterSettingsRequest;
-import com.elefana.api.cluster.ClusterSettingsResponse;
-import com.elefana.cluster.ClusterService;
-import com.elefana.node.NodeSettingsService;
-import com.elefana.node.VersionInfoService;
+import javax.annotation.PostConstruct;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 @Service
 @DependsOn("nodeSettingsService")

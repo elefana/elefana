@@ -15,19 +15,20 @@
  ******************************************************************************/
 package com.elefana.search;
 
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Callable;
-
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.support.rowset.SqlRowSet;
-
 import com.codahale.metrics.Histogram;
 import com.elefana.api.search.SearchHit;
 import com.elefana.api.search.SearchResponse;
 import com.elefana.util.IndexUtils;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.spi.TypeLiteral;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Callable;
 
 public abstract class SearchHitsQueryExecutor {
 	protected final JdbcTemplate jdbcTemplate;
@@ -40,28 +41,31 @@ public abstract class SearchHitsQueryExecutor {
 		this.searchHits = searchHits;
 	}
 	
-	public abstract SqlRowSet queryHitsCount(PsqlQueryComponents queryComponents, long startTime, int from, int size);
+	public abstract ResultSet queryHitsCount(Statement statement, PsqlQueryComponents queryComponents,
+	                                         long startTime, int from, int size) throws SQLException;
 
-	public abstract SqlRowSet queryHits(PsqlQueryComponents queryComponents, long startTime, int from, int size);
+	public abstract ResultSet queryHits(Statement statement, PsqlQueryComponents queryComponents,
+	                                    long startTime, int from, int size) throws SQLException;
 	
-	public Callable<SearchResponse> executeCountQuery(final SearchResponse searchResponse, PsqlQueryComponents queryComponents, long startTime, int from, int size) {
+	public Callable<SearchResponse> executeCountQuery(final SearchResponse searchResponse, final Statement statement,
+	                                                  PsqlQueryComponents queryComponents, long startTime, int from, int size) {
 		return new Callable<SearchResponse>() {
 			@Override
 			public SearchResponse call() throws Exception {
-				SqlRowSet countRowSet = null;
+				ResultSet resultSet = null;
 				try {
-					countRowSet = queryHitsCount(queryComponents, startTime, from, size);
+					resultSet = queryHitsCount(statement, queryComponents, startTime, from, size);
 				} catch (Exception e) {
 					e.printStackTrace();
 					if (!e.getMessage().contains("No results")) {
 						throw e;
 					}
-					countRowSet = null;
 				}
-				if (countRowSet == null) {
+				if (resultSet == null) {
 					searchResponse.getHits().setTotal(0);
 				} else {
-					searchResponse.getHits().setTotal(getTotalHits(countRowSet));
+					searchResponse.getHits().setTotal(getTotalHits(resultSet));
+					resultSet.close();
 				}
 				searchHits.update(searchResponse.getHits().getTotal());
 				return searchResponse;
@@ -69,24 +73,26 @@ public abstract class SearchHitsQueryExecutor {
 		};
 	}
 
-	public Callable<SearchResponse> executeHitsQuery(final SearchResponse searchResponse, PsqlQueryComponents queryComponents, long startTime, int from, int size) {
+	public Callable<SearchResponse> executeHitsQuery(final SearchResponse searchResponse, final Statement statement,
+	                                                 PsqlQueryComponents queryComponents, long startTime, int from, int size) {
 		return new Callable<SearchResponse>() {
 			@Override
 			public SearchResponse call() throws Exception {
 				if(size > 0) {
-					SqlRowSet hitsRowSet = null;
+					ResultSet resultSet = null;
 					try {
-						hitsRowSet = queryHits(queryComponents, startTime, from, size);
+						queryHits(statement, queryComponents, startTime, from, size);
 					} catch (Exception e) {
 						e.printStackTrace();
 						if (!e.getMessage().contains("No results")) {
 							throw e;
 						}
-						hitsRowSet = null;
+						resultSet = null;
 					}
 	
-					if (hitsRowSet != null) {
-						populateHits(searchResponse.getHits().getHits(), hitsRowSet);
+					if (resultSet != null) {
+						populateHits(searchResponse.getHits().getHits(), resultSet);
+						resultSet.close();
 					}
 					searchResponse.getHits().setMaxScore(1.0);
 	
@@ -97,7 +103,7 @@ public abstract class SearchHitsQueryExecutor {
 		};
 	}
 	
-	private int getTotalHits(SqlRowSet countsRowSet) {
+	private int getTotalHits(ResultSet countsRowSet) throws SQLException {
 		int totalHits = 0;
 		boolean hasCountColumn = true;
 		while (countsRowSet.next()) {
@@ -115,7 +121,7 @@ public abstract class SearchHitsQueryExecutor {
 		return totalHits;
 	}
 	
-	private void populateHits(List<SearchHit> results, SqlRowSet hitsRowSet) {
+	private void populateHits(List<SearchHit> results, ResultSet hitsRowSet) throws SQLException {
 		while (hitsRowSet.next()) {
 			SearchHit searchHit = new SearchHit();
 			searchHit._index = hitsRowSet.getString("_index");

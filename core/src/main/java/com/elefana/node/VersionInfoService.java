@@ -15,12 +15,8 @@
  ******************************************************************************/
 package com.elefana.node;
 
-import java.net.URL;
-import java.util.jar.JarInputStream;
-import java.util.jar.Manifest;
-
-import javax.annotation.PostConstruct;
-
+import com.elefana.ApiVersion;
+import com.elefana.cluster.ClusterService;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
@@ -29,8 +25,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
-import com.elefana.ApiVersion;
-import com.elefana.cluster.ClusterService;
+import javax.annotation.PostConstruct;
+import java.net.URL;
+import java.util.jar.JarInputStream;
+import java.util.jar.Manifest;
 
 @Component
 public class VersionInfoService {

@@ -15,21 +15,14 @@
  ******************************************************************************/
 package com.elefana.document.psql;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
-
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Timer;
+import com.elefana.api.RequestExecutor;
+import com.elefana.api.document.BulkItemResponse;
+import com.elefana.api.document.BulkRequest;
+import com.elefana.api.document.BulkResponse;
+import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.indices.IndexTemplate;
 import com.elefana.api.indices.IndexTimeBucket;
 import com.elefana.api.json.V2BulkResponseEncoder;
@@ -40,7 +33,14 @@ import com.elefana.document.ingest.IngestTableTracker;
 import com.elefana.document.ingest.TimeIngestTable;
 import com.elefana.indices.IndexTemplateService;
 import com.elefana.indices.psql.PsqlIndexTemplateService;
+import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
+import com.elefana.util.IndexUtils;
+import com.elefana.util.NamedThreadFactory;
+import com.jsoniter.JsonIterator;
+import com.jsoniter.ValueType;
+import com.jsoniter.any.Any;
+import com.jsoniter.spi.JsonException;
 import com.jsoniter.spi.JsoniterSpi;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,21 +49,14 @@ import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
-import com.codahale.metrics.Meter;
-import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.Timer;
-import com.elefana.api.RequestExecutor;
-import com.elefana.api.document.BulkItemResponse;
-import com.elefana.api.document.BulkRequest;
-import com.elefana.api.document.BulkResponse;
-import com.elefana.api.exception.ElefanaException;
-import com.elefana.node.NodeSettingsService;
-import com.elefana.util.IndexUtils;
-import com.elefana.util.NamedThreadFactory;
-import com.jsoniter.JsonIterator;
-import com.jsoniter.ValueType;
-import com.jsoniter.any.Any;
-import com.jsoniter.spi.JsonException;
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor {

@@ -15,12 +15,12 @@
  ******************************************************************************/
 package com.elefana.search.sort;
 
+import com.jsoniter.ValueType;
+import com.jsoniter.any.Any;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
-import com.jsoniter.ValueType;
-import com.jsoniter.any.Any;
 
 public class Sort {
 	private static final String KEY_SORT = "sort";

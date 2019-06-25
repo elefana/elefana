@@ -15,15 +15,15 @@
  ******************************************************************************/
 package com.elefana.search.query;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.indices.IndexTemplate;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class BoolQuery extends Query {
 	private static final Logger LOGGER = LoggerFactory.getLogger(BoolQuery.class);

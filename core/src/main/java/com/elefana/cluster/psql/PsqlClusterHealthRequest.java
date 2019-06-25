@@ -15,10 +15,10 @@
  ******************************************************************************/
 package com.elefana.cluster.psql;
 
-import java.util.concurrent.Callable;
-
 import com.elefana.api.cluster.ClusterHealthRequest;
 import com.elefana.api.cluster.ClusterHealthResponse;
+
+import java.util.concurrent.Callable;
 
 public class PsqlClusterHealthRequest extends ClusterHealthRequest implements Callable<ClusterHealthResponse> {
 	private final PsqlClusterService clusterService;

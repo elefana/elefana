@@ -15,14 +15,6 @@
  ******************************************************************************/
 package com.elefana.api;
 
-import java.net.URLDecoder;
-import java.util.UUID;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
 import com.elefana.api.document.IndexOpType;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.NoSuchApiException;
@@ -34,8 +26,14 @@ import com.elefana.indices.IndexFieldMappingService;
 import com.elefana.indices.IndexTemplateService;
 import com.elefana.node.NodesService;
 import com.elefana.search.SearchService;
-
 import io.netty.handler.codec.http.HttpMethod;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.net.URLDecoder;
+import java.util.UUID;
 
 /**
  *

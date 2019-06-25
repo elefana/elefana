@@ -15,12 +15,6 @@
  ******************************************************************************/
 package com.elefana.search.query;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.elefana.api.indices.IndexTemplate;
 import com.elefana.esqs.EsFieldQuery;
 import com.elefana.esqs.EsQueryOperator;
@@ -28,6 +22,11 @@ import com.elefana.esqs.EsQueryString;
 import com.elefana.esqs.EsQueryStringWalker;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class QueryStringQuery extends Query implements EsQueryStringWalker {
 	private static final Logger LOGGER = LoggerFactory.getLogger(QueryStringQuery.class);

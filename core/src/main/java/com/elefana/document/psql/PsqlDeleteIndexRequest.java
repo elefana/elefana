@@ -16,8 +16,6 @@
 package com.elefana.document.psql;
 
 import com.elefana.api.AckResponse;
-import com.elefana.api.RequestExecutor;
-import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.indices.DeleteIndexRequest;
 
 import java.util.concurrent.Callable;

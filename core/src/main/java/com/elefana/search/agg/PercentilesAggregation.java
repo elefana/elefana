@@ -15,13 +15,13 @@
  ******************************************************************************/
 package com.elefana.search.agg;
 
+import com.jsoniter.ValueType;
+import com.jsoniter.any.Any;
+
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
-import com.jsoniter.ValueType;
-import com.jsoniter.any.Any;
 
 public class PercentilesAggregation extends Aggregation {
 	private static final String KEY_FIELD = "field";

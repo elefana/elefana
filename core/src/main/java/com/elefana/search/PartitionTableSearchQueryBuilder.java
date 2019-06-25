@@ -15,14 +15,13 @@
  ******************************************************************************/
 package com.elefana.search;
 
-import java.util.List;
-
+import com.elefana.api.indices.IndexTemplate;
+import com.elefana.util.IndexUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import com.elefana.api.indices.IndexTemplate;
-import com.elefana.util.IndexUtils;
+import java.util.List;
 
 /**
  *

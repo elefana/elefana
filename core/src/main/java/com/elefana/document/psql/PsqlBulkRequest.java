@@ -15,10 +15,10 @@
  ******************************************************************************/
 package com.elefana.document.psql;
 
-import java.util.concurrent.Callable;
-
 import com.elefana.api.document.BulkRequest;
 import com.elefana.api.document.BulkResponse;
+
+import java.util.concurrent.Callable;
 
 public class PsqlBulkRequest extends BulkRequest implements Callable<BulkResponse> {
 	private final PsqlBulkIngestService bulkIngestService;

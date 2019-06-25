@@ -15,13 +15,11 @@
  ******************************************************************************/
 package com.elefana.search.query;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.elefana.api.indices.IndexTemplate;
-import com.elefana.search.SearchQueryBuilder;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class RangeQuery extends Query {
 	private static final Logger LOGGER = LoggerFactory.getLogger(RangeQuery.class);
