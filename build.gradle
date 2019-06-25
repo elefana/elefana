@@ -52,7 +52,7 @@ subprojects {
 		jsoniterVersion = '0.9.21'
 		metricsVersion = '4.0.3'
 		nativesLoaderVersion = '1.0.0'
-		nettyVersion = '4.1.33.Final'
+		nettyVersion = '4.1.36.Final'
 		oshiVersion = '3.13.0'
 		restAssuredVersion = '3.1.1'
 		stringSearchVersion = '2.2.0'
