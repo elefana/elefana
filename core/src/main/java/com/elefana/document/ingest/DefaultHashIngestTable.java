@@ -200,13 +200,26 @@ public class DefaultHashIngestTable implements HashIngestTable {
 	}
 
 	private int getExistingTableCount(Connection connection, String tableName) throws SQLException {
-		PreparedStatement preparedStatement = connection.prepareStatement("SELECT COUNT(*) FROM " + tableName);
-		final ResultSet resultSet = preparedStatement.executeQuery();
+		PreparedStatement preparedStatement = connection.prepareStatement("SELECT n_live_tup AS count FROM pg_stat_all_tables WHERE relname = '" + tableName + "';");
+		ResultSet resultSet = preparedStatement.executeQuery();
 		int result = 0;
 		if(resultSet.next()) {
 			result = resultSet.getInt("count");
 		}
+		resultSet.close();
 		preparedStatement.close();
+
+		if(result == 0) {
+			//Double check in reltuples
+			preparedStatement = connection.prepareStatement("SELECT reltuples AS count FROM pg_class WHERE relname = '" + tableName +"';");
+			resultSet = preparedStatement.executeQuery();
+			if(resultSet.next()) {
+				result = resultSet.getInt("count");
+			}
+			resultSet.close();
+			preparedStatement.close();
+		}
+
 		return result;
 	}
 
