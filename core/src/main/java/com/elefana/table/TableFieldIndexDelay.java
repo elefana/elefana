@@ -21,7 +21,7 @@ public class TableFieldIndexDelay extends TableIndexDelay {
 	private final String fieldName;
 
 	public TableFieldIndexDelay(String tableName, String fieldName, long indexTimestamp, IndexGenerationMode mode) {
-		super(tableName, indexTimestamp, mode);
+		super(tableName, indexTimestamp, mode, true, true);
 		this.fieldName = fieldName;
 	}
 
