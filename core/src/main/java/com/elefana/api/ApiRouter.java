@@ -154,7 +154,16 @@ public class ApiRouter {
 			throws ElefanaException {
 		switch (urlComponents[0].toLowerCase()) {
 		case "_bulk":
-			return bulkIngestService.prepareBulkRequest(requestBody);
+			if(urlComponents.length == 2) {
+				switch(urlComponents[1].toLowerCase()) {
+				case "_stats":
+					break;
+				default:
+					return bulkIngestService.prepareBulkRequest(requestBody);
+				}
+			} else {
+				return bulkIngestService.prepareBulkRequest(requestBody);
+			}
 		}
 		throw new NoSuchApiException(method, url);
 	}

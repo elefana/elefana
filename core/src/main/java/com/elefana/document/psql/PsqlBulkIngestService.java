@@ -19,9 +19,7 @@ import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import com.elefana.api.RequestExecutor;
-import com.elefana.api.document.BulkItemResponse;
-import com.elefana.api.document.BulkRequest;
-import com.elefana.api.document.BulkResponse;
+import com.elefana.api.document.*;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.indices.IndexTemplate;
 import com.elefana.api.indices.IndexTimeBucket;
@@ -136,6 +134,43 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 	@Override
 	public BulkRequest prepareBulkRequest(String requestBody) {
 		return new PsqlBulkRequest(this, requestBody);
+	}
+
+	@Override
+	public BulkStatsRequest prepareBulkStatsRequest() {
+		return new PsqlBulkStatsRequest(this);
+	}
+
+	public BulkStatsResponse getBulkStats() {
+		final Map<String, Object> durationStats = new HashMap<String, Object>();
+		durationStats.put("m1", bulkIngestTotalTimer.getOneMinuteRate());
+		durationStats.put("m5", bulkIngestTotalTimer.getFiveMinuteRate());
+		durationStats.put("m15", bulkIngestTotalTimer.getFifteenMinuteRate());
+
+		final Map<String, Object> successStats = new HashMap<String, Object>();
+		successStats.put("m1", bulkOperationsSuccess.getOneMinuteRate());
+		successStats.put("m5", bulkOperationsSuccess.getFiveMinuteRate());
+		successStats.put("m15", bulkOperationsSuccess.getFifteenMinuteRate());
+		successStats.put("total", bulkOperationsSuccess.getCount());
+
+		final Map<String, Object> failureStats = new HashMap<String, Object>();
+		failureStats.put("m1", bulkOperationsFailed.getOneMinuteRate());
+		failureStats.put("m5", bulkOperationsFailed.getFiveMinuteRate());
+		failureStats.put("m15", bulkOperationsFailed.getFifteenMinuteRate());
+		failureStats.put("total", bulkOperationsFailed.getCount());
+
+		final Map<String, Object> batchStats = new HashMap<String, Object>();
+		batchStats.put("m1", bulkOperationsBatchSize.getOneMinuteRate());
+		batchStats.put("m5", bulkOperationsBatchSize.getFiveMinuteRate());
+		batchStats.put("m15", bulkOperationsBatchSize.getFifteenMinuteRate());
+		batchStats.put("total", bulkOperationsBatchSize.getCount());
+
+		final BulkStatsResponse response = new BulkStatsResponse();
+		response.getStats().put("duration", durationStats);
+		response.getStats().put("success", successStats);
+		response.getStats().put("failure", failureStats);
+		response.getStats().put("batch", batchStats);
+		return response;
 	}
 
 	public BulkResponse bulkOperations(String requestBody) throws ElefanaException {

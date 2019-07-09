@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2018 Viridian Software Limited
+ * Copyright 2019 Viridian Software Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,14 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package com.elefana.document;
+package com.elefana.api.document;
 
-import com.elefana.api.document.BulkRequest;
-import com.elefana.api.document.BulkStatsRequest;
+import com.elefana.api.ApiRequest;
+import com.elefana.api.RequestExecutor;
 
-public interface BulkIngestService {
+public abstract class BulkStatsRequest extends ApiRequest<BulkStatsResponse> {
 
-	public BulkRequest prepareBulkRequest(String requestBody);
-
-	public BulkStatsRequest prepareBulkStatsRequest();
+	public BulkStatsRequest(RequestExecutor requestExecutor) {
+		super(requestExecutor);
+	}
 }

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2018 Viridian Software Limited
+ * Copyright 2019 Viridian Software Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,14 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package com.elefana.document;
+package com.elefana.document.psql;
 
-import com.elefana.api.document.BulkRequest;
+import com.elefana.api.RequestExecutor;
 import com.elefana.api.document.BulkStatsRequest;
+import com.elefana.api.document.BulkStatsResponse;
 
-public interface BulkIngestService {
+import java.util.concurrent.Callable;
 
-	public BulkRequest prepareBulkRequest(String requestBody);
+public class PsqlBulkStatsRequest extends BulkStatsRequest implements Callable<BulkStatsResponse> {
+	private final PsqlBulkIngestService bulkIngestService;
 
-	public BulkStatsRequest prepareBulkStatsRequest();
+	public PsqlBulkStatsRequest(PsqlBulkIngestService bulkIngestService) {
+		super(bulkIngestService);
+		this.bulkIngestService = bulkIngestService;
+	}
+
+	@Override
+	protected Callable<BulkStatsResponse> internalExecute() {
+		return this;
+	}
+
+	@Override
+	public BulkStatsResponse call() throws Exception {
+		return bulkIngestService.getBulkStats();
+	}
 }
