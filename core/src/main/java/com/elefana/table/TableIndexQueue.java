@@ -45,7 +45,9 @@ public class TableIndexQueue extends PsqlBackedQueue<TableIndexDelay> {
 			final String tableName = resultSet.getString("_tableName");
 			final long timestamp = resultSet.getLong("_timestamp");
 			final IndexGenerationMode indexGenerationMode = IndexGenerationMode.valueOf(resultSet.getString("_generationMode"));
-			results.add(new TableIndexDelay(tableName, timestamp, indexGenerationMode));
+			final boolean ginEnabled = resultSet.getBoolean("_ginEnabled");
+			final boolean brinEnabled = resultSet.getBoolean("_brinEnabled");
+			results.add(new TableIndexDelay(tableName, timestamp, indexGenerationMode, ginEnabled, brinEnabled));
 		}
 	}
 
@@ -62,7 +64,7 @@ public class TableIndexQueue extends PsqlBackedQueue<TableIndexDelay> {
 
 		try {
 			PreparedStatement preparedStatement = connection.prepareStatement(
-					"INSERT INTO elefana_delayed_table_index_queue (_tableName, _timestamp, _generationMode) VALUES (?, ?, ?) ON CONFLICT (_tableName) DO NOTHING;");
+					"INSERT INTO elefana_delayed_table_index_queue (_tableName, _timestamp, _generationMode, _ginEnabled, _brinEnabled) VALUES (?, ?, ?, ?, ?) ON CONFLICT (_tableName) DO NOTHING;");
 
 			final int batchSize = 100;
 			int count = 0;
@@ -72,6 +74,8 @@ public class TableIndexQueue extends PsqlBackedQueue<TableIndexDelay> {
 				preparedStatement.setString(1, indexDelay.getTableName());
 				preparedStatement.setLong(2, indexDelay.getIndexTimestamp());
 				preparedStatement.setString(3, indexDelay.getMode().name());
+				preparedStatement.setBoolean(4, indexDelay.isGinEnabled());
+				preparedStatement.setBoolean(5, indexDelay.isBrinEnabled());
 				preparedStatement.addBatch();
 
 				count++;

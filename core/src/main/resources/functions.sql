@@ -5,7 +5,7 @@ CREATE SEQUENCE IF NOT EXISTS elefana_dup_key_id MINVALUE -9223372036854775807 S
 CREATE TABLE IF NOT EXISTS elefana_bulk_tables (_index VARCHAR(255), _ingestTableName VARCHAR(255) UNIQUE);
 CREATE TABLE IF NOT EXISTS elefana_bulk_worker_index_queue (_queue_id VARCHAR(255) PRIMARY KEY, _targetTableName VARCHAR(255), _workerTableName VARCHAR(255), _timestamp BIGINT, _workerHost VARCHAR(255), _workerPort INT, _shardOffset INT);
 CREATE TABLE IF NOT EXISTS elefana_file_deletion_queue (_filepath VARCHAR(255), _timestamp BIGINT);
-CREATE TABLE IF NOT EXISTS elefana_delayed_table_index_queue (_tableName VARCHAR(255), _timestamp BIGINT, _generationMode VARCHAR(255));
+CREATE TABLE IF NOT EXISTS elefana_delayed_table_index_queue (_tableName VARCHAR(255), _timestamp BIGINT, _generationMode VARCHAR(255), _ginEnabled BOOLEAN, _brinEnabled BOOLEAN);
 CREATE TABLE IF NOT EXISTS elefana_delayed_field_index_queue (_tableName VARCHAR(255), _fieldName VARCHAR(255), _timestamp BIGINT, _generationMode VARCHAR(255));
 
 CREATE TABLE IF NOT EXISTS elefana_index_field_mapping_queue (_index VARCHAR(255) UNIQUE, _timestamp BIGINT);

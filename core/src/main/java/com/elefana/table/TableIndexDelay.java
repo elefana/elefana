@@ -21,11 +21,14 @@ public class TableIndexDelay {
 	private final String tableName;
 	private final long indexTimestamp;
 	private final IndexGenerationMode mode;
+	private final boolean ginEnabled, brinEnabled;
 
-	public TableIndexDelay(String tableName, long indexTimestamp, IndexGenerationMode mode) {
+	public TableIndexDelay(String tableName, long indexTimestamp, IndexGenerationMode mode, boolean ginEnabled, boolean brinEnabled) {
 		this.tableName = tableName;
 		this.indexTimestamp = indexTimestamp;
 		this.mode = mode;
+		this.ginEnabled = ginEnabled;
+		this.brinEnabled = brinEnabled;
 	}
 
 	public String getTableName() {
@@ -38,5 +41,13 @@ public class TableIndexDelay {
 
 	public IndexGenerationMode getMode() {
 		return mode;
+	}
+
+	public boolean isGinEnabled() {
+		return ginEnabled;
+	}
+
+	public boolean isBrinEnabled() {
+		return brinEnabled;
 	}
 }

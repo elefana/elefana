@@ -18,10 +18,7 @@ package com.elefana.util;
 import com.codahale.metrics.MetricRegistry;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.ShardFailedException;
-import com.elefana.api.indices.GetIndexTemplateForIndexRequest;
-import com.elefana.api.indices.GetIndexTemplateForIndexResponse;
-import com.elefana.api.indices.IndexGenerationSettings;
-import com.elefana.api.indices.IndexTemplate;
+import com.elefana.api.indices.*;
 import com.elefana.indices.IndexTemplateService;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.table.TableIndexCreator;
@@ -60,7 +57,7 @@ import java.util.concurrent.locks.ReentrantLock;
 @DependsOn("nodeSettingsService")
 public class CoreIndexUtils implements IndexUtils {
 	private static final String[] DEFAULT_TABLESPACES = new String[] { "" };
-	private static final IndexGenerationSettings DEFAULT_INDEX_GENERATION_SETTINGS = new IndexGenerationSettings();
+	private static final IndexStorageSettings DEFAULT_INDEX_STORAGE_SETTINGS = new IndexStorageSettings();
 	private static final Logger LOGGER = LoggerFactory.getLogger(CoreIndexUtils.class);
 
 	private final Map<String, String[]> jsonPathCache = new ConcurrentHashMap<String, String[]>();
@@ -232,6 +229,12 @@ public class CoreIndexUtils implements IndexUtils {
 		} else {
 			return;
 		}
+
+		final IndexStorageSettings indexStorageSettings = indexTemplate.getStorage();
+		if(!indexStorageSettings.isGinEnabled()) {
+			return;
+		}
+
 		final String tableName = convertIndexNameToTableName(indexName);
 
 		Connection connection = null;
@@ -241,15 +244,13 @@ public class CoreIndexUtils implements IndexUtils {
 
 			boolean indexCreated = false;
 			for (String fieldName : fieldNames) {
-				final IndexGenerationSettings indexGenerationSettings = indexTemplate.getStorage()
-						.getIndexGenerationSettings();
-				switch (indexGenerationSettings.getMode()) {
+				switch (indexStorageSettings.getIndexGenerationSettings().getMode()) {
 				case ALL:
 					indexCreated = true;
 					break;
 				case PRESET:
 					boolean matchedPresetField = false;
-					for (String presetFieldName : indexGenerationSettings.getPresetIndexFields()) {
+					for (String presetFieldName : indexStorageSettings.getIndexGenerationSettings().getPresetIndexFields()) {
 						if (presetFieldName.equalsIgnoreCase(fieldName)) {
 							matchedPresetField = true;
 							break;
@@ -258,7 +259,7 @@ public class CoreIndexUtils implements IndexUtils {
 					if (!matchedPresetField) {
 						continue;
 					}
-					tableIndexCreator.createPsqlFieldIndex(connection, tableName, fieldName, indexGenerationSettings);
+					tableIndexCreator.createPsqlFieldIndex(connection, tableName, fieldName, indexStorageSettings);
 					break;
 				case DYNAMIC:
 				default:
@@ -341,10 +342,10 @@ public class CoreIndexUtils implements IndexUtils {
 			preparedStatement.execute();
 			preparedStatement.close();
 
-			if(indexTemplate != null && indexTemplate.getStorage() != null && indexTemplate.getStorage().getIndexGenerationSettings() != null) {
-				tableIndexCreator.createPsqlTableIndices(connection, tableName, indexTemplate.getStorage().getIndexGenerationSettings());
+			if(indexTemplate != null && indexTemplate.getStorage() != null) {
+				tableIndexCreator.createPsqlTableIndices(connection, tableName, indexTemplate.getStorage());
 			} else {
-				tableIndexCreator.createPsqlTableIndices(connection, tableName, DEFAULT_INDEX_GENERATION_SETTINGS);
+				tableIndexCreator.createPsqlTableIndices(connection, tableName, DEFAULT_INDEX_STORAGE_SETTINGS);
 			}
 
 			final boolean createPrimaryKey = !nodeSettingsService.isUsingCitus() || (nodeSettingsService.isUsingCitus() && !timeSeries);

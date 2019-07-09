@@ -32,6 +32,10 @@ public class IndexStorageSettings {
 	private boolean fieldStatsDisabled = false;
 	@JsonProperty("mapping_disabled")
 	private boolean mappingDisabled = false;
+	@JsonProperty("brin_enabled")
+	private boolean brinEnabled = false;
+	@JsonProperty("gin_enabled")
+	private boolean ginEnabled = false;
 
 	public DistributionMode getDistributionMode() {
 		if(distributionMode == null) {
@@ -90,6 +94,21 @@ public class IndexStorageSettings {
 		this.mappingDisabled = mappingDisabled;
 	}
 
+	public boolean isBrinEnabled() {
+		return brinEnabled;
+	}
+
+	public void setBrinEnabled(boolean brinEnabled) {
+		this.brinEnabled = brinEnabled;
+	}
+
+	public boolean isGinEnabled() {
+		return ginEnabled;
+	}
+
+	public void setGinEnabled(boolean ginEnabled) {
+		this.ginEnabled = ginEnabled;
+	}
 
 	@Override
 	public boolean equals(Object o) {
@@ -98,6 +117,8 @@ public class IndexStorageSettings {
 		IndexStorageSettings that = (IndexStorageSettings) o;
 		return fieldStatsDisabled == that.fieldStatsDisabled &&
 				mappingDisabled == that.mappingDisabled &&
+				brinEnabled == that.brinEnabled &&
+				ginEnabled == that.ginEnabled &&
 				distributionMode == that.distributionMode &&
 				indexTimeBucket == that.indexTimeBucket &&
 				Objects.equals(timestampPath, that.timestampPath) &&
@@ -106,6 +127,7 @@ public class IndexStorageSettings {
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(distributionMode, indexTimeBucket, timestampPath, indexGenerationSettings, fieldStatsDisabled, mappingDisabled);
+		return Objects.hash(distributionMode, indexTimeBucket, timestampPath, indexGenerationSettings,
+				fieldStatsDisabled, mappingDisabled, brinEnabled, ginEnabled);
 	}
 }

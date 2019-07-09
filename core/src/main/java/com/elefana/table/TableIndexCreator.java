@@ -17,6 +17,7 @@ package com.elefana.table;
 
 import com.elefana.api.indices.IndexGenerationMode;
 import com.elefana.api.indices.IndexGenerationSettings;
+import com.elefana.api.indices.IndexStorageSettings;
 import com.elefana.node.NodeInfoService;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.util.IndexUtils;
@@ -88,7 +89,8 @@ public class TableIndexCreator implements Runnable {
 
 		while(!tableIndexQueue.isEmpty()) {
 			final TableIndexDelay tableIndexDelay = tableIndexQueue.poll();
-			internalCreatePsqlTableIndices(connection, tableIndexDelay.getTableName(), tableIndexDelay.getMode());
+			internalCreatePsqlTableIndices(connection, tableIndexDelay.getTableName(), tableIndexDelay.getMode(),
+					tableIndexDelay.isGinEnabled(), tableIndexDelay.isBrinEnabled());
 		}
 		return connection;
 	}
@@ -106,21 +108,31 @@ public class TableIndexCreator implements Runnable {
 		return connection;
 	}
 
-	public void createPsqlTableIndices(Connection connection, String tableName, IndexGenerationSettings indexGenerationSettings) throws SQLException {
-		if(indexGenerationSettings.getIndexDelaySeconds() <= 0) {
-			internalCreatePsqlTableIndices(connection, tableName, indexGenerationSettings.getMode());
+	public void createPsqlTableIndices(Connection connection, String tableName, IndexStorageSettings settings) throws SQLException {
+		if(!settings.isBrinEnabled() && !settings.isGinEnabled()) {
+			return;
+		}
+
+		if(settings.getIndexGenerationSettings().getIndexDelaySeconds() <= 0) {
+			internalCreatePsqlTableIndices(connection, tableName, settings.getIndexGenerationSettings().getMode(),
+					settings.isGinEnabled(), settings.isBrinEnabled());
 		} else {
-			final long indexTimestamp = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(indexGenerationSettings.getIndexDelaySeconds());
-			tableIndexQueue.offer(new TableIndexDelay(tableName, indexTimestamp, indexGenerationSettings.getMode()));
+			final long indexTimestamp = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(settings.getIndexGenerationSettings().getIndexDelaySeconds());
+			tableIndexQueue.offer(new TableIndexDelay(tableName, indexTimestamp, settings.getIndexGenerationSettings().getMode(),
+					settings.isGinEnabled(), settings.isBrinEnabled()));
 		}
 	}
 
-	public void createPsqlFieldIndex(Connection connection, String tableName, String fieldName, IndexGenerationSettings indexGenerationSettings) throws SQLException {
-		if(indexGenerationSettings.getIndexDelaySeconds() <= 0) {
-			internalCreatePsqlFieldIndex(connection, tableName, fieldName, indexGenerationSettings.getMode());
+	public void createPsqlFieldIndex(Connection connection, String tableName, String fieldName, IndexStorageSettings settings) throws SQLException {
+		if(!settings.isGinEnabled()) {
+			return;
+		}
+
+		if(settings.getIndexGenerationSettings().getIndexDelaySeconds() <= 0) {
+			internalCreatePsqlFieldIndex(connection, tableName, fieldName, settings.getIndexGenerationSettings().getMode());
 		} else {
-			final long indexTimestamp = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(indexGenerationSettings.getIndexDelaySeconds());
-			fieldIndexQueue.offer(new TableFieldIndexDelay(tableName, fieldName, indexTimestamp, indexGenerationSettings.getMode()));
+			final long indexTimestamp = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(settings.getIndexGenerationSettings().getIndexDelaySeconds());
+			fieldIndexQueue.offer(new TableFieldIndexDelay(tableName, fieldName, indexTimestamp, settings.getIndexGenerationSettings().getMode()));
 		}
 	}
 
@@ -140,13 +152,13 @@ public class TableIndexCreator implements Runnable {
 		}
 	}
 
-	private void internalCreatePsqlTableIndices(Connection connection, String tableName, IndexGenerationMode indexGenerationMode) throws SQLException {
+	private void internalCreatePsqlTableIndices(Connection connection, String tableName, IndexGenerationMode indexGenerationMode, boolean ginEnabled, boolean brinEnabled) throws SQLException {
 		final String brinIndexName = IndexUtils.BRIN_INDEX_PREFIX + tableName;
 		final String ginIndexName = IndexUtils.GIN_INDEX_PREFIX + tableName;
 
 		PreparedStatement preparedStatement;
 
-		if(indexGenerationMode.equals(IndexGenerationMode.ALL)) {
+		if(indexGenerationMode.equals(IndexGenerationMode.ALL) && ginEnabled) {
 			final String createGinIndexQuery = "CREATE INDEX CONCURRENTLY IF NOT EXISTS " + ginIndexName + " ON " + tableName
 					+ " USING GIN (_source jsonb_ops)";
 			LOGGER.info(createGinIndexQuery);
@@ -155,11 +167,13 @@ public class TableIndexCreator implements Runnable {
 			preparedStatement.close();
 		}
 
-		final String createTimestampIndexQuery = "CREATE INDEX CONCURRENTLY IF NOT EXISTS " + brinIndexName + " ON "
-				+ tableName + " USING BRIN (_timestamp, _bucket1s, _bucket1m, _bucket1h, _bucket1d) WITH (pages_per_range = " + nodeSettingsService.getBrinPagesPerRange() + ")";
-		LOGGER.info(createTimestampIndexQuery);
-		preparedStatement = connection.prepareStatement(createTimestampIndexQuery);
-		preparedStatement.execute();
-		preparedStatement.close();
+		if(brinEnabled) {
+			final String createTimestampIndexQuery = "CREATE INDEX CONCURRENTLY IF NOT EXISTS " + brinIndexName + " ON "
+					+ tableName + " USING BRIN (_timestamp, _bucket1s, _bucket1m, _bucket1h, _bucket1d) WITH (pages_per_range = " + nodeSettingsService.getBrinPagesPerRange() + ")";
+			LOGGER.info(createTimestampIndexQuery);
+			preparedStatement = connection.prepareStatement(createTimestampIndexQuery);
+			preparedStatement.execute();
+			preparedStatement.close();
+		}
 	}
 }
