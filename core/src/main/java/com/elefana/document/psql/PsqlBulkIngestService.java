@@ -49,10 +49,7 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -145,30 +142,30 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 	}
 
 	public BulkStatsResponse getBulkStats() {
-		final Map<String, Object> durationStats = new HashMap<String, Object>();
+		final Map<String, Object> durationStats = new LinkedHashMap<String, Object>();
 		durationStats.put("m1", bulkIngestTotalTimer.getOneMinuteRate());
 		durationStats.put("m5", bulkIngestTotalTimer.getFiveMinuteRate());
 		durationStats.put("m15", bulkIngestTotalTimer.getFifteenMinuteRate());
 
-		final Map<String, Object> successStats = new HashMap<String, Object>();
+		final Map<String, Object> successStats = new LinkedHashMap<String, Object>();
 		successStats.put("m1", bulkOperationsSuccess.getOneMinuteRate());
 		successStats.put("m5", bulkOperationsSuccess.getFiveMinuteRate());
 		successStats.put("m15", bulkOperationsSuccess.getFifteenMinuteRate());
 		successStats.put("total", bulkOperationsSuccess.getCount());
 
-		final Map<String, Object> failureStats = new HashMap<String, Object>();
+		final Map<String, Object> failureStats = new LinkedHashMap<String, Object>();
 		failureStats.put("m1", bulkOperationsFailed.getOneMinuteRate());
 		failureStats.put("m5", bulkOperationsFailed.getFiveMinuteRate());
 		failureStats.put("m15", bulkOperationsFailed.getFifteenMinuteRate());
 		failureStats.put("total", bulkOperationsFailed.getCount());
 
-		final Map<String, Object> batchStats = new HashMap<String, Object>();
+		final Map<String, Object> batchStats = new LinkedHashMap<>();
 		batchStats.put("m1", bulkOperationsBatchSize.getOneMinuteRate());
 		batchStats.put("m5", bulkOperationsBatchSize.getFiveMinuteRate());
 		batchStats.put("m15", bulkOperationsBatchSize.getFifteenMinuteRate());
 		batchStats.put("total", bulkOperationsBatchSize.getCount());
 
-		final Map<String, Object> indexStats = new HashMap<String, Object>();
+		final Map<String, Object> indexStats = new LinkedHashMap<String, Object>();
 		indexStats.put("m1", bulkIndexTimer.getOneMinuteRate());
 		indexStats.put("m5", bulkIndexTimer.getFiveMinuteRate());
 		indexStats.put("m15", bulkIndexTimer.getFifteenMinuteRate());

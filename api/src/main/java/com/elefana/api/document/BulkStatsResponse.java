@@ -20,12 +20,12 @@ import com.jsoniter.annotation.JsonProperty;
 import com.jsoniter.output.JsonStream;
 import io.netty.handler.codec.http.HttpResponseStatus;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class BulkStatsResponse extends ApiResponse {
 	@JsonProperty("stats")
-	private Map<String, Object> stats = new HashMap<String, Object>();
+	private Map<String, Object> stats = new LinkedHashMap<String, Object>();
 
 	public BulkStatsResponse() {
 		super(HttpResponseStatus.OK.code());
