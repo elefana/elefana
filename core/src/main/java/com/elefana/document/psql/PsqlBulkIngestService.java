@@ -88,6 +88,7 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 	private final AtomicInteger tablespaceIndex = new AtomicInteger();
 	private ExecutorService bulkRequestExecutorService, bulkProcessingExecutorService;
 
+	private Timer bulkIndexTimer;
 	private Timer bulkIngestTotalTimer, bulkIngestPsqlTimer, bulkIngestSerializationTimer, bulkGatherResultsTimer;
 	private Timer psqlBatchBuildTimer, jsonFlattenTimer, jsonEscapeTimer;
 	private Meter bulkOperationsSuccess, bulkOperationsFailed, bulkOperationsBatchSize;
@@ -99,6 +100,8 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 		final int totalProcessingThreads = (nodeSettingsService.getBulkParallelisation() * totalIngestThreads) + 1;
 		bulkRequestExecutorService = Executors.newFixedThreadPool(totalIngestThreads, new NamedThreadFactory(REQUEST_THREAD_PREFIX));
 		bulkProcessingExecutorService = Executors.newFixedThreadPool(totalProcessingThreads, new NamedThreadFactory(PROCESSOR_THREAD_PREFIX));
+
+		bulkIndexTimer = metricRegistry.timer(MetricRegistry.name("bulk", "index", "duration", "total"));
 
 		bulkIngestTotalTimer = metricRegistry.timer(MetricRegistry.name("bulk", "ingest", "duration", "total"));
 		bulkIngestSerializationTimer = metricRegistry
@@ -165,11 +168,17 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 		batchStats.put("m15", bulkOperationsBatchSize.getFifteenMinuteRate());
 		batchStats.put("total", bulkOperationsBatchSize.getCount());
 
+		final Map<String, Object> indexStats = new HashMap<String, Object>();
+		indexStats.put("m1", bulkIndexTimer.getOneMinuteRate());
+		indexStats.put("m5", bulkIndexTimer.getFiveMinuteRate());
+		indexStats.put("m15", bulkIndexTimer.getFifteenMinuteRate());
+
 		final BulkStatsResponse response = new BulkStatsResponse();
 		response.getStats().put("duration", durationStats);
 		response.getStats().put("success", successStats);
 		response.getStats().put("failure", failureStats);
 		response.getStats().put("batch", batchStats);
+		response.getStats().put("index", indexStats);
 		return response;
 	}
 

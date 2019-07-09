@@ -157,7 +157,7 @@ public class ApiRouter {
 			if(urlComponents.length == 2) {
 				switch(urlComponents[1].toLowerCase()) {
 				case "_stats":
-					break;
+					return bulkIngestService.prepareBulkStatsRequest();
 				default:
 					return bulkIngestService.prepareBulkRequest(requestBody);
 				}
