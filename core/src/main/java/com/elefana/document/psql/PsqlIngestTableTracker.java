@@ -233,6 +233,24 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 		return getIngestTable(index, indexToTimeIngestTable, true);
 	}
 
+	@Override
+	public int getTotalIngestTables() {
+		int result = 0;
+		lock.readLock().lock();
+		try {
+			for(String index: indexToHashIngestTable.keySet()) {
+				result += indexToHashIngestTable.get(index).getCapacity();
+			}
+			for(String index: indexToTimeIngestTable.keySet()) {
+				result += indexToTimeIngestTable.get(index).getCapacity();
+			}
+		} catch (Exception e) {
+			LOGGER.error(e.getMessage(), e);
+		}
+		lock.readLock().unlock();
+		return result;
+	}
+
 	private <T> T getIngestTable(String index, Map<String, T> tables, boolean time) throws ElefanaException  {
 		lock.readLock().lock();
 		final T result = tables.get(index);

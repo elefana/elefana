@@ -28,4 +28,6 @@ public interface IngestTableTracker {
 	public HashIngestTable getHashIngestTable(String index) throws ElefanaException;
 
 	public TimeIngestTable getTimeIngestTable(String index) throws ElefanaException;
+
+	public int getTotalIngestTables();
 }

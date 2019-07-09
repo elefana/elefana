@@ -179,6 +179,7 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 		response.getStats().put("failure", failureStats);
 		response.getStats().put("batch", batchStats);
 		response.getStats().put("index", indexStats);
+		response.getStats().put("tables", ingestTableTracker.getTotalIngestTables());
 		return response;
 	}
 
