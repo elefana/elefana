@@ -145,9 +145,9 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 	public BulkStatsResponse getBulkStats() {
 		final Map<String, Object> durationStats = new LinkedHashMap<String, Object>();
 		final Snapshot durationSnapshot = bulkIngestTotalTimer.getSnapshot();
-		durationStats.put("p99", durationSnapshot.get99thPercentile());
-		durationStats.put("p95", durationSnapshot.get95thPercentile());
-		durationStats.put("p75", durationSnapshot.get75thPercentile());
+		durationStats.put("p99", String.format("%.3f", durationSnapshot.get99thPercentile()) + "ms");
+		durationStats.put("p95", String.format("%.3f", durationSnapshot.get95thPercentile()) + "ms");
+		durationStats.put("p75", String.format("%.3f", durationSnapshot.get75thPercentile()) + "ms");
 
 		final Map<String, Object> successStats = new LinkedHashMap<String, Object>();
 		successStats.put("m1", bulkOperationsSuccess.getOneMinuteRate());
@@ -169,9 +169,9 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 
 		final Map<String, Object> indexStats = new LinkedHashMap<String, Object>();
 		final Snapshot indexSnapshot = bulkIndexTimer.getSnapshot();
-		indexStats.put("p99", indexSnapshot.get99thPercentile());
-		indexStats.put("p95", indexSnapshot.get95thPercentile());
-		indexStats.put("p75", indexSnapshot.get75thPercentile());
+		durationStats.put("p99", String.format("%.3f", indexSnapshot.get99thPercentile()) + "ms");
+		durationStats.put("p95", String.format("%.3f", indexSnapshot.get95thPercentile()) + "ms");
+		durationStats.put("p75", String.format("%.3f", indexSnapshot.get75thPercentile()) + "ms");
 
 		final BulkStatsResponse response = new BulkStatsResponse();
 		response.getStats().put("duration", durationStats);
