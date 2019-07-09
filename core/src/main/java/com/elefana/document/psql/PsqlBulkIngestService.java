@@ -17,6 +17,7 @@ package com.elefana.document.psql;
 
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.Timer;
 import com.elefana.api.RequestExecutor;
 import com.elefana.api.document.*;
@@ -143,9 +144,10 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 
 	public BulkStatsResponse getBulkStats() {
 		final Map<String, Object> durationStats = new LinkedHashMap<String, Object>();
-		durationStats.put("m1", bulkIngestTotalTimer.getOneMinuteRate());
-		durationStats.put("m5", bulkIngestTotalTimer.getFiveMinuteRate());
-		durationStats.put("m15", bulkIngestTotalTimer.getFifteenMinuteRate());
+		final Snapshot durationSnapshot = bulkIngestTotalTimer.getSnapshot();
+		durationStats.put("p99", durationSnapshot.get99thPercentile());
+		durationStats.put("p95", durationSnapshot.get95thPercentile());
+		durationStats.put("p75", durationSnapshot.get75thPercentile());
 
 		final Map<String, Object> successStats = new LinkedHashMap<String, Object>();
 		successStats.put("m1", bulkOperationsSuccess.getOneMinuteRate());
@@ -166,9 +168,10 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 		batchStats.put("total", bulkOperationsBatchSize.getCount());
 
 		final Map<String, Object> indexStats = new LinkedHashMap<String, Object>();
-		indexStats.put("m1", bulkIndexTimer.getOneMinuteRate());
-		indexStats.put("m5", bulkIndexTimer.getFiveMinuteRate());
-		indexStats.put("m15", bulkIndexTimer.getFifteenMinuteRate());
+		final Snapshot indexSnapshot = bulkIndexTimer.getSnapshot();
+		indexStats.put("p99", indexSnapshot.get99thPercentile());
+		indexStats.put("p95", indexSnapshot.get95thPercentile());
+		indexStats.put("p75", indexSnapshot.get75thPercentile());
 
 		final BulkStatsResponse response = new BulkStatsResponse();
 		response.getStats().put("duration", durationStats);
