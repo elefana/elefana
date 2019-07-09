@@ -169,9 +169,9 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 
 		final Map<String, Object> indexStats = new LinkedHashMap<String, Object>();
 		final Snapshot indexSnapshot = bulkIndexTimer.getSnapshot();
-		durationStats.put("p99", String.format("%.3f", indexSnapshot.get99thPercentile()) + "ms");
-		durationStats.put("p95", String.format("%.3f", indexSnapshot.get95thPercentile()) + "ms");
-		durationStats.put("p75", String.format("%.3f", indexSnapshot.get75thPercentile()) + "ms");
+		indexStats.put("p99", String.format("%.3f", indexSnapshot.get99thPercentile()) + "ms");
+		indexStats.put("p95", String.format("%.3f", indexSnapshot.get95thPercentile()) + "ms");
+		indexStats.put("p75", String.format("%.3f", indexSnapshot.get75thPercentile()) + "ms");
 
 		final BulkStatsResponse response = new BulkStatsResponse();
 		response.getStats().put("duration", durationStats);
