@@ -70,7 +70,7 @@ public class DefaultHashIngestTable implements HashIngestTable {
 			if(connection == null) {
 				connection = jdbcTemplate.getDataSource().getConnection();
 			}
-			dataMarker[i] = getExistingTableCount(connection, tableNames[i]) > 0;
+			dataMarker[i] = hasExistingData(connection, tableNames[i]);
 		}
 		lastUsageTimestamp.set(System.currentTimeMillis());
 
@@ -199,27 +199,19 @@ public class DefaultHashIngestTable implements HashIngestTable {
 		preparedStatement.close();
 	}
 
-	private int getExistingTableCount(Connection connection, String tableName) throws SQLException {
-		PreparedStatement preparedStatement = connection.prepareStatement("SELECT n_live_tup AS count FROM pg_stat_all_tables WHERE relname = '" + tableName + "';");
-		ResultSet resultSet = preparedStatement.executeQuery();
-		int result = 0;
-		if(resultSet.next()) {
-			result = resultSet.getInt("count");
+	private boolean hasExistingData(Connection connection, String tableName) throws SQLException {
+		final PreparedStatement queryStatement = connection.prepareStatement("SELECT _timestamp FROM " + tableName + " LIMIT 10");
+		final ResultSet resultSet = queryStatement.executeQuery();
+		boolean result = false;
+		while(resultSet.next()) {
+			final long timestamp = resultSet.getLong("_timestamp");
+			if(timestamp > 0) {
+				result = true;
+				break;
+			}
 		}
 		resultSet.close();
-		preparedStatement.close();
-
-		if(result == 0) {
-			//Double check in reltuples
-			preparedStatement = connection.prepareStatement("SELECT reltuples AS count FROM pg_class WHERE relname = '" + tableName +"';");
-			resultSet = preparedStatement.executeQuery();
-			if(resultSet.next()) {
-				result = resultSet.getInt("count");
-			}
-			resultSet.close();
-			preparedStatement.close();
-		}
-
+		queryStatement.close();
 		return result;
 	}
 
