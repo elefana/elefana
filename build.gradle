@@ -7,7 +7,7 @@ buildscript {
 		dockerRunVersion = '0.17.2'
 		jmhVersion = '0.4.8'
 		nexusStagingVersion = '0.9.0'
-		springBootVersion = '2.1.4.RELEASE'
+		springBootVersion = '2.1.6.RELEASE'
 	}
 	repositories {
 		mavenLocal()
@@ -34,7 +34,7 @@ subprojects {
 	apply plugin: 'org.springframework.boot'
 
 	group = 'com.elefana'
-	version = '1.0.0-rc28'
+	version = '1.0.0-rc29'
 
 	sourceCompatibility = 1.8
 	targetCompatibility = 1.8
@@ -46,7 +46,7 @@ subprojects {
 		commonsValidatorVersion = '1.6'
 		esCompatVersion = '1.0.1'
 		esQueryStringVersion = '1.0.3'
-		hikariVersion = '3.2.0'
+		hikariVersion = '3.3.1'
 		jacksonVersion = '2.9.8'
 		jodaVersion = '2.9.9'
 		jsoniterVersion = '0.9.21'
@@ -59,8 +59,8 @@ subprojects {
 		uuidGeneratorVersion = '3.1.5'
 		zeroAllocationHashingVersion = '0.8'
 	}
-	ext['postgresql.version'] = '42.2.5'
-	ext['tomcat.version'] = '8.5.35'
+	ext['postgresql.version'] = '42.2.6'
+	ext['tomcat.version'] = '8.5.43'
 	ext['spring-restdocs.version'] = '2.0.2.RELEASE'
 
 	tasks.withType(Test) {
