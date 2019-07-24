@@ -28,4 +28,18 @@ public interface SearchQueryBuilder {
 
 	public PsqlQueryComponents buildQuery(IndexTemplate matchedIndexTemplate, List<String> indices, String[] types,
 			RequestBodySearch requestBodySearch) throws ShardFailedException;
+
+	public static ThreadLocal<StringBuilder> POOLED_STRING_BUILDER = new ThreadLocal<StringBuilder>() {
+		@Override
+		protected StringBuilder initialValue() {
+			return new StringBuilder(512);
+		}
+
+		@Override
+		public StringBuilder get() {
+			StringBuilder b = super.get();
+			b.setLength(0); // clear/reset the buffer
+			return b;
+		}
+	};
 }

@@ -17,6 +17,7 @@ package com.elefana.search;
 
 import com.elefana.api.exception.ShardFailedException;
 import com.elefana.api.indices.IndexTemplate;
+import com.elefana.util.CumulativeAverage;
 import com.elefana.util.IndexUtils;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -80,7 +81,7 @@ public class CitusSearchQueryBuilder implements SearchQueryBuilder {
 			return result;
 		}
 		
-		final StringBuilder whereClause = new StringBuilder();
+		final StringBuilder whereClause = POOLED_STRING_BUILDER.get();
 		if (!requestBodySearch.getQuery().isMatchAllQuery()) {
 			whereClause.append("(");
 			whereClause.append(requestBodySearch.getQuerySqlWhereClause(matchedIndexTemplate));
@@ -106,10 +107,11 @@ public class CitusSearchQueryBuilder implements SearchQueryBuilder {
 			}
 			whereClause.append(")");
 		}
-		
-		final StringBuilder fromComponent = new StringBuilder();
-		fromComponent.append('(');
 		final String whereResult = whereClause.toString();
+		
+		final StringBuilder fromComponent = POOLED_STRING_BUILDER.get();
+		fromComponent.append('(');
+
 		for (int i = 0; i < indices.size(); i++) {
 			if (i > 0) {
 				fromComponent.append(" UNION ALL");
@@ -125,7 +127,7 @@ public class CitusSearchQueryBuilder implements SearchQueryBuilder {
 		}
 		fromComponent.append(')');
 		
-		return new PsqlQueryComponents(fromComponent.toString(), whereClause.toString(), "", requestBodySearch.getQuerySqlOrderClause(), "");
+		return new PsqlQueryComponents(fromComponent.toString(), whereResult, "", requestBodySearch.getQuerySqlOrderClause(), "");
 	}
 
 }

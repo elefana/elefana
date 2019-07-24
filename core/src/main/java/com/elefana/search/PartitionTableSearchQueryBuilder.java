@@ -16,6 +16,7 @@
 package com.elefana.search;
 
 import com.elefana.api.indices.IndexTemplate;
+import com.elefana.util.CumulativeAverage;
 import com.elefana.util.IndexUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,7 +29,7 @@ import java.util.List;
  */
 public class PartitionTableSearchQueryBuilder implements SearchQueryBuilder {
 	private static final Logger LOGGER = LoggerFactory.getLogger(SearchQueryBuilder.class);
-	
+
 	private final JdbcTemplate jdbcTemplate;
 	private final IndexUtils indexUtils;
 
@@ -45,7 +46,7 @@ public class PartitionTableSearchQueryBuilder implements SearchQueryBuilder {
 			return new PsqlQueryComponents("", "", "", "LIMIT 0");
 		}
 		
-		final StringBuilder whereClause = new StringBuilder();
+		final StringBuilder whereClause = POOLED_STRING_BUILDER.get();
 		
 		if(!indices.isEmpty()) {
 			whereClause.append("_index IN (");
@@ -84,7 +85,8 @@ public class PartitionTableSearchQueryBuilder implements SearchQueryBuilder {
 			whereClause.append(requestBodySearch.getQuerySqlWhereClause(matchedIndexTemplate));
 			whereClause.append(")");
 		}
-		
-		return new PsqlQueryComponents(IndexUtils.DATA_TABLE, whereClause.toString(), "", requestBodySearch.getQuerySqlOrderClause());
+
+		final String result = whereClause.toString();
+		return new PsqlQueryComponents(IndexUtils.DATA_TABLE, result, "", requestBodySearch.getQuerySqlOrderClause());
 	}
 }
