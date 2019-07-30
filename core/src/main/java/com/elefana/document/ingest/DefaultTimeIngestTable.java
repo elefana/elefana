@@ -80,22 +80,21 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 
 		try {
 			for(int i = 0; i < existingTableNames.size() && i < tableNames.length; i++) {
-				if(connection == null) {
-					connection = jdbcTemplate.getDataSource().getConnection();
-				}
-
-				restoreExistingTable(connection, timeBucket, i, existingTableNames.get(i));
+				tableNames[i] = existingTableNames.get(i);
 			}
 
 			for(int i = 0; i < capacity; i++) {
 				locks[i] = new ReentrantLock();
 
+				if(connection == null) {
+					connection = jdbcTemplate.getDataSource().getConnection();
+				}
+
 				if(tableNames[i] == null) {
-					if(connection == null) {
-						connection = jdbcTemplate.getDataSource().getConnection();
-					}
 					tableNames[i] = createAndStoreStagingTable(connection, tablespaces.length > 0 ? tablespaces[i % tablespaces.length] : null);
 					dataMarker[i] = false;
+				} else {
+					restoreExistingTable(connection, timeBucket, i, tableNames[i]);
 				}
 			}
 
@@ -204,8 +203,6 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 			dataMarker[arrayIndex] = true;
 		}
 		createTableStatement.close();
-
-		tableNames[arrayIndex] = existingTableName;
 	}
 
 	private String createAndStoreStagingTable(Connection connection, String tablespace) throws SQLException {
