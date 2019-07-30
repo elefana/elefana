@@ -64,33 +64,35 @@ public class DefaultHashIngestTable implements HashIngestTable {
 
 		Connection connection = null;
 
-		for(int i = 0; i < existingTableNames.size() && i < tableNames.length; i++) {
-			tableNames[i] = existingTableNames.get(i);
-		}
-		lastUsageTimestamp.set(System.currentTimeMillis());
+		try {
+			for(int i = 0; i < existingTableNames.size() && i < tableNames.length; i++) {
+				tableNames[i] = existingTableNames.get(i);
+			}
+			lastUsageTimestamp.set(System.currentTimeMillis());
 
-		for(int i = 0; i < capacity; i++) {
-			locks[i] = new ReentrantLock();
+			for(int i = 0; i < capacity; i++) {
+				locks[i] = new ReentrantLock();
 
-			if(connection == null) {
-				connection = jdbcTemplate.getDataSource().getConnection();
+				if(connection == null) {
+					connection = jdbcTemplate.getDataSource().getConnection();
+				}
+
+				if(tableNames[i] == null) {
+					tableNames[i] = createAndStoreStagingTable(connection, tablespaces.length > 0 ? tablespaces[i % tablespaces.length] : null);
+					dataMarker[i] = false;
+				} else {
+					createStageTable(connection, tableNames[i], tablespaces.length > 0 ? tablespaces[i % tablespaces.length] : null);
+					storeStagingTable(connection, tableNames[i]);
+
+					dataMarker[i] = hasExistingData(connection, tableNames[i]);
+				}
 			}
 
-			if(tableNames[i] == null) {
-				tableNames[i] = createAndStoreStagingTable(connection, tablespaces.length > 0 ? tablespaces[i % tablespaces.length] : null);
-				dataMarker[i] = false;
-			} else {
-				createStageTable(connection, tableNames[i], tablespaces.length > 0 ? tablespaces[i % tablespaces.length] : null);
-				storeStagingTable(connection, tableNames[i]);
-
-				dataMarker[i] = hasExistingData(connection, tableNames[i]);
-			}
-		}
-
-		if(connection != null) {
-			try {
-				connection.close();
-			} catch (Exception e) {}
+			closeConnection(connection);
+		} catch (SQLException e) {
+			LOGGER.error(e.getMessage(), e);
+			closeConnection(connection);
+			throw e;
 		}
 	}
 
@@ -157,15 +159,19 @@ public class DefaultHashIngestTable implements HashIngestTable {
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
 
-			if(connection != null) {
-				try {
-					connection.close();
-				} catch (Exception ex) {}
-			}
-
+			closeConnection(connection);
 			unlockAll();
 			return false;
 		}
+	}
+
+	private void closeConnection(Connection connection) {
+		if(connection == null) {
+			return;
+		}
+		try {
+			connection.close();
+		} catch (Exception ex) {}
 	}
 
 	private String createAndStoreStagingTable(Connection connection, String tablespace) throws SQLException {

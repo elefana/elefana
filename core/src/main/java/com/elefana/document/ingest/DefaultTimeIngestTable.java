@@ -78,31 +78,42 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 
 		Connection connection = null;
 
-		for(int i = 0; i < existingTableNames.size() && i < tableNames.length; i++) {
-			if(connection == null) {
-				connection = jdbcTemplate.getDataSource().getConnection();
-			}
-
-			restoreExistingTable(connection, timeBucket, i, existingTableNames.get(i));
-		}
-
-		for(int i = 0; i < capacity; i++) {
-			locks[i] = new ReentrantLock();
-
-			if(tableNames[i] == null) {
+		try {
+			for(int i = 0; i < existingTableNames.size() && i < tableNames.length; i++) {
 				if(connection == null) {
 					connection = jdbcTemplate.getDataSource().getConnection();
 				}
-				tableNames[i] = createAndStoreStagingTable(connection, tablespaces.length > 0 ? tablespaces[i % tablespaces.length] : null);
-				dataMarker[i] = false;
-			}
-		}
 
-		if(connection != null) {
-			try {
-				connection.close();
-			} catch (Exception e) {}
+				restoreExistingTable(connection, timeBucket, i, existingTableNames.get(i));
+			}
+
+			for(int i = 0; i < capacity; i++) {
+				locks[i] = new ReentrantLock();
+
+				if(tableNames[i] == null) {
+					if(connection == null) {
+						connection = jdbcTemplate.getDataSource().getConnection();
+					}
+					tableNames[i] = createAndStoreStagingTable(connection, tablespaces.length > 0 ? tablespaces[i % tablespaces.length] : null);
+					dataMarker[i] = false;
+				}
+			}
+
+			closeConnection(connection);
+		} catch (SQLException e) {
+			LOGGER.error(e.getMessage(), e);
+			closeConnection(connection);
+			throw e;
 		}
+	}
+
+	private void closeConnection(Connection connection) {
+		if(connection == null) {
+			return;
+		}
+		try {
+			connection.close();
+		} catch (Exception ex) {}
 	}
 
 	@Override
