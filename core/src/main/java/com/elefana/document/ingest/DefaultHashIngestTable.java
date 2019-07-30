@@ -66,23 +66,24 @@ public class DefaultHashIngestTable implements HashIngestTable {
 
 		for(int i = 0; i < existingTableNames.size() && i < tableNames.length; i++) {
 			tableNames[i] = existingTableNames.get(i);
-
-			if(connection == null) {
-				connection = jdbcTemplate.getDataSource().getConnection();
-			}
-			dataMarker[i] = hasExistingData(connection, tableNames[i]);
 		}
 		lastUsageTimestamp.set(System.currentTimeMillis());
 
 		for(int i = 0; i < capacity; i++) {
 			locks[i] = new ReentrantLock();
 
+			if(connection == null) {
+				connection = jdbcTemplate.getDataSource().getConnection();
+			}
+
 			if(tableNames[i] == null) {
-				if(connection == null) {
-					connection = jdbcTemplate.getDataSource().getConnection();
-				}
 				tableNames[i] = createAndStoreStagingTable(connection, tablespaces.length > 0 ? tablespaces[i % tablespaces.length] : null);
 				dataMarker[i] = false;
+			} else {
+				createStageTable(connection, tableNames[i], tablespaces.length > 0 ? tablespaces[i % tablespaces.length] : null);
+				storeStagingTable(connection, tableNames[i]);
+
+				dataMarker[i] = hasExistingData(connection, tableNames[i]);
 			}
 		}
 
