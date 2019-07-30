@@ -82,8 +82,6 @@ public class DefaultHashIngestTable implements HashIngestTable {
 					dataMarker[i] = false;
 				} else {
 					createStageTable(connection, tableNames[i], tablespaces.length > 0 ? tablespaces[i % tablespaces.length] : null);
-					storeStagingTable(connection, tableNames[i]);
-
 					dataMarker[i] = hasExistingData(connection, tableNames[i]);
 				}
 			}
