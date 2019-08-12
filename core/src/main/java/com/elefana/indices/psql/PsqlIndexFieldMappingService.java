@@ -177,7 +177,7 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 			return typesByIndexCache.get(index, new Callable<List<String>>() {
 				@Override
 				public List<String> call() throws Exception {
-					return getTypesForIndex(index);
+					return getTypesForIndexFromDatabase(index);
 				}
 			});
 		} catch (ExecutionException e) {
