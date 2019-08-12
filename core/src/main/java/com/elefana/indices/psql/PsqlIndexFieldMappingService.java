@@ -153,7 +153,7 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 				}
 			});
 		} catch (ExecutionException e) {
-			e.printStackTrace();
+			LOGGER.error(e.getMessage(), e);
 		}
 		return getFieldNamesFromDatabase(index, type);
 	}
@@ -181,7 +181,7 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 				}
 			});
 		} catch (ExecutionException e) {
-			e.printStackTrace();
+			LOGGER.error(e.getMessage(), e);
 		}
 		return getTypesForIndexFromDatabase(index);
 	}

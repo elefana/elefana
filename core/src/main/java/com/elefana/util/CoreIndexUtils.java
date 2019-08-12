@@ -504,7 +504,7 @@ public class CoreIndexUtils implements IndexUtils {
 				}
 			});
 		} catch (ExecutionException e) {
-			e.printStackTrace();
+			LOGGER.error(e.getMessage(), e);
 		}
 		return getIndexForPartitionTableFromDatabase(connection, partitionTable);
 	}
@@ -533,7 +533,7 @@ public class CoreIndexUtils implements IndexUtils {
 				}
 			});
 		} catch (ExecutionException e) {
-			e.printStackTrace();
+			LOGGER.error(e.getMessage(), e);
 		}
 		return getIndexForPartitionTableFromDatabase(partitionTable);
 	}
@@ -555,7 +555,7 @@ public class CoreIndexUtils implements IndexUtils {
 				}
 			});
 		} catch (ExecutionException e) {
-			e.printStackTrace();
+			LOGGER.error(e.getMessage(), e);
 		}
 		return getPartitionTableForIndexFromDatabase(connection, index);
 	}
@@ -584,7 +584,7 @@ public class CoreIndexUtils implements IndexUtils {
 				}
 			});
 		} catch (ExecutionException e) {
-			e.printStackTrace();
+			LOGGER.error(e.getMessage(), e);
 		}
 		return getPartitionTableForIndexFromDatabase(index);
 	}
