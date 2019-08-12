@@ -24,6 +24,10 @@ import com.elefana.indices.*;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
 import com.elefana.util.IndexUtils;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.output.JsonStream;
 import com.jsoniter.spi.TypeLiteral;
@@ -75,6 +79,9 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 
 	private FieldMapper fieldMapper;
 
+	private Cache<String, Set<String>> fieldNamesCache;
+	private Cache<String, List<String>> typesByIndexCache;
+
 	@PostConstruct
 	public void postConstruct() throws SQLException {
 		switch (versionInfoService.getApiVersion()) {
@@ -86,6 +93,13 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 			fieldMapper = new V5FieldMapper();
 			break;
 		}
+
+		fieldNamesCache = CacheBuilder.newBuilder().
+				maximumSize(environment.getProperty("elefana.service.field.cache.names.expire.size", Integer.class, 250)).
+				build();
+		typesByIndexCache = CacheBuilder.newBuilder().
+				maximumSize(environment.getProperty("elefana.service.field.cache.types.expire.size", Integer.class, 250)).
+				build();
 
 		mappingQueue = new IndexMappingQueue(jdbcTemplate, taskScheduler, environment.getProperty("elefana.service.field.queue.io.interval", Long.class, TimeUnit.MINUTES.toMillis(15L)));
 		fieldStatsQueue = new IndexFieldStatsQueue(jdbcTemplate, taskScheduler, environment.getProperty("elefana.service.field.queue.io.interval", Long.class, TimeUnit.MINUTES.toMillis(15L)));
@@ -130,7 +144,21 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 		return fieldMapper.getFieldNamesFromMapping(getIndexTypeMapping(index, type));
 	}
 
-	public Set<String> getFieldNames(String index, String type) {
+	public Set<String> getFieldNames(final String index, final String type) {
+		try {
+			return fieldNamesCache.get(index + "|" + type, new Callable<Set<String>>() {
+				@Override
+				public Set<String> call() throws Exception {
+					return getFieldNamesFromDatabase(index, type);
+				}
+			});
+		} catch (ExecutionException e) {
+			e.printStackTrace();
+		}
+		return getFieldNamesFromDatabase(index, type);
+	}
+
+	private Set<String> getFieldNamesFromDatabase(String index, String type) {
 		final Set<String> results = new HashSet<String>();
 		try {
 			SqlRowSet rowSet = jdbcTemplate
@@ -144,7 +172,21 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 		return results;
 	}
 
-	public List<String> getTypesForIndex(String index) {
+	public List<String> getTypesForIndex(final String index) {
+		try {
+			return typesByIndexCache.get(index, new Callable<List<String>>() {
+				@Override
+				public List<String> call() throws Exception {
+					return getTypesForIndex(index);
+				}
+			});
+		} catch (ExecutionException e) {
+			e.printStackTrace();
+		}
+		return getTypesForIndexFromDatabase(index);
+	}
+
+	private List<String> getTypesForIndexFromDatabase(String index) {
 		return jdbcTemplate.queryForList("SELECT _type FROM elefana_index_mapping WHERE _index = ?", String.class,
 				index);
 	}
@@ -753,6 +795,8 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 			jdbcTemplate.update(
 					"INSERT INTO elefana_index_field_names (_tracking_id, _index, _type, _field_names) VALUES (?, ?, ?, ?) ON CONFLICT (_tracking_id) DO UPDATE SET _field_names = EXCLUDED._field_names",
 					index + "-" + type, index, type, jsonObject);
+
+			fieldNamesCache.put(index + "|" + type, fieldNames);
 		} catch (Exception e) {
 			e.printStackTrace();
 			throw new ShardFailedException(e);

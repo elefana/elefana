@@ -25,6 +25,10 @@ import com.elefana.table.TableIndexCreator;
 import com.fasterxml.uuid.EthernetAddress;
 import com.fasterxml.uuid.Generators;
 import com.fasterxml.uuid.impl.TimeBasedGenerator;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
@@ -44,8 +48,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -84,12 +87,43 @@ public class CoreIndexUtils implements IndexUtils {
 	private final AtomicInteger tablespaceIndex = new AtomicInteger();
 	private String[] tablespaces;
 
+	private LoadingCache<String, List<String>> indicesByPatternCache;
+	private LoadingCache<String, String> indicesToPartitionTableCache, partitionTableToIndicesCache;
+
 	@PostConstruct
 	public void postConstruct() throws SQLException {
 		tablespaces = environment.getProperty("elefana.service.document.tablespaces", "").split(",");
 		if (isEmptyTablespaceList(tablespaces)) {
 			tablespaces = DEFAULT_TABLESPACES;
 		}
+
+		indicesByPatternCache = CacheBuilder.newBuilder().
+				maximumSize(environment.getProperty("elefana.service.document.cache.indexPattern.size", Integer.class, 25)).
+				expireAfterAccess(environment.getProperty("elefana.service.document.cache.indexPattern.expiryMinutes", Long.class, 10L), TimeUnit.MINUTES).
+				build(new CacheLoader<String, List<String>>() {
+					@Override
+					public List<String> load(String indexPattern) throws Exception {
+						return listIndicesForIndexPatternFromDatabase(indexPattern);
+					}
+				});
+		indicesToPartitionTableCache = CacheBuilder.newBuilder().
+				maximumSize(environment.getProperty("elefana.service.document.cache.indexToPartitions.size", Integer.class, 250)).
+				expireAfterAccess(environment.getProperty("elefana.service.document.cache.indexToPartitions.expiryMinutes", Long.class, 60L), TimeUnit.MINUTES).
+				build(new CacheLoader<String, String>() {
+					@Override
+					public String load(String index) throws Exception {
+						return getPartitionTableForIndex(index);
+					}
+				});
+		partitionTableToIndicesCache = CacheBuilder.newBuilder().
+				maximumSize(environment.getProperty("elefana.service.document.cache.partitionToIndices.size", Integer.class, 250)).
+				expireAfterAccess(environment.getProperty("elefana.service.document.cache.partitionToIndices.expiryMinutes", Long.class, 60L), TimeUnit.MINUTES).
+				build(new CacheLoader<String, String>() {
+					@Override
+					public String load(String partitionTable) throws Exception {
+						return getIndexForPartitionTable(partitionTable);
+					}
+				});
 
 		dbInitializer.initialiseDatabase();
 
@@ -145,6 +179,15 @@ public class CoreIndexUtils implements IndexUtils {
 	}
 
 	public List<String> listIndicesForIndexPattern(String indexPattern) throws ElefanaException {
+		try {
+			return indicesByPatternCache.get(indexPattern);
+		} catch (ExecutionException e) {
+			e.printStackTrace();
+		}
+		return listIndicesForIndexPatternFromDatabase(indexPattern);
+	}
+
+	private List<String> listIndicesForIndexPatternFromDatabase(String indexPattern) throws ElefanaException {
 		final List<String> results = listIndices();
 		final String[] patterns = indexPattern.split(",");
 
@@ -452,7 +495,21 @@ public class CoreIndexUtils implements IndexUtils {
 		return results;
 	}
 
-	public String getIndexForPartitionTable(Connection connection, String partitionTable) throws SQLException {
+	public String getIndexForPartitionTable(final Connection connection, final String partitionTable) throws SQLException {
+		try {
+			return partitionTableToIndicesCache.get(partitionTable, new Callable<String>() {
+				@Override
+				public String call() throws Exception {
+					return getIndexForPartitionTableFromDatabase(connection, partitionTable);
+				}
+			});
+		} catch (ExecutionException e) {
+			e.printStackTrace();
+		}
+		return getIndexForPartitionTableFromDatabase(connection, partitionTable);
+	}
+
+	private String getIndexForPartitionTableFromDatabase(Connection connection, String partitionTable) throws SQLException {
 		final String query = "SELECT _index FROM " + PARTITION_TRACKING_TABLE + " WHERE _partitionTable = ?";
 
 		final PreparedStatement preparedStatement = connection.prepareStatement(query);
@@ -467,7 +524,21 @@ public class CoreIndexUtils implements IndexUtils {
 		return result;
 	}
 
-	public String getIndexForPartitionTable(String partitionTable) {
+	public String getIndexForPartitionTable(final String partitionTable) {
+		try {
+			return partitionTableToIndicesCache.get(partitionTable, new Callable<String>() {
+				@Override
+				public String call() throws Exception {
+					return getIndexForPartitionTableFromDatabase(partitionTable);
+				}
+			});
+		} catch (ExecutionException e) {
+			e.printStackTrace();
+		}
+		return getIndexForPartitionTableFromDatabase(partitionTable);
+	}
+
+	private String getIndexForPartitionTableFromDatabase(String partitionTable) {
 		final String query = "SELECT _index FROM " + PARTITION_TRACKING_TABLE + " WHERE _partitionTable = ?";
 		for (Map<String, Object> row : jdbcTemplate.queryForList(query, partitionTable)) {
 			return (String) row.get("_index");
@@ -475,7 +546,21 @@ public class CoreIndexUtils implements IndexUtils {
 		return null;
 	}
 
-	public String getPartitionTableForIndex(Connection connection, String index) throws SQLException {
+	public String getPartitionTableForIndex(final Connection connection, final String index) throws SQLException {
+		try {
+			return indicesToPartitionTableCache.get(index, new Callable<String>() {
+				@Override
+				public String call() throws Exception {
+					return getPartitionTableForIndexFromDatabase(connection, index);
+				}
+			});
+		} catch (ExecutionException e) {
+			e.printStackTrace();
+		}
+		return getPartitionTableForIndexFromDatabase(connection, index);
+	}
+
+	private String getPartitionTableForIndexFromDatabase(Connection connection, String index) throws SQLException {
 		final String query = "SELECT _partitionTable FROM " + PARTITION_TRACKING_TABLE + " WHERE _index = ?";
 
 		final PreparedStatement preparedStatement = connection.prepareStatement(query);
@@ -490,7 +575,21 @@ public class CoreIndexUtils implements IndexUtils {
 		return result;
 	}
 
-	public String getPartitionTableForIndex(String index) {
+	public String getPartitionTableForIndex(final String index) {
+		try {
+			return indicesToPartitionTableCache.get(index, new Callable<String>() {
+				@Override
+				public String call() throws Exception {
+					return getPartitionTableForIndexFromDatabase(index);
+				}
+			});
+		} catch (ExecutionException e) {
+			e.printStackTrace();
+		}
+		return getPartitionTableForIndexFromDatabase(index);
+	}
+
+	private String getPartitionTableForIndexFromDatabase(String index) {
 		final String query = "SELECT _partitionTable FROM " + PARTITION_TRACKING_TABLE + " WHERE _index = ?";
 		for (Map<String, Object> row : jdbcTemplate.queryForList(query, index)) {
 			return (String) row.get("_partitionTable");

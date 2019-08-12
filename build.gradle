@@ -46,6 +46,7 @@ subprojects {
 		commonsValidatorVersion = '1.6'
 		esCompatVersion = '1.0.1'
 		esQueryStringVersion = '1.0.3'
+		guavaVersion = '28.0-jre'
 		hikariVersion = '3.3.1'
 		jacksonVersion = '2.9.8'
 		jodaVersion = '2.9.9'
@@ -226,6 +227,7 @@ project(":" + rootProject.name + "-core") {
 		compile "io.dropwizard.metrics:metrics-graphite:$metricsVersion"
 		compile "commons-validator:commons-validator:$commonsValidatorVersion"
 		compile "net.openhft:zero-allocation-hashing:$zeroAllocationHashingVersion"
+		compile "com.google.guava:guava:$guavaVersion"
 		compile('org.postgresql:postgresql')
 
 		compile "io.netty:netty-transport-native-epoll:$nettyVersion:linux-x86_64"
