@@ -15,7 +15,9 @@
  ******************************************************************************/
 package com.elefana.util;
 
+import java.util.Objects;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.stream.Stream;
 
 public class NoAllocStringReplace {
 	private static final CumulativeAverage AVG_ARRAY_SIZE = new CumulativeAverage(16);
@@ -81,7 +83,10 @@ public class NoAllocStringReplace {
 		}
 		for(int i = 0; i < length; i++) {
 			for(int j = 0; j < search.length; j++) {
-				if(str[i] != search[j].charAt(0)) {
+				if(search[j] == null || replace[j] == null) {
+					continue;
+				}
+				if(search[j].isEmpty()) {
 					continue;
 				}
 				if(search[j].length() > length - i) {
@@ -89,7 +94,7 @@ public class NoAllocStringReplace {
 				}
 
 				boolean match = true;
-				for(int k = 1; k < search[j].length() && i + k < length; k++) {
+				for(int k = 0; k < search[j].length() && i + k < length; k++) {
 					if(str[i + k] != search[j].charAt(k)) {
 						match = false;
 						break;
@@ -100,7 +105,6 @@ public class NoAllocStringReplace {
 					i += replace[j].length() - 1;
 				}
 			}
-
 			escapeUnicode(i);
 		}
 	}
@@ -134,7 +138,7 @@ public class NoAllocStringReplace {
 			length -= search.length() - replace.length();
 
 			final int remainder = oldLength - (index + search.length());
-			if(remainder <= 0) {
+			if(remainder < 0) {
 				return;
 			}
 			replace.getChars(0, replace.length(), str, index);
@@ -156,16 +160,20 @@ public class NoAllocStringReplace {
 	}
 
 	public static boolean contains(String str, String [] search) {
+		if(str == null || search == null)
+			return false;
+
 		for(int i = 0; i < str.length(); i++) {
 			for(int j = 0; j < search.length; j++) {
+				if(search[j] == null) {
+					continue;
+				}
 				if(search[j].isEmpty()) {
 					continue;
 				}
-				if(str.charAt(i) != search[j].charAt(0)) {
-					continue;
-				}
+
 				boolean match = true;
-				for(int k = 1; k < search[j].length() && i + k < str.length(); k++) {
+				for(int k = 0; k < search[j].length() && i + k < str.length(); k++) {
 					if(str.charAt(i + k) != search[j].charAt(k)) {
 						match = false;
 						break;
@@ -177,5 +185,13 @@ public class NoAllocStringReplace {
 			}
 		}
 		return false;
+
+		/*if(str == null || search == null)
+			return false;
+
+		return Stream.of(search)
+				.filter(Objects::nonNull)
+				.filter(s -> !s.isEmpty())
+				.anyMatch(str::contains);*/
 	}
 }
