@@ -15,7 +15,7 @@
  ******************************************************************************/
 package com.elefana.util;
 
-import static org.mockito.Matchers.anyString;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 import java.util.ArrayList;
@@ -34,9 +34,9 @@ import com.elefana.api.exception.ElefanaException;
 
 public class CoreIndexUtilsTest {
 	private final CoreIndexUtils indexUtils = new CoreIndexUtils();
-	
+
 	private JdbcTemplate jdbcTemplate;
-	
+
 	@Before
 	public void setUp() {
 		jdbcTemplate = mock(JdbcTemplate.class);
@@ -85,12 +85,12 @@ public class CoreIndexUtilsTest {
 		final String todayMessageLogsPattern = "message-logs-2018-03-16*";
 		
 		when(jdbcTemplate.queryForList(anyString())).thenReturn(sqlRows);
-		
-		final List<String> allMessageLogs = indexUtils.listIndicesForIndexPattern(allMessageLogsPattern);
+
+		final List<String> allMessageLogs = indexUtils.listIndicesForIndexPatternFromDatabase(allMessageLogsPattern);
 		Assert.assertEquals(3, allMessageLogs.size());
 		Assert.assertEquals(indices, allMessageLogs);
 		
-		final List<String> todaysMessageLogs = indexUtils.listIndicesForIndexPattern(todayMessageLogsPattern);
+		final List<String> todaysMessageLogs = indexUtils.listIndicesForIndexPatternFromDatabase(todayMessageLogsPattern);
 		Assert.assertEquals(2, todaysMessageLogs.size());
 		Assert.assertEquals(false, todaysMessageLogs.contains("message-logs-2018-03-15t23:00:00"));
 	}

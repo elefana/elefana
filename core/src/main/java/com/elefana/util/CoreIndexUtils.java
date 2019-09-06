@@ -187,7 +187,7 @@ public class CoreIndexUtils implements IndexUtils {
 		return listIndicesForIndexPatternFromDatabase(indexPattern);
 	}
 
-	private List<String> listIndicesForIndexPatternFromDatabase(String indexPattern) throws ElefanaException {
+	public List<String> listIndicesForIndexPatternFromDatabase(String indexPattern) throws ElefanaException {
 		final List<String> results = listIndices();
 		final String[] patterns = indexPattern.split(",");
 
