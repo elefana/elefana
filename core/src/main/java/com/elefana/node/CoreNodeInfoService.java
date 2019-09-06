@@ -19,6 +19,7 @@ import com.elefana.api.json.EmptyJsonObject;
 import com.elefana.api.node.NodeInfo;
 import com.elefana.api.node.v2.V2NodeInfo;
 import com.elefana.api.node.v5.V5NodeInfo;
+import com.elefana.node.v2.V2JvmStats;
 import com.elefana.node.v2.V2OsStats;
 import com.elefana.node.v2.V2ProcessStats;
 import com.elefana.node.v5.V5JvmStats;
@@ -90,7 +91,7 @@ public class CoreNodeInfoService implements NodeInfoService {
 		default:
 			osStats = new V2OsStats();
 			processStats = new V2ProcessStats();
-			jvmStats = new V5JvmStats();
+			jvmStats = new V2JvmStats();
 			break;
 		}
 
