@@ -18,24 +18,32 @@ package com.elefana.node.v2;
 import com.elefana.node.OsStats;
 import oshi.SystemInfo;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadMXBean;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
 public class V2OsStats extends OsStats {
 
+	private long[] ticks;
+
 	@Override
 	protected void generateCurrentStats(Map<String, Object> result) {
 		result.clear();
 		SystemInfo systemInfo = new SystemInfo();
 
-		double cpuLoad = systemInfo.getHardware().getProcessor().getSystemCpuLoad();
-		int roundedCpuLoad = (int)Math.round(cpuLoad * 100);
+		if (ticks == null) {
+			ticks = systemInfo.getHardware().getProcessor().getSystemCpuLoadTicks();
+		}
+		double cpuLoad = systemInfo.getHardware().getProcessor().getSystemCpuLoadBetweenTicks(ticks);
+		ticks = systemInfo.getHardware().getProcessor().getSystemCpuLoadTicks();
+		long roundedCpuLoad = Math.round(cpuLoad * 100);
 		result.put("percent", roundedCpuLoad);
 
 		// First value in double array from getSystemLoadAverage is the average load for 1 minute
 		double cpuLoadAverage = systemInfo.getHardware().getProcessor().getSystemLoadAverage(1)[0];
-		int roundedCpuLoadAverage = (int)Math.round(cpuLoad * 100);
+		long roundedCpuLoadAverage = Math.round(cpuLoadAverage * 100);
 		result.put("load_average", roundedCpuLoadAverage);
 
 		Map<String, Object> mem = new HashMap<>();
@@ -46,27 +54,27 @@ public class V2OsStats extends OsStats {
 		long freeMemory = systemInfo.getHardware().getMemory().getAvailable();
 		mem.put("free_in_bytes", freeMemory);
 
-		long freePercent = (int)Math.round((freeMemory / totalMemory) * 100);
+		long freePercent = Math.round(((double)freeMemory / totalMemory) * 100);
 		mem.put("free_percent", freePercent);
 
 		long usedMemory = totalMemory - freeMemory;
 		mem.put("used_in_bytes", usedMemory);
 
-		long usedPercent = (int)Math.round((usedMemory / totalMemory) * 100);
+		long usedPercent = Math.round(((double)usedMemory / totalMemory) * 100);
 		mem.put("used_percent", usedPercent);
 
 		result.put("mem", mem);
 
 		Map<String, Object> swap = new HashMap<>();
 
-		long totalSwap = systemInfo.getHardware().getMemory().getSwapTotal();
-		swap.put("total_in_bytes", usedPercent);
+		long totalSwap = systemInfo.getHardware().getMemory().getVirtualMemory().getSwapTotal();
+		swap.put("total_in_bytes", totalSwap);
 
-		long usedSwap = systemInfo.getHardware().getMemory().getSwapUsed();
-		swap.put("used_in_bytes", usedPercent);
+		long usedSwap = systemInfo.getHardware().getMemory().getVirtualMemory().getSwapUsed();
+		swap.put("used_in_bytes", usedSwap);
 
 		long freeSwap = totalSwap - usedSwap;
-		swap.put("free_in_bytes", usedPercent);
+		swap.put("free_in_bytes", freeSwap);
 
 		result.put("swap", swap);
 
