@@ -51,8 +51,7 @@ public class V2OsStats extends OsStats {
 		updateCpuAverageLoad(osStatsObj);
 	}
 
-	private void updateCpuCurrentLoad(Map<String, Object> osStatsObj)
-	{
+	private void updateCpuCurrentLoad(Map<String, Object> osStatsObj) {
 		double cpuLoad = measureCpuCurrentLoad();
 
 		long roundedCpuLoad = Math.round(cpuLoad * 100);
