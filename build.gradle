@@ -311,6 +311,8 @@ project(":" + rootProject.name + "-uats-es2") {
 		testCompile "com.zaxxer:HikariCP:$hikariVersion"
 		testCompile "org.apache.commons:commons-math3:$commonsMathVersion"
 		testCompile "org.apache.commons:commons-text:$commonsTextVersion"
+		testCompile "net.java.dev.jna:jna:$jnaVersion"
+		testCompile "net.java.dev.jna:jna-platform:$jnaVersion"
 		testCompile project(path: ":" + rootProject.name + "-core")
 		testCompile "net.java.dev.jna:jna:$jnaVersion"
 		testCompile "net.java.dev.jna:jna-platform:$jnaVersion"
