@@ -54,7 +54,8 @@ subprojects {
 		metricsVersion = '4.0.3'
 		nativesLoaderVersion = '1.0.0'
 		nettyVersion = '4.1.37.Final'
-		oshiVersion = '3.13.0'
+		oshiVersion = '4.0.0'
+		jnaVersion = '5.4.0'
 		restAssuredVersion = '3.1.1'
 		stringSearchVersion = '2.2.0'
 		uuidGeneratorVersion = '3.1.5'
@@ -214,6 +215,8 @@ project(":" + rootProject.name + "-core") {
 		}
 		compile('org.springframework.boot:spring-boot-starter')
 		compile "com.github.oshi:oshi-core:$oshiVersion"
+		compile "net.java.dev.jna:jna:$jnaVersion"
+		compile "net.java.dev.jna:jna-platform:$jnaVersion"
 		compile "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
 		compile "org.mini2Dx:natives-loader:$nativesLoaderVersion"
 		compile "com.zaxxer:HikariCP:$hikariVersion"
@@ -309,6 +312,8 @@ project(":" + rootProject.name + "-uats-es2") {
 		testCompile "org.apache.commons:commons-math3:$commonsMathVersion"
 		testCompile "org.apache.commons:commons-text:$commonsTextVersion"
 		testCompile project(path: ":" + rootProject.name + "-core")
+		testCompile "net.java.dev.jna:jna:$jnaVersion"
+		testCompile "net.java.dev.jna:jna-platform:$jnaVersion"
 		
 		asciidoctor "org.springframework.restdocs:spring-restdocs-asciidoctor:${project.ext['spring-restdocs.version']}"
 	}

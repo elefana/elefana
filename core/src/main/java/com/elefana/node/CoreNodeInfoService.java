@@ -96,29 +96,29 @@ public class CoreNodeInfoService implements NodeInfoService {
 		NodeInfo result = null;
 
 		switch (versionInfoService.getApiVersion()) {
-		case V_5_5_2: {
-			V5NodeInfo v5NodeInfo = new V5NodeInfo();
+			case V_5_5_2: {
+				V5NodeInfo v5NodeInfo = new V5NodeInfo();
 
-			v5NodeInfo.setRoles(nodeSettingsService.getRoles());
+				v5NodeInfo.setRoles(nodeSettingsService.getRoles());
 
-			v5NodeInfo.getHttp().setBoundAddress(new String[] { nodeSettingsService.getHttpIp() });
-			v5NodeInfo.getHttp().setPublishAddress(nodeSettingsService.getHttpAddress());
+				v5NodeInfo.getHttp().setBoundAddress(new String[] { nodeSettingsService.getHttpIp() });
+				v5NodeInfo.getHttp().setPublishAddress(nodeSettingsService.getHttpAddress());
 
-			v5NodeInfo.getTransport().setBoundAddress(new String[] { nodeSettingsService.getTransportIp() });
-			v5NodeInfo.getTransport().setPublishAddress(nodeSettingsService.getTransportAddress());
+				v5NodeInfo.getTransport().setBoundAddress(new String[] { nodeSettingsService.getTransportIp() });
+				v5NodeInfo.getTransport().setPublishAddress(nodeSettingsService.getTransportAddress());
 
-			result = v5NodeInfo;
-			break;
-		}
-		default:
-		case V_2_4_3: {
-			V2NodeInfo v2NodeInfo = new V2NodeInfo();
-			v2NodeInfo.setHttpAddress(nodeSettingsService.getHttpAddress());
-			v2NodeInfo.getAttributes().setData(nodeSettingsService.isDataNode());
+				result = v5NodeInfo;
+				break;
+			}
+			default:
+			case V_2_4_3: {
+				V2NodeInfo v2NodeInfo = new V2NodeInfo();
+				v2NodeInfo.setHttpAddress(nodeSettingsService.getHttpAddress());
+				v2NodeInfo.getAttributes().setData(nodeSettingsService.isDataNode());
 
-			result = v2NodeInfo;
-			break;
-		}
+				result = v2NodeInfo;
+				break;
+			}
 		}
 
 		result.setName(nodeSettingsService.getNodeName());

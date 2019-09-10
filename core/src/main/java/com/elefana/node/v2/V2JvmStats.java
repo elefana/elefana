@@ -24,7 +24,6 @@ public class V2JvmStats extends JvmStats {
 	@Override
 	protected void generateCurrentStats(Map<String, Object> result) {
 		// TODO Auto-generated method stub
-		
 	}
 
 }
