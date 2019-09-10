@@ -312,8 +312,8 @@ project(":" + rootProject.name + "-uats-es2") {
 		testCompile "org.apache.commons:commons-math3:$commonsMathVersion"
 		testCompile "org.apache.commons:commons-text:$commonsTextVersion"
 		testCompile project(path: ":" + rootProject.name + "-core")
-		testCompile "net.java.dev.jna:jna:5.4.0"
-		testCompile "net.java.dev.jna:jna-platform:5.4.0"
+		testCompile "net.java.dev.jna:jna:$jnaVersion"
+		testCompile "net.java.dev.jna:jna-platform:$jnaVersion"
 		
 		asciidoctor "org.springframework.restdocs:spring-restdocs-asciidoctor:${project.ext['spring-restdocs.version']}"
 	}
