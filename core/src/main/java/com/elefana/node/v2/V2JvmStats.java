@@ -16,14 +16,142 @@
 package com.elefana.node.v2;
 
 import com.elefana.node.JvmStats;
+import oshi.SystemInfo;
 
-import java.util.Map;
+import java.lang.management.*;
+import java.security.Key;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
 public class V2JvmStats extends JvmStats {
 
+	private RuntimeMXBean runtimeMXBean = ManagementFactory.getRuntimeMXBean();
+	private ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
+	private List<GarbageCollectorMXBean> gcMXBeans = ManagementFactory.getGarbageCollectorMXBeans();
+	private ClassLoadingMXBean classLoadingMXBean = ManagementFactory.getClassLoadingMXBean();
+	private MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
+	private List<BufferPoolMXBean> bufferPoolMXBeans = ManagementFactory.getPlatformMXBeans(BufferPoolMXBean.class);
+	private List<MemoryPoolMXBean> memoryPoolMXBeans = ManagementFactory.getMemoryPoolMXBeans();
+
 	@Override
 	protected void generateCurrentStats(Map<String, Object> result) {
-		// TODO Auto-generated method stub
+		result.clear();
+
+		updateUptime(result);
+		updateThreads(result);
+		updateGarbageCollection(result);
+		updateClasses(result);
+		updateMemory(result);
+		updateBufferPools(result);
+		updateTimestamp(result);
 	}
 
+	private void updateUptime(Map<String, Object> result) {
+		long uptime = runtimeMXBean.getUptime();
+		result.put("uptime_in_millis", uptime);
+	}
+
+	private void updateThreads(Map<String, Object> result) {
+		long threadsCount = threadMXBean.getThreadCount();
+		long peakThreadCount = threadMXBean.getPeakThreadCount();
+
+		result.put("threads", generateMap(
+				getKVP("count", threadsCount),
+				getKVP("peak_count", peakThreadCount)
+		));
+	}
+
+	private void updateGarbageCollection(Map<String, Object> result) {
+		result.put("gc", generateMap(
+				getKVPIterate("collectors", gcMXBeans, GarbageCollectorMXBean::getName, garbageCollectorMXBean -> generateMap(
+						getKVP("collection_count", garbageCollectorMXBean.getCollectionCount()),
+						getKVP("collection_time_in_millis", garbageCollectorMXBean.getCollectionTime())
+				))
+		));
+	}
+
+	private void updateClasses(Map<String, Object> result) {
+		long totalLoadedClassCount = classLoadingMXBean.getTotalLoadedClassCount();
+		long currentLoadedClassCount = classLoadingMXBean.getLoadedClassCount();
+		long unloadedClassCount = classLoadingMXBean.getUnloadedClassCount();
+
+		result.put("classes", generateMap(
+				getKVP("current_loaded_count", currentLoadedClassCount),
+				getKVP("total_loaded_count", totalLoadedClassCount),
+				getKVP("total_unloaded_count", unloadedClassCount)
+		));
+	}
+
+	private void updateMemory(Map<String, Object> result) {
+		long heapUsed = memoryMXBean.getHeapMemoryUsage().getUsed();
+		long heapMax = memoryMXBean.getHeapMemoryUsage().getMax();
+		long heapCommited = memoryMXBean.getHeapMemoryUsage().getCommitted();
+		long heapPercent = (int)Math.round(((double)heapUsed / heapMax) * 100);
+
+		long nonHeapUsed = memoryMXBean.getNonHeapMemoryUsage().getUsed();
+		long nonHeapCommited = memoryMXBean.getNonHeapMemoryUsage().getCommitted();
+
+		result.put("mem", generateMap(
+				getKVP("heap_used_in_bytes", heapUsed),
+				getKVP("heap_used_percent", heapPercent),
+				getKVP("heap_committed_in_bytes", heapCommited),
+				getKVP("heap_max_in_bytes", heapMax),
+				getKVP("non_heap_used_in_bytes", nonHeapUsed),
+				getKVP("non_heap_committed_in_bytes", nonHeapCommited),
+				getKVPIterate("pools", memoryPoolMXBeans, MemoryPoolMXBean::getName, memoryPoolMXBean -> generateMap(
+						getKVP("used_in_bytes", memoryPoolMXBean.getUsage().getUsed()),
+						getKVP("max_in_bytes", memoryPoolMXBean.getUsage().getMax()),
+						getKVP("peak_used_in_bytes", memoryPoolMXBean.getPeakUsage().getUsed()),
+						getKVP("peak_max_in_bytes", memoryPoolMXBean.getPeakUsage().getMax())
+				))
+		));
+	}
+
+	private void updateBufferPools(Map<String, Object> result) {
+		KeyValuePair bufferPools = getKVPIterate("buffer_pools", bufferPoolMXBeans, BufferPoolMXBean::getName, bufferPoolMXBean -> generateMap(
+				getKVP("count", bufferPoolMXBean.getCount()),
+				getKVP("used_in_bytes", bufferPoolMXBean.getMemoryUsed()),
+				getKVP("total_capacity_in_bytes", bufferPoolMXBean.getTotalCapacity())
+		));
+		result.put(bufferPools.key, bufferPools.value);
+	}
+
+	private void updateTimestamp(Map<String, Object> result) {
+		long timestamp = new Date().getTime();
+		result.put("timestamp", timestamp);
+	}
+
+	private Map<String, Object> generateMap(KeyValuePair... values) {
+		Map<String, Object> childMap = new HashMap<>();
+		Stream.of(values).forEach(v -> childMap.put(v.key, v.value));
+		return childMap;
+	}
+
+	private Map<String, Object> generateMap(Stream<KeyValuePair> values) {
+		Map<String, Object> childMap = new HashMap<>();
+		values.forEach(v -> childMap.put(v.key, v.value));
+		return childMap;
+	}
+
+	private KeyValuePair getKVP(String key, Object value) {
+		return new KeyValuePair(key, value);
+	}
+
+	private <B> KeyValuePair getKVPIterate(String key, List<B> list, Function<B, String> generateKey, Function<B, Object> generateValue) {
+		return getKVP(key, generateMap(list
+				.stream()
+				.map(b -> getKVP(generateKey.apply(b), generateValue.apply(b)))
+		));
+	}
+
+	private class KeyValuePair {
+		private String key;
+		private Object value;
+
+		private KeyValuePair(String key, Object value) {
+			this.key = key;
+			this.value = value;
+		}
+	}
 }
