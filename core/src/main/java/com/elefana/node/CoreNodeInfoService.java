@@ -82,9 +82,11 @@ public class CoreNodeInfoService implements NodeInfoService {
 			break;
 		}
 
-		scheduledExecutorService.scheduleAtFixedRate(jvmStats, 0L, 1L, TimeUnit.SECONDS);
-		scheduledExecutorService.scheduleAtFixedRate(osStats, 0L, 1L, TimeUnit.SECONDS);
-		scheduledExecutorService.scheduleAtFixedRate(processStats, 0L, 1L, TimeUnit.SECONDS);
+		long refreshInterval = environment.getProperty("elefana.service.node.statsRefreshInterval", Long.class, 1L);
+
+		scheduledExecutorService.scheduleAtFixedRate(jvmStats, 0L, refreshInterval, TimeUnit.SECONDS);
+		scheduledExecutorService.scheduleAtFixedRate(osStats, 0L, refreshInterval, TimeUnit.SECONDS);
+		scheduledExecutorService.scheduleAtFixedRate(processStats, 0L, refreshInterval, TimeUnit.SECONDS);
 	}
 
 	@PreDestroy
