@@ -36,8 +36,6 @@ public interface IndexFieldMappingService {
 	public PutFieldMappingRequest preparePutFieldMappings(String index, String type, String mappings);
 	
 	public GetFieldCapabilitiesRequest prepareGetFieldCapabilities(String indexPattern);
-	
-	public GetFieldStatsRequest prepareGetFieldStats(String indexPattern);
-	
+
 	public RefreshIndexRequest prepareRefreshIndex(String index);
 }

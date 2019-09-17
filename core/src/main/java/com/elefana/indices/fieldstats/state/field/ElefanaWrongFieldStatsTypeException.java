@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2018 Viridian Software Limited
+ * Copyright 2019 Viridian Software Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,16 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package com.elefana.indices;
 
-public class V2FieldStats {
-	public long max_doc;
-	public long doc_count;
-	public long density;
-	public long sum_doc_freq;
-	public long sum_total_term_freq;
-	public Object min_value;
-	public String min_value_as_string;
-	public Object max_value;
-	public String max_value_as_string;
+package com.elefana.indices.fieldstats.state.field;
+
+public class ElefanaWrongFieldStatsTypeException extends Exception {
+    public ElefanaWrongFieldStatsTypeException(String fieldName, Class type) {
+        super("A scanned document contains the field " + fieldName + " with the type " + type.getTypeName() + " but the current field stats state has a different type registered");
+    }
 }

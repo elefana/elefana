@@ -54,7 +54,6 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 	private static final Logger LOGGER = LoggerFactory.getLogger(IndexFieldMappingService.class);
 
 	private long lastMapping = -1L;
-	private long lastFieldStats = -1L;
 
 	@Autowired
 	private Environment environment;
@@ -72,10 +71,9 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 	private IndexUtils indexUtils;
 
 	private IndexMappingQueue mappingQueue;
-	private IndexFieldStatsQueue fieldStatsQueue;
 
 	private ExecutorService executorService;
-	private ScheduledFuture<?> mappingScheduledTask, fieldStatsScheduledTask;
+	private ScheduledFuture<?> mappingScheduledTask;
 
 	private FieldMapper fieldMapper;
 
@@ -102,7 +100,6 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 				build();
 
 		mappingQueue = new IndexMappingQueue(jdbcTemplate, taskScheduler, environment.getProperty("elefana.service.field.queue.io.interval", Long.class, TimeUnit.MINUTES.toMillis(15L)));
-		fieldStatsQueue = new IndexFieldStatsQueue(jdbcTemplate, taskScheduler, environment.getProperty("elefana.service.field.queue.io.interval", Long.class, TimeUnit.MINUTES.toMillis(15L)));
 
 		final int totalThreads = environment.getProperty("elefana.service.field.threads", Integer.class, 2);
 		executorService = Executors.newFixedThreadPool(totalThreads);
@@ -117,25 +114,12 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 				}
 			}
 		}, nodeSettingsService.getMappingInterval());
-		fieldStatsScheduledTask = taskScheduler.scheduleAtFixedRate(new Runnable() {
-			@Override
-			public void run() {
-				try {
-					generateFieldStatsForQueuedTables();
-				} catch (Exception e) {
-					LOGGER.error(e.getMessage(), e);
-				}
-			}
-		}, nodeSettingsService.getFieldStatsInterval());
 	}
 
 	@PreDestroy
 	public void preDestroy() {
 		if (mappingScheduledTask != null) {
 			mappingScheduledTask.cancel(false);
-		}
-		if (fieldStatsScheduledTask != null) {
-			fieldStatsScheduledTask.cancel(false);
 		}
 		executorService.shutdown();
 	}
@@ -273,7 +257,6 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 		}
 		saveMappings(index, type, existingMappings);
 		generateFieldCapabilitiesForIndex(index);
-		scheduleIndexForStats(index);
 	}
 	
 	public GetFieldMappingsResponse getFieldMapping(String indexPattern, String typePattern, String fieldPattern) throws ElefanaException {
@@ -455,30 +438,6 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 		return result;
 	}
 
-	public GetFieldStatsResponse getFieldStats(String indexPattern) throws Exception {
-		final GetFieldStatsResponse result = new GetFieldStatsResponse();
-		
-		result.getShards().put("total", 1);
-		result.getShards().put("successful", 1);
-		result.getShards().put("failed", 0);
-
-		for (String index : indexUtils.listIndicesForIndexPattern(indexPattern)) {
-			final Map<String, Object> indexResult = new HashMap<String, Object>();
-
-			try {
-				SqlRowSet rowSet = jdbcTemplate
-						.queryForRowSet("SELECT _stats FROM elefana_index_field_stats WHERE _index = ? LIMIT 1", index);
-				if (rowSet.next()) {
-					indexResult.put("fields", JsonIterator.deserialize(rowSet.getString("_stats"), new TypeLiteral<Map<String, Object>>(){}));
-					result.getIndices().put(index, indexResult);
-				}
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
-		return result;
-	}
-
 	public GetFieldCapabilitiesResponse getFieldCapabilities(String indexPattern) throws ElefanaException {
 		final GetFieldCapabilitiesResponse result = new GetFieldCapabilitiesResponse();
 		
@@ -622,82 +581,6 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 		return totalSamples;
 	}
 
-	private void generateFieldStatsForQueuedTables() {
-		try {
-			while (!fieldStatsQueue.isEmpty()) {
-				QueuedIndex nextIndex = fieldStatsQueue.peek();
-				if(nextIndex.getTimestamp() > System.currentTimeMillis()) {
-					lastFieldStats = System.currentTimeMillis();
-					return;
-				}
-				nextIndex = fieldStatsQueue.poll();
-
-				generateFieldStatsForIndex(nextIndex.getIndex());
-			}
-
-			lastFieldStats = System.currentTimeMillis();
-		} catch (Exception e) {
-			LOGGER.error(e.getMessage(), e);
-		}
-	}
-
-	private void generateFieldStatsForIndex(String indexName) throws Exception {
-		final Map<String, V2FieldStats> fieldStats = new HashMap<String, V2FieldStats>();
-		final List<String> types = getTypesForIndex(indexName);
-
-		final String queryTarget = nodeSettingsService.isUsingCitus() ? indexUtils.getQueryTarget(indexName) : IndexUtils.DATA_TABLE;
-
-		jdbcTemplate.execute("ANALYZE " + queryTarget);
-
-		final IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndex(indexName);
-		if(indexTemplate != null && indexTemplate.getStorage() != null && indexTemplate.getStorage().isFieldStatsDisabled()) {
-			return;
-		}
-
-		final String totalDocsQuery = nodeSettingsService.isUsingCitus()
-				? "SELECT COUNT(_id) FROM " + queryTarget
-				: "SELECT COUNT(_id) FROM " + queryTarget + " WHERE _index='" + indexName + "'";
-
-		final long totalDocs = (long) jdbcTemplate.queryForList(totalDocsQuery).get(0).get("count");
-
-		for (String type : types) {
-			final List<String> fieldNames = getFieldNamesByMapping(indexName, type);
-			indexUtils.ensureJsonFieldIndexExist(indexName, fieldNames);
-
-			for (String fieldName : fieldNames) {
-				if (fieldStats.containsKey(fieldName)) {
-					continue;
-				}
-				final String totalDocsWithFieldQuery = nodeSettingsService.isUsingCitus()
-						? "SELECT COUNT(*) FROM " + queryTarget + " WHERE _source ? '"
-								+ fieldName + "'"
-						: "SELECT COUNT(*) FROM " + queryTarget + " WHERE _index='" + indexName
-								+ "' AND _source ? '" + fieldName + "'";
-
-				final long totalDocsWithField = (long) jdbcTemplate.queryForList(totalDocsWithFieldQuery).get(0).get("count");
-
-				V2FieldStats stats = versionInfoService.getApiVersion().isNewerThan(ApiVersion.V_2_4_3)
-						? new V5FieldStats() : new V2FieldStats();
-				stats.max_doc = totalDocs;
-				stats.doc_count = totalDocsWithField;
-				stats.density = (int) ((stats.doc_count / (stats.max_doc * 1.0)) * 100.0);
-				stats.sum_doc_freq = -1;
-				stats.sum_total_term_freq = -1;
-
-				fieldStats.put(fieldName, stats);
-			}
-		}
-
-		final String json = JsonStream.serialize(fieldStats);
-		PGobject jsonObject = new PGobject();
-		jsonObject.setType("json");
-		jsonObject.setValue(json);
-
-		jdbcTemplate.update(
-				"INSERT INTO elefana_index_field_stats (_index, _stats) VALUES (?, ?) ON CONFLICT (_index) DO UPDATE SET _stats = EXCLUDED._stats",
-				indexName, jsonObject);
-	}
-
 	private void generateFieldCapabilitiesForIndex(String index) throws ElefanaException {
 		generateFieldCapabilitiesForIndex(index, jdbcTemplate
 				.queryForRowSet("SELECT _type, _mapping FROM elefana_index_mapping WHERE _index = ?", index));
@@ -772,17 +655,12 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 		}
 	}
 
-	public void scheduleIndexForStats(String index) {
-		fieldStatsQueue.offer(new QueuedIndex(index, System.currentTimeMillis() + nodeSettingsService.getFieldStatsInterval()));
-	}
-
 	public void scheduleIndexForMapping(String index) {
 		mappingQueue.offer(new QueuedIndex(index, System.currentTimeMillis() + nodeSettingsService.getMappingInterval()));
 	}
 
 	public void scheduleIndexForMappingAndStats(String index) {
 		scheduleIndexForMapping(index);
-		scheduleIndexForStats(index);
 	}
 
 	private void saveFieldNames(String index, String type, Set<String> fieldNames) throws ElefanaException {
@@ -878,11 +756,6 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 		return new PsqlGetFieldCapabilitiesRequest(this, indexPattern);
 	}
 
-	@Override
-	public GetFieldStatsRequest prepareGetFieldStats(String indexPattern) {
-		return new PsqlGetFieldStatsRequest(this, indexPattern);
-	}
-	
 	@Override
 	public RefreshIndexRequest prepareRefreshIndex(String index) {
 		return new PsqlRefreshIndexRequest(this, index);
