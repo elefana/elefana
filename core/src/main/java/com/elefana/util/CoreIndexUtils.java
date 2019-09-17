@@ -132,6 +132,7 @@ public class CoreIndexUtils implements IndexUtils {
 		}
 
 		addAllKnownTables(listTables());
+		tableIndexCreator.initialise();
 	}
 
 	protected boolean addAllKnownTables(List<String> tableNames) {

@@ -53,8 +53,7 @@ public class TableIndexCreator implements Runnable {
 	private Queue<TableIndexDelay> tableIndexQueue;
 	private Queue<TableFieldIndexDelay> fieldIndexQueue;
 
-	@PostConstruct
-	public void postConstruct() throws SQLException {
+	public void initialise() throws SQLException {
 		if(!nodeInfoService.isMasterNode()) {
 			//Only master node can create indices
 			return;
