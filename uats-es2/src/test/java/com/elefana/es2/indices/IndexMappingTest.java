@@ -15,28 +15,24 @@
  ******************************************************************************/
 package com.elefana.es2.indices;
 
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.equalTo;
-
-import java.util.List;
-import java.util.UUID;
-
+import com.elefana.ElefanaApplication;
 import com.elefana.TestUtils;
+import io.restassured.RestAssured;
 import io.restassured.path.json.exception.JsonPathException;
-import io.restassured.response.Response;
 import io.restassured.response.ValidatableResponse;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 
-import com.elefana.ElefanaApplication;
+import java.util.List;
+import java.util.UUID;
 
-import io.restassured.RestAssured;
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.equalTo;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = { ElefanaApplication.class })
@@ -226,81 +222,5 @@ public class IndexMappingTest {
 			.post("/" + index + "/_refresh")
 		.then()
 			.statusCode(200).body("_shards.successful", equalTo(1));
-	}
-	
-	@Test
-	public void testFieldStatsGeneration() {
-		final String index = UUID.randomUUID().toString();
-		final String type = "test";
-		
-		final int totalDocuments = 100;
-		final int totalEmptyFieldDocuments = 50;
-		
-		for(int i = 0; i < totalDocuments; i++) {
-			final String json;
-			if(i % 2 == 0) {
-				json = "{\"docField\" : \"This is a test\", \"numField\": 123, \"emptyField\": \"\"}";
-			} else {
-				json = "{\"docField\" : \"This is a test\", \"numField\": 123}";
-			}
-			
-			given()
-				.request()
-				.body(json)
-			.when()
-				.post("/" + index + "/" + type)
-			.then()
-				.statusCode(201);
-		}
-
-		final long startTime = System.currentTimeMillis();
-
-		int maxDocValue = 0;
-		while(System.currentTimeMillis() - startTime < TEST_TIMEOUT) {
-			final ValidatableResponse response = given()
-					.request()
-					.body("{\"fields\":[\"docField\"]}")
-					.when()
-					.post("/" + index + "/_field_stats")
-					.then();
-			try {
-				maxDocValue = response.extract().body().jsonPath().getInt("indices." + index + ".fields.docField.max_doc");
-				if(maxDocValue < totalDocuments) {
-					try {
-						Thread.sleep(500);
-					} catch (Exception e) {}
-					continue;
-				}
-
-				given()
-						.request()
-						.body("{\"fields\":[\"docField\"]}")
-						.when()
-						.post("/" + index + "/_field_stats")
-						.then()
-						.statusCode(200)
-						.body("_shards.successful", equalTo(1))
-						.body("indices." + index + ".fields.docField.max_doc", equalTo(totalDocuments))
-						.body("indices." + index + ".fields.docField.doc_count", equalTo(totalDocuments));
-
-				given()
-						.request()
-						.body("{\"fields\":[\"emptyField\"]}")
-						.when()
-						.post("/" + index + "/_field_stats")
-						.then()
-						.statusCode(200)
-						.body("_shards.successful", equalTo(1))
-						.body("indices." + index + ".fields.emptyField.max_doc", equalTo(totalDocuments))
-						.body("indices." + index + ".fields.emptyField.doc_count", equalTo(totalEmptyFieldDocuments));
-				return;
-			} catch (JsonPathException | NullPointerException e) {}
-
-			try {
-				Thread.sleep(500);
-			} catch (Exception e) {}
-		}
-
-		Assert.fail("Failed to generate stats for " + totalDocuments + " documents - only " + maxDocValue + "/" + totalDocuments);
 	}
 }

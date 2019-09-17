@@ -18,6 +18,7 @@ package com.elefana.document;
 import com.codahale.metrics.Timer;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.document.ingest.TimeIngestTable;
+import com.elefana.indices.fieldstats.IndexFieldStatsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -31,10 +32,10 @@ public class BulkTimeIndexTask extends BulkIndexTask {
 	private final int shardOffset;
 
 	public BulkTimeIndexTask(JdbcTemplate jdbcTemplate, List<BulkIndexOperation> indexOperations,
-	                         String index, TimeIngestTable timeIngestTable, boolean flatten, int from, int size, int shardOffset,
-	                         Timer psqlTimer, Timer batchBuildTimer, Timer flattenTimer, Timer escapeTimer) {
+							 String index, TimeIngestTable timeIngestTable, boolean flatten, int from, int size, int shardOffset,
+							 Timer psqlTimer, Timer batchBuildTimer, Timer flattenTimer, Timer escapeTimer, IndexFieldStatsService fieldStatsService) {
 		super(jdbcTemplate, indexOperations, index, timeIngestTable, flatten, from, size,
-				psqlTimer, batchBuildTimer, flattenTimer, escapeTimer);
+				psqlTimer, batchBuildTimer, flattenTimer, escapeTimer, fieldStatsService);
 		this.timeIngestTable = timeIngestTable;
 		this.shardOffset = shardOffset;
 	}

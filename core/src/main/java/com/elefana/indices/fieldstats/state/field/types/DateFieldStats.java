@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2018 Viridian Software Limited
+ * Copyright 2019 Viridian Software Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,9 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package com.elefana.indices;
 
-public class V5FieldStats extends V2FieldStats {
-	public boolean is_searchable = true;
-	public boolean is_aggregatable = true;
+package com.elefana.indices.fieldstats.state.field.types;
+
+import com.elefana.indices.fieldstats.state.field.FieldStats;
+import com.elefana.indices.fieldstats.state.field.FieldStatsImpl;
+
+import javax.annotation.concurrent.ThreadSafe;
+import java.util.Date;
+
+@ThreadSafe
+public class DateFieldStats extends ComparableFieldStats<Date> {
+
+    @Override
+    protected long getDocFrequencyAddend(Date value) {
+        return 1;
+    }
+
+    @Override
+    protected long getTotalTermFrequencyAddend(Date value) {
+        return -1;
+    }
+
+    @Override
+    protected FieldStatsImpl<Date> instance(FieldStats<Date> other) {
+        return new DateFieldStats();
+    }
 }

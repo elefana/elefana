@@ -21,6 +21,7 @@ import com.elefana.api.document.BulkOpType;
 import com.elefana.api.document.DocumentShardInfo;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.document.ingest.IngestTable;
+import com.elefana.indices.fieldstats.IndexFieldStatsService;
 import com.elefana.util.IndexUtils;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.spi.JsonException;
@@ -69,11 +70,13 @@ public abstract class BulkIndexTask implements Callable<List<BulkItemResponse>> 
 	protected final int from;
 	protected final int size;
 
+	protected final IndexFieldStatsService fieldStatsService;
+
 	protected volatile int totalFailed, totalSuccess;
 
 	public BulkIndexTask(JdbcTemplate jdbcTemplate, List<BulkIndexOperation> indexOperations,
-	                     String index, IngestTable ingestTable, boolean flatten, int from, int size,
-	                     Timer psqlTimer, Timer batchBuildTimer, Timer flattenTimer, Timer escapeTimer) {
+						 String index, IngestTable ingestTable, boolean flatten, int from, int size,
+						 Timer psqlTimer, Timer batchBuildTimer, Timer flattenTimer, Timer escapeTimer, IndexFieldStatsService fieldStatsService) {
 		super();
 		this.psqlTimer = psqlTimer;
 		this.batchBuildTimer = batchBuildTimer;
@@ -87,6 +90,7 @@ public abstract class BulkIndexTask implements Callable<List<BulkItemResponse>> 
 		this.flatten = flatten;
 		this.from = from;
 		this.size = size;
+		this.fieldStatsService = fieldStatsService;
 	}
 
 	protected abstract int getStagingTableId() throws ElefanaException;
@@ -139,6 +143,11 @@ public abstract class BulkIndexTask implements Callable<List<BulkItemResponse>> 
 							- (indexOperation.getTimestamp() % ONE_HOUR_IN_MILLIS);
 					final long bucket1d = indexOperation.getTimestamp()
 							- (indexOperation.getTimestamp() % ONE_DAY_IN_MILLIS);
+
+					if(indexOperation.getType().equals(BulkOpType.INDEX.toString())) {
+						fieldStatsService.submitDocument(indexOperation.getSource(), indexOperation.getIndex());
+					}
+
 					final String escapedJson;
 					if(flatten) {
 						final Timer.Context flattenTime = flattenTimer.time();

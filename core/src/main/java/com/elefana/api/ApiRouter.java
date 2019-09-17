@@ -23,6 +23,7 @@ import com.elefana.cluster.ClusterService;
 import com.elefana.document.BulkIngestService;
 import com.elefana.document.DocumentService;
 import com.elefana.indices.IndexFieldMappingService;
+import com.elefana.indices.fieldstats.IndexFieldStatsService;
 import com.elefana.indices.IndexTemplateService;
 import com.elefana.node.NodesService;
 import com.elefana.search.SearchService;
@@ -56,6 +57,8 @@ public class ApiRouter {
 	private NodesService nodesService;
 	@Autowired
 	private ClusterService clusterService;
+	@Autowired
+	private IndexFieldStatsService indexFieldStatsService;
 
 	public ApiRequest<?> route(HttpMethod method, String url, String requestBody) throws ElefanaException {
 		if (url.length() == 1) {
@@ -262,7 +265,7 @@ public class ApiRouter {
 				final String indexPattern = urlDecode(urlComponents[0]);
 				switch (urlComponents[1].toLowerCase()) {
 				case "_field_stats":
-					return indexFieldMappingService.prepareGetFieldStats(indexPattern);
+					return indexFieldStatsService.prepareGetFieldStats(indexPattern, requestBody, true);
 				case "_refresh":
 					return indexFieldMappingService.prepareRefreshIndex(indexPattern);
 				}
