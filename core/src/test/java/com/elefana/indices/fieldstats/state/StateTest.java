@@ -20,8 +20,10 @@ import com.elefana.indices.fieldstats.job.CoreFieldStatsJob;
 import com.elefana.indices.fieldstats.job.CoreFieldStatsRemoveIndexJob;
 import com.elefana.indices.fieldstats.state.field.ElefanaWrongFieldStatsTypeException;
 import com.elefana.indices.fieldstats.state.field.FieldStats;
+import com.elefana.indices.fieldstats.state.field.FieldsImpl;
 import com.google.common.collect.ImmutableList;
 import com.jsoniter.JsonIterator;
+import com.jsoniter.output.JsonStream;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -41,6 +43,7 @@ public class StateTest {
 
     @Before
     public void before() {
+        FieldsImpl.getInstance().registerJsoniterConfig();
         testState = new StateImpl();
         testDocument = "{ \"bool\": false, \"string\": \"Hello there\", \"long\": 23, \"double\": 2.4, \"obj\": { \"bic\": \"EASYATW1\", \"iban\": \"AT12 4321\" }, \"list\": [3,4,5,6,6,4,4,2] } ";
         testDocumentNoBool = "{ \"string\": \"Hello there\", \"long\": 23, \"double\": 2.4, \"obj\": { \"bic\": \"EASYATW1\", \"iban\": \"AT12 4321\" }, \"list\": [3,4,5,6,6,4,4,2] } ";
@@ -211,13 +214,39 @@ public class StateTest {
 
     @Test
     public void testDeleteIndex() throws InterruptedException {
-        submitDocumentNTimes(10, testDocument, TEST_INDEX);
+        submitDocumentConcurrently(10, 1, testDocument, TEST_INDEX);
         Thread a = new Thread(new CoreFieldStatsRemoveIndexJob(testState, TEST_INDEX));
         a.start();
         a.join();
-        submitDocumentNTimes(1, testDocument, TEST_INDEX);
+        submitDocumentConcurrently(1,1, testDocument, TEST_INDEX);
 
         Assert.assertEquals(1, testState.getIndex(TEST_INDEX).getMaxDocuments());
         Assert.assertEquals(1, testState.getField("bool").getIndexFieldStats(TEST_INDEX).getDocumentCount());
+    }
+
+    @Test
+    public void testSerialize() throws ElefanaWrongFieldStatsTypeException {
+        submitDocumentNTimes(20, testDocument, TEST_INDEX);
+        submitDocumentNTimes(5, testDocument, "accounts");
+
+        String serialize = JsonStream.serialize(testState);
+        System.out.println(serialize);
+
+        State deserialize = JsonIterator.deserialize(serialize, StateImpl.class);
+        System.out.println(deserialize);
+        Assert.assertEquals(20, deserialize.getIndex(TEST_INDEX).getMaxDocuments());
+        Assert.assertEquals(5, deserialize.getIndex("accounts").getMaxDocuments());
+
+        FieldStats string = deserialize.getFieldTypeChecked("string", String.class).getIndexFieldStats(TEST_INDEX);
+        Assert.assertEquals(20, string.getDocumentCount());
+        Assert.assertEquals(40, string.getSumDocumentFrequency());
+        Assert.assertEquals("Hello", string.getMinimumValue());
+        Assert.assertEquals("there", string.getMaximumValue());
+
+        FieldStats<Long> list = deserialize.getFieldTypeChecked("list", Long.class).getIndexFieldStats(TEST_INDEX);
+        Assert.assertEquals(20, list.getDocumentCount());
+        Assert.assertEquals(8 * 20, list.getSumDocumentFrequency());
+        Assert.assertEquals(2, list.getMinimumValue().longValue());
+        Assert.assertEquals(6, list.getMaximumValue().longValue());
     }
 }

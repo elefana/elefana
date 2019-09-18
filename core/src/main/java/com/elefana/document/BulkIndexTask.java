@@ -144,9 +144,8 @@ public abstract class BulkIndexTask implements Callable<List<BulkItemResponse>> 
 					final long bucket1d = indexOperation.getTimestamp()
 							- (indexOperation.getTimestamp() % ONE_DAY_IN_MILLIS);
 
-					if(indexOperation.getType().equals(BulkOpType.INDEX.toString())) {
-						fieldStatsService.submitDocument(indexOperation.getSource(), indexOperation.getIndex());
-					}
+					// index is the only supported bulk operation, therefore always submit the document
+					fieldStatsService.submitDocument(indexOperation.getSource(), indexOperation.getIndex());
 
 					final String escapedJson;
 					if(flatten) {

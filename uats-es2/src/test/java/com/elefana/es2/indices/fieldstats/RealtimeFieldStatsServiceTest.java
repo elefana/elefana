@@ -109,6 +109,7 @@ public class RealtimeFieldStatsServiceTest {
                 .body("indices." + index + ".fields.string.sum_doc_freq", equalTo(documentsAfterDelete * 2));
     }
 
+    @Test
     public void testBulkIngest() {
         final int totalDocuments = PsqlBulkIngestService.MINIMUM_BULK_SIZE + RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE);
         final String index = "logs-" + UUID.randomUUID().toString();

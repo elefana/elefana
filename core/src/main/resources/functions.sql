@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS elefana_index_field_stats_queue (_index VARCHAR(255) 
 
 CREATE TABLE IF NOT EXISTS elefana_time_series_repair_queue (_index VARCHAR(255) UNIQUE, _tableName VARCHAR(255), _timestampSample BIGINT);
 
+CREATE TABLE IF NOT EXISTS elefana_fieldstats_state (_timestamp BIGINT PRIMARY KEY, _state json NOT NULL);
+
 CREATE OR REPLACE FUNCTION create_required_shards(_distributedTable VARCHAR, _totalShards INT) RETURNS bigint AS $$
 DECLARE
   num_shards bigint;

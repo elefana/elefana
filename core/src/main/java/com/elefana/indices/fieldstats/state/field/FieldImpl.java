@@ -16,6 +16,9 @@
 
 package com.elefana.indices.fieldstats.state.field;
 
+import com.jsoniter.annotation.JsonIgnore;
+import com.jsoniter.annotation.JsonProperty;
+
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.Collection;
 import java.util.Map;
@@ -24,18 +27,26 @@ import java.util.concurrent.ConcurrentHashMap;
 @ThreadSafe
 public class FieldImpl<T> implements Field<T> {
     private Map<String, FieldStats<T>> fieldStats = new ConcurrentHashMap<>();
+    @JsonIgnore
     private Class<T> type;
 
     public FieldImpl(Class<T> type) {
         this.type = type;
     }
 
+    public FieldImpl(Class<T> type, Map<String, FieldStats<T>> initialMap) {
+        this(type);
+        this.fieldStats = new ConcurrentHashMap<>(initialMap);
+    }
+
+    @Override
     public FieldStats<T> getIndexFieldStats(String indexName) {
         return fieldStats.computeIfAbsent(indexName, key ->
                 FieldsImpl.getInstance().getFieldStats(type)
         );
     }
 
+    @Override
     public FieldStats<T> getIndexFieldStats(Collection<String> indices) {
         FieldStats<T> acc = FieldsImpl.getInstance().getFieldStats(type);
         for(String s : indices) {
@@ -45,6 +56,8 @@ public class FieldImpl<T> implements Field<T> {
         return acc;
     }
 
+    @JsonIgnore
+    @Override
     public FieldStats<T> getFieldStats() {
         return getIndexFieldStats(fieldStats.keySet());
     }
@@ -55,7 +68,22 @@ public class FieldImpl<T> implements Field<T> {
     }
 
     @Override
+    @JsonIgnore
     public Class<T> getFieldType() {
         return type;
+    }
+
+    @JsonProperty("type")
+    public String getType() {
+        return type.getName();
+    }
+
+    @JsonProperty("type")
+    public void setType(String typeName) {
+        try {
+            this.type = (Class<T>)Class.forName(typeName);
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
     }
 }

@@ -16,7 +16,6 @@
 
 package com.elefana.indices.fieldstats.state.field.types;
 
-import com.elefana.indices.fieldstats.state.field.FieldStats;
 import com.elefana.indices.fieldstats.state.field.FieldStatsImpl;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -36,7 +35,7 @@ public class DateFieldStats extends ComparableFieldStats<Date> {
     }
 
     @Override
-    protected FieldStatsImpl<Date> instance(FieldStats<Date> other) {
+    protected FieldStatsImpl<Date> instance() {
         return new DateFieldStats();
     }
 }

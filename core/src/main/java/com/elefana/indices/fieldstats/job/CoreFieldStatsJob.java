@@ -43,12 +43,12 @@ public class CoreFieldStatsJob extends FieldStatsJob {
     @Override
     public void run() {
         alreadyRegistered.clear();
-        state.startIndexInsert(indexName);
+        state.startIndexModification(indexName);
         try {
             processAny(document, new ArrayList<>());
             updateIndex(indexName);
         } finally {
-            state.finishIndexInsert(indexName);
+            state.finishIndexModification(indexName);
         }
     }
 

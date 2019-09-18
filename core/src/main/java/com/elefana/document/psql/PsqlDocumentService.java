@@ -463,7 +463,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 				}
 			}
 
-			//indexFieldStatsService.deleteIndex(index);
+			indexFieldStatsService.deleteIndex(index);
 		}
 
 		final AckResponse response = new AckResponse();

@@ -17,7 +17,10 @@
 package com.elefana.indices.fieldstats.state.field;
 
 import com.elefana.indices.fieldstats.job.ElefanaUnsupportedFieldType;
+import com.jsoniter.any.Any;
 
 public interface Fields {
     public <F> FieldStats<F> getFieldStats(Class<F> tClass) throws ElefanaUnsupportedFieldType;
+    Field deserializeField(Class tClass, Any json) throws ElefanaUnsupportedFieldType;
+    public void registerJsoniterConfig();
 }

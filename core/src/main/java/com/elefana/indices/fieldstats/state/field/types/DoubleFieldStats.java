@@ -16,8 +16,8 @@
 
 package com.elefana.indices.fieldstats.state.field.types;
 
-import com.elefana.indices.fieldstats.state.field.FieldStats;
 import com.elefana.indices.fieldstats.state.field.FieldStatsImpl;
+import com.jsoniter.annotation.JsonIgnore;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.concurrent.atomic.DoubleAccumulator;
@@ -25,7 +25,9 @@ import java.util.concurrent.atomic.DoubleAccumulator;
 @ThreadSafe
 public class DoubleFieldStats extends FieldStatsImpl<Double> {
 
+    @JsonIgnore
     private DoubleAccumulator minValue = new DoubleAccumulator(Double::min, Double.MAX_VALUE);
+    @JsonIgnore
     private DoubleAccumulator maxValue = new DoubleAccumulator(Double::max, Double.MIN_VALUE);
 
     @Override
@@ -59,7 +61,7 @@ public class DoubleFieldStats extends FieldStatsImpl<Double> {
     }
 
     @Override
-    protected FieldStatsImpl<Double> instance(FieldStats<Double> other) {
+    protected FieldStatsImpl<Double> instance() {
         return new DoubleFieldStats();
     }
 }

@@ -16,16 +16,17 @@
 
 package com.elefana.indices.fieldstats.state.field.types;
 
-import com.elefana.indices.fieldstats.state.field.FieldStats;
 import com.elefana.indices.fieldstats.state.field.FieldStatsImpl;
+import com.jsoniter.annotation.JsonIgnore;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.concurrent.atomic.LongAccumulator;
 
 @ThreadSafe
 public class LongFieldStats extends FieldStatsImpl<Long> {
-
+    @JsonIgnore
     private LongAccumulator minValue = new LongAccumulator(Long::min, Long.MAX_VALUE);
+    @JsonIgnore
     private LongAccumulator maxValue = new LongAccumulator(Long::max, Long.MIN_VALUE);
 
     @Override
@@ -59,7 +60,7 @@ public class LongFieldStats extends FieldStatsImpl<Long> {
     }
 
     @Override
-    protected FieldStatsImpl<Long> instance(FieldStats<Long> other) {
+    protected FieldStatsImpl<Long> instance() {
         return new LongFieldStats();
     }
 }

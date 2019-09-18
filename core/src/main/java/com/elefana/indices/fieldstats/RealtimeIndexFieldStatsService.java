@@ -28,12 +28,15 @@ import com.elefana.indices.fieldstats.state.State;
 import com.elefana.indices.fieldstats.state.StateImpl;
 import com.elefana.indices.fieldstats.state.field.Field;
 import com.elefana.indices.fieldstats.state.field.FieldStats;
+import com.elefana.indices.fieldstats.state.field.FieldsImpl;
 import com.elefana.indices.psql.PsqlIndexTemplateService;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
 import com.elefana.util.IndexUtils;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.any.Any;
+import com.jsoniter.output.JsonStream;
+import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,6 +48,7 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -52,7 +56,7 @@ import java.util.Map;
 import java.util.concurrent.*;
 
 @Service
-@DependsOn("nodeSettingsService")
+@DependsOn({"nodeSettingsService"})
 public class RealtimeIndexFieldStatsService implements IndexFieldStatsService, RequestExecutor {
     private static final Logger LOGGER = LoggerFactory.getLogger(IndexFieldMappingService.class);
 
@@ -76,7 +80,16 @@ public class RealtimeIndexFieldStatsService implements IndexFieldStatsService, R
 
     @PostConstruct
     public void postConstruct() {
-        state = new StateImpl();
+        FieldsImpl.getInstance().registerJsoniterConfig();
+
+        int stateRecords = jdbcTemplate.queryForObject("SELECT COUNT(_state) FROM elefana_fieldstats_state", Integer.class);
+        if(stateRecords == 0) {
+            state = new StateImpl();
+        } else {
+            PGobject obj = jdbcTemplate.queryForObject("SELECT _state FROM elefana_fieldstats_state ORDER BY _timestamp DESC LIMIT 1", PGobject.class);
+            LOGGER.info(obj.getValue());
+            state = JsonIterator.deserialize(obj.getValue(), StateImpl.class);
+        }
 
         final int workerThreadNumber = environment.getProperty("elefana.service.fieldStats.workerThreads", Integer.class, 2);
         workerExecutorService = Executors.newFixedThreadPool(workerThreadNumber);
@@ -85,6 +98,19 @@ public class RealtimeIndexFieldStatsService implements IndexFieldStatsService, R
     @PreDestroy
     public void preDestroy() {
         workerExecutorService.shutdown();
+        try {
+            workerExecutorService.awaitTermination(30,TimeUnit.SECONDS);
+        } catch (InterruptedException e) {}
+
+        String serializedState = JsonStream.serialize(state);
+        PGobject json = new PGobject();
+        json.setType("json");
+        try {
+            json.setValue(serializedState);
+        } catch (SQLException e) {
+            LOGGER.error("Invalid JSON", e);
+        }
+        jdbcTemplate.update("INSERT INTO elefana_fieldstats_state VALUES (?, ?)", System.currentTimeMillis(), json);
     }
 
     @Override
@@ -120,24 +146,24 @@ public class RealtimeIndexFieldStatsService implements IndexFieldStatsService, R
         response.getShards().put("failed", 0);
     }
 
-    private void setIndices(GetFieldStatsResponse response, List<String> indices, List<String> fields) {
-        indices.forEach(state::haltIndex);
+    private void setIndicesClusterLevel(GetFieldStatsResponse response, List<String> indices, List<String> fields) {
+        indices.forEach(state::stopModificationsOfIndex);
         try {
             response.getIndices().put("_all", getIndexMap(indices, fields));
         } finally {
-            indices.forEach(state::resumeIndex);
+            indices.forEach(state::resumeModificationsOfIndex);
         }
     }
 
-    private void setIndicesClusterLevel(GetFieldStatsResponse response, List<String> indices, List<String> fields){
+    private void setIndices(GetFieldStatsResponse response, List<String> indices, List<String> fields){
         for(String index : indices) {
             List<String> indexSingleton = new ArrayList<>();
             indexSingleton.add(index);
-            state.haltIndex(index);
+            state.stopModificationsOfIndex(index);
             try {
                 response.getIndices().put(index, getIndexMap(indexSingleton, fields));
             } finally {
-                state.resumeIndex(index);
+                state.resumeModificationsOfIndex(index);
             }
         }
     }

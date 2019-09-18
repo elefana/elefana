@@ -16,6 +16,8 @@
 
 package com.elefana.indices.fieldstats.state.index;
 
+import com.jsoniter.annotation.JsonIgnore;
+
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.locks.Lock;
@@ -24,15 +26,19 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 @ThreadSafe
 public class IndexImpl implements Index {
+    @JsonIgnore
     private LongAdder maxDocs = new LongAdder();
+    @JsonIgnore
     private ReadWriteLock indexLock = new ReentrantReadWriteLock();
 
     @Override
+    @JsonIgnore
     public Lock getCountingLock() {
         return indexLock.readLock();
     }
 
     @Override
+    @JsonIgnore
     public Lock getStopCountingLock() {
         return indexLock.writeLock();
     }
@@ -40,6 +46,11 @@ public class IndexImpl implements Index {
     @Override
     public long getMaxDocuments() {
         return maxDocs.sum();
+    }
+
+    public void setMaxDocuments(long maxDocs) {
+        this.maxDocs.reset();
+        this.maxDocs.add(maxDocs);
     }
 
     @Override

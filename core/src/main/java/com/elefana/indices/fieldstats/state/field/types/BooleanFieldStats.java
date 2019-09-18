@@ -16,11 +16,9 @@
 
 package com.elefana.indices.fieldstats.state.field.types;
 
-import com.elefana.indices.fieldstats.state.field.FieldStats;
 import com.elefana.indices.fieldstats.state.field.FieldStatsImpl;
 
 import javax.annotation.concurrent.ThreadSafe;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 @ThreadSafe
 public class BooleanFieldStats extends ComparableFieldStats<Boolean> {
@@ -36,7 +34,7 @@ public class BooleanFieldStats extends ComparableFieldStats<Boolean> {
     }
 
     @Override
-    protected FieldStatsImpl<Boolean> instance(FieldStats<Boolean> other) {
+    protected FieldStatsImpl<Boolean> instance() {
         return new BooleanFieldStats();
     }
 }

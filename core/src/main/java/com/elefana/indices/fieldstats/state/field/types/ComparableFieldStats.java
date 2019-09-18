@@ -16,18 +16,16 @@
 
 package com.elefana.indices.fieldstats.state.field.types;
 
-import com.elefana.indices.fieldstats.state.field.FieldStats;
 import com.elefana.indices.fieldstats.state.field.FieldStatsImpl;
+import com.jsoniter.annotation.JsonIgnore;
 
-import javax.annotation.concurrent.ThreadSafe;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 public abstract class ComparableFieldStats<T extends Comparable<T>> extends FieldStatsImpl<T> {
 
+    @JsonIgnore
     private AtomicReference<T> minValue = new AtomicReference<>();
+    @JsonIgnore
     private AtomicReference<T> maxValue = new AtomicReference<>();
 
     @Override

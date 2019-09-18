@@ -15,22 +15,15 @@
  ******************************************************************************/
 package com.elefana.es2;
 
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.equalTo;
-import static org.mockito.Mockito.when;
-
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.Random;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-
+import com.elefana.ElefanaApplication;
 import com.elefana.TestUtils;
+import com.elefana.document.psql.PsqlBulkIngestService;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.any.Any;
+import io.restassured.RestAssured;
 import io.restassured.config.DecoderConfig;
 import io.restassured.config.EncoderConfig;
+import io.restassured.http.ContentType;
 import io.restassured.response.ValidatableResponse;
 import org.junit.Assert;
 import org.junit.Before;
@@ -38,15 +31,16 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 
-import com.elefana.ElefanaApplication;
-import com.elefana.document.psql.PsqlBulkIngestService;
+import java.util.List;
+import java.util.Random;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
-import io.restassured.RestAssured;
-import io.restassured.http.ContentType;
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.equalTo;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = { ElefanaApplication.class })

@@ -29,13 +29,13 @@ public interface State {
     public Index getIndex(String indexName);
     public Index getIndex(Collection<String> indices);
 
-    public void haltIndex(String index);
+    public void stopModificationsOfIndex(String index);
 
-    public void resumeIndex(String index);
+    public void resumeModificationsOfIndex(String index);
 
-    public void startIndexInsert(String index);
+    public void startIndexModification(String index);
 
-    public void finishIndexInsert(String index);
+    public void finishIndexModification(String index);
 
     public void deleteIndex(String name);
 

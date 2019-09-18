@@ -21,6 +21,7 @@ import com.elefana.indices.fieldstats.state.field.Field;
 import com.elefana.indices.fieldstats.state.field.FieldImpl;
 import com.elefana.indices.fieldstats.state.index.Index;
 import com.elefana.indices.fieldstats.state.index.IndexImpl;
+import com.jsoniter.output.JsonStream;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -37,36 +38,34 @@ public class StateImpl implements State{
     private Map<String, Field<?>> fieldMap = new ConcurrentHashMap<>();
 
     @Override
-    public void haltIndex(String index) {
+    public void stopModificationsOfIndex(String index) {
         getIndex(index).getStopCountingLock().lock();
     }
 
     @Override
-    public void resumeIndex(String index) {
+    public void resumeModificationsOfIndex(String index) {
         getIndex(index).getStopCountingLock().unlock();
     }
 
     @Override
-    public void startIndexInsert(String index) {
+    public void startIndexModification(String index) {
         getIndex(index).getCountingLock().lock();
     }
 
     @Override
-    public void finishIndexInsert(String index) {
+    public void finishIndexModification(String index) {
         getIndex(index).getCountingLock().unlock();
     }
 
     @Override
     public void deleteIndex(String name) {
-        haltIndex(name);
-        try {
-            indexMap.remove(name);
-            fieldMap.forEach((fieldName, field) -> {
-                field.deleteIndexFieldStats(name);
-            });
-        } finally {
-            resumeIndex(name);
-        }
+        stopModificationsOfIndex(name);
+
+        indexMap.remove(name);
+        fieldMap.forEach((fieldName, field) -> {
+            field.deleteIndexFieldStats(name);
+        });
+        // No need to resume the Index (unlock WriteLock) because the Index is deleted.
     }
 
     @Override
@@ -108,6 +107,11 @@ public class StateImpl implements State{
                 .stream()
                 .filter(i -> matches(indexPattern, i))
                 .collect(Collectors.toList());
+    }
+
+    public String serialize() {
+        JsonStream.serialize(indexMap);
+        return "";
     }
 
     private boolean matches(String pattern, String index) {
