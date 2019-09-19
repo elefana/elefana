@@ -17,6 +17,7 @@
 package com.elefana.indices.fieldstats.state.index;
 
 import com.jsoniter.annotation.JsonIgnore;
+import com.jsoniter.annotation.JsonProperty;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.concurrent.atomic.LongAdder;
@@ -44,10 +45,12 @@ public class IndexImpl implements Index {
     }
 
     @Override
+    @JsonProperty("m")
     public long getMaxDocuments() {
         return maxDocs.sum();
     }
 
+    @JsonProperty("m")
     public void setMaxDocuments(long maxDocs) {
         this.maxDocs.reset();
         this.maxDocs.add(maxDocs);

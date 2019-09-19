@@ -71,12 +71,12 @@ public class RealtimeFieldStatsServiceTest {
         submitDocumentNTimes(totalEmptyFieldDocuments, testDocumentNoBool, index, type);
         submitDocumentNTimes(totalDocuments - totalEmptyFieldDocuments, testDocument, index, type);
 
-        getFieldStats(index, "string")
+        getFieldStats(index, "string", false)
                 .body("_shards.successful", equalTo(1))
                 .body("indices." + index + ".fields.string.max_doc", equalTo(totalDocuments))
                 .body("indices." + index + ".fields.string.doc_count", equalTo(totalDocuments));
 
-        getFieldStats(index, "bool")
+        getFieldStats(index, "bool", false)
                 .body("_shards.successful", equalTo(1))
                 .body("indices." + index + ".fields.bool.max_doc", equalTo(totalDocuments))
                 .body("indices." + index + ".fields.bool.doc_count", equalTo(totalEmptyFieldDocuments))
@@ -102,7 +102,7 @@ public class RealtimeFieldStatsServiceTest {
                 .statusCode(200);
         submitDocumentNTimes(documentsAfterDelete, testDocument, index, type);
 
-        getFieldStats(index, "string")
+        getFieldStats(index, "string", false)
                 .body("_shards.successful", equalTo(1))
                 .body("indices." + index + ".fields.string.max_doc", equalTo(documentsAfterDelete))
                 .body("indices." + index + ".fields.string.doc_count", equalTo(documentsAfterDelete))
@@ -129,7 +129,7 @@ public class RealtimeFieldStatsServiceTest {
 
         waitForBulkIngest(totalDocuments, index);
 
-        getFieldStats(index, "string")
+        getFieldStats(index, "string", false)
                 .log().all()
                 .body("_shards.successful", equalTo(1))
                 .body("indices." + index + ".fields.string.max_doc", equalTo(totalDocuments))
@@ -185,12 +185,12 @@ public class RealtimeFieldStatsServiceTest {
         }
     }
 
-    private ValidatableResponse getFieldStats(String index, String field) {
+    private ValidatableResponse getFieldStats(String index, String field, boolean clusterLevel) {
         return given()
                 .request()
                 .body("{\"fields\":[\"" + field + "\"]}")
                 .when()
-                .post("/" + index + "/_field_stats")
+                .post("/" + index + "/_field_stats?level=" + clusterLevel)
                 .then()
                 .statusCode(200);
     }

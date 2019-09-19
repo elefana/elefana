@@ -23,8 +23,8 @@ import com.elefana.cluster.ClusterService;
 import com.elefana.document.BulkIngestService;
 import com.elefana.document.DocumentService;
 import com.elefana.indices.IndexFieldMappingService;
-import com.elefana.indices.fieldstats.IndexFieldStatsService;
 import com.elefana.indices.IndexTemplateService;
+import com.elefana.indices.fieldstats.IndexFieldStatsService;
 import com.elefana.node.NodesService;
 import com.elefana.search.SearchService;
 import io.netty.handler.codec.http.HttpMethod;
@@ -34,6 +34,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.net.URLDecoder;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -64,66 +66,76 @@ public class ApiRouter {
 		if (url.length() == 1) {
 			return routeToRootUrl();
 		}
+		Map<String, String> getParams = new HashMap<>();
 
 		if(url.contains("?")) {
-			url = url.substring(0, url.indexOf('?'));
+			String[] urlParts = url.split("\\?");
+			url = urlParts[0];
+
+			String[] getParameterUrlPart = urlParts[1].split("&");
+			for(String getParameter : getParameterUrlPart) {
+				String[] getParameterKeyAndValue = getParameter.split("=");
+				getParams.put(getParameterKeyAndValue[0], getParameterKeyAndValue[1]);
+			}
 		}
 		final String[] urlComponents = url.startsWith("/") ? url.substring(1).split("\\/") : url.split("\\/");
 		if (urlComponents[0] == null || urlComponents[0].isEmpty()) {
 			return routeToRootUrl();
 		}
-		return routeToApi(method, url, urlComponents, requestBody);
+		return routeToApi(method, url, getParams, urlComponents, requestBody);
 	}
 
 	private ApiRequest<?> routeToRootUrl() throws ElefanaException {
 		return clusterService.prepareClusterInfo();
 	}
 
-	private ApiRequest<?> routeToApi(HttpMethod method, String url, String[] urlComponents, String requestBody)
+	private ApiRequest<?> routeToApi(HttpMethod method, String url, Map<String, String> getParams, String[] urlComponents, String requestBody)
 			throws ElefanaException {
 		switch (urlComponents[0].toLowerCase()) {
 		case "_bulk":
-			return routeToBulkApi(method, url, urlComponents, requestBody);
+			return routeToBulkApi(method, url, getParams, urlComponents, requestBody);
 		case "_cluster":
-			return routeToClusterApi(method, url, urlComponents, requestBody);
+			return routeToClusterApi(method, url, getParams, urlComponents, requestBody);
 		case "_mapping":
-			return routeToFieldMappingApi(method, url, urlComponents, requestBody);
+			return routeToFieldMappingApi(method, url, getParams, urlComponents, requestBody);
 		case "_mget":
-			return routeToDocumentApi(method, url, urlComponents, requestBody);
+			return routeToDocumentApi(method, url, getParams, urlComponents, requestBody);
 		case "_msearch":
-			return routeToSearchApi(method, url, urlComponents, requestBody);
+			return routeToSearchApi(method, url, getParams, urlComponents, requestBody);
 		case "_nodes":
-			return routeToNodeApi(method, url, urlComponents, requestBody);
+			return routeToNodeApi(method, url, getParams, urlComponents, requestBody);
 		case "_search":
-			return routeToSearchApi(method, url, urlComponents, requestBody);
+			return routeToSearchApi(method, url, getParams, urlComponents, requestBody);
 		case "_template":
-			return routeToIndexTemplateApi(method, url, urlComponents, requestBody);
+			return routeToIndexTemplateApi(method, url, getParams, urlComponents, requestBody);
+        case "_field_stats":
+            return routeToFieldMappingApi(method, url, getParams, urlComponents, requestBody);
 		}
 
 		switch (urlComponents.length) {
 		case 2:
 			switch (urlComponents[1].toLowerCase()) {
 			case "_template":
-				return routeToIndexTemplateApi(method, url, urlComponents, requestBody);
+				return routeToIndexTemplateApi(method, url, getParams, urlComponents, requestBody);
 			case "_field_names":
 			case "_field_caps":
 			case "_mapping":
-				return routeToFieldMappingApi(method, url, urlComponents, requestBody);
+				return routeToFieldMappingApi(method, url, getParams, urlComponents, requestBody);
 			case "_msearch":
 			case "_search":
-				return routeToSearchApi(method, url, urlComponents, requestBody);
+				return routeToSearchApi(method, url, getParams, urlComponents, requestBody);
 			}
 			break;
 		case 3:
 			switch (urlComponents[1].toLowerCase()) {
 			case "_field_names":
 			case "_mapping":
-				return routeToFieldMappingApi(method, url, urlComponents, requestBody);
+				return routeToFieldMappingApi(method, url, getParams, urlComponents, requestBody);
 			}
 			switch (urlComponents[2].toLowerCase()) {
 			case "_msearch":
 			case "_search":
-				return routeToSearchApi(method, url, urlComponents, requestBody);
+				return routeToSearchApi(method, url, getParams, urlComponents, requestBody);
 			}
 			break;
 		case 4:
@@ -131,7 +143,7 @@ public class ApiRouter {
 			case "_mapping":
 				switch (urlComponents[2].toLowerCase()) {
 				case "field":
-					return routeToFieldMappingApi(method, url, urlComponents, requestBody);
+					return routeToFieldMappingApi(method, url, getParams, urlComponents, requestBody);
 				}
 			}
 			break;
@@ -140,20 +152,20 @@ public class ApiRouter {
 			case "_mapping":
 				switch (urlComponents[3].toLowerCase()) {
 				case "field":
-					return routeToFieldMappingApi(method, url, urlComponents, requestBody);
+					return routeToFieldMappingApi(method, url, getParams, urlComponents, requestBody);
 				}
 			}
 			break;
 		}
 
 		if (isPutMethod(method)) {
-			return routeToFieldMappingApi(method, url, urlComponents, requestBody);
+			return routeToFieldMappingApi(method, url, getParams, urlComponents, requestBody);
 		} else {
-			return routeToDocumentApi(method, url, urlComponents, requestBody);
+			return routeToDocumentApi(method, url, getParams, urlComponents, requestBody);
 		}
 	}
 
-	private ApiRequest<?> routeToBulkApi(HttpMethod method, String url, String[] urlComponents, String requestBody)
+	private ApiRequest<?> routeToBulkApi(HttpMethod method, String url, Map<String, String> getParams, String[] urlComponents, String requestBody)
 			throws ElefanaException {
 		switch (urlComponents[0].toLowerCase()) {
 		case "_bulk":
@@ -171,7 +183,7 @@ public class ApiRouter {
 		throw new NoSuchApiException(method, url);
 	}
 
-	private ApiRequest<?> routeToClusterApi(HttpMethod method, String url, String[] urlComponents, String requestBody)
+	private ApiRequest<?> routeToClusterApi(HttpMethod method, String url, Map<String, String> getParams, String[] urlComponents, String requestBody)
 			throws ElefanaException {
 		switch (urlComponents.length) {
 		case 1:
@@ -198,15 +210,23 @@ public class ApiRouter {
 		throw new NoSuchApiException(method, url);
 	}
 
-	private ApiRequest<?> routeToFieldMappingApi(HttpMethod method, String url, String[] urlComponents,
-			String requestBody) throws ElefanaException {
+	private ApiRequest<?> routeToFieldMappingApi(HttpMethod method, String url, Map<String, String> getParams, String[] urlComponents, String requestBody) throws ElefanaException {
 		if (isGetMethod(method)) {
 			switch (urlComponents.length) {
 			case 1:
 				// _mapping
-				return indexFieldMappingService.prepareGetFieldMappings();
+                switch (urlComponents[0].toLowerCase()) {
+                    case "_mapping":
+                        return indexFieldMappingService.prepareGetFieldMappings();
+                    case "_field_stats":
+                        String clusterLevel = getParams.getOrDefault("level", "true");
+                        if(!getParams.containsKey("fields")) {
+                            throw new NoSuchApiException(method, url + "(Get parameter fields is missing)");
+                        }
+                        return indexFieldStatsService.prepareGetFieldStatsGet("*", getParams.get("fields"), !clusterLevel.equals("false"));
+                }
 			case 2: {
-				// INDICES/_mapping | INDICES/_field_caps | INDICES/_field_names
+				// INDICES/_mapping | INDICES/_field_caps | INDICES/_field_names | INDICES/_field_stats
 				final String indexPattern = urlDecode(urlComponents[0]);
 				switch (urlComponents[1].toLowerCase()) {
 				case "_field_names":
@@ -215,6 +235,12 @@ public class ApiRouter {
 					return indexFieldMappingService.prepareGetFieldMappings(indexPattern);
 				case "_field_caps":
 					return indexFieldMappingService.prepareGetFieldCapabilities(indexPattern);
+                case "_field_stats":
+                    String clusterLevel = getParams.getOrDefault("level", "true");
+                    if(!getParams.containsKey("fields")) {
+                        throw new NoSuchApiException(method, url + "(Get parameter fields is missing)");
+                    }
+                    return indexFieldStatsService.prepareGetFieldStatsGet(indexPattern, getParams.get("fields"), !clusterLevel.equals("false"));
 				}
 				break;
 			}
@@ -260,12 +286,19 @@ public class ApiRouter {
 			}
 		} else if (isPostMethod(method)) {
 			switch (urlComponents.length) {
+			    case 1:
+			        switch (urlComponents[0].toLowerCase()) {
+                        case "_field_stats":
+                            String clusterLevel = getParams.getOrDefault("level", "true");
+                            return indexFieldStatsService.prepareGetFieldStatsPost("*", requestBody, !clusterLevel.equals("false"));
+                    }
 			case 2: {
 				// INDICES/_mapping or INDICES/_field_caps
 				final String indexPattern = urlDecode(urlComponents[0]);
 				switch (urlComponents[1].toLowerCase()) {
 				case "_field_stats":
-					return indexFieldStatsService.prepareGetFieldStats(indexPattern, requestBody, true);
+				    String clusterLevel = getParams.getOrDefault("level", "true");
+					return indexFieldStatsService.prepareGetFieldStatsPost(indexPattern, requestBody, !clusterLevel.equals("false"));
 				case "_refresh":
 					return indexFieldMappingService.prepareRefreshIndex(indexPattern);
 				}
@@ -279,7 +312,7 @@ public class ApiRouter {
 		throw new NoSuchApiException(method, url);
 	}
 
-	private ApiRequest<?> routeToDocumentApi(HttpMethod method, String url, String[] urlComponents, String requestBody)
+	private ApiRequest<?> routeToDocumentApi(HttpMethod method, String url, Map<String, String> getParams, String[] urlComponents, String requestBody)
 			throws ElefanaException {
 		switch (urlComponents.length) {
 		case 1:
@@ -304,7 +337,7 @@ public class ApiRouter {
 			case "_mapping":
 			case "_refresh":
 			case "_field_stats":
-				return routeToFieldMappingApi(method, url, urlComponents, requestBody);
+				return routeToFieldMappingApi(method, url, getParams, urlComponents, requestBody);
 			}
 			final String type = urlDecode(urlComponents[1]);
 
@@ -323,7 +356,7 @@ public class ApiRouter {
 			
 			switch (urlComponents[1].toLowerCase()) {
 			case "_mapping":
-				return routeToFieldMappingApi(method, url, urlComponents, requestBody);
+				return routeToFieldMappingApi(method, url, getParams, urlComponents, requestBody);
 			}
 
 			switch (urlComponents[2].toLowerCase()) {
@@ -364,7 +397,7 @@ public class ApiRouter {
 		case 5: {
 			switch (urlComponents[1].toLowerCase()) {
 			case "_mapping":
-				return routeToFieldMappingApi(method, url, urlComponents, requestBody);
+				return routeToFieldMappingApi(method, url, getParams, urlComponents, requestBody);
 			}
 			break;
 		}
@@ -372,7 +405,7 @@ public class ApiRouter {
 		throw new NoSuchApiException(method, url);
 	}
 
-	private ApiRequest<?> routeToSearchApi(HttpMethod method, String url, String[] urlComponents, String requestBody)
+	private ApiRequest<?> routeToSearchApi(HttpMethod method, String url, Map<String, String> getParams, String[] urlComponents, String requestBody)
 			throws ElefanaException {
 		switch (urlComponents.length) {
 		case 1:
@@ -411,7 +444,7 @@ public class ApiRouter {
 		throw new NoSuchApiException(method, url);
 	}
 
-	private ApiRequest<?> routeToNodeApi(HttpMethod method, String url, String[] urlComponents, String requestBody)
+	private ApiRequest<?> routeToNodeApi(HttpMethod method, String url, Map<String, String> getParams, String[] urlComponents, String requestBody)
 			throws ElefanaException {
 		switch (urlComponents.length) {
 		case 1:
@@ -443,8 +476,8 @@ public class ApiRouter {
 		throw new NoSuchApiException(method, url);
 	}
 
-	private ApiRequest<?> routeToIndexTemplateApi(HttpMethod method, String url, String[] urlComponents,
-			String requestBody) throws ElefanaException {
+	private ApiRequest<?> routeToIndexTemplateApi(HttpMethod method, String url, Map<String, String> getParams, String[] urlComponents,
+                                                  String requestBody) throws ElefanaException {
 		switch (urlComponents.length) {
 		case 2:
 			switch(urlComponents[0].toLowerCase()) {

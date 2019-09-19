@@ -54,26 +54,26 @@ public abstract class FieldStatsImpl<T> implements FieldStats<T> {
     protected abstract void updateMax(T value);
 
     @Override
-    @JsonProperty("minValue")
+    @JsonProperty("i")
     public abstract T getMinimumValue();
     @Override
-    @JsonProperty("maxValue")
+    @JsonProperty("a")
     public abstract T getMaximumValue();
 
     @Override
-    @JsonProperty("docCount")
+    @JsonProperty("c")
     public long getDocumentCount() {
         return docCount.sum();
     }
 
     @Override
-    @JsonProperty("sumDoc")
+    @JsonProperty("d")
     public long getSumDocumentFrequency() {
         return sumDocFrequency.get();
     }
 
     @Override
-    @JsonProperty("sumTotal")
+    @JsonProperty("t")
     public long getSumTotalTermFrequency() {
         return sumTotalTermFrequency.get();
     }

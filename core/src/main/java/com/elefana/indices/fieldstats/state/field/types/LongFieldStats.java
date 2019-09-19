@@ -18,6 +18,7 @@ package com.elefana.indices.fieldstats.state.field.types;
 
 import com.elefana.indices.fieldstats.state.field.FieldStatsImpl;
 import com.jsoniter.annotation.JsonIgnore;
+import com.jsoniter.annotation.JsonProperty;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.concurrent.atomic.LongAccumulator;
@@ -50,11 +51,13 @@ public class LongFieldStats extends FieldStatsImpl<Long> {
     }
 
     @Override
+    @JsonProperty("i")
     public Long getMinimumValue() {
         return minValue.get();
     }
 
     @Override
+    @JsonProperty("a")
     public Long getMaximumValue() {
         return maxValue.get();
     }

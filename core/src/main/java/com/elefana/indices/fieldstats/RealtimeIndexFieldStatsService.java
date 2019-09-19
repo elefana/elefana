@@ -49,10 +49,7 @@ import org.springframework.stereotype.Service;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.*;
 
 @Service
@@ -114,7 +111,7 @@ public class RealtimeIndexFieldStatsService implements IndexFieldStatsService, R
     }
 
     @Override
-    public GetFieldStatsRequest prepareGetFieldStats(String indexPattern, String requestBody, boolean clusterLevel) {
+    public GetFieldStatsRequest prepareGetFieldStatsPost(String indexPattern, String requestBody, boolean clusterLevel) {
         List<String> fields = new ArrayList<>();
         JsonIterator
                 .deserialize(requestBody)
@@ -125,6 +122,14 @@ public class RealtimeIndexFieldStatsService implements IndexFieldStatsService, R
 
         return new RealtimeGetFieldStatsRequest(this, indexPattern, fields, clusterLevel);
     }
+
+    @Override
+    public GetFieldStatsRequest prepareGetFieldStatsGet(String indexPattern, String fieldGetParam, boolean clusterLevel) {
+        List<String> fields = Arrays.asList(fieldGetParam.split(","));
+
+        return new RealtimeGetFieldStatsRequest(this, indexPattern, fields, clusterLevel);
+    }
+
 
     @Override
     public GetFieldStatsResponse getFieldStats(String indexPattern, List<String> fields, boolean clusterLevel) {

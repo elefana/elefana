@@ -24,7 +24,10 @@ import java.util.List;
 
 public interface IndexFieldStatsService {
 
-    public GetFieldStatsRequest prepareGetFieldStats(String indexPattern, String requestBody, boolean clusterLevel);
+    public GetFieldStatsRequest prepareGetFieldStatsPost(String indexPattern, String requestBody, boolean clusterLevel);
+
+    public GetFieldStatsRequest prepareGetFieldStatsGet(String indexPattern, String fieldGetParam, boolean clusterLevel);
+
     public GetFieldStatsResponse getFieldStats(String indexPattern, List<String> fields, boolean clusterLevel);
     public void submitDocument(Any document, String index);
     public void submitDocument(String document, String index);

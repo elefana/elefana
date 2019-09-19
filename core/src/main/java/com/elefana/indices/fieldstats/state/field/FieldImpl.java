@@ -26,6 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @ThreadSafe
 public class FieldImpl<T> implements Field<T> {
+    @JsonProperty("f")
     private Map<String, FieldStats<T>> fieldStats = new ConcurrentHashMap<>();
     @JsonIgnore
     private Class<T> type;
@@ -73,17 +74,8 @@ public class FieldImpl<T> implements Field<T> {
         return type;
     }
 
-    @JsonProperty("type")
+    @JsonProperty("t")
     public String getType() {
         return type.getName();
-    }
-
-    @JsonProperty("type")
-    public void setType(String typeName) {
-        try {
-            this.type = (Class<T>)Class.forName(typeName);
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        }
     }
 }

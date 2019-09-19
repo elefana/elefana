@@ -69,7 +69,7 @@ public class FieldsImpl implements Fields {
             @Override
             public Object decode(JsonIterator iter) throws IOException {
                 Any field = iter.readAny();
-                String fieldType = field.get("type").toString();
+                String fieldType = field.get("t").toString();
                 try {
                     Class tClass = Class.forName(fieldType);
                     return FieldsImpl.getInstance().deserializeField(tClass, field);
@@ -82,34 +82,34 @@ public class FieldsImpl implements Fields {
     }
 
     public <T> Field<T> getFieldInstance(Class<T> tClass, Any json){
-        Map<String, Any> fieldStats = json.get("fieldStats").asMap();
+        Map<String, Any> fieldStats = json.get("f").asMap();
         Map<String, FieldStats<T>> fieldStatsAcc = new HashMap<>();
 
         fieldStats.forEach((k,v) -> {
             FieldStats<T> fs = getFieldStats(tClass).merge(new FieldStats<T>() {
                 @Override
                 public T getMinimumValue() {
-                    return v.get("minimumValue").as(tClass);
+                    return v.get("i").as(tClass);
                 }
 
                 @Override
                 public T getMaximumValue() {
-                    return v.get("maximumValue").as(tClass);
+                    return v.get("a").as(tClass);
                 }
 
                 @Override
                 public long getDocumentCount() {
-                    return v.get("docCount").toLong();
+                    return v.get("c").toLong();
                 }
 
                 @Override
                 public long getSumDocumentFrequency() {
-                    return v.get("sumDoc").toLong();
+                    return v.get("d").toLong();
                 }
 
                 @Override
                 public long getSumTotalTermFrequency() {
-                    return v.get("sumTotal").toLong();
+                    return v.get("t").toLong();
                 }
 
                 @Override
