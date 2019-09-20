@@ -16,9 +16,6 @@
 
 package com.elefana.indices.fieldstats.state.field;
 
-import com.jsoniter.annotation.JsonIgnore;
-import com.jsoniter.annotation.JsonProperty;
-
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.Collection;
 import java.util.Map;
@@ -26,30 +23,23 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @ThreadSafe
 public class FieldImpl<T> implements Field<T> {
-    @JsonProperty("f")
     private Map<String, FieldStats<T>> fieldStats = new ConcurrentHashMap<>();
-    @JsonIgnore
     private Class<T> type;
 
     public FieldImpl(Class<T> type) {
         this.type = type;
     }
 
-    public FieldImpl(Class<T> type, Map<String, FieldStats<T>> initialMap) {
-        this(type);
-        this.fieldStats = new ConcurrentHashMap<>(initialMap);
-    }
-
     @Override
     public FieldStats<T> getIndexFieldStats(String indexName) {
         return fieldStats.computeIfAbsent(indexName, key ->
-                FieldsImpl.getInstance().getFieldStats(type)
+                Fields.getFieldStats(type)
         );
     }
 
     @Override
     public FieldStats<T> getIndexFieldStats(Collection<String> indices) {
-        FieldStats<T> acc = FieldsImpl.getInstance().getFieldStats(type);
+        FieldStats<T> acc = Fields.getFieldStats(type);
         for(String s : indices) {
             FieldStats<T> fs = getIndexFieldStats(s);
             acc = acc.merge(fs);
@@ -57,7 +47,11 @@ public class FieldImpl<T> implements Field<T> {
         return acc;
     }
 
-    @JsonIgnore
+    @Override
+    public boolean hasIndexFieldStats(String name){
+        return fieldStats.containsKey(name);
+    }
+
     @Override
     public FieldStats<T> getFieldStats() {
         return getIndexFieldStats(fieldStats.keySet());
@@ -69,12 +63,22 @@ public class FieldImpl<T> implements Field<T> {
     }
 
     @Override
-    @JsonIgnore
     public Class<T> getFieldType() {
         return type;
     }
 
-    @JsonProperty("t")
+    @Override
+    public void load(String indexName, FieldComponent<T> fieldComponent) {
+        fieldStats.compute(indexName, (name, fieldStats) -> {
+            if(fieldStats == null) {
+                return fieldComponent.construct();
+            } else {
+                fieldStats.mergeAndModifySelf(fieldComponent.construct());
+                return fieldStats;
+            }
+        });
+    }
+
     public String getType() {
         return type.getName();
     }

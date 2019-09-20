@@ -17,16 +17,12 @@
 package com.elefana.indices.fieldstats.state.field.types;
 
 import com.elefana.indices.fieldstats.state.field.FieldStatsImpl;
-import com.jsoniter.annotation.JsonIgnore;
-import com.jsoniter.annotation.JsonProperty;
 
 import java.util.concurrent.atomic.AtomicReference;
 
 public abstract class ComparableFieldStats<T extends Comparable<T>> extends FieldStatsImpl<T> {
 
-    @JsonIgnore
     private AtomicReference<T> minValue = new AtomicReference<>();
-    @JsonIgnore
     private AtomicReference<T> maxValue = new AtomicReference<>();
 
     @Override
@@ -58,7 +54,7 @@ public abstract class ComparableFieldStats<T extends Comparable<T>> extends Fiel
         if(a == null)
             return b;
 
-        return min(a, b);
+        return max(a, b);
     }
 
     private T min(T a, T b) {
@@ -84,13 +80,11 @@ public abstract class ComparableFieldStats<T extends Comparable<T>> extends Fiel
     }
 
     @Override
-    @JsonProperty("i")
     public T getMinimumValue() {
         return minValue.get();
     }
 
     @Override
-    @JsonProperty("a")
     public T getMaximumValue() {
         return maxValue.get();
     }

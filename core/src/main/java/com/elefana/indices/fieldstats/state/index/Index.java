@@ -25,4 +25,8 @@ public interface Index {
     public long getMaxDocuments();
     public void incrementMaxDocuments();
     public Index merge(Index other);
+
+    void mergeAndModifySelf(Index other);
+
+    void delete();
 }

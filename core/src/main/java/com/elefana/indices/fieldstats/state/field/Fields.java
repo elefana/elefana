@@ -17,10 +17,19 @@
 package com.elefana.indices.fieldstats.state.field;
 
 import com.elefana.indices.fieldstats.job.ElefanaUnsupportedFieldType;
-import com.jsoniter.any.Any;
+import com.elefana.indices.fieldstats.state.field.types.*;
 
-public interface Fields {
-    public <F> FieldStats<F> getFieldStats(Class<F> tClass) throws ElefanaUnsupportedFieldType;
-    Field deserializeField(Class tClass, Any json) throws ElefanaUnsupportedFieldType;
-    public void registerJsoniterConfig();
+import java.util.Date;
+
+
+public class Fields {
+
+    public static <F> FieldStats<F> getFieldStats(Class<F> tClass) throws ElefanaUnsupportedFieldType {
+        if (tClass.equals(Long.class)) { return (FieldStats<F>) new LongFieldStats(); }
+        if (tClass.equals(Double.class)) { return (FieldStats<F>) new DoubleFieldStats(); }
+        if (tClass.equals(Date.class)) { return (FieldStats<F>) new DateFieldStats(); }
+        if (tClass.equals(String.class)) { return (FieldStats<F>) new StringFieldStats(); }
+        if (tClass.equals(Boolean.class)) { return (FieldStats<F>) new BooleanFieldStats(); }
+        throw new ElefanaUnsupportedFieldType(tClass);
+    }
 }

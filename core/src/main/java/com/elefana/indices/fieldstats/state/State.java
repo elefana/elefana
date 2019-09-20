@@ -19,6 +19,7 @@ package com.elefana.indices.fieldstats.state;
 import com.elefana.indices.fieldstats.state.field.ElefanaWrongFieldStatsTypeException;
 import com.elefana.indices.fieldstats.state.field.Field;
 import com.elefana.indices.fieldstats.state.index.Index;
+import com.elefana.indices.fieldstats.state.index.IndexComponent;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.Collection;
@@ -26,19 +27,23 @@ import java.util.List;
 
 @ThreadSafe
 public interface State {
-    public Index getIndex(String indexName);
-    public Index getIndex(Collection<String> indices);
+    // Whole-State Operations
+    public void deleteIndex(String name);
+
+    public void load(IndexComponent indexComponent) throws ElefanaWrongFieldStatsTypeException;
+    public IndexComponent unload(String indexName);
 
     public void stopModificationsOfIndex(String index);
-
     public void resumeModificationsOfIndex(String index);
 
     public void startIndexModification(String index);
-
     public void finishIndexModification(String index);
 
-    public void deleteIndex(String name);
+    // Indices
+    public Index getIndex(String indexName);
+    public Index getIndex(Collection<String> indices);
 
+    // Fields
     public <T> Field<T> getFieldTypeChecked(String fieldName, Class<T> tClass) throws ElefanaWrongFieldStatsTypeException;
     public Field<?> getField(String fieldName);
     public List<String> compileIndexPattern(String indexPattern);

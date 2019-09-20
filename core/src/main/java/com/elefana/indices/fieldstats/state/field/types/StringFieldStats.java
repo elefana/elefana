@@ -21,6 +21,7 @@ import com.elefana.indices.fieldstats.state.field.FieldStatsImpl;
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.stream.Collectors;
 
 @ThreadSafe
 public class StringFieldStats extends ComparableFieldStats<String> {
@@ -28,7 +29,7 @@ public class StringFieldStats extends ComparableFieldStats<String> {
     @Override
     protected void updateMin(String value) {
         if(value != null){
-            super.updateMin(Collections.min(Arrays.asList(value.split("\\W+"))));
+            super.updateMin(Collections.min(Arrays.stream(value.split("\\W+")).map(String::toLowerCase).collect(Collectors.toList())));
         } else {
             super.updateMin(value);
         }
@@ -37,7 +38,7 @@ public class StringFieldStats extends ComparableFieldStats<String> {
     @Override
     protected void updateMax(String value) {
         if(value != null) {
-            super.updateMax(Collections.max(Arrays.asList(value.split("\\W+"))));
+            super.updateMax(Collections.max(Arrays.stream(value.split("\\W+")).map(String::toLowerCase).collect(Collectors.toList())));
         } else {
             super.updateMax(value);
         }

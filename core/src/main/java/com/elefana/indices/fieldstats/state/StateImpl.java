@@ -16,10 +16,9 @@
 
 package com.elefana.indices.fieldstats.state;
 
-import com.elefana.indices.fieldstats.state.field.ElefanaWrongFieldStatsTypeException;
-import com.elefana.indices.fieldstats.state.field.Field;
-import com.elefana.indices.fieldstats.state.field.FieldImpl;
+import com.elefana.indices.fieldstats.state.field.*;
 import com.elefana.indices.fieldstats.state.index.Index;
+import com.elefana.indices.fieldstats.state.index.IndexComponent;
 import com.elefana.indices.fieldstats.state.index.IndexImpl;
 import com.jsoniter.output.JsonStream;
 
@@ -30,12 +29,14 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 @ThreadSafe
 public class StateImpl implements State{
     private Map<String, Index> indexMap = new ConcurrentHashMap<>();
     private Map<String, Field<?>> fieldMap = new ConcurrentHashMap<>();
+    private Map<String, AtomicLong> missingIndices = new ConcurrentHashMap<>();
 
     @Override
     public void stopModificationsOfIndex(String index) {
@@ -60,12 +61,76 @@ public class StateImpl implements State{
     @Override
     public void deleteIndex(String name) {
         stopModificationsOfIndex(name);
+        deleteLockedIndex(name);
+        resumeModificationsOfIndex(name);
+    }
 
-        indexMap.remove(name);
+    private void deleteLockedIndex(String name) {
+        getIndex(name).delete();
         fieldMap.forEach((fieldName, field) -> {
             field.deleteIndexFieldStats(name);
         });
-        // No need to resume the Index (unlock WriteLock) because the Index is deleted.
+    }
+
+    @Override
+    public void load(IndexComponent indexComponent) throws ElefanaWrongFieldStatsTypeException {
+        startIndexModification(indexComponent.name);
+        try {
+            indexMap.compute(indexComponent.name, (name, index) -> {
+                if (index == null) {
+                    return indexComponent.construct();
+                } else {
+                    index.mergeAndModifySelf(indexComponent.construct());
+                    return index;
+                }
+            });
+
+            indexComponent.fields.forEach((fieldName, fieldComponent) -> {
+                fieldMap.compute(fieldName, (name, field) -> {
+                    if (field == null) {
+                        Field<?> newField = fieldComponent.constructField();
+                        newField.load(indexComponent.name, fieldComponent);
+                        return newField;
+                    } else {
+                        if (field.getFieldType() != fieldComponent.type) {
+                            return field;
+                        } else {
+                            field.load(indexComponent.name, fieldComponent);
+                            return field;
+                        }
+                    }
+                });
+            });
+            missingIndices.remove(indexComponent.name);
+        } finally {
+            finishIndexModification(indexComponent.name);
+        }
+    }
+
+    @Override
+    public IndexComponent unload(String indexName) {
+        stopModificationsOfIndex(indexName);
+
+        Index index = getIndex(indexName);
+        IndexComponent indexComponent = new IndexComponent(indexName, index.getMaxDocuments());
+
+        fieldMap.forEach((name, field) -> {
+            if(field.hasIndexFieldStats(indexName)) {
+                FieldStats<?> fieldStats = field.getIndexFieldStats(indexName);
+                FieldComponent<?> fieldComponent = fieldStats.getFieldComponent(field.getFieldType());
+                indexComponent.fields.put(name, fieldComponent);
+            }
+        });
+
+        deleteLockedIndex(indexName);
+
+        resumeModificationsOfIndex(indexName);
+        getUnloadedIndexCount(indexName).incrementAndGet();
+        return indexComponent;
+    }
+
+    private AtomicLong getUnloadedIndexCount(String indexName) {
+        return missingIndices.computeIfAbsent(indexName, name -> new AtomicLong(0L));
     }
 
     @Override

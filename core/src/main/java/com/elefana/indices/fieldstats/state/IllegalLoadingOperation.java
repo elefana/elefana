@@ -14,21 +14,7 @@
  * limitations under the License.
  ******************************************************************************/
 
-package com.elefana.indices.fieldstats.state.field;
+package com.elefana.indices.fieldstats.state;
 
-import java.util.Collection;
-
-public interface Field<T> {
-    public FieldStats<T> getIndexFieldStats(String indexName);
-    public FieldStats<T> getIndexFieldStats(Collection<String> indices);
-
-    boolean hasIndexFieldStats(String name);
-
-    public FieldStats<T> getFieldStats();
-
-    public void deleteIndexFieldStats(String indexName);
-
-    public Class<T> getFieldType();
-
-    public void load(String indexName, FieldComponent<T> fieldComponent);
+public class IllegalLoadingOperation extends Error {
 }

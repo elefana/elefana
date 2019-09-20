@@ -19,11 +19,11 @@ package com.elefana.indices.fieldstats.state;
 import com.elefana.indices.fieldstats.job.CoreFieldStatsJob;
 import com.elefana.indices.fieldstats.job.CoreFieldStatsRemoveIndexJob;
 import com.elefana.indices.fieldstats.state.field.ElefanaWrongFieldStatsTypeException;
+import com.elefana.indices.fieldstats.state.field.FieldComponent;
 import com.elefana.indices.fieldstats.state.field.FieldStats;
-import com.elefana.indices.fieldstats.state.field.FieldsImpl;
+import com.elefana.indices.fieldstats.state.index.IndexComponent;
 import com.google.common.collect.ImmutableList;
 import com.jsoniter.JsonIterator;
-import com.jsoniter.output.JsonStream;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -43,7 +43,6 @@ public class StateTest {
 
     @Before
     public void before() {
-        FieldsImpl.getInstance().registerJsoniterConfig();
         testState = new StateImpl();
         testDocument = "{ \"bool\": false, \"string\": \"Hello there\", \"long\": 23, \"double\": 2.4, \"obj\": { \"bic\": \"EASYATW1\", \"iban\": \"AT12 4321\" }, \"list\": [3,4,5,6,6,4,4,2] } ";
         testDocumentNoBool = "{ \"string\": \"Hello there\", \"long\": 23, \"double\": 2.4, \"obj\": { \"bic\": \"EASYATW1\", \"iban\": \"AT12 4321\" }, \"list\": [3,4,5,6,6,4,4,2] } ";
@@ -91,7 +90,7 @@ public class StateTest {
         FieldStats string = testState.getFieldTypeChecked("string", String.class).getIndexFieldStats(TEST_INDEX);
         Assert.assertEquals(20, string.getDocumentCount());
         Assert.assertEquals(40, string.getSumDocumentFrequency());
-        Assert.assertEquals("Hello", string.getMinimumValue());
+        Assert.assertEquals("hello", string.getMinimumValue());
         Assert.assertEquals("there", string.getMaximumValue());
     }
 
@@ -129,7 +128,7 @@ public class StateTest {
         FieldStats string = testState.getFieldTypeChecked("string", String.class).getIndexFieldStats(TEST_INDEX);
         Assert.assertEquals(100, string.getDocumentCount());
         Assert.assertEquals(100 * 2, string.getSumDocumentFrequency());
-        Assert.assertEquals("Hello", string.getMinimumValue());
+        Assert.assertEquals("hello", string.getMinimumValue());
         Assert.assertEquals("there", string.getMaximumValue());
     }
 
@@ -145,7 +144,7 @@ public class StateTest {
         FieldStats string = testState.getFieldTypeChecked("string", String.class).getIndexFieldStats(TEST_INDEX);
         Assert.assertEquals(100 * 100, string.getDocumentCount());
         Assert.assertEquals(100 * 100 * 2, string.getSumDocumentFrequency());
-        Assert.assertEquals("Hello", string.getMinimumValue());
+        Assert.assertEquals("hello", string.getMinimumValue());
         Assert.assertEquals("there", string.getMaximumValue());
     }
 
@@ -188,7 +187,7 @@ public class StateTest {
         FieldStats string = testState.getFieldTypeChecked("string", String.class).getIndexFieldStats(ImmutableList.of("first", "second"));
         Assert.assertEquals(docCount, string.getDocumentCount());
         Assert.assertEquals(docCount * 2, string.getSumDocumentFrequency());
-        Assert.assertEquals("Hello", string.getMinimumValue());
+        Assert.assertEquals("hello", string.getMinimumValue());
         Assert.assertEquals("there", string.getMaximumValue());
     }
 
@@ -225,28 +224,130 @@ public class StateTest {
     }
 
     @Test
-    public void testSerialize() throws ElefanaWrongFieldStatsTypeException {
-        submitDocumentNTimes(20, testDocument, TEST_INDEX);
-        submitDocumentNTimes(5, testDocument, "accounts");
+    public void testLoadIndex() throws ElefanaWrongFieldStatsTypeException {
+        //submitDocumentNTimes(20, testDocument, TEST_INDEX);
 
-        String serialize = JsonStream.serialize(testState);
-        System.out.println(serialize);
+        IndexComponent insert = new IndexComponent(TEST_INDEX, 10);
+        insert.fields.put("string", new FieldComponent<>("hello", "there", 9, 9*2, -1, String.class));
 
-        State deserialize = JsonIterator.deserialize(serialize, StateImpl.class);
-        System.out.println(deserialize);
-        Assert.assertEquals(20, deserialize.getIndex(TEST_INDEX).getMaxDocuments());
-        Assert.assertEquals(5, deserialize.getIndex("accounts").getMaxDocuments());
+        testState.load(insert);
 
-        FieldStats string = deserialize.getFieldTypeChecked("string", String.class).getIndexFieldStats(TEST_INDEX);
-        Assert.assertEquals(20, string.getDocumentCount());
-        Assert.assertEquals(40, string.getSumDocumentFrequency());
-        Assert.assertEquals("Hello", string.getMinimumValue());
+        FieldStats string = testState.getFieldTypeChecked("string", String.class).getIndexFieldStats(TEST_INDEX);
+        Assert.assertEquals(9, string.getDocumentCount());
+        Assert.assertEquals(9*2, string.getSumDocumentFrequency());
+        Assert.assertEquals("hello", string.getMinimumValue());
         Assert.assertEquals("there", string.getMaximumValue());
 
-        FieldStats<Long> list = deserialize.getFieldTypeChecked("list", Long.class).getIndexFieldStats(TEST_INDEX);
-        Assert.assertEquals(20, list.getDocumentCount());
-        Assert.assertEquals(8 * 20, list.getSumDocumentFrequency());
-        Assert.assertEquals(2, list.getMinimumValue().longValue());
-        Assert.assertEquals(6, list.getMaximumValue().longValue());
+        assertIndexMaxDocEquals(10);
     }
+
+    @Test
+    public void testLoadIndexWithMerge() throws ElefanaWrongFieldStatsTypeException{
+        submitDocumentNTimes(20, testDocument, TEST_INDEX);
+
+        IndexComponent insert = new IndexComponent(TEST_INDEX, 10);
+        insert.fields.put("string", new FieldComponent<>("aa", "s", 9, 9*2, -1, String.class));
+
+        testState.load(insert);
+
+        FieldStats string = testState.getFieldTypeChecked("string", String.class).getIndexFieldStats(TEST_INDEX);
+        Assert.assertEquals(9 + 20, string.getDocumentCount());
+        Assert.assertEquals(9*2 + 20*2, string.getSumDocumentFrequency());
+        Assert.assertEquals("aa", string.getMinimumValue());
+        Assert.assertEquals("there", string.getMaximumValue());
+
+        assertIndexMaxDocEquals(20 + 10);
+    }
+
+    @Test
+    public void testLoadIndexConcurrent() throws ElefanaWrongFieldStatsTypeException {
+        IndexComponent insert = new IndexComponent(TEST_INDEX, 10);
+        insert.fields.put("string", new FieldComponent<>("aa", "s", 9, 9*2, -1, String.class));
+
+        List<Thread> threadList = new ArrayList<>();
+        for( int i = 0; i < 50; i++) {
+            threadList.add(new Thread(() -> {
+                submitDocumentNTimes(20, testDocument, TEST_INDEX);
+            }));
+        }
+        for(int i = 0; i < 10; i++) {
+            threadList.add(new Thread(() -> {
+                try {
+                    testState.load(insert);
+                } catch (ElefanaWrongFieldStatsTypeException e) {
+                    e.printStackTrace();
+                }
+            }));
+        }
+        threadList.forEach(Thread::start);
+        threadList.forEach(thread -> {
+            try {
+                thread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        });
+
+        FieldStats string = testState.getFieldTypeChecked("string", String.class).getIndexFieldStats(TEST_INDEX);
+        Assert.assertEquals(9*10 + 50*20, string.getDocumentCount());
+        Assert.assertEquals(9*10*2 + 50*20*2, string.getSumDocumentFrequency());
+        Assert.assertEquals("aa", string.getMinimumValue());
+        Assert.assertEquals("there", string.getMaximumValue());
+
+        assertIndexMaxDocEquals(10*10 + 50*20);
+    }
+
+    @Test
+    public void testUnloadIndex() {
+        submitDocumentNTimes(10, testDocument, TEST_INDEX);
+
+        IndexComponent index = testState.unload(TEST_INDEX);
+
+        Assert.assertEquals(10, index.maxDocs);
+
+        FieldComponent<String> string = (FieldComponent<String>) index.fields.get("string");
+
+        Assert.assertEquals(10, string.docCount);
+        Assert.assertEquals(10*2, string.sumDocFreq);
+        Assert.assertEquals("hello", string.minValue);
+        Assert.assertEquals("there", string.maxValue);
+    }
+
+    @Test
+    public void testUnloadAndLoadIndexConcurrent() throws ElefanaWrongFieldStatsTypeException {
+        List<Thread> threadList = new ArrayList<>();
+        for( int i = 0; i < 50; i++) {
+            threadList.add(new Thread(() -> {
+                submitDocumentNTimes(100, testDocument, TEST_INDEX);
+            }));
+        }
+        for(int i = 0; i < 10; i++) {
+            threadList.add(new Thread(() -> {
+                try {
+                    IndexComponent c = testState.unload(TEST_INDEX);
+                    //System.out.println(c);
+                    testState.load(c);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }));
+        }
+        threadList.forEach(Thread::start);
+        threadList.forEach(thread -> {
+            try {
+                thread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        });
+
+        FieldStats string = testState.getFieldTypeChecked("string", String.class).getIndexFieldStats(TEST_INDEX);
+        Assert.assertEquals(50*100, string.getDocumentCount());
+        Assert.assertEquals(50*100*2, string.getSumDocumentFrequency());
+        Assert.assertEquals("hello", string.getMinimumValue());
+        Assert.assertEquals("there", string.getMaximumValue());
+
+        assertIndexMaxDocEquals(50*100);
+    }
+
 }

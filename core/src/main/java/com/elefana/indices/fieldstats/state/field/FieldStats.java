@@ -32,9 +32,12 @@ public interface FieldStats<T> {
     public void updateSingeOccurrence(T value);
 
     public FieldStats<T> merge(FieldStats<T> other);
-    public FieldStats<T> mergeUnsafe(FieldStats other);
 
     public double getDensity(Index index);
 
     public void updateFieldIsInDocument();
+
+    void mergeAndModifySelf(FieldStats<T> other);
+
+    FieldComponent<T> getFieldComponent(Class<?> type);
 }

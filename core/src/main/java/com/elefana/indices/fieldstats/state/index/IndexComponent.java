@@ -14,21 +14,29 @@
  * limitations under the License.
  ******************************************************************************/
 
-package com.elefana.indices.fieldstats.state.field;
+package com.elefana.indices.fieldstats.state.index;
 
-import java.util.Collection;
+import com.elefana.indices.fieldstats.state.field.FieldComponent;
 
-public interface Field<T> {
-    public FieldStats<T> getIndexFieldStats(String indexName);
-    public FieldStats<T> getIndexFieldStats(Collection<String> indices);
+import java.util.HashMap;
+import java.util.Map;
 
-    boolean hasIndexFieldStats(String name);
+public class IndexComponent {
+    public String name;
+    public Map<String, FieldComponent> fields = new HashMap<>();
+    public long maxDocs;
 
-    public FieldStats<T> getFieldStats();
+    public IndexComponent(String name, long maxDocs) {
+        this.name = name;
+        this.maxDocs = maxDocs;
+    }
 
-    public void deleteIndexFieldStats(String indexName);
+    public Index construct() {
+        return new IndexImpl(maxDocs);
+    }
 
-    public Class<T> getFieldType();
-
-    public void load(String indexName, FieldComponent<T> fieldComponent);
+    @Override
+    public String toString() {
+        return "Name=" + name + ", MaxDocs=" + maxDocs + "\n" + fields.toString();
+    }
 }

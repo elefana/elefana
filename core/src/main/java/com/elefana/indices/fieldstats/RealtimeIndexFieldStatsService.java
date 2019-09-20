@@ -28,7 +28,6 @@ import com.elefana.indices.fieldstats.state.State;
 import com.elefana.indices.fieldstats.state.StateImpl;
 import com.elefana.indices.fieldstats.state.field.Field;
 import com.elefana.indices.fieldstats.state.field.FieldStats;
-import com.elefana.indices.fieldstats.state.field.FieldsImpl;
 import com.elefana.indices.psql.PsqlIndexTemplateService;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
@@ -77,16 +76,16 @@ public class RealtimeIndexFieldStatsService implements IndexFieldStatsService, R
 
     @PostConstruct
     public void postConstruct() {
-        FieldsImpl.getInstance().registerJsoniterConfig();
+        //FieldsImpl.getInstance().registerJsoniterConfig();
 
-        int stateRecords = jdbcTemplate.queryForObject("SELECT COUNT(_state) FROM elefana_fieldstats_state", Integer.class);
-        if(stateRecords == 0) {
+        //int stateRecords = jdbcTemplate.queryForObject("SELECT COUNT(_state) FROM elefana_fieldstats_state", Integer.class);
+        //if(stateRecords == 0) {
             state = new StateImpl();
-        } else {
-            PGobject obj = jdbcTemplate.queryForObject("SELECT _state FROM elefana_fieldstats_state ORDER BY _timestamp DESC LIMIT 1", PGobject.class);
-            LOGGER.info(obj.getValue());
-            state = JsonIterator.deserialize(obj.getValue(), StateImpl.class);
-        }
+        //} else {
+        //    PGobject obj = jdbcTemplate.queryForObject("SELECT _state FROM elefana_fieldstats_state ORDER BY _timestamp DESC LIMIT 1", PGobject.class);
+        //    LOGGER.info(obj.getValue());
+        //    state = JsonIterator.deserialize(obj.getValue(), StateImpl.class);
+        //}
 
         final int workerThreadNumber = environment.getProperty("elefana.service.fieldStats.workerThreads", Integer.class, 2);
         workerExecutorService = Executors.newFixedThreadPool(workerThreadNumber);
@@ -107,7 +106,7 @@ public class RealtimeIndexFieldStatsService implements IndexFieldStatsService, R
         } catch (SQLException e) {
             LOGGER.error("Invalid JSON", e);
         }
-        jdbcTemplate.update("INSERT INTO elefana_fieldstats_state VALUES (?, ?)", System.currentTimeMillis(), json);
+        //jdbcTemplate.update("INSERT INTO elefana_fieldstats_state VALUES (?, ?)", System.currentTimeMillis(), json);
     }
 
     @Override
@@ -162,11 +161,9 @@ public class RealtimeIndexFieldStatsService implements IndexFieldStatsService, R
 
     private void setIndices(GetFieldStatsResponse response, List<String> indices, List<String> fields){
         for(String index : indices) {
-            List<String> indexSingleton = new ArrayList<>();
-            indexSingleton.add(index);
             state.stopModificationsOfIndex(index);
             try {
-                response.getIndices().put(index, getIndexMap(indexSingleton, fields));
+                response.getIndices().put(index, getIndexMap(Collections.singletonList(index), fields));
             } finally {
                 state.resumeModificationsOfIndex(index);
             }

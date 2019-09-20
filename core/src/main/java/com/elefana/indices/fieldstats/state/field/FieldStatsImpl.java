@@ -17,18 +17,13 @@
 package com.elefana.indices.fieldstats.state.field;
 
 import com.elefana.indices.fieldstats.state.index.Index;
-import com.jsoniter.annotation.JsonIgnore;
-import com.jsoniter.annotation.JsonProperty;
 
 import java.util.concurrent.atomic.LongAccumulator;
 import java.util.concurrent.atomic.LongAdder;
 
 public abstract class FieldStatsImpl<T> implements FieldStats<T> {
-    @JsonIgnore
     private LongAdder docCount = new LongAdder();
-    @JsonIgnore
     private LongAccumulator sumDocFrequency = new LongAccumulator(this::mergePossiblyUnsupportedValues, 0);
-    @JsonIgnore
     private LongAccumulator sumTotalTermFrequency = new LongAccumulator(this::mergePossiblyUnsupportedValues, 0);
 
     @Override
@@ -54,26 +49,21 @@ public abstract class FieldStatsImpl<T> implements FieldStats<T> {
     protected abstract void updateMax(T value);
 
     @Override
-    @JsonProperty("i")
     public abstract T getMinimumValue();
     @Override
-    @JsonProperty("a")
     public abstract T getMaximumValue();
 
     @Override
-    @JsonProperty("c")
     public long getDocumentCount() {
         return docCount.sum();
     }
 
     @Override
-    @JsonProperty("d")
     public long getSumDocumentFrequency() {
         return sumDocFrequency.get();
     }
 
     @Override
-    @JsonProperty("t")
     public long getSumTotalTermFrequency() {
         return sumTotalTermFrequency.get();
     }
@@ -108,24 +98,24 @@ public abstract class FieldStatsImpl<T> implements FieldStats<T> {
     }
 
     @Override
-    public FieldStats<T> mergeUnsafe(FieldStats other) {
-        FieldStatsImpl<T> ret = instance();
+    public void mergeAndModifySelf(FieldStats<T> other) {
+        this.docCount.add(other.getDocumentCount());
+        this.sumDocFrequency.accumulate(other.getSumDocumentFrequency());
+        this.sumTotalTermFrequency.accumulate(other.getSumTotalTermFrequency());
+        this.updateMax(other.getMaximumValue());
+        this.updateMin(other.getMinimumValue());
+    }
 
-        ret.docCount.add(this.getDocumentCount() + other.getDocumentCount());
-
-        ret.sumDocFrequency.accumulate(this.getSumDocumentFrequency());
-        ret.sumDocFrequency.accumulate(other.getSumDocumentFrequency());
-
-        ret.sumTotalTermFrequency.accumulate(this.getSumTotalTermFrequency());
-        ret.sumTotalTermFrequency.accumulate(other.getSumTotalTermFrequency());
-
-        ret.updateMax(this.getMaximumValue());
-        ret.updateMax((T)other.getMaximumValue());
-
-        ret.updateMin(this.getMinimumValue());
-        ret.updateMin((T)other.getMinimumValue());
-
-        return ret;
+    @Override
+    public FieldComponent<T> getFieldComponent(Class<?> type) {
+        return new FieldComponent<T>(
+                this.getMinimumValue(),
+                this.getMaximumValue(),
+                this.getDocumentCount(),
+                this.getSumDocumentFrequency(),
+                this.getSumTotalTermFrequency(),
+                (Class<T>)type
+        );
     }
 
     private long mergePossiblyUnsupportedValues(long a, long b) {
