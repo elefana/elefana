@@ -22,26 +22,26 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @ThreadSafe
-public class FieldImpl<T> implements Field<T> {
-    private Map<String, FieldStats<T>> fieldStats = new ConcurrentHashMap<>();
-    private Class<T> type;
+public class FieldImpl implements Field {
+    private Map<String, FieldStats> fieldStats = new ConcurrentHashMap<>();
+    private Class type;
 
-    public FieldImpl(Class<T> type) {
+    public FieldImpl(Class type) {
         this.type = type;
     }
 
     @Override
-    public FieldStats<T> getIndexFieldStats(String indexName) {
+    public FieldStats getIndexFieldStats(String indexName) {
         return fieldStats.computeIfAbsent(indexName, key ->
-                Fields.getFieldStats(type)
+                FieldComponent.getFieldStats(type)
         );
     }
 
     @Override
-    public FieldStats<T> getIndexFieldStats(Collection<String> indices) {
-        FieldStats<T> acc = Fields.getFieldStats(type);
+    public FieldStats getIndexFieldStats(Collection<String> indices) {
+        FieldStats acc = FieldComponent.getFieldStats(type);
         for(String s : indices) {
-            FieldStats<T> fs = getIndexFieldStats(s);
+            FieldStats fs = getIndexFieldStats(s);
             acc = acc.merge(fs);
         }
         return acc;
@@ -53,7 +53,7 @@ public class FieldImpl<T> implements Field<T> {
     }
 
     @Override
-    public FieldStats<T> getFieldStats() {
+    public FieldStats getFieldStats() {
         return getIndexFieldStats(fieldStats.keySet());
     }
 
@@ -63,12 +63,12 @@ public class FieldImpl<T> implements Field<T> {
     }
 
     @Override
-    public Class<T> getFieldType() {
+    public Class getFieldType() {
         return type;
     }
 
     @Override
-    public void load(String indexName, FieldComponent<T> fieldComponent) {
+    public void load(String indexName, FieldComponent fieldComponent) {
         fieldStats.compute(indexName, (name, fieldStats) -> {
             if(fieldStats == null) {
                 return fieldComponent.construct();

@@ -16,9 +16,9 @@
 
 package com.elefana.indices.fieldstats.job;
 
+import com.elefana.indices.fieldstats.LoadUnloadManager;
 import com.elefana.indices.fieldstats.state.State;
 import com.elefana.indices.fieldstats.state.field.ElefanaWrongFieldStatsTypeException;
-import com.elefana.indices.fieldstats.state.field.Field;
 import com.elefana.indices.fieldstats.state.field.FieldStats;
 import com.google.common.math.DoubleMath;
 import com.jsoniter.any.Any;
@@ -35,8 +35,8 @@ public class CoreFieldStatsJob extends FieldStatsJob {
     protected Any document;
     private Set<String> alreadyRegistered = new HashSet<>();
 
-    public CoreFieldStatsJob(Any document, State state, String indexName) {
-        super(state, indexName);
+    public CoreFieldStatsJob(Any document, State state, LoadUnloadManager loadUnloadManager, String indexName) {
+        super(state, loadUnloadManager, indexName);
         this.document = document;
     }
 
@@ -47,6 +47,7 @@ public class CoreFieldStatsJob extends FieldStatsJob {
         try {
             processAny(document, new ArrayList<>());
             updateIndex(indexName);
+            loadUnloadManager.someoneWroteToIndex(indexName);
         } finally {
             state.finishIndexModification(indexName);
         }
@@ -77,9 +78,7 @@ public class CoreFieldStatsJob extends FieldStatsJob {
     }
 
     private void processObject(Any anyObject, List<String> relName) {
-        anyObject.asMap().forEach((key, value) -> {
-            processAny(value, addToFieldName(relName, key));
-        });
+        anyObject.asMap().forEach((key, value) -> processAny(value, addToFieldName(relName, key)));
     }
 
     private List<String> addToFieldName(List<String> old, String n) {
@@ -125,8 +124,7 @@ public class CoreFieldStatsJob extends FieldStatsJob {
 
     private <T> void updateFieldStats(String fieldName, Class<T> tClass, T value) {
         try {
-            Field<T> field = state.getFieldTypeChecked(fieldName, tClass);
-            FieldStats<T> fieldStats = field.getIndexFieldStats(indexName);
+            FieldStats<T> fieldStats = state.getFieldStatsTypeChecked(fieldName, tClass, indexName);
 
             updateFieldStatsFoundOccurrence(fieldStats, value);
             if(alreadyRegistered.add(fieldName))

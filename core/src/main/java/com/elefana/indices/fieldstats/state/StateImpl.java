@@ -29,14 +29,12 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 @ThreadSafe
 public class StateImpl implements State{
     private Map<String, Index> indexMap = new ConcurrentHashMap<>();
-    private Map<String, Field<?>> fieldMap = new ConcurrentHashMap<>();
-    private Map<String, AtomicLong> missingIndices = new ConcurrentHashMap<>();
+    private Map<String, Field> fieldMap = new ConcurrentHashMap<>();
 
     @Override
     public void stopModificationsOfIndex(String index) {
@@ -88,7 +86,7 @@ public class StateImpl implements State{
             indexComponent.fields.forEach((fieldName, fieldComponent) -> {
                 fieldMap.compute(fieldName, (name, field) -> {
                     if (field == null) {
-                        Field<?> newField = fieldComponent.constructField();
+                        Field newField = fieldComponent.constructField();
                         newField.load(indexComponent.name, fieldComponent);
                         return newField;
                     } else {
@@ -101,7 +99,6 @@ public class StateImpl implements State{
                     }
                 });
             });
-            missingIndices.remove(indexComponent.name);
         } finally {
             finishIndexModification(indexComponent.name);
         }
@@ -116,8 +113,8 @@ public class StateImpl implements State{
 
         fieldMap.forEach((name, field) -> {
             if(field.hasIndexFieldStats(indexName)) {
-                FieldStats<?> fieldStats = field.getIndexFieldStats(indexName);
-                FieldComponent<?> fieldComponent = fieldStats.getFieldComponent(field.getFieldType());
+                FieldStats fieldStats = field.getIndexFieldStats(indexName);
+                FieldComponent fieldComponent = FieldComponent.getFieldComponent(fieldStats, field.getFieldType());
                 indexComponent.fields.put(name, fieldComponent);
             }
         });
@@ -125,12 +122,7 @@ public class StateImpl implements State{
         deleteLockedIndex(indexName);
 
         resumeModificationsOfIndex(indexName);
-        getUnloadedIndexCount(indexName).incrementAndGet();
         return indexComponent;
-    }
-
-    private AtomicLong getUnloadedIndexCount(String indexName) {
-        return missingIndices.computeIfAbsent(indexName, name -> new AtomicLong(0L));
     }
 
     @Override
@@ -150,19 +142,46 @@ public class StateImpl implements State{
 
     @Override
     @Nonnull
-    public <T> Field<T> getFieldTypeChecked(String fieldName, Class<T> tClass) throws ElefanaWrongFieldStatsTypeException {
-        Field<?> field = fieldMap.computeIfAbsent(fieldName, key -> new FieldImpl<T>(tClass));
+    public <T> FieldStats<T> getFieldStatsTypeChecked(String fieldName, Class<T> tClass, String index) throws ElefanaWrongFieldStatsTypeException {
+        Field field = fieldMap.computeIfAbsent(fieldName, key -> new FieldImpl(tClass));
 
         if(tClass.equals(field.getFieldType()))
-            return (Field<T>)field;
+            return (FieldStats<T>)field.getIndexFieldStats(index);
+
+        throw new ElefanaWrongFieldStatsTypeException(fieldName, tClass);
+    }
+
+    @Override
+    @Nonnull
+    public <T> FieldStats<T> getFieldStatsTypeChecked(String fieldName, Class<T> tClass, Collection<String> indices) throws ElefanaWrongFieldStatsTypeException {
+        Field field = fieldMap.computeIfAbsent(fieldName, key -> new FieldImpl(tClass));
+
+        if(tClass.equals(field.getFieldType()))
+            return (FieldStats<T>)field.getIndexFieldStats(indices);
 
         throw new ElefanaWrongFieldStatsTypeException(fieldName, tClass);
     }
 
     @Override
     @Nullable
-    public Field<?> getField(String fieldName) {
-        return fieldMap.get(fieldName);
+    public FieldStats getFieldStats(String fieldName, Collection<String> indices) {
+        Field field = fieldMap.get(fieldName);
+        if(field == null) {
+            return null;
+        } else {
+            return field.getIndexFieldStats(indices);
+        }
+    }
+
+    @Override
+    @Nullable
+    public FieldStats getFieldStats(String fieldName, String index) {
+        Field field = fieldMap.get(fieldName);
+        if(field == null) {
+            return null;
+        } else {
+            return field.getIndexFieldStats(index);
+        }
     }
 
     @Override
@@ -179,7 +198,7 @@ public class StateImpl implements State{
         return "";
     }
 
-    private boolean matches(String pattern, String index) {
+    public static boolean matches(String pattern, String index) {
         String[] singleIndices = pattern.split(",");
         for(String singleIndexPattern : singleIndices) {
             boolean matches = index.matches(singleIndexPattern.replaceAll("\\*", "\\.*"));

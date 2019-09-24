@@ -16,14 +16,15 @@
 
 package com.elefana.indices.fieldstats.job;
 
+import com.elefana.indices.fieldstats.LoadUnloadManager;
 import com.elefana.indices.fieldstats.state.State;
 import com.jsoniter.JsonIterator;
 
 public class CoreFieldStatsJobString extends CoreFieldStatsJob {
     private String documentString;
 
-    public CoreFieldStatsJobString(String document, State state, String indexName) {
-        super(null, state, indexName);
+    public CoreFieldStatsJobString(String document, State state, LoadUnloadManager loadUnloadManager, String indexName) {
+        super(null, state, loadUnloadManager, indexName);
         this.documentString = document;
     }
 

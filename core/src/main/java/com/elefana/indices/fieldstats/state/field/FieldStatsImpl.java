@@ -106,18 +106,6 @@ public abstract class FieldStatsImpl<T> implements FieldStats<T> {
         this.updateMin(other.getMinimumValue());
     }
 
-    @Override
-    public FieldComponent<T> getFieldComponent(Class<?> type) {
-        return new FieldComponent<T>(
-                this.getMinimumValue(),
-                this.getMaximumValue(),
-                this.getDocumentCount(),
-                this.getSumDocumentFrequency(),
-                this.getSumTotalTermFrequency(),
-                (Class<T>)type
-        );
-    }
-
     private long mergePossiblyUnsupportedValues(long a, long b) {
         if (a == -1 || b == -1)
             return -1;

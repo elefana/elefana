@@ -18,17 +18,16 @@ package com.elefana.indices.fieldstats.state.field;
 
 import java.util.Collection;
 
-public interface Field<T> {
-    public FieldStats<T> getIndexFieldStats(String indexName);
-    public FieldStats<T> getIndexFieldStats(Collection<String> indices);
+public interface Field {
+    FieldStats getIndexFieldStats(String indexName);
+    FieldStats getIndexFieldStats(Collection<String> indices);
+    FieldStats getFieldStats();
 
     boolean hasIndexFieldStats(String name);
 
-    public FieldStats<T> getFieldStats();
+    void deleteIndexFieldStats(String indexName);
 
-    public void deleteIndexFieldStats(String indexName);
+    Class getFieldType();
 
-    public Class<T> getFieldType();
-
-    public void load(String indexName, FieldComponent<T> fieldComponent);
+    void load(String indexName, FieldComponent fieldComponent);
 }

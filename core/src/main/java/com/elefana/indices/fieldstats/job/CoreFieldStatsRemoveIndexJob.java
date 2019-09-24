@@ -16,12 +16,13 @@
 
 package com.elefana.indices.fieldstats.job;
 
+import com.elefana.indices.fieldstats.LoadUnloadManager;
 import com.elefana.indices.fieldstats.state.State;
 
 public class CoreFieldStatsRemoveIndexJob extends FieldStatsJob {
 
-    public CoreFieldStatsRemoveIndexJob(State state, String indexName) {
-        super(state, indexName);
+    public CoreFieldStatsRemoveIndexJob(State state, LoadUnloadManager loadUnloadManager, String indexName) {
+        super(state, loadUnloadManager, indexName);
     }
 
     @Override

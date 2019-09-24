@@ -16,14 +16,17 @@
 
 package com.elefana.indices.fieldstats.job;
 
+import com.elefana.indices.fieldstats.LoadUnloadManager;
 import com.elefana.indices.fieldstats.state.State;
 
 public abstract class FieldStatsJob implements Runnable {
     protected State state;
     protected String indexName;
+    protected LoadUnloadManager loadUnloadManager;
 
-    public FieldStatsJob(State state, String indexName) {
+    FieldStatsJob(State state, LoadUnloadManager loadUnloadManager, String indexName) {
         this.state = state;
         this.indexName = indexName;
+        this.loadUnloadManager = loadUnloadManager;
     }
 }

@@ -26,7 +26,6 @@ import com.elefana.indices.fieldstats.job.CoreFieldStatsRemoveIndexJob;
 import com.elefana.indices.fieldstats.response.V2FieldStats;
 import com.elefana.indices.fieldstats.state.State;
 import com.elefana.indices.fieldstats.state.StateImpl;
-import com.elefana.indices.fieldstats.state.field.Field;
 import com.elefana.indices.fieldstats.state.field.FieldStats;
 import com.elefana.indices.psql.PsqlIndexTemplateService;
 import com.elefana.node.NodeSettingsService;
@@ -34,8 +33,6 @@ import com.elefana.node.VersionInfoService;
 import com.elefana.util.IndexUtils;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.any.Any;
-import com.jsoniter.output.JsonStream;
-import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,7 +44,6 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
-import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -71,42 +67,35 @@ public class RealtimeIndexFieldStatsService implements IndexFieldStatsService, R
     @Autowired
     private IndexUtils indexUtils;
 
-    private ExecutorService workerExecutorService;
+    private ExecutorService workerExecutorService, requestExecutorService;
     private State state;
+    private LoadUnloadManager loadUnloadManager;
 
     @PostConstruct
     public void postConstruct() {
-        //FieldsImpl.getInstance().registerJsoniterConfig();
+        state = new StateImpl();
 
-        //int stateRecords = jdbcTemplate.queryForObject("SELECT COUNT(_state) FROM elefana_fieldstats_state", Integer.class);
-        //if(stateRecords == 0) {
-            state = new StateImpl();
-        //} else {
-        //    PGobject obj = jdbcTemplate.queryForObject("SELECT _state FROM elefana_fieldstats_state ORDER BY _timestamp DESC LIMIT 1", PGobject.class);
-        //    LOGGER.info(obj.getValue());
-        //    state = JsonIterator.deserialize(obj.getValue(), StateImpl.class);
-        //}
+        loadUnloadManager = new LoadUnloadManager(jdbcTemplate, state);
 
         final int workerThreadNumber = environment.getProperty("elefana.service.fieldStats.workerThreads", Integer.class, 2);
         workerExecutorService = Executors.newFixedThreadPool(workerThreadNumber);
+
+        final int requestThreadNumber = environment.getProperty("elefana.service.fieldStats.requestThreads", Integer.class, 1);
+        requestExecutorService = Executors.newFixedThreadPool(requestThreadNumber);
     }
 
     @PreDestroy
     public void preDestroy() {
+        requestExecutorService.shutdown();
         workerExecutorService.shutdown();
+        loadUnloadManager.shutdown();
+
         try {
+            requestExecutorService.awaitTermination(30, TimeUnit.SECONDS);
             workerExecutorService.awaitTermination(30,TimeUnit.SECONDS);
         } catch (InterruptedException e) {}
 
-        String serializedState = JsonStream.serialize(state);
-        PGobject json = new PGobject();
-        json.setType("json");
-        try {
-            json.setValue(serializedState);
-        } catch (SQLException e) {
-            LOGGER.error("Invalid JSON", e);
-        }
-        //jdbcTemplate.update("INSERT INTO elefana_fieldstats_state VALUES (?, ?)", System.currentTimeMillis(), json);
+        loadUnloadManager.unloadAll();
     }
 
     @Override
@@ -133,6 +122,7 @@ public class RealtimeIndexFieldStatsService implements IndexFieldStatsService, R
     @Override
     public GetFieldStatsResponse getFieldStats(String indexPattern, List<String> fields, boolean clusterLevel) {
         GetFieldStatsResponse response = new GetFieldStatsResponse();
+        loadUnloadManager.ensureIndexIsLoaded(indexPattern);
         List<String> indices = state.compileIndexPattern(indexPattern);
 
         setShards(response);
@@ -174,11 +164,9 @@ public class RealtimeIndexFieldStatsService implements IndexFieldStatsService, R
         Map<String, Object> wrappingMap = new HashMap<>();
         Map<String, Object> fieldsMap = new HashMap<>();
         for(String field : fields) {
-            Field f = state.getField(field);
-            if(f == null)
+            FieldStats fs = state.getFieldStats(field, indices);
+            if(fs == null)
                 continue;
-
-            FieldStats fs = f.getIndexFieldStats(indices);
 
             V2FieldStats fieldStats = new V2FieldStats();
             fieldStats.max_doc = state.getIndex(indices).getMaxDocuments();
@@ -199,24 +187,21 @@ public class RealtimeIndexFieldStatsService implements IndexFieldStatsService, R
 
     @Override
     public void submitDocument(Any document, String index){
-        workerExecutorService.submit(new CoreFieldStatsJob(document, state, index));
+        workerExecutorService.submit(new CoreFieldStatsJob(document, state, loadUnloadManager, index));
     }
 
     @Override
     public void submitDocument(String document, String index){
-        workerExecutorService.submit(new CoreFieldStatsJobString(document, state, index));
+        workerExecutorService.submit(new CoreFieldStatsJobString(document, state, loadUnloadManager, index));
     }
 
     @Override
     public void deleteIndex(String index) {
-        workerExecutorService.submit(new CoreFieldStatsRemoveIndexJob(state, index));
+        workerExecutorService.submit(new CoreFieldStatsRemoveIndexJob(state, loadUnloadManager, index));
     }
 
     @Override
     public <T> Future<T> submit(Callable<T> request) {
-        // Stay on the thread of the request submitter
-        FutureTask<T> response = new FutureTask<>(request);
-        response.run();
-        return response;
+        return requestExecutorService.submit(request);
     }
 }
