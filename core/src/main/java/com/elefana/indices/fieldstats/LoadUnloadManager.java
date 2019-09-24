@@ -44,7 +44,7 @@ public class LoadUnloadManager {
 
     private JdbcTemplate jdbcTemplate;
     private State state;
-    private final Map<String, Lock> indexLocks = new ConcurrentHashMap<>();
+    private final Lock loadUnloadLock = new ReentrantLock();
     private final Set<String> missingIndices = ConcurrentHashMap.newKeySet();
     private Map<String, Long> lastIndexUse = new ConcurrentHashMap<>();
     private ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
@@ -61,14 +61,24 @@ public class LoadUnloadManager {
         long now = System.currentTimeMillis();
         lastIndexUse.forEach((index, timestamp) -> {
             if(now - timestamp > OUTDATED_INDEX) {
-                if(!missingIndices.contains(index)){
-                    LOGGER.info("Index " + index + " wasn't used recently. Therefore it is being unloaded.");
-                    unloadIndex(index);
+                loadUnloadLock.lock();
+                try {
+                    if (!missingIndices.contains(index)) {
+                        LOGGER.info("Index " + index + " wasn't used recently. Therefore it is being unloaded.");
+                        unloadIndex(index);
+                    }
+                } finally {
+                    loadUnloadLock.unlock();
                 }
             } else {
-                if(missingIndices.contains(index)){
-                    LOGGER.info("Index " + index + " isn't outdated but not not loaded. Therefore it is being loaded from the database.");
-                    loadIndex(index);
+                loadUnloadLock.lock();
+                try {
+                    if (missingIndices.contains(index)) {
+                        LOGGER.info("Index " + index + " isn't outdated but not loaded. Therefore it is being loaded from the database.");
+                        loadIndex(index);
+                    }
+                } finally {
+                    loadUnloadLock.unlock();
                 }
             }
         });
@@ -83,24 +93,19 @@ public class LoadUnloadManager {
     }
 
     public void ensureIndexIsLoaded(String indexPattern) {
-        List<String> missing = missingIndices.stream().filter(i -> StateImpl.matches(indexPattern, i)).collect(Collectors.toList());
-        missing.forEach(i -> {
-            getIndexLock(i).lock();
-            try {
-                if(missingIndices.contains(i)) {
+        loadUnloadLock.lock();
+        try {
+            List<String> missing = missingIndices.stream().filter(i -> StateImpl.matches(indexPattern, i)).collect(Collectors.toList());
+            missing.forEach(i -> {
+                if (missingIndices.contains(i)) {
                     LOGGER.info("Request needs index " + i + ", so it is loaded from the database.");
                     loadIndex(i);
                     lastIndexUse.compute(i, (name, timestamp) -> System.currentTimeMillis());
                 }
-            } finally {
-                getIndexLock(i).unlock();
-                indexLocks.remove(i);
-            }
-        });
-    }
-
-    private Lock getIndexLock(String index) {
-        return indexLocks.computeIfAbsent(index, name -> new ReentrantLock());
+            });
+        } finally {
+            loadUnloadLock.unlock();
+        }
     }
 
     private void loadIndex(String indexName) {
@@ -156,7 +161,6 @@ public class LoadUnloadManager {
         missingIndices.add(indexName);
 
         long timestamp = System.currentTimeMillis();
-        LOGGER.info("Unloaded index " + indexName + " at " + timestamp + ": " + indexComponent);
         jdbcTemplate.update("INSERT INTO elefana_field_stats_index(_indexname, _maxdocs, _timestamp) VALUES (?, ?, ?) ON CONFLICT (_indexname) DO UPDATE SET " +
                 "_maxdocs = excluded._maxdocs, _timestamp = excluded._timestamp", indexComponent.name, indexComponent.maxDocs, timestamp);
 

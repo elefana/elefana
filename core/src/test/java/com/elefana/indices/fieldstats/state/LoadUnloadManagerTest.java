@@ -40,12 +40,13 @@ public class LoadUnloadManagerTest {
     private static final String TEST_INDEX_TWO = "otherIndex";
 
     private State testState;
+    private JdbcTemplate jdbcTemplate;
     private LoadUnloadManager loadUnloadManager;
 
     @Before
     public void before() {
         testState = mock(StateImpl.class);
-        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        jdbcTemplate = mock(JdbcTemplate.class);
 
         when(jdbcTemplate.queryForList(eq("SELECT _indexname FROM elefana_field_stats_index"), eq(String.class))).thenReturn(ImmutableList.of(TEST_INDEX, TEST_INDEX_TWO));
         when(jdbcTemplate.queryForObject(eq("SELECT * FROM elefana_field_stats_index WHERE _indexname = ?"), any(RowMapper.class), eq(TEST_INDEX)))
@@ -64,7 +65,9 @@ public class LoadUnloadManagerTest {
     public void testConcurrent() throws ElefanaWrongFieldStatsTypeException {
         List<Thread> threads = new ArrayList<>();
         for(int i = 0; i < 5; i++){
-            threads.add(new Thread(() -> loadUnloadManager.ensureIndexIsLoaded(TEST_INDEX)));
+            threads.add(new Thread(() -> {
+                loadUnloadManager.ensureIndexIsLoaded(TEST_INDEX);
+            }));
         }
         threads.forEach(Thread::start);
         threads.forEach(thread -> {
@@ -82,10 +85,14 @@ public class LoadUnloadManagerTest {
     public void testConcurrentMultipleIndices() throws ElefanaWrongFieldStatsTypeException {
         List<Thread> threads = new ArrayList<>();
         for(int i = 0; i < 5; i++){
-            threads.add(new Thread(() -> loadUnloadManager.ensureIndexIsLoaded(TEST_INDEX)));
+            threads.add(new Thread(() -> {
+                loadUnloadManager.ensureIndexIsLoaded(TEST_INDEX);
+            }));
         }
         for(int i = 0; i < 5; i++){
-            threads.add(new Thread(() -> loadUnloadManager.ensureIndexIsLoaded(TEST_INDEX_TWO)));
+            threads.add(new Thread(() -> {
+                loadUnloadManager.ensureIndexIsLoaded(TEST_INDEX_TWO);
+            }));
         }
         threads.forEach(Thread::start);
         threads.forEach(thread -> {
@@ -100,23 +107,5 @@ public class LoadUnloadManagerTest {
 
         verify(testState, times(1)).load(argThat(ic -> ic.name.equals(TEST_INDEX_TWO)));
     }
-
-    @Test
-    public void testConcurrentUnload() {
-        List<Thread> threads = new ArrayList<>();
-        for(int i = 0; i < 5; i++){
-            threads.add(new Thread(() -> {
-            }));
-        }
-        threads.forEach(Thread::start);
-        threads.forEach(thread -> {
-            try {
-                thread.join();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        });
-    }
-
 
 }
