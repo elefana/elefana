@@ -92,7 +92,7 @@ public class RealtimeIndexFieldStatsService implements IndexFieldStatsService, R
 
         try {
             requestExecutorService.awaitTermination(30, TimeUnit.SECONDS);
-            workerExecutorService.awaitTermination(30,TimeUnit.SECONDS);
+            workerExecutorService.awaitTermination(30, TimeUnit.SECONDS);
         } catch (InterruptedException e) {}
 
         loadUnloadManager.unloadAll();

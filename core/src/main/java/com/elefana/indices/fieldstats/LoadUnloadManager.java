@@ -180,7 +180,7 @@ public class LoadUnloadManager {
         loadUnloadLock.lock();
         try {
             state.deleteIndex(index);
-            //missingIndices.remove(index);
+            missingIndices.remove(index);
             lastIndexUse.remove(index);
             jdbcTemplate.update("DELETE FROM elefana_field_stats_index WHERE _indexname = ?", index);
             jdbcTemplate.update("DELETE FROM elefana_field_stats_fieldstats WHERE _indexname = ?", index);
