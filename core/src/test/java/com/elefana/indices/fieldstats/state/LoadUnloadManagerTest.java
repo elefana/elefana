@@ -38,6 +38,7 @@ public class LoadUnloadManagerTest {
 
     private static final String TEST_INDEX = "testIndex";
     private static final String TEST_INDEX_TWO = "otherIndex";
+    private static final String TEST_INDEX_DELETE = "deleteIndex";
 
     private State testState;
     private JdbcTemplate jdbcTemplate;
@@ -48,11 +49,13 @@ public class LoadUnloadManagerTest {
         testState = mock(StateImpl.class);
         jdbcTemplate = mock(JdbcTemplate.class);
 
-        when(jdbcTemplate.queryForList(eq("SELECT _indexname FROM elefana_field_stats_index"), eq(String.class))).thenReturn(ImmutableList.of(TEST_INDEX, TEST_INDEX_TWO));
+        when(jdbcTemplate.queryForList(eq("SELECT _indexname FROM elefana_field_stats_index"), eq(String.class))).thenReturn(ImmutableList.of(TEST_INDEX, TEST_INDEX_TWO, TEST_INDEX_DELETE));
         when(jdbcTemplate.queryForObject(eq("SELECT * FROM elefana_field_stats_index WHERE _indexname = ?"), any(RowMapper.class), eq(TEST_INDEX)))
                 .thenReturn(new IndexComponent(TEST_INDEX, 20));
         when(jdbcTemplate.queryForObject(eq("SELECT * FROM elefana_field_stats_index WHERE _indexname = ?"), any(RowMapper.class), eq(TEST_INDEX_TWO)))
                 .thenReturn(new IndexComponent(TEST_INDEX_TWO, 10));
+        when(jdbcTemplate.queryForObject(eq("SELECT * FROM elefana_field_stats_index WHERE _indexname = ?"), any(RowMapper.class), eq(TEST_INDEX_DELETE)))
+                .thenReturn(null);
 
         Index a = new IndexImpl(), b = new IndexImpl();
         when(testState.getIndex(eq(TEST_INDEX))).thenReturn(a);
@@ -106,6 +109,15 @@ public class LoadUnloadManagerTest {
         verify(testState, times(1)).load(argThat(ic -> ic.name.equals(TEST_INDEX)));
 
         verify(testState, times(1)).load(argThat(ic -> ic.name.equals(TEST_INDEX_TWO)));
+    }
+
+    @Test
+    public void testDeleteMissingIndex() throws ElefanaWrongFieldStatsTypeException {
+        loadUnloadManager.deleteIndex(TEST_INDEX_DELETE);
+        loadUnloadManager.ensureIndexIsLoaded(TEST_INDEX_DELETE);
+
+        verify(testState, times(0)).load(any());
+        verify(testState, times(1)).deleteIndex(anyString());
     }
 
 }

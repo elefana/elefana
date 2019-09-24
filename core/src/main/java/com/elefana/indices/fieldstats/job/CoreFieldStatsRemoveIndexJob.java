@@ -27,6 +27,6 @@ public class CoreFieldStatsRemoveIndexJob extends FieldStatsJob {
 
     @Override
     public void run() {
-       state.deleteIndex(indexName);
+       loadUnloadManager.deleteIndex(indexName);
     }
 }

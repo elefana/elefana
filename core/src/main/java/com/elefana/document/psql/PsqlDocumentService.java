@@ -419,6 +419,8 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 		for (String index : indexUtils.listIndicesForIndexPattern(indexPattern)) {
 			final String queryTarget = indexUtils.getQueryTarget(index);
 
+			indexFieldStatsService.deleteIndex(index);
+
 			if(typePattern.equals("*") && nodeSettingsService.isUsingCitus()) {
 				StringBuilder queryBuilder = new StringBuilder();
 				queryBuilder.append("TRUNCATE ");
@@ -462,8 +464,6 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 					}
 				}
 			}
-
-			indexFieldStatsService.deleteIndex(index);
 		}
 
 		final AckResponse response = new AckResponse();

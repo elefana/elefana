@@ -176,6 +176,21 @@ public class LoadUnloadManager {
         });
     }
 
+    public void deleteIndex(String index) {
+        loadUnloadLock.lock();
+        try {
+            state.deleteIndex(index);
+            //missingIndices.remove(index);
+            lastIndexUse.remove(index);
+            jdbcTemplate.update("DELETE FROM elefana_field_stats_index WHERE _indexname = ?", index);
+            jdbcTemplate.update("DELETE FROM elefana_field_stats_fieldstats WHERE _indexname = ?", index);
+            jdbcTemplate.update("DELETE FROM elefana_field_stats_field field WHERE (SELECT count(_fieldname) FROM elefana_field_stats_fieldsta\n" +
+                    "ts WHERE _fieldname = field._fieldname ) = 0");
+        } finally {
+            loadUnloadLock.unlock();
+        }
+    }
+
     public void unloadAll() {
         List<String> indices = state.compileIndexPattern("*");
         indices.forEach(index -> {
