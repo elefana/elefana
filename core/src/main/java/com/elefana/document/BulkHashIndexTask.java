@@ -18,6 +18,7 @@ package com.elefana.document;
 import com.codahale.metrics.Timer;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.document.ingest.HashIngestTable;
+import com.elefana.indices.fieldstats.IndexFieldStatsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -30,10 +31,10 @@ public class BulkHashIndexTask extends BulkIndexTask {
 	private final HashIngestTable hashIngestTable;
 
 	public BulkHashIndexTask(JdbcTemplate jdbcTemplate, List<BulkIndexOperation> indexOperations,
-	                         String index, HashIngestTable hashIngestTable, boolean flatten, int from, int size,
-	                         Timer psqlTimer, Timer batchBuildTimer, Timer flattenTimer, Timer escapeTimer) {
+							 String index, HashIngestTable hashIngestTable, boolean flatten, int from, int size,
+							 Timer psqlTimer, Timer batchBuildTimer, Timer flattenTimer, Timer escapeTimer, IndexFieldStatsService fieldStatsService) {
 		super(jdbcTemplate, indexOperations, index, hashIngestTable, flatten, from, size,
-				psqlTimer, batchBuildTimer, flattenTimer, escapeTimer);
+				psqlTimer, batchBuildTimer, flattenTimer, escapeTimer, fieldStatsService);
 		this.hashIngestTable = hashIngestTable;
 	}
 

@@ -18,15 +18,29 @@ package com.elefana.api.indices;
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
 
-public abstract class GetFieldStatsRequest extends ApiRequest<GetFieldStatsResponse> {
-	protected final String index;
+import java.util.List;
 
-	public GetFieldStatsRequest(RequestExecutor requestExecutor, String index) {
+public abstract class GetFieldStatsRequest extends ApiRequest<GetFieldStatsResponse> {
+	protected final String indexPattern;
+	protected final boolean clusterLevel;
+	protected final List<String> fields;
+
+	public GetFieldStatsRequest(RequestExecutor requestExecutor, String indexPattern, List<String> fields, boolean clusterLevel) {
 		super(requestExecutor);
-		this.index = index;
+		this.indexPattern = indexPattern;
+		this.clusterLevel = clusterLevel;
+		this.fields = fields;
 	}
 
-	public String getIndex() {
-		return index;
+	public String getIndexPattern() {
+		return indexPattern;
+	}
+
+	public boolean getClusterLevel() {
+		return clusterLevel;
+	}
+
+	public List<String> getFields() {
+		return fields;
 	}
 }

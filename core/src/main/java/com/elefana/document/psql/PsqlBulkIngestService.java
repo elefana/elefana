@@ -31,6 +31,7 @@ import com.elefana.document.ingest.HashIngestTable;
 import com.elefana.document.ingest.IngestTableTracker;
 import com.elefana.document.ingest.TimeIngestTable;
 import com.elefana.indices.IndexTemplateService;
+import com.elefana.indices.fieldstats.IndexFieldStatsService;
 import com.elefana.indices.psql.PsqlIndexTemplateService;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
@@ -82,6 +83,8 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 	private IndexTemplateService indexTemplateService;
 	@Autowired
 	private MetricRegistry metricRegistry;
+	@Autowired
+	private IndexFieldStatsService fieldStatsService;
 
 	private final AtomicInteger tablespaceIndex = new AtomicInteger();
 	private ExecutorService bulkRequestExecutorService, bulkProcessingExecutorService;
@@ -288,7 +291,7 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 			for (int i = 0; i < bulkIndexOperations.size(); i += operationSize) {
 				final BulkTimeIndexTask task = new BulkTimeIndexTask(jdbcTemplate, bulkIndexOperations,
 						index, timeIngestTable, nodeSettingsService.isFlattenJson(), i, operationSize, shard,
-						bulkIngestPsqlTimer, psqlBatchBuildTimer, jsonFlattenTimer, jsonEscapeTimer);
+						bulkIngestPsqlTimer, psqlBatchBuildTimer, jsonFlattenTimer, jsonEscapeTimer, fieldStatsService);
 				bulkTimeIndexTasks.add(task);
 			}
 		}
@@ -306,7 +309,7 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 		for (int i = 0; i < indexOperations.size(); i += operationSize) {
 			final BulkHashIndexTask task = new BulkHashIndexTask(jdbcTemplate, indexOperations,
 					index, hashIngestTable, nodeSettingsService.isFlattenJson(), i, operationSize,
-					bulkIngestPsqlTimer, psqlBatchBuildTimer, jsonFlattenTimer, jsonEscapeTimer);
+					bulkIngestPsqlTimer, psqlBatchBuildTimer, jsonFlattenTimer, jsonEscapeTimer, fieldStatsService);
 			bulkHashIndexTasks.add(task);
 		}
 		bulkItemResponse(bulkApiResponse, index, bulkHashIndexTasks);

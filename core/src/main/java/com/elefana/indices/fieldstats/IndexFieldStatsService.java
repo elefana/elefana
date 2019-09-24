@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2018 Viridian Software Limited
+ * Copyright 2019 Viridian Software Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,29 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package com.elefana.indices.psql;
+
+package com.elefana.indices.fieldstats;
 
 import com.elefana.api.indices.GetFieldStatsRequest;
 import com.elefana.api.indices.GetFieldStatsResponse;
+import com.jsoniter.any.Any;
 
-import java.util.concurrent.Callable;
+import java.util.List;
 
-public class PsqlGetFieldStatsRequest extends GetFieldStatsRequest implements Callable<GetFieldStatsResponse> {
-	private final PsqlIndexFieldMappingService indexFieldMappingService;
+public interface IndexFieldStatsService {
 
-	public PsqlGetFieldStatsRequest(PsqlIndexFieldMappingService indexFieldMappingService, String index) {
-		super(indexFieldMappingService, index);
-		this.indexFieldMappingService = indexFieldMappingService;
-	}
+    public GetFieldStatsRequest prepareGetFieldStatsPost(String indexPattern, String requestBody, boolean clusterLevel);
 
-	@Override
-	protected Callable<GetFieldStatsResponse> internalExecute() {
-		return this;
-	}
+    public GetFieldStatsRequest prepareGetFieldStatsGet(String indexPattern, String fieldGetParam, boolean clusterLevel);
 
-	@Override
-	public GetFieldStatsResponse call() throws Exception {
-		return indexFieldMappingService.getFieldStats(index);
-	}
-
+    public GetFieldStatsResponse getFieldStats(String indexPattern, List<String> fields, boolean clusterLevel);
+    public void submitDocument(Any document, String index);
+    public void submitDocument(String document, String index);
+    public void deleteIndex(String index);
 }

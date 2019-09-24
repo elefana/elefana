@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2018 Viridian Software Limited
+ * Copyright 2019 Viridian Software Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,9 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package com.elefana.indices;
 
-public class V5FieldStats extends V2FieldStats {
-	public boolean is_searchable = true;
-	public boolean is_aggregatable = true;
+package com.elefana.indices.fieldstats.state.field;
+
+import java.util.Collection;
+
+public interface Field {
+    FieldStats getIndexFieldStats(String indexName);
+    FieldStats getIndexFieldStats(Collection<String> indices);
+    FieldStats getFieldStats();
+
+    boolean hasIndexFieldStats(String name);
+
+    void deleteIndexFieldStats(String indexName);
+
+    Class getFieldType();
+
+    void load(String indexName, FieldComponent fieldComponent);
 }

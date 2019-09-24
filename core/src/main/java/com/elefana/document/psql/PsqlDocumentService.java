@@ -23,6 +23,7 @@ import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.ShardFailedException;
 import com.elefana.api.indices.DeleteIndexRequest;
 import com.elefana.document.DocumentService;
+import com.elefana.indices.fieldstats.IndexFieldStatsService;
 import com.elefana.indices.psql.PsqlIndexFieldMappingService;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
@@ -74,6 +75,8 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 	private VersionInfoService versionInfoService;
 	@Autowired
 	private PsqlIndexFieldMappingService indexFieldMappingService;
+	@Autowired
+	private IndexFieldStatsService indexFieldStatsService;
 
 	private ExecutorService executorService;
 
@@ -416,6 +419,8 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 		for (String index : indexUtils.listIndicesForIndexPattern(indexPattern)) {
 			final String queryTarget = indexUtils.getQueryTarget(index);
 
+			indexFieldStatsService.deleteIndex(index);
+
 			if(typePattern.equals("*") && nodeSettingsService.isUsingCitus()) {
 				StringBuilder queryBuilder = new StringBuilder();
 				queryBuilder.append("TRUNCATE ");
@@ -538,6 +543,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 				break;
 			case CREATE:
 			case OVERWRITE:
+				indexFieldStatsService.submitDocument(JsonIterator.deserialize(document), index);
 			default:
 				break;
 			}
