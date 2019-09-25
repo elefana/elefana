@@ -15,7 +15,7 @@
  ******************************************************************************/
 package com.elefana.table;
 
-import com.elefana.node.NodeInfoService;
+import com.elefana.node.NodeStatsService;
 import com.elefana.util.IndexUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +33,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 @Service
-@DependsOn("nodeInfoService")
+@DependsOn("nodeStatsService")
 public class TableGarbageCollector implements Runnable {
 	private static final Logger LOGGER = LoggerFactory.getLogger(TableGarbageCollector.class);
 	private static final long GC_TIME_MILLIS = 1000L;
@@ -44,11 +44,11 @@ public class TableGarbageCollector implements Runnable {
 	@Autowired
 	private IndexUtils indexUtils;
 	@Autowired
-	private NodeInfoService nodeInfoService;
+	private NodeStatsService nodeStatsService;
 	
 	@PostConstruct
 	public void postConstruct() {
-		if(!nodeInfoService.isMasterNode()) {
+		if(!nodeStatsService.isMasterNode()) {
 			//Only master node can execute search
 			return;
 		}

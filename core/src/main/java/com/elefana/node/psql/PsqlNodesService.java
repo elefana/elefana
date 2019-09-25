@@ -16,9 +16,9 @@
 package com.elefana.node.psql;
 
 import com.elefana.api.RequestExecutor;
-import com.elefana.api.node.NodesInfoRequest;
-import com.elefana.api.node.NodesInfoResponse;
-import com.elefana.node.NodeInfoService;
+import com.elefana.api.node.NodesStatsRequest;
+import com.elefana.api.node.NodesStatsResponse;
+import com.elefana.node.NodeStatsService;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.node.NodesService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,7 +38,7 @@ public class PsqlNodesService implements NodesService, RequestExecutor {
 	@Autowired
 	Environment environment;
 	@Autowired
-	private NodeInfoService nodeInfoService;
+	private NodeStatsService nodeStatsService;
 	@Autowired
 	private NodeSettingsService nodeSettingsService;
 
@@ -58,42 +58,42 @@ public class PsqlNodesService implements NodesService, RequestExecutor {
 		executorService.shutdown();
 	}
 
-	public NodesInfoResponse getAllNodesInfo() {
-		NodesInfoResponse result = new NodesInfoResponse();
+	public NodesStatsResponse getAllNodesStats() {
+		NodesStatsResponse result = new NodesStatsResponse();
 		result.setClusterName(clusterName);
-		result.getNodes().put(nodeInfoService.getNodeId(), nodeInfoService.getNodeInfo());
+		result.getNodes().put(nodeStatsService.getNodeId(), nodeStatsService.getNodeStats());
 		return result;
 	}
 
-	public NodesInfoResponse getLocalNodeInfo() {
-		NodesInfoResponse result = new NodesInfoResponse();
+	public NodesStatsResponse getLocalNodeStats() {
+		NodesStatsResponse result = new NodesStatsResponse();
 		result.setClusterName(clusterName);
-		result.getNodes().put(nodeInfoService.getNodeId(), nodeInfoService.getNodeInfo());
+		result.getNodes().put(nodeStatsService.getNodeId(), nodeStatsService.getNodeStats());
 		return result;
 	}
 	
-	public NodesInfoResponse getNodesInfo(String [] filteredNodes) {
-		NodesInfoResponse result = new NodesInfoResponse();
+	public NodesStatsResponse getNodesStats(String [] filteredNodes) {
+		NodesStatsResponse result = new NodesStatsResponse();
 		result.setClusterName(clusterName);
 		if(nodeMatchesFilter(filteredNodes)){
-			result.getNodes().put(nodeInfoService.getNodeId(), nodeInfoService.getNodeInfo());
+			result.getNodes().put(nodeStatsService.getNodeId(), nodeStatsService.getNodeStats());
 		}
 		return result;
 	}
 
-	public NodesInfoResponse getNodesInfo(String [] filteredNodes, String[] infoFields) {
-		NodesInfoResponse result = new NodesInfoResponse();
+	public NodesStatsResponse getNodesStats(String [] filteredNodes, String[] infoFields) {
+		NodesStatsResponse result = new NodesStatsResponse();
 		result.setClusterName(clusterName);
 		if(nodeMatchesFilter(filteredNodes)){
-			result.getNodes().put(nodeInfoService.getNodeId(), nodeInfoService.getNodeInfo(infoFields));
+			result.getNodes().put(nodeStatsService.getNodeId(), nodeStatsService.getNodeStats(infoFields));
 		}
 		return result;
 	}
 
-	public NodesInfoResponse getAllNodesInfo(String [] infoFields) {
-		NodesInfoResponse result = new NodesInfoResponse();
+	public NodesStatsResponse getAllNodesStats(String [] infoFields) {
+		NodesStatsResponse result = new NodesStatsResponse();
 		result.setClusterName(clusterName);
-		result.getNodes().put(nodeInfoService.getNodeId(), nodeInfoService.getNodeInfo(infoFields));
+		result.getNodes().put(nodeStatsService.getNodeId(), nodeStatsService.getNodeStats(infoFields));
 		return result;
 	}
 
@@ -130,50 +130,50 @@ public class PsqlNodesService implements NodesService, RequestExecutor {
 		);
 	}
 	
-	public NodesInfoResponse getLocalNodeInfo(String[] infoFields) {
-		NodesInfoResponse result = new NodesInfoResponse();
+	public NodesStatsResponse getLocalNodeStats(String[] infoFields) {
+		NodesStatsResponse result = new NodesStatsResponse();
 		result.setClusterName(clusterName);
-		result.getNodes().put(nodeInfoService.getNodeId(), nodeInfoService.getNodeInfo(infoFields));
+		result.getNodes().put(nodeStatsService.getNodeId(), nodeStatsService.getNodeStats(infoFields));
 		return result;
 	}
 
 	@Override
-	public NodesInfoRequest prepareAllNodesInfo() {
-		return new PsqlNodesInfoRequest(this);
+	public NodesStatsRequest prepareAllNodesStats() {
+		return new PsqlNodesStatsRequest(this);
 	}
 
 	@Override
-	public NodesInfoRequest prepareNodesInfo(String[] filteredNodes) {
-		NodesInfoRequest result = new PsqlNodesInfoRequest(this);
+	public NodesStatsRequest prepareNodesStats(String[] filteredNodes) {
+		NodesStatsRequest result = new PsqlNodesStatsRequest(this);
 		result.setFilteredNodes(filteredNodes);
 		return result;
 	}
 
 	@Override
-	public NodesInfoRequest prepareNodesInfo(String[] filteredNodes, String[] infoFields) {
-		NodesInfoRequest result = new PsqlNodesInfoRequest(this);
+	public NodesStatsRequest prepareNodesStats(String[] filteredNodes, String[] infoFields) {
+		NodesStatsRequest result = new PsqlNodesStatsRequest(this);
 		result.setFilteredNodes(filteredNodes);
 		result.setInfoFields(infoFields);
 		return result;
 	}
 
 	@Override
-	public NodesInfoRequest prepareAllNodesInfo(String[] infoFields) {
-		NodesInfoRequest result = new PsqlNodesInfoRequest(this);
+	public NodesStatsRequest prepareAllNodesStats(String[] infoFields) {
+		NodesStatsRequest result = new PsqlNodesStatsRequest(this);
 		result.setInfoFields(infoFields);
 		return result;
 	}
 
 	@Override
-	public NodesInfoRequest prepareLocalNodeInfo() {
-		NodesInfoRequest result = new PsqlNodesInfoRequest(this);
+	public NodesStatsRequest prepareLocalNodeStats() {
+		NodesStatsRequest result = new PsqlNodesStatsRequest(this);
 		result.setLocalOnly(true);
 		return result;
 	}
 
 	@Override
-	public NodesInfoRequest prepareLocalNodeInfo(String[] infoFields) {
-		NodesInfoRequest result = new PsqlNodesInfoRequest(this);
+	public NodesStatsRequest prepareLocalNodeStats(String[] infoFields) {
+		NodesStatsRequest result = new PsqlNodesStatsRequest(this);
 		result.setLocalOnly(true);
 		result.setInfoFields(infoFields);
 		return result;

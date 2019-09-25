@@ -451,7 +451,7 @@ public class ApiRouter {
 			switch (urlComponents[1]){
 				case "stats":
 					// _nodes/stats
-					return nodesService.prepareAllNodesInfo();
+					return nodesService.prepareAllNodesStats();
 			}
 		case 3: {
 			if (urlComponents[2].equals("stats")) {
@@ -459,16 +459,16 @@ public class ApiRouter {
 				final String nodes = urlDecode(urlComponents[1]);
 				switch (nodes.toLowerCase()) {
 					case "_all":
-						return nodesService.prepareAllNodesInfo();
+						return nodesService.prepareAllNodesStats();
 					case "_local":
-						return nodesService.prepareLocalNodeInfo();
+						return nodesService.prepareLocalNodeStats();
 					default:
-						return nodesService.prepareNodesInfo(nodes.split(","));
+						return nodesService.prepareNodesStats(nodes.split(","));
 				}
 			} else if (urlComponents[1].equals("stats")) {
 				// _nodes/stats/filters
 				final String[] filter = urlComponents[2].split(",");
-				return nodesService.prepareAllNodesInfo(filter);
+				return nodesService.prepareAllNodesStats(filter);
 			}
 		}
 		case 4: {
@@ -479,11 +479,11 @@ public class ApiRouter {
 					// _nodes/node ids/stats/filters
 					switch (nodes.toLowerCase()) {
 						case "_all":
-							return nodesService.prepareAllNodesInfo(filter);
+							return nodesService.prepareAllNodesStats(filter);
 						case "_local":
-							return nodesService.prepareLocalNodeInfo(filter);
+							return nodesService.prepareLocalNodeStats(filter);
 						default:
-							return nodesService.prepareNodesInfo(nodes.split(","), filter);
+							return nodesService.prepareNodesStats(nodes.split(","), filter);
 					}
 			}
 		}

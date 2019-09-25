@@ -15,10 +15,10 @@
  ******************************************************************************/
 package com.elefana.api.node.v2;
 
-import com.elefana.api.node.NodeInfo;
+import com.elefana.api.node.NodeStats;
 import com.jsoniter.annotation.JsonProperty;
 
-public class V2NodeInfo extends NodeInfo {
+public class V2NodeStats extends NodeStats {
 	private final V2NodeAttributes attributes = new V2NodeAttributes();
 	@JsonProperty("http_address")
 	private String httpAddress;
@@ -38,11 +38,11 @@ public class V2NodeInfo extends NodeInfo {
 		return attributes.isIngest();
 	}
 	
-	public V2NodeInfo() {
+	public V2NodeStats() {
 		super();
 	}
 	
-	public V2NodeInfo(String httpAddress) {
+	public V2NodeStats(String httpAddress) {
 		super();
 		this.httpAddress = httpAddress;
 	}
@@ -75,7 +75,7 @@ public class V2NodeInfo extends NodeInfo {
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		V2NodeInfo other = (V2NodeInfo) obj;
+		V2NodeStats other = (V2NodeStats) obj;
 		if (httpAddress == null) {
 			if (other.httpAddress != null)
 				return false;
