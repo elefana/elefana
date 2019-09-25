@@ -19,23 +19,25 @@ package com.elefana.indices.fieldstats.state.field;
 import com.elefana.indices.fieldstats.state.index.Index;
 
 public interface FieldStats<T> {
-    T getMinimumValue();
 
+    // Data for API Response
+    T getMinimumValue();
     T getMaximumValue();
 
     long getDocumentCount();
-
     long getSumDocumentFrequency();
-
     long getSumTotalTermFrequency();
-
-    void updateSingeOccurrence(T value);
-
-    FieldStats<T> merge(FieldStats<T> other);
 
     double getDensity(Index index);
 
-    void updateFieldIsInDocument();
+    // Update Operations on FieldStats
+    void updateSubmitSingeOccurrence(T value);
+    void updateSubmitFieldIsInDocument();
 
+    void updateDeleteSingleOccurrence(T value);
+    void updateDeleteFieldIsInDocument();
+
+    // Merging
+    FieldStats<T> merge(FieldStats<T> other);
     void mergeAndModifySelf(FieldStats<T> other);
 }

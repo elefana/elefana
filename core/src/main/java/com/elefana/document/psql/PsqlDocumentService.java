@@ -478,6 +478,15 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 	public DeleteResponse delete(String index, String type, String id) {
 		final String queryTarget = indexUtils.getQueryTarget(index);
 
+		final PGobject deletedJSON = jdbcTemplate.queryForObject(
+				"SELECT _source FROM " + queryTarget + " WHERE _index = ? AND _type = ? AND _id = ?",
+				PGobject.class,
+				index, type, id
+		);
+		if(deletedJSON != null){
+			indexFieldStatsService.deleteDocument(deletedJSON.getValue(), index);
+		}
+
 		final StringBuilder queryBuilder = new StringBuilder();
 		queryBuilder.append("DELETE FROM ");
 		queryBuilder.append(queryTarget);

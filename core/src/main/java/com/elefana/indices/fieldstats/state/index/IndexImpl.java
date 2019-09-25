@@ -59,6 +59,11 @@ public class IndexImpl implements Index {
     }
 
     @Override
+    public void decrementMaxDocuments() {
+        maxDocs.decrement();
+    }
+
+    @Override
     public Index merge(Index other) {
         IndexImpl ret = new IndexImpl();
         ret.maxDocs.add(other.getMaxDocuments());

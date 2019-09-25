@@ -33,16 +33,15 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.NotThreadSafe;
 import java.util.*;
 
-@NotThreadSafe
-public class CoreFieldStatsJob extends FieldStatsJob {
-    private static final Logger LOGGER = LoggerFactory.getLogger(CoreFieldStatsJob.class);
+public abstract class CoreFieldStatsAnalyseJob extends FieldStatsJob {
+    private static final Logger LOGGER = LoggerFactory.getLogger(CoreFieldStatsAnalyseJob.class);
 
     private static JsonFactory jsonFactory = new JsonFactory().setCodec(new ObjectMapper());
 
     protected String document;
     private Set<String> alreadyRegistered = new HashSet<>();
 
-    public CoreFieldStatsJob(String document, State state, LoadUnloadManager loadUnloadManager, String indexName) {
+    protected CoreFieldStatsAnalyseJob(String document, State state, LoadUnloadManager loadUnloadManager, String indexName) {
         super(state, loadUnloadManager, indexName);
         this.document = document;
     }
@@ -146,16 +145,8 @@ public class CoreFieldStatsJob extends FieldStatsJob {
         }
     }
 
-    private <T> void updateFieldStatsFoundOccurrence(FieldStats<T> fieldStats, T value){
-        fieldStats.updateSingeOccurrence(value);
-    }
-
-    private <T> void updateFieldStatsIsInDocument(FieldStats<T> fieldStats) {
-        fieldStats.updateFieldIsInDocument();
-    }
-
-    private void updateIndex(String indexName) {
-        state.getIndex(indexName).incrementMaxDocuments();
-    }
+    protected abstract <T> void updateFieldStatsFoundOccurrence(FieldStats<T> fieldStats, T value);
+    protected abstract <T> void updateFieldStatsIsInDocument(FieldStats<T> fieldStats);
+    protected abstract void updateIndex(String indexName);
 }
 

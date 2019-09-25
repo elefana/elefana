@@ -34,5 +34,10 @@ public interface IndexFieldStatsService {
     public void submitDocument(String document, String index);
     public void submitDocuments(List<BulkIndexOperation> documents);
 
+
+    void deleteDocument(String document, String index);
+
+    void updateDocument(String oldDocument, String newDocument, String index);
+
     public void deleteIndex(String index);
 }
