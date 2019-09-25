@@ -17,14 +17,14 @@ package com.elefana.api.node;
 
 import java.util.Map;
 
-import com.elefana.api.json.NodeInfoDecoder;
+import com.elefana.api.json.NodeStatsDecoder;
 import com.jsoniter.annotation.JsonProperty;
 import com.jsoniter.spi.JsoniterSpi;
 
-public abstract class NodeInfo {
+public abstract class NodeStats {
 	
 	static {
-		JsoniterSpi.registerTypeDecoder(NodeInfo.class, new NodeInfoDecoder());
+		JsoniterSpi.registerTypeDecoder(NodeStats.class, new NodeStatsDecoder());
 	}
 	
 	private String name;
@@ -133,7 +133,7 @@ public abstract class NodeInfo {
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		NodeInfo other = (NodeInfo) obj;
+		NodeStats other = (NodeStats) obj;
 		if (host == null) {
 			if (other.host != null)
 				return false;

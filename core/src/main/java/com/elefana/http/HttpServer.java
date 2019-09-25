@@ -20,7 +20,7 @@ import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.elefana.api.ApiRouter;
-import com.elefana.node.NodeInfoService;
+import com.elefana.node.NodeStatsService;
 import com.elefana.node.NodeSettingsService;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
@@ -52,7 +52,7 @@ public class HttpServer {
 	@Autowired
 	private NodeSettingsService nodeSettingsService;
 	@Autowired
-	private NodeInfoService nodeInfoService;
+	private NodeStatsService nodeStatsService;
 	@Autowired
 	private ApiRouter apiRouter;
 	@Autowired
@@ -99,7 +99,7 @@ public class HttpServer {
 		if (OsInformation.isMac()) {
 			//KQueue only supported by Netty on OS X >= 10.12
 			try {
-				final String [] macVersion = nodeInfoService.getOsStats().getOsVersion().split(".");
+				final String [] macVersion = nodeStatsService.getOsStats().getOsVersion().split(".");
 				switch(Integer.parseInt(macVersion[0])) {
 				case 10:
 					if(Integer.parseInt(macVersion[1]) > 11) {
@@ -184,8 +184,8 @@ public class HttpServer {
 		}
 	}
 
-	public void setNodeInfoService(NodeInfoService nodeInfoService) {
-		this.nodeInfoService = nodeInfoService;
+	public void setNodeStatsService(NodeStatsService nodeStatsService) {
+		this.nodeStatsService = nodeStatsService;
 	}
 
 	public void setNodeSettingsService(NodeSettingsService nodeSettingsService) {

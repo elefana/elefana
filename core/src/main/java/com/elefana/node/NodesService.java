@@ -15,19 +15,19 @@
  ******************************************************************************/
 package com.elefana.node;
 
-import com.elefana.api.node.NodesInfoRequest;
+import com.elefana.api.node.NodesStatsRequest;
 
 public interface NodesService {
 
-    public NodesInfoRequest prepareAllNodesInfo();
+    public NodesStatsRequest prepareAllNodesStats();
 
-    public NodesInfoRequest prepareNodesInfo(String [] filteredNodes);
+    public NodesStatsRequest prepareNodesStats(String [] filteredNodes);
 	
-	public NodesInfoRequest prepareNodesInfo(String [] filteredNodes, String[] infoFields);
+	public NodesStatsRequest prepareNodesStats(String [] filteredNodes, String[] infoFields);
 
-	public NodesInfoRequest prepareAllNodesInfo(String[] infoFields);
+	public NodesStatsRequest prepareAllNodesStats(String[] infoFields);
 
-	public NodesInfoRequest prepareLocalNodeInfo();
+	public NodesStatsRequest prepareLocalNodeStats();
 	
-	public NodesInfoRequest prepareLocalNodeInfo(String[] infoFields);
+	public NodesStatsRequest prepareLocalNodeStats(String[] infoFields);
 }

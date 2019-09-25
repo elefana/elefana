@@ -16,9 +16,9 @@
 package com.elefana.node;
 
 import com.elefana.api.json.EmptyJsonObject;
-import com.elefana.api.node.NodeInfo;
-import com.elefana.api.node.v2.V2NodeInfo;
-import com.elefana.api.node.v5.V5NodeInfo;
+import com.elefana.api.node.NodeStats;
+import com.elefana.api.node.v2.V2NodeStats;
+import com.elefana.api.node.v5.V5NodeStats;
 import com.elefana.node.v2.V2JvmStats;
 import com.elefana.node.v2.V2OsStats;
 import com.elefana.node.v2.V2ProcessStats;
@@ -40,10 +40,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-@Service("nodeInfoService")
+@Service("nodeStatsService")
 @DependsOn("nodeSettingsService")
-public class CoreNodeInfoService implements NodeInfoService {
-	private static final Logger LOGGER = LoggerFactory.getLogger(CoreNodeInfoService.class);
+public class CoreNodeStatsService implements NodeStatsService {
+	private static final Logger LOGGER = LoggerFactory.getLogger(CoreNodeStatsService.class);
 
 	public static final String KEY_OS = "os";
 	public static final String KEY_PROCESS = "process";
@@ -107,31 +107,31 @@ public class CoreNodeInfoService implements NodeInfoService {
 		scheduledExecutorService.shutdown();
 	}
 
-	public NodeInfo getNodeInfo(String... infoFields) {
-		NodeInfo result = null;
+	public NodeStats getNodeStats(String... infoFields) {
+		NodeStats result = null;
 
 		switch (versionInfoService.getApiVersion()) {
 			case V_5_5_2: {
-				V5NodeInfo v5NodeInfo = new V5NodeInfo();
+				V5NodeStats v5NodeStats = new V5NodeStats();
 
-				v5NodeInfo.setRoles(nodeSettingsService.getRoles());
+				v5NodeStats.setRoles(nodeSettingsService.getRoles());
 
-				v5NodeInfo.getHttp().setBoundAddress(new String[] { nodeSettingsService.getHttpIp() });
-				v5NodeInfo.getHttp().setPublishAddress(nodeSettingsService.getHttpAddress());
+				v5NodeStats.getHttp().setBoundAddress(new String[] { nodeSettingsService.getHttpIp() });
+				v5NodeStats.getHttp().setPublishAddress(nodeSettingsService.getHttpAddress());
 
-				v5NodeInfo.getTransport().setBoundAddress(new String[] { nodeSettingsService.getTransportIp() });
-				v5NodeInfo.getTransport().setPublishAddress(nodeSettingsService.getTransportAddress());
+				v5NodeStats.getTransport().setBoundAddress(new String[] { nodeSettingsService.getTransportIp() });
+				v5NodeStats.getTransport().setPublishAddress(nodeSettingsService.getTransportAddress());
 
-				result = v5NodeInfo;
+				result = v5NodeStats;
 				break;
 			}
 			default:
 			case V_2_4_3: {
-				V2NodeInfo v2NodeInfo = new V2NodeInfo();
-				v2NodeInfo.setHttpAddress(nodeSettingsService.getHttpAddress());
-				v2NodeInfo.getAttributes().setData(nodeSettingsService.isDataNode());
+				V2NodeStats v2NodeStats = new V2NodeStats();
+				v2NodeStats.setHttpAddress(nodeSettingsService.getHttpAddress());
+				v2NodeStats.getAttributes().setData(nodeSettingsService.isDataNode());
 
-				result = v2NodeInfo;
+				result = v2NodeStats;
 				break;
 			}
 		}
@@ -167,8 +167,8 @@ public class CoreNodeInfoService implements NodeInfoService {
 		return result;
 	}
 
-	public NodeInfo getNodeInfo() {
-		return getNodeInfo(ALL_INFO);
+	public NodeStats getNodeStats() {
+		return getNodeStats(ALL_INFO);
 	}
 
 	public String getNodeId() {

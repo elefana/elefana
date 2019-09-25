@@ -16,9 +16,8 @@
 package com.elefana.table;
 
 import com.elefana.api.indices.IndexGenerationMode;
-import com.elefana.api.indices.IndexGenerationSettings;
 import com.elefana.api.indices.IndexStorageSettings;
-import com.elefana.node.NodeInfoService;
+import com.elefana.node.NodeStatsService;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.util.IndexUtils;
 import org.slf4j.Logger;
@@ -29,7 +28,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -37,14 +35,14 @@ import java.util.Queue;
 import java.util.concurrent.TimeUnit;
 
 @Service
-@DependsOn({"nodeInfoService"})
+@DependsOn({"nodeStatsService"})
 public class TableIndexCreator implements Runnable {
 	private static final Logger LOGGER = LoggerFactory.getLogger(TableIndexCreator.class);
 
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 	@Autowired
-	private NodeInfoService nodeInfoService;
+	private NodeStatsService nodeStatsService;
 	@Autowired
 	private NodeSettingsService nodeSettingsService;
 	@Autowired
@@ -54,7 +52,7 @@ public class TableIndexCreator implements Runnable {
 	private Queue<TableFieldIndexDelay> fieldIndexQueue;
 
 	public void initialise() throws SQLException {
-		if(!nodeInfoService.isMasterNode()) {
+		if(!nodeStatsService.isMasterNode()) {
 			//Only master node can create indices
 			return;
 		}

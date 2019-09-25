@@ -15,9 +15,9 @@
  ******************************************************************************/
 package com.elefana.api.node.v5;
 
-import com.elefana.api.node.NodeInfo;
+import com.elefana.api.node.NodeStats;
 
-public class V5NodeInfo extends NodeInfo {
+public class V5NodeStats extends NodeStats {
 	private V5HttpAttributes http;
 	private V5TransportAttributes transport;
 	private String [] roles;
@@ -102,7 +102,7 @@ public class V5NodeInfo extends NodeInfo {
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		V5NodeInfo other = (V5NodeInfo) obj;
+		V5NodeStats other = (V5NodeStats) obj;
 		if (http == null) {
 			if (other.http != null)
 				return false;

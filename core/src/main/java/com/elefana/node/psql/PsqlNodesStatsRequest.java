@@ -15,46 +15,46 @@
  ******************************************************************************/
 package com.elefana.node.psql;
 
-import com.elefana.api.node.NodesInfoRequest;
-import com.elefana.api.node.NodesInfoResponse;
+import com.elefana.api.node.NodesStatsRequest;
+import com.elefana.api.node.NodesStatsResponse;
 
 import java.util.concurrent.Callable;
 
-public class PsqlNodesInfoRequest extends NodesInfoRequest implements Callable<NodesInfoResponse> {
+public class PsqlNodesStatsRequest extends NodesStatsRequest implements Callable<NodesStatsResponse> {
 	private final PsqlNodesService nodesService;
 	
-	public PsqlNodesInfoRequest(PsqlNodesService nodesService) {
+	public PsqlNodesStatsRequest(PsqlNodesService nodesService) {
 		super(nodesService);
 		this.nodesService = nodesService;
 	}
 
 	@Override
-	protected Callable<NodesInfoResponse> internalExecute() {
+	protected Callable<NodesStatsResponse> internalExecute() {
 		return this;
 	}
 
 	@Override
-	public NodesInfoResponse call() throws Exception {
+	public NodesStatsResponse call() throws Exception {
 		return isLocalOnly() ? callLocalOnly() : callAll();
 	}
 	
-	private NodesInfoResponse callLocalOnly() {
+	private NodesStatsResponse callLocalOnly() {
 		if(getInfoFields() != null) {
-			return nodesService.getLocalNodeInfo(getInfoFields());
+			return nodesService.getLocalNodeStats(getInfoFields());
 		} else {
-			return nodesService.getLocalNodeInfo();
+			return nodesService.getLocalNodeStats();
 		}
 	}
 	
-	private NodesInfoResponse callAll() {
+	private NodesStatsResponse callAll() {
 		if(getFilteredNodes() != null && getInfoFields() != null) {
-			return nodesService.getNodesInfo(getFilteredNodes(), getInfoFields());
+			return nodesService.getNodesStats(getFilteredNodes(), getInfoFields());
 		} else if(getInfoFields() != null) {
-			return nodesService.getAllNodesInfo(getInfoFields());
+			return nodesService.getAllNodesStats(getInfoFields());
 		} else if(getFilteredNodes() != null) {
-			return nodesService.getNodesInfo(getFilteredNodes());
+			return nodesService.getNodesStats(getFilteredNodes());
 		} else {
-			return nodesService.getAllNodesInfo();
+			return nodesService.getAllNodesStats();
 		}
 	}
 }

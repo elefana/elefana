@@ -18,12 +18,12 @@ package com.elefana.api.node;
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
 
-public abstract class NodesInfoRequest extends ApiRequest<NodesInfoResponse> {
+public abstract class NodesStatsRequest extends ApiRequest<NodesStatsResponse> {
 	private boolean localOnly = false;
 	private String [] filteredNodes;
 	private String[] infoFields;
 
-	public NodesInfoRequest(RequestExecutor requestExecutor) {
+	public NodesStatsRequest(RequestExecutor requestExecutor) {
 		super(requestExecutor);
 	}
 

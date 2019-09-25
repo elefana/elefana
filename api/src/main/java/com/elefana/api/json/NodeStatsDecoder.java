@@ -13,29 +13,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package com.elefana.node;
+package com.elefana.api.json;
 
-import com.elefana.api.node.NodeInfo;
+import com.elefana.api.node.NodeStats;
+import com.elefana.api.node.v2.V2NodeStats;
+import com.elefana.api.node.v5.V5NodeStats;
+import com.jsoniter.JsonIterator;
+import com.jsoniter.ValueType;
+import com.jsoniter.any.Any;
+import com.jsoniter.spi.Decoder;
 
-public interface NodeInfoService {
+import java.io.IOException;
 
-	public NodeInfo getNodeInfo(String... infoFields);
+public class NodeStatsDecoder implements Decoder {
 
-	public NodeInfo getNodeInfo();
+	@Override
+	public Object decode(JsonIterator iter) throws IOException {
+		Any any = iter.readAny();
 
-	public String getNodeId();
-	
-	public String getNodeName();
+		NodeStats result = null;
+		if (any.get("http_address").valueType().equals(ValueType.STRING)
+				|| any.get("http_address").valueType().equals(ValueType.NULL)) {
+			result = any.as(V2NodeStats.class);
+		} else {
+			result = any.as(V5NodeStats.class);
+		}
+		return result;
+	}
 
-	public OsStats getOsStats();
-
-	public JvmStats getJvmStats();
-
-	public ProcessStats getProcessStats();
-
-	public boolean isMasterNode();
-
-	public boolean isDataNode();
-
-	public boolean isIngestNode();
 }

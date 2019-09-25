@@ -24,13 +24,13 @@ import com.jsoniter.output.JsonStream;
 
 import io.netty.handler.codec.http.HttpResponseStatus;
 
-public class NodesInfoResponse extends ApiResponse {
+public class NodesStatsResponse extends ApiResponse {
 	@JsonProperty("nodes")
-	private Map<String, NodeInfo> nodes = new HashMap<String, NodeInfo>();
+	private Map<String, NodeStats> nodes = new HashMap<String, NodeStats>();
 	@JsonProperty("cluster_name")
 	private String clusterName;
 	
-	public NodesInfoResponse() {
+	public NodesStatsResponse() {
 		super(HttpResponseStatus.OK.code());
 	}
 
@@ -42,11 +42,11 @@ public class NodesInfoResponse extends ApiResponse {
 		this.clusterName = clusterName;
 	}
 
-	public Map<String, NodeInfo> getNodes() {
+	public Map<String, NodeStats> getNodes() {
 		return nodes;
 	}
 
-	public void setNodes(Map<String, NodeInfo> nodes) {
+	public void setNodes(Map<String, NodeStats> nodes) {
 		this.nodes = nodes;
 	}
 
@@ -72,7 +72,7 @@ public class NodesInfoResponse extends ApiResponse {
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		NodesInfoResponse other = (NodesInfoResponse) obj;
+		NodesStatsResponse other = (NodesStatsResponse) obj;
 		if (clusterName == null) {
 			if (other.clusterName != null)
 				return false;
