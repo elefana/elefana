@@ -18,7 +18,6 @@ package com.elefana.indices.fieldstats;
 
 import com.elefana.api.indices.GetFieldStatsRequest;
 import com.elefana.api.indices.GetFieldStatsResponse;
-import com.jsoniter.any.Any;
 
 import java.util.List;
 
@@ -29,7 +28,12 @@ public interface IndexFieldStatsService {
     public GetFieldStatsRequest prepareGetFieldStatsGet(String indexPattern, String fieldGetParam, boolean clusterLevel);
 
     public GetFieldStatsResponse getFieldStats(String indexPattern, List<String> fields, boolean clusterLevel);
-    public void submitDocument(Any document, String index);
+
     public void submitDocument(String document, String index);
+
+    void deleteDocument(String document, String index);
+
+    void updateDocument(String oldDocument, String newDocument, String index);
+
     public void deleteIndex(String index);
 }

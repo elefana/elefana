@@ -20,8 +20,8 @@ import com.elefana.api.RequestExecutor;
 import com.elefana.api.indices.GetFieldStatsRequest;
 import com.elefana.api.indices.GetFieldStatsResponse;
 import com.elefana.indices.IndexFieldMappingService;
-import com.elefana.indices.fieldstats.job.CoreFieldStatsJob;
-import com.elefana.indices.fieldstats.job.CoreFieldStatsJobString;
+import com.elefana.indices.fieldstats.job.CoreFieldStatsDeleteJob;
+import com.elefana.indices.fieldstats.job.CoreFieldStatsSubmitJob;
 import com.elefana.indices.fieldstats.job.CoreFieldStatsRemoveIndexJob;
 import com.elefana.indices.fieldstats.response.V2FieldStats;
 import com.elefana.indices.fieldstats.state.State;
@@ -32,7 +32,6 @@ import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
 import com.elefana.util.IndexUtils;
 import com.jsoniter.JsonIterator;
-import com.jsoniter.any.Any;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -186,13 +185,19 @@ public class RealtimeIndexFieldStatsService implements IndexFieldStatsService, R
     }
 
     @Override
-    public void submitDocument(Any document, String index){
-        workerExecutorService.submit(new CoreFieldStatsJob(document, state, loadUnloadManager, index));
+    public void submitDocument(String document, String index) {
+        workerExecutorService.submit(new CoreFieldStatsSubmitJob(document, state, loadUnloadManager, index));
     }
 
     @Override
-    public void submitDocument(String document, String index){
-        workerExecutorService.submit(new CoreFieldStatsJobString(document, state, loadUnloadManager, index));
+    public void deleteDocument(String document, String index) {
+        workerExecutorService.submit(new CoreFieldStatsDeleteJob(document, state, loadUnloadManager, index));
+    }
+
+    @Override
+    public void updateDocument(String oldDocument, String newDocument, String index) {
+        deleteDocument(oldDocument, index);
+        submitDocument(newDocument, index);
     }
 
     @Override

@@ -18,19 +18,26 @@ package com.elefana.indices.fieldstats.job;
 
 import com.elefana.indices.fieldstats.LoadUnloadManager;
 import com.elefana.indices.fieldstats.state.State;
-import com.jsoniter.JsonIterator;
+import com.elefana.indices.fieldstats.state.field.FieldStats;
 
-public class CoreFieldStatsJobString extends CoreFieldStatsJob {
-    private String documentString;
+public class CoreFieldStatsDeleteJob extends CoreFieldStatsAnalyseJob {
 
-    public CoreFieldStatsJobString(String document, State state, LoadUnloadManager loadUnloadManager, String indexName) {
-        super(null, state, loadUnloadManager, indexName);
-        this.documentString = document;
+    public CoreFieldStatsDeleteJob(String document, State state, LoadUnloadManager loadUnloadManager, String indexName) {
+        super(document, state, loadUnloadManager, indexName);
     }
 
     @Override
-    public void run() {
-        this.document = JsonIterator.deserialize(documentString);
-        super.run();
+    protected <T> void updateFieldStatsFoundOccurrence(FieldStats<T> fieldStats, T value) {
+        fieldStats.updateDeleteSingleOccurrence(value);
+    }
+
+    @Override
+    protected <T> void updateFieldStatsIsInDocument(FieldStats<T> fieldStats) {
+        fieldStats.updateDeleteFieldIsInDocument();
+    }
+
+    @Override
+    protected void updateIndex(String indexName) {
+        state.getIndex(indexName).decrementMaxDocuments();
     }
 }

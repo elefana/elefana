@@ -66,7 +66,7 @@ public class RealtimeFieldStatsServiceTest {
         final String type = "test";
 
         final int totalDocuments = 100;
-        final int totalEmptyFieldDocuments = 50;
+        final int totalEmptyFieldDocuments = 40;
 
         submitDocumentNTimes(totalEmptyFieldDocuments, testDocumentNoBool, index, type);
         submitDocumentNTimes(totalDocuments - totalEmptyFieldDocuments, testDocument, index, type);
@@ -79,7 +79,7 @@ public class RealtimeFieldStatsServiceTest {
         getFieldStats(index, "bool", false)
                 .body("_shards.successful", equalTo(1))
                 .body("indices." + index + ".fields.bool.max_doc", equalTo(totalDocuments))
-                .body("indices." + index + ".fields.bool.doc_count", equalTo(totalEmptyFieldDocuments))
+                .body("indices." + index + ".fields.bool.doc_count", equalTo(totalDocuments - totalEmptyFieldDocuments))
                 .body("indices." + index + ".fields.bool.max_value", isA(Boolean.class))
                 .body("indices." + index + ".fields.bool.max_value_as_string", isA(String.class))
                 .body("indices." + index + ".fields.bool.min_value", isA(Boolean.class))
@@ -173,15 +173,62 @@ public class RealtimeFieldStatsServiceTest {
                 "in time. The respective test in the BulkApiTest class should be failing as well.");
     }
 
+    @Test
+    public void testDeleteDocument() {
+        final String index = UUID.randomUUID().toString();
+        final String type = "test";
+
+        final int totalEmptyFieldDocuments = 40;
+        final int totalAllFieldDocuments = 60;
+        final int totalDeletedEmptyFieldDocuments = 10;
+        final int totalDeletedAllFieldDocuments = 20;
+        final int totalDocuments = totalAllFieldDocuments + totalEmptyFieldDocuments;
+        final int totalDeletedDocuments = totalDeletedAllFieldDocuments + totalDeletedEmptyFieldDocuments;
+
+        submitDocumentNTimes(totalEmptyFieldDocuments, 1, testDocumentNoBool, index, type);
+        submitDocumentNTimes(totalAllFieldDocuments, totalEmptyFieldDocuments + 1, testDocument, index, type);
+
+        deleteDocumentNTimes(totalDeletedEmptyFieldDocuments, 1, index, type);
+        deleteDocumentNTimes(totalDeletedAllFieldDocuments, totalEmptyFieldDocuments + 1, index, type);
+
+        getFieldStats(index, "string", false)
+                .body("_shards.successful", equalTo(1))
+                .body("indices." + index + ".fields.string.max_doc", equalTo(totalDocuments - totalDeletedDocuments))
+                .body("indices." + index + ".fields.string.doc_count", equalTo(totalDocuments - totalDeletedDocuments));
+
+        getFieldStats(index, "bool", false)
+                .body("_shards.successful", equalTo(1))
+                .body("indices." + index + ".fields.bool.max_doc", equalTo(totalDocuments - totalDeletedDocuments))
+                .body("indices." + index + ".fields.bool.doc_count", equalTo(totalAllFieldDocuments - totalDeletedAllFieldDocuments))
+                .body("indices." + index + ".fields.bool.max_value", isA(Boolean.class))
+                .body("indices." + index + ".fields.bool.max_value_as_string", isA(String.class))
+                .body("indices." + index + ".fields.bool.min_value", isA(Boolean.class))
+                .body("indices." + index + ".fields.bool.min_value_as_string", isA(String.class));
+    }
+
     private void submitDocumentNTimes(int n, String json, String index, String type) {
-        for(int i = 0; i < n; i++) {
+        submitDocumentNTimes(n, 1, json, index, type);
+    }
+
+    private void submitDocumentNTimes(int n, int startId, String json, String index, String type) {
+        for(int i = startId; i < startId + n; i++) {
             given()
-                .request()
-                .body(json)
-                .when()
-                .post("/" + index + "/" + type)
-                .then()
-                .statusCode(201);
+                    .request()
+                    .body(json)
+                    .when()
+                    .post("/" + index + "/" + type + "/" + i)
+                    .then()
+                    .statusCode(201);
+        }
+    }
+
+    private void deleteDocumentNTimes(int n, int startId, String index, String type){
+        for(int i = startId; i < startId + n; i++) {
+            given()
+                    .when()
+                    .delete("/" + index + "/" + type + "/" + i)
+                    .then()
+                    .statusCode(200);
         }
     }
 

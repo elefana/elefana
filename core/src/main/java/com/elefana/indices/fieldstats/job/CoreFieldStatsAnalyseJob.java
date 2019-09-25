@@ -21,21 +21,20 @@ import com.elefana.indices.fieldstats.state.State;
 import com.elefana.indices.fieldstats.state.field.ElefanaWrongFieldStatsTypeException;
 import com.elefana.indices.fieldstats.state.field.FieldStats;
 import com.google.common.math.DoubleMath;
+import com.jsoniter.JsonIterator;
 import com.jsoniter.any.Any;
 
-import javax.annotation.concurrent.NotThreadSafe;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-@NotThreadSafe
-public class CoreFieldStatsJob extends FieldStatsJob {
+public abstract class CoreFieldStatsAnalyseJob extends FieldStatsJob {
 
-    protected Any document;
+    protected String document;
     private Set<String> alreadyRegistered = new HashSet<>();
 
-    public CoreFieldStatsJob(Any document, State state, LoadUnloadManager loadUnloadManager, String indexName) {
+    protected CoreFieldStatsAnalyseJob(String document, State state, LoadUnloadManager loadUnloadManager, String indexName) {
         super(state, loadUnloadManager, indexName);
         this.document = document;
     }
@@ -45,7 +44,7 @@ public class CoreFieldStatsJob extends FieldStatsJob {
         alreadyRegistered.clear();
         state.startIndexModification(indexName);
         try {
-            processAny(document, new ArrayList<>());
+            processAny(JsonIterator.deserialize(document), new ArrayList<>());
             updateIndex(indexName);
             loadUnloadManager.someoneWroteToIndex(indexName);
         } finally {
@@ -134,16 +133,7 @@ public class CoreFieldStatsJob extends FieldStatsJob {
         }
     }
 
-    private <T> void updateFieldStatsFoundOccurrence(FieldStats<T> fieldStats, T value){
-        fieldStats.updateSingeOccurrence(value);
-    }
-
-    private <T> void updateFieldStatsIsInDocument(FieldStats<T> fieldStats) {
-        fieldStats.updateFieldIsInDocument();
-    }
-
-    private void updateIndex(String indexName) {
-        state.getIndex(indexName).incrementMaxDocuments();
-    }
+    protected abstract <T> void updateFieldStatsFoundOccurrence(FieldStats<T> fieldStats, T value);
+    protected abstract <T> void updateFieldStatsIsInDocument(FieldStats<T> fieldStats);
+    protected abstract void updateIndex(String indexName);
 }
-

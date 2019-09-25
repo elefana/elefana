@@ -27,12 +27,12 @@ public abstract class FieldStatsImpl<T> implements FieldStats<T> {
     private LongAccumulator sumTotalTermFrequency = new LongAccumulator(this::mergePossiblyUnsupportedValues, 0);
 
     @Override
-    public void updateFieldIsInDocument() {
+    public void updateSubmitFieldIsInDocument() {
         docCount.increment();
     }
 
     @Override
-    public void updateSingeOccurrence(T value) {
+    public void updateSubmitSingeOccurrence(T value) {
         long docFrequency = getDocFrequencyAddend(value);
         sumDocFrequency.accumulate(docFrequency);
 
@@ -41,6 +41,20 @@ public abstract class FieldStatsImpl<T> implements FieldStats<T> {
 
         updateMin(value);
         updateMax(value);
+    }
+
+    @Override
+    public void updateDeleteFieldIsInDocument() {
+        docCount.decrement();
+    }
+
+    @Override
+    public void updateDeleteSingleOccurrence(T value) {
+        long docFrequency = getDocFrequencyAddend(value);
+        sumDocFrequency.accumulate(-docFrequency);
+
+        long totalTermFrequency = getTotalTermFrequencyAddend(value);
+        sumTotalTermFrequency.accumulate(-totalTermFrequency);
     }
 
     protected abstract long getDocFrequencyAddend(T value);
@@ -107,7 +121,7 @@ public abstract class FieldStatsImpl<T> implements FieldStats<T> {
     }
 
     private long mergePossiblyUnsupportedValues(long a, long b) {
-        if (a == -1 || b == -1)
+        if (a == -1)
             return -1;
         return a + b;
     }

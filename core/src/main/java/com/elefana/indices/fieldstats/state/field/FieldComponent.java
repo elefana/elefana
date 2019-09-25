@@ -48,7 +48,7 @@ public class FieldComponent {
         }
 
         @Override
-        public void updateSingeOccurrence(T value) {
+        public void updateSubmitSingeOccurrence(T value) {
 
         }
 
@@ -63,12 +63,22 @@ public class FieldComponent {
         }
 
         @Override
-        public void updateFieldIsInDocument() {
+        public void updateSubmitFieldIsInDocument() {
 
         }
 
         @Override
         public void mergeAndModifySelf(FieldStats<T> other) {
+
+        }
+
+        @Override
+        public void updateDeleteSingleOccurrence(T value) {
+
+        }
+
+        @Override
+        public void updateDeleteFieldIsInDocument() {
 
         }
     }

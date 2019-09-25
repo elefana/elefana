@@ -17,14 +17,14 @@
 package com.elefana.indices.fieldstats.state;
 
 import com.elefana.indices.fieldstats.LoadUnloadManager;
-import com.elefana.indices.fieldstats.job.CoreFieldStatsJob;
+import com.elefana.indices.fieldstats.job.CoreFieldStatsDeleteJob;
 import com.elefana.indices.fieldstats.job.CoreFieldStatsRemoveIndexJob;
+import com.elefana.indices.fieldstats.job.CoreFieldStatsSubmitJob;
 import com.elefana.indices.fieldstats.state.field.ElefanaWrongFieldStatsTypeException;
 import com.elefana.indices.fieldstats.state.field.FieldComponent;
 import com.elefana.indices.fieldstats.state.field.FieldStats;
 import com.elefana.indices.fieldstats.state.index.IndexComponent;
 import com.google.common.collect.ImmutableList;
-import com.jsoniter.JsonIterator;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -33,6 +33,7 @@ import org.mockito.stubbing.Answer;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.LongAdder;
 
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
@@ -67,7 +68,7 @@ public class StateTest {
 
     @Test
     public void testSubmitDocument() {
-        CoreFieldStatsJob job = new CoreFieldStatsJob(JsonIterator.deserialize(testDocument), testState, loadUnloadManager, TEST_INDEX);
+        CoreFieldStatsSubmitJob job = new CoreFieldStatsSubmitJob(testDocument, testState, loadUnloadManager, TEST_INDEX);
         job.run();
     }
 
@@ -166,7 +167,7 @@ public class StateTest {
 
     private void submitDocumentNTimes(int n, String document, String index) {
         for(int i = 0; i < n; i++) {
-            CoreFieldStatsJob job = new CoreFieldStatsJob(JsonIterator.deserialize(document), testState, loadUnloadManager, index);
+            CoreFieldStatsSubmitJob job = new CoreFieldStatsSubmitJob(document, testState, loadUnloadManager, index);
             job.run();
         }
     }
@@ -239,8 +240,6 @@ public class StateTest {
 
     @Test
     public void testLoadIndex() throws ElefanaWrongFieldStatsTypeException {
-        //submitDocumentNTimes(20, testDocument, TEST_INDEX);
-
         IndexComponent insert = new IndexComponent(TEST_INDEX, 10);
         insert.fields.put("string", new FieldComponent("hello", "there", 9, 9*2, -1, String.class));
 
@@ -358,6 +357,39 @@ public class StateTest {
         Assert.assertEquals("there", string.getMaximumValue());
 
         assertIndexMaxDocEquals(50*100);
+    }
+
+    @Test
+    public void testLongAdderAddNegative() {
+        LongAdder longAdder = new LongAdder();
+
+        longAdder.add(10);
+        longAdder.add(-3);
+
+        Assert.assertEquals(7, longAdder.sum());
+    }
+
+    @Test
+    public void testDeleteDocument() throws ElefanaWrongFieldStatsTypeException {
+        submitDocumentNTimes(2, testDocument, TEST_INDEX);
+        deleteDocumentNTimes(1, testDocument, TEST_INDEX);
+
+        FieldStats string = testState.getFieldStatsTypeChecked("string", String.class, TEST_INDEX);
+        Assert.assertEquals(1, string.getDocumentCount());
+        Assert.assertEquals(2, string.getSumDocumentFrequency());
+        Assert.assertEquals(-1, string.getSumTotalTermFrequency());
+
+        FieldStats bool = testState.getFieldStats("bool", TEST_INDEX);
+        Assert.assertEquals(1, bool.getDocumentCount());
+        Assert.assertEquals(1, bool.getSumDocumentFrequency());
+        Assert.assertEquals(-1, bool.getSumTotalTermFrequency());
+    }
+
+    private void deleteDocumentNTimes(int n, String document, String index) {
+        for(int i = 0; i < n; i++) {
+            CoreFieldStatsDeleteJob job = new CoreFieldStatsDeleteJob(document, testState, loadUnloadManager, index);
+            job.run();
+        }
     }
 
 }
