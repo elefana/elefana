@@ -447,29 +447,44 @@ public class ApiRouter {
 	private ApiRequest<?> routeToNodeApi(HttpMethod method, String url, Map<String, String> getParams, String[] urlComponents, String requestBody)
 			throws ElefanaException {
 		switch (urlComponents.length) {
-		case 1:
-			return nodesService.prepareNodesInfo();
-		case 2: {
-			final String nodes = urlDecode(urlComponents[1]);
-			switch (nodes.toLowerCase()) {
-			case "_all":
-				return nodesService.prepareNodesInfo();
-			case "_local":
-				return nodesService.prepareLocalNodeInfo();
-			default:
-				return nodesService.prepareNodesInfo(nodes.split(","));
+		case 2:
+			switch (urlComponents[1]){
+				case "stats":
+					// _nodes/stats
+					return nodesService.prepareAllNodesInfo();
+			}
+		case 3: {
+			if (urlComponents[2].equals("stats")) {
+				// _nodes/node ids/stats
+				final String nodes = urlDecode(urlComponents[1]);
+				switch (nodes.toLowerCase()) {
+					case "_all":
+						return nodesService.prepareAllNodesInfo();
+					case "_local":
+						return nodesService.prepareLocalNodeInfo();
+					default:
+						return nodesService.prepareNodesInfo(nodes.split(","));
+				}
+			} else if (urlComponents[1].equals("stats")) {
+				// _nodes/stats/filters
+				final String[] filter = urlComponents[2].split(",");
+				return nodesService.prepareAllNodesInfo(filter);
 			}
 		}
-		case 3: {
+		case 4: {
 			final String nodes = urlDecode(urlComponents[1]);
-			final String[] filter = urlComponents[2].split(",");
-			switch (nodes.toLowerCase()) {
-			case "_all":
-				return nodesService.prepareNodesInfo(filter);
-			case "_local":
-				return nodesService.prepareLocalNodeInfo(filter);
-			default:
-				return nodesService.prepareNodesInfo(nodes.split(","), filter);
+			final String[] filter = urlComponents[3].split(",");
+			switch (urlComponents[2]) {
+				case "stats":
+					// _nodes/node ids/stats/filters
+					switch (nodes.toLowerCase()) {
+						case "_all":
+							return nodesService.prepareAllNodesInfo(filter);
+						case "_local":
+							return nodesService.prepareLocalNodeInfo(filter);
+						default:
+							return nodesService.prepareNodesInfo(nodes.split(","), filter);
+					}
 			}
 		}
 		}

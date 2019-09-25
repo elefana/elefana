@@ -50,9 +50,11 @@ public class PsqlNodesInfoRequest extends NodesInfoRequest implements Callable<N
 		if(getFilteredNodes() != null && getInfoFields() != null) {
 			return nodesService.getNodesInfo(getFilteredNodes(), getInfoFields());
 		} else if(getInfoFields() != null) {
+			return nodesService.getAllNodesInfo(getInfoFields());
+		} else if(getFilteredNodes() != null) {
 			return nodesService.getNodesInfo(getFilteredNodes());
 		} else {
-			return nodesService.getLocalNodeInfo();
+			return nodesService.getAllNodesInfo();
 		}
 	}
 }

@@ -18,13 +18,15 @@ package com.elefana.node;
 import com.elefana.api.node.NodesInfoRequest;
 
 public interface NodesService {
-	
-	public NodesInfoRequest prepareNodesInfo();
-	
-	public NodesInfoRequest prepareNodesInfo(String [] filteredNodes);
+
+    public NodesInfoRequest prepareAllNodesInfo();
+
+    public NodesInfoRequest prepareNodesInfo(String [] filteredNodes);
 	
 	public NodesInfoRequest prepareNodesInfo(String [] filteredNodes, String[] infoFields);
-	
+
+	public NodesInfoRequest prepareAllNodesInfo(String[] infoFields);
+
 	public NodesInfoRequest prepareLocalNodeInfo();
 	
 	public NodesInfoRequest prepareLocalNodeInfo(String[] infoFields);
