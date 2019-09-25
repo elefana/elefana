@@ -17,8 +17,6 @@
 package com.elefana.es2.node.v2;
 
 import com.elefana.ElefanaApplication;
-import com.elefana.node.JvmStats;
-import com.elefana.node.v2.V2JvmStats;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
 import org.hamcrest.Matcher;
@@ -33,7 +31,6 @@ import java.util.Map;
 
 import static io.restassured.RestAssured.get;
 import static org.hamcrest.Matchers.*;
-import static org.hamcrest.Matchers.nullValue;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = { ElefanaApplication.class })
@@ -86,12 +83,18 @@ public class V2JvmStatsTest {
     }
 
     @Test
-    public void absenceWhenQueryingOsStats () {
+    public void absenceWhenQueryingOsStats() {
         Response global = get("/_nodes/stats/os");
         Map<String, ?> nodes = global.path("nodes");
         nodes.forEach((k, v) -> {
             checkIfJvmObjIsAbsent(global, "nodes.'" + k + "'.jvm");
         });
+    }
+
+    @Test
+    public void nodesEmptyWhenQueryingNonExistentID() {
+        get("/_nodes/thisNodeDoesNotExist/stats").then().body("nodes.isEmpty()", is(true));
+        get("/_nodes/thisNodeDoesNotExist/stats/jvm").then().body("nodes.isEmpty()", is(true));
     }
 
     private void checkIfJvmObjIsAbsent(Response response, String pathToJvmObj) {

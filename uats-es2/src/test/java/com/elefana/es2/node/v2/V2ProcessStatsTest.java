@@ -30,7 +30,6 @@ import org.springframework.test.context.junit4.SpringRunner;
 import java.util.Map;
 
 import static io.restassured.RestAssured.get;
-import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
 
 @RunWith(SpringRunner.class)
@@ -90,6 +89,12 @@ public class V2ProcessStatsTest {
         nodes.forEach((k, v) -> {
             checkIfProcessObjIsAbsent(global, "nodes." + k + ".process");
         });
+    }
+
+    @Test
+    public void nodesEmptyWhenQueryingNonExistentID() {
+        get("/_nodes/thisNodeDoesNotExist/stats").then().body("nodes.isEmpty()", is(true));
+        get("/_nodes/thisNodeDoesNotExist/stats/process").then().body("nodes.isEmpty()", is(true));
     }
 
     private void checkIfProcessObjExists(Response response, String pathToProcessObj) {
