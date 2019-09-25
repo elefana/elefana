@@ -39,7 +39,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 public class LoadUnloadManager {
-    private static final long OUTDATED_INDEX = 10 * 60 * 1000;
+    private long INDEX_TTL;
     private static final Logger LOGGER = LoggerFactory.getLogger(IndexFieldMappingService.class);
 
     private JdbcTemplate jdbcTemplate;
@@ -49,18 +49,19 @@ public class LoadUnloadManager {
     private Map<String, Long> lastIndexUse = new ConcurrentHashMap<>();
     private ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 
-    public LoadUnloadManager(JdbcTemplate jdbcTemplate, State state) {
+    public LoadUnloadManager(JdbcTemplate jdbcTemplate, State state, long ttlMinutes) {
         this.jdbcTemplate = jdbcTemplate;
         this.state = state;
+        this.INDEX_TTL = ttlMinutes * 60 * 1000;
 
         missingIndices.addAll(jdbcTemplate.queryForList("SELECT _indexname FROM elefana_field_stats_index", String.class));
-        scheduledExecutorService.scheduleAtFixedRate(this::unloadUnusedIndices, 0L, 5L, TimeUnit.MINUTES);
+        scheduledExecutorService.scheduleAtFixedRate(this::unloadUnusedIndices, 0L, Math.max(ttlMinutes / 2, 1), TimeUnit.MINUTES);
     }
 
     private void unloadUnusedIndices() {
         long now = System.currentTimeMillis();
         lastIndexUse.forEach((index, timestamp) -> {
-            if(now - timestamp > OUTDATED_INDEX) {
+            if(now - timestamp > INDEX_TTL) {
                 loadUnloadLock.lock();
                 try {
                     if (!missingIndices.contains(index)) {

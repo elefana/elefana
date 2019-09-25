@@ -75,7 +75,8 @@ public class RealtimeIndexFieldStatsService implements IndexFieldStatsService, R
     public void postConstruct() {
         state = new StateImpl();
 
-        loadUnloadManager = new LoadUnloadManager(jdbcTemplate, state);
+        long indexTtlMinutes = environment.getProperty("elefana.service.fieldStats.cache.ttlMinutes", Integer.class, 10);
+        loadUnloadManager = new LoadUnloadManager(jdbcTemplate, state, indexTtlMinutes);
 
         final int workerThreadNumber = environment.getProperty("elefana.service.fieldStats.workerThreads", Integer.class, 2);
         workerExecutorService = Executors.newFixedThreadPool(workerThreadNumber);
