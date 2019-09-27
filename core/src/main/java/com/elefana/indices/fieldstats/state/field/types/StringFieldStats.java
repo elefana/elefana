@@ -21,6 +21,7 @@ import com.elefana.indices.fieldstats.state.field.FieldStatsImpl;
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @ThreadSafe
@@ -29,7 +30,12 @@ public class StringFieldStats extends ComparableFieldStats<String> {
     @Override
     protected void updateMin(String value) {
         if(value != null){
-            super.updateMin(Collections.min(Arrays.stream(value.split("\\W+")).map(String::toLowerCase).collect(Collectors.toList())));
+            List<String> words = Arrays.stream(value.split("\\W+")).map(String::toLowerCase).collect(Collectors.toList());
+            if(words.size() > 0) {
+                super.updateMin(Collections.min(words));
+            } else {
+                super.updateMin(value);
+            }
         } else {
             super.updateMin(value);
         }
@@ -38,7 +44,12 @@ public class StringFieldStats extends ComparableFieldStats<String> {
     @Override
     protected void updateMax(String value) {
         if(value != null) {
-            super.updateMax(Collections.max(Arrays.stream(value.split("\\W+")).map(String::toLowerCase).collect(Collectors.toList())));
+            List<String> words = Arrays.stream(value.split("\\W+")).map(String::toLowerCase).collect(Collectors.toList());
+            if(words.size() > 0) {
+                super.updateMax(Collections.max(words));
+            } else {
+                super.updateMax(value);
+            }
         } else {
             super.updateMax(value);
         }
