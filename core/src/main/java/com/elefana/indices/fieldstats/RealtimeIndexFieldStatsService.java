@@ -19,8 +19,9 @@ package com.elefana.indices.fieldstats;
 import com.elefana.api.RequestExecutor;
 import com.elefana.api.indices.GetFieldStatsRequest;
 import com.elefana.api.indices.GetFieldStatsResponse;
-import com.elefana.indices.IndexFieldMappingService;
+import com.elefana.document.BulkIndexOperation;
 import com.elefana.indices.fieldstats.job.CoreFieldStatsDeleteJob;
+import com.elefana.indices.fieldstats.job.CoreFieldStatsRemoveIndexJob;
 import com.elefana.indices.fieldstats.job.CoreFieldStatsSubmitJob;
 import com.elefana.indices.fieldstats.job.CoreFieldStatsRemoveIndexJob;
 import com.elefana.indices.fieldstats.response.V2FieldStats;
@@ -187,6 +188,13 @@ public class RealtimeIndexFieldStatsService implements IndexFieldStatsService, R
     @Override
     public void submitDocument(String document, String index) {
         workerExecutorService.submit(new CoreFieldStatsSubmitJob(document, state, loadUnloadManager, index));
+    }
+
+    @Override
+    public void submitDocuments(List<BulkIndexOperation> documents) {
+        for(BulkIndexOperation i: documents) {
+            workerExecutorService.submit(new CoreFieldStatsSubmitJob(i.getSource(), state, loadUnloadManager, i.getIndex()));
+        }
     }
 
     @Override

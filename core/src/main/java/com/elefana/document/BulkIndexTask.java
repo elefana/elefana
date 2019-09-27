@@ -36,8 +36,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import java.nio.charset.Charset;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.Callable;
 
 public abstract class BulkIndexTask implements Callable<List<BulkItemResponse>> {
@@ -144,13 +143,12 @@ public abstract class BulkIndexTask implements Callable<List<BulkItemResponse>> 
 					final long bucket1d = indexOperation.getTimestamp()
 							- (indexOperation.getTimestamp() % ONE_DAY_IN_MILLIS);
 
-					// index is the only supported bulk operation, therefore always submit the document
-					fieldStatsService.submitDocument(indexOperation.getSource(), indexOperation.getIndex());
 
 					final String escapedJson;
 					if(flatten) {
 						final Timer.Context flattenTime = flattenTimer.time();
 						escapedJson = IndexUtils.flattenJson(indexOperation.getSource());
+						indexOperation.setSource(escapedJson);
 						flattenTime.stop();
 					} else {
 						final Timer.Context escapeTime = flattenTimer.time();
@@ -186,6 +184,9 @@ public abstract class BulkIndexTask implements Callable<List<BulkItemResponse>> 
 				copyIn.endCopy();
 				connection.commit();
 				psqlTime.stop();
+
+				// index is the only supported bulk operation, therefore always submit the document
+				fieldStatsService.submitDocuments(indexOperations);
 
 				ingestTable.markData(stagingTableId);
 				ingestTable.unlockTable(stagingTableId);
