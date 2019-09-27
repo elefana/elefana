@@ -25,6 +25,7 @@ import com.elefana.indices.fieldstats.job.CoreFieldStatsDeleteJob;
 import com.elefana.indices.fieldstats.job.CoreFieldStatsSubmitJob;
 import com.elefana.document.BulkIndexOperation;
 import com.elefana.indices.fieldstats.job.CoreFieldStatsRemoveIndexJob;
+import com.elefana.indices.fieldstats.job.CoreFieldStatsUpdateJob;
 import com.elefana.indices.fieldstats.response.V2FieldStats;
 import com.elefana.indices.fieldstats.state.State;
 import com.elefana.indices.fieldstats.state.StateImpl;
@@ -201,7 +202,7 @@ public class RealtimeIndexFieldStatsService implements IndexFieldStatsService, R
     @Override
     public void submitDocuments(List<BulkIndexOperation> documents) {
         for (BulkIndexOperation i : documents) {
-            workerExecutorService.submit(new CoreFieldStatsJob(i.getSource(), state, loadUnloadManager, i.getIndex()));
+            workerExecutorService.submit(new CoreFieldStatsSubmitJob(i.getSource(), state, loadUnloadManager, i.getIndex()));
         }
     }
 
@@ -215,9 +216,8 @@ public class RealtimeIndexFieldStatsService implements IndexFieldStatsService, R
     }
 
     @Override
-    public void updateDocument(String oldDocument, String newDocument, String index) {
-        deleteDocument(oldDocument, index);
-        submitDocument(newDocument, index);
+    public void updateDocument(String existingDocument, String update, String index) {
+        workerExecutorService.submit(new CoreFieldStatsUpdateJob(existingDocument, update, state, loadUnloadManager, index));
     }
 
     @Override

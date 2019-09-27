@@ -37,7 +37,7 @@ public interface IndexFieldStatsService {
 
     void deleteDocument(String document, String index);
 
-    void updateDocument(String oldDocument, String newDocument, String index);
+    void updateDocument(String existingDocument, String update, String index);
 
     public void deleteIndex(String index);
 }

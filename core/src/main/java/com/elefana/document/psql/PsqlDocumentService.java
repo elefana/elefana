@@ -548,10 +548,26 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 		case V_2_4_3:
 			switch (opType) {
 			case UPDATE:
+			    final PGobject updateExistingJson = jdbcTemplate.queryForObject(
+                        "SELECT _source FROM " + indexUtils.getQueryTarget(index) + " WHERE _index = ? AND _type = ? AND _id = ?",
+                        PGobject.class,
+                        index, type, id
+                );
 				document = JsonIterator.deserialize(document).get("doc").toString();
+				if(updateExistingJson != null) {
+				    indexFieldStatsService.updateDocument(updateExistingJson.getValue(), document, index);
+                }
 				break;
-			case CREATE:
 			case OVERWRITE:
+                final PGobject overwriteExistingJson = jdbcTemplate.queryForObject(
+                        "SELECT _source FROM " + indexUtils.getQueryTarget(index) + " WHERE _index = ? AND _type = ? AND _id = ?",
+                        PGobject.class,
+                        index, type, id
+                );
+                if(overwriteExistingJson != null) {
+                    indexFieldStatsService.deleteDocument(overwriteExistingJson.getValue(), index);
+                }
+			case CREATE:
 				indexFieldStatsService.submitDocument(document, index);
 			default:
 				break;
