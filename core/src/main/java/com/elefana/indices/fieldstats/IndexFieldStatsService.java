@@ -24,7 +24,7 @@ import java.util.List;
 
 public interface IndexFieldStatsService {
 
-    public GetFieldStatsRequest prepareGetFieldStatsPost(String indexPattern, String requestBody, boolean clusterLevel);
+    public GetFieldStatsRequest prepareGetFieldStatsPost(String indexPattern, String requestBody, boolean clusterLevel) throws NoSuchApiException;
 
     public GetFieldStatsRequest prepareGetFieldStatsGet(String indexPattern, String fieldGetParam, boolean clusterLevel);
 
