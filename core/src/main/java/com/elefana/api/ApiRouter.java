@@ -219,11 +219,11 @@ public class ApiRouter {
                     case "_mapping":
                         return indexFieldMappingService.prepareGetFieldMappings();
                     case "_field_stats":
-                        String clusterLevel = getParams.getOrDefault("level", "true");
+                        String clusterLevel = getParams.getOrDefault("level", "cluster");
                         if(!getParams.containsKey("fields")) {
                             throw new NoSuchApiException(method, url + "(Get parameter fields is missing)");
                         }
-                        return indexFieldStatsService.prepareGetFieldStatsGet("*", getParams.get("fields"), !clusterLevel.equals("false"));
+                        return indexFieldStatsService.prepareGetFieldStatsGet("*", getParams.get("fields"), !clusterLevel.equals("indices"));
                 }
 			case 2: {
 				// INDICES/_mapping | INDICES/_field_caps | INDICES/_field_names | INDICES/_field_stats
@@ -236,11 +236,11 @@ public class ApiRouter {
 				case "_field_caps":
 					return indexFieldMappingService.prepareGetFieldCapabilities(indexPattern);
                 case "_field_stats":
-                    String clusterLevel = getParams.getOrDefault("level", "true");
+                    String clusterLevel = getParams.getOrDefault("level", "cluster");
                     if(!getParams.containsKey("fields")) {
                         throw new NoSuchApiException(method, url + "(Get parameter fields is missing)");
                     }
-                    return indexFieldStatsService.prepareGetFieldStatsGet(indexPattern, getParams.get("fields"), !clusterLevel.equals("false"));
+                    return indexFieldStatsService.prepareGetFieldStatsGet(indexPattern, getParams.get("fields"), !clusterLevel.equals("indices"));
 				}
 				break;
 			}
@@ -289,16 +289,16 @@ public class ApiRouter {
 			    case 1:
 			        switch (urlComponents[0].toLowerCase()) {
                         case "_field_stats":
-                            String clusterLevel = getParams.getOrDefault("level", "true");
-                            return indexFieldStatsService.prepareGetFieldStatsPost("*", requestBody, !clusterLevel.equals("false"));
+                            String clusterLevel = getParams.getOrDefault("level", "cluster");
+                            return indexFieldStatsService.prepareGetFieldStatsPost("*", requestBody, !clusterLevel.equals("indices"));
                     }
 			case 2: {
 				// INDICES/_mapping or INDICES/_field_caps
 				final String indexPattern = urlDecode(urlComponents[0]);
 				switch (urlComponents[1].toLowerCase()) {
 				case "_field_stats":
-				    String clusterLevel = getParams.getOrDefault("level", "true");
-					return indexFieldStatsService.prepareGetFieldStatsPost(indexPattern, requestBody, !clusterLevel.equals("false"));
+				    String clusterLevel = getParams.getOrDefault("level", "cluster");
+					return indexFieldStatsService.prepareGetFieldStatsPost(indexPattern, requestBody, !clusterLevel.equals("indices"));
 				case "_refresh":
 					return indexFieldMappingService.prepareRefreshIndex(indexPattern);
 				}
