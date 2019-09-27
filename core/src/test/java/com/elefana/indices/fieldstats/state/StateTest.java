@@ -24,7 +24,6 @@ import com.elefana.indices.fieldstats.state.field.FieldComponent;
 import com.elefana.indices.fieldstats.state.field.FieldStats;
 import com.elefana.indices.fieldstats.state.index.IndexComponent;
 import com.google.common.collect.ImmutableList;
-import com.jsoniter.JsonIterator;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -68,7 +67,7 @@ public class StateTest {
 
     @Test
     public void testSubmitDocument() {
-        CoreFieldStatsJob job = new CoreFieldStatsJob(JsonIterator.deserialize(testDocument), testState, loadUnloadManager, TEST_INDEX);
+        CoreFieldStatsJob job = new CoreFieldStatsJob(testDocument, testState, loadUnloadManager, TEST_INDEX);
         job.run();
     }
 
@@ -167,7 +166,7 @@ public class StateTest {
 
     private void submitDocumentNTimes(int n, String document, String index) {
         for(int i = 0; i < n; i++) {
-            CoreFieldStatsJob job = new CoreFieldStatsJob(JsonIterator.deserialize(document), testState, loadUnloadManager, index);
+            CoreFieldStatsJob job = new CoreFieldStatsJob(document, testState, loadUnloadManager, index);
             job.run();
         }
     }

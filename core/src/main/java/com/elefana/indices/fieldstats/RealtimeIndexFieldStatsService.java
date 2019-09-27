@@ -21,9 +21,8 @@ import com.elefana.api.exception.NoSuchApiException;
 import com.elefana.api.indices.GetFieldStatsRequest;
 import com.elefana.api.indices.GetFieldStatsResponse;
 import com.elefana.document.BulkIndexOperation;
-import com.elefana.indices.IndexFieldMappingService;
 import com.elefana.indices.fieldstats.job.CoreFieldStatsJob;
-import com.elefana.indices.fieldstats.job.CoreFieldStatsJobString;
+import com.elefana.indices.fieldstats.job.CoreFieldStatsRemoveIndexJob;
 import com.elefana.indices.fieldstats.response.V2FieldStats;
 import com.elefana.indices.fieldstats.state.State;
 import com.elefana.indices.fieldstats.state.StateImpl;
@@ -35,7 +34,6 @@ import com.elefana.util.IndexUtils;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.spi.JsonException;
 import io.netty.handler.codec.http.HttpMethod;
-import com.jsoniter.any.Any;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -199,20 +197,20 @@ public class RealtimeIndexFieldStatsService implements IndexFieldStatsService, R
     }
 
     @Override
-    public void submitDocument(Any document, String index){
-        workerExecutorService.submit(new CoreFieldStatsJob(document, state, loadUnloadManager, index));
-    }
-
-    @Override
     public void submitDocuments(List<BulkIndexOperation> documents) {
         for(BulkIndexOperation i: documents) {
-            workerExecutorService.submit(new CoreFieldStatsJobString(i.getSource(), state, loadUnloadManager, i.getIndex()));
+            workerExecutorService.submit(new CoreFieldStatsJob(i.getSource(), state, loadUnloadManager, i.getIndex()));
         }
     }
 
     @Override
+    public void deleteIndex(String index) {
+        workerExecutorService.submit(new CoreFieldStatsRemoveIndexJob(state, loadUnloadManager, index));
+    }
+
+    @Override
     public void submitDocument(String document, String index){
-        workerExecutorService.submit(new CoreFieldStatsJobString(document, state, loadUnloadManager, index));
+        workerExecutorService.submit(new CoreFieldStatsJob(document, state, loadUnloadManager, index));
     }
 
     @Override

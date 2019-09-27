@@ -27,7 +27,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.ValueNode;
-import com.jsoniter.any.Any;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,9 +42,9 @@ public class CoreFieldStatsJob extends FieldStatsJob {
     protected String document;
     private Set<String> alreadyRegistered = new HashSet<>();
 
-    public CoreFieldStatsJob(Any document, State state, LoadUnloadManager loadUnloadManager, String indexName) {
+    public CoreFieldStatsJob(String document, State state, LoadUnloadManager loadUnloadManager, String indexName) {
         super(state, loadUnloadManager, indexName);
-        this.document = document.toString();
+        this.document = document;
     }
 
     @Override

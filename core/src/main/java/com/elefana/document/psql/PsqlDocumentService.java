@@ -543,7 +543,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 				break;
 			case CREATE:
 			case OVERWRITE:
-				indexFieldStatsService.submitDocument(JsonIterator.deserialize(document), index);
+				indexFieldStatsService.submitDocument(document, index);
 			default:
 				break;
 			}

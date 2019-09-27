@@ -61,7 +61,7 @@ public class LoadUnloadManagerTest {
         when(testState.getIndex(eq(TEST_INDEX))).thenReturn(a);
         when(testState.getIndex(eq(TEST_INDEX_TWO))).thenReturn(b);
 
-        loadUnloadManager = new LoadUnloadManager(jdbcTemplate, testState);
+        loadUnloadManager = new LoadUnloadManager(jdbcTemplate, testState, 10);
     }
 
     @Test
