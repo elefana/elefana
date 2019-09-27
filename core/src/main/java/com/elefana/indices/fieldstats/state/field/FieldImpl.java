@@ -16,6 +16,8 @@
 
 package com.elefana.indices.fieldstats.state.field;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.Collection;
 import java.util.Map;
@@ -31,6 +33,7 @@ public class FieldImpl implements Field {
     }
 
     @Override
+    @Nonnull
     public FieldStats getIndexFieldStats(String indexName) {
         return fieldStats.computeIfAbsent(indexName, key ->
                 FieldComponent.getFieldStats(type)
@@ -38,10 +41,17 @@ public class FieldImpl implements Field {
     }
 
     @Override
+    @Nullable
     public FieldStats getIndexFieldStats(Collection<String> indices) {
+        if(indices.isEmpty())
+            return null;
+
         FieldStats acc = FieldComponent.getFieldStats(type);
         for(String s : indices) {
-            FieldStats fs = getIndexFieldStats(s);
+            FieldStats fs = fieldStats.get(s);
+            if(fs == null) {
+                return null;
+            }
             acc = acc.merge(fs);
         }
         return acc;

@@ -20,22 +20,29 @@ import com.elefana.indices.fieldstats.LoadUnloadManager;
 import com.elefana.indices.fieldstats.state.State;
 import com.elefana.indices.fieldstats.state.field.ElefanaWrongFieldStatsTypeException;
 import com.elefana.indices.fieldstats.state.field.FieldStats;
-import com.google.common.math.DoubleMath;
-import com.jsoniter.any.Any;
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.TreeNode;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.ValueNode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 @NotThreadSafe
 public class CoreFieldStatsJob extends FieldStatsJob {
+    private static final Logger LOGGER = LoggerFactory.getLogger(CoreFieldStatsJob.class);
 
-    protected Any document;
+    private static JsonFactory jsonFactory = new JsonFactory().setCodec(new ObjectMapper());
+
+    protected String document;
     private Set<String> alreadyRegistered = new HashSet<>();
 
-    public CoreFieldStatsJob(Any document, State state, LoadUnloadManager loadUnloadManager, String indexName) {
+    public CoreFieldStatsJob(String document, State state, LoadUnloadManager loadUnloadManager, String indexName) {
         super(state, loadUnloadManager, indexName);
         this.document = document;
     }
@@ -45,40 +52,41 @@ public class CoreFieldStatsJob extends FieldStatsJob {
         alreadyRegistered.clear();
         state.startIndexModification(indexName);
         try {
-            processAny(document, new ArrayList<>());
+            processAny(jsonFactory.createParser(document).readValueAsTree(), new ArrayList<>());
             updateIndex(indexName);
             loadUnloadManager.someoneWroteToIndex(indexName);
+        } catch(Exception e) {
+            LOGGER.error("Exception in Analyse Job", e);
         } finally {
             state.finishIndexModification(indexName);
         }
     }
 
-    private void processAny(Any any, List<String> relName) {
-        switch (any.valueType()) {
-            case OBJECT:
-                processObject(any, relName);
-                break;
-            case ARRAY:
-                processList(any, relName);
-                break;
-            case STRING:
-                processString(any, relName);
-                break;
-            case NUMBER:
-                processNumber(any, relName);
-                break;
-            case BOOLEAN:
-                processBoolean(any, relName);
-                break;
-            case NULL:
-            case INVALID:
-            default:
-                break;
+    private void processAny(TreeNode any, List<String> relName) {
+        if (any.isObject()) {
+            processObject((ObjectNode)any, relName);
+        } else if (any.isArray()) {
+            processList((ArrayNode)any, relName);
+        } else if (any.isValueNode()) {
+            ValueNode valueNode = (ValueNode)any;
+            if (valueNode.isNumber()) {
+                processNumber(valueNode, relName);
+            } else if (valueNode.isTextual()) {
+                processString(valueNode, relName);
+            } else if (valueNode.isBoolean()) {
+                processBoolean(valueNode, relName);
+            }
+        } else {
+            LOGGER.info("No type matched for document: " + any.toString());
         }
     }
 
-    private void processObject(Any anyObject, List<String> relName) {
-        anyObject.asMap().forEach((key, value) -> processAny(value, addToFieldName(relName, key)));
+    private void processObject(ObjectNode anyObject, List<String> relName) {
+        Iterator<Map.Entry<String, JsonNode>> fields = anyObject.fields();
+        while (fields.hasNext()) {
+            Map.Entry<String, JsonNode> fieldName = fields.next();
+            processAny(fieldName.getValue(), addToFieldName(relName, fieldName.getKey()));
+        }
     }
 
     private List<String> addToFieldName(List<String> old, String n) {
@@ -87,29 +95,29 @@ public class CoreFieldStatsJob extends FieldStatsJob {
         return ret;
     }
 
-    private void processList(Any anyList, List<String> relName) {
-        for(Any any : anyList.asList()) {
-            processAny(any, relName);
+    private void processList(ArrayNode anyList, List<String> relName) {
+        Iterator<JsonNode> elements = anyList.elements();
+        while(elements.hasNext()) {
+            processAny(elements.next(), relName);
         }
     }
 
-    private void processNumber(Any anyNumber, List<String> relName) {
-        double doubleNumber = anyNumber.toDouble();
-        if (DoubleMath.isMathematicalInteger(doubleNumber)) {
-            long longNumber = (long) doubleNumber;
+    private void processNumber(ValueNode anyNumber, List<String> relName) {
+        if (anyNumber.isIntegralNumber()) {
+            long longNumber = anyNumber.asLong();
             updateFieldStats(buildFieldName(relName), Long.class, longNumber);
-        } else {
-            updateFieldStats(buildFieldName(relName), Double.class, doubleNumber);
+        } else if (anyNumber.isFloatingPointNumber()) {
+            updateFieldStats(buildFieldName(relName), Double.class, anyNumber.asDouble());
         }
     }
 
-    private void processBoolean(Any anyBool, List<String> relName) {
-        Boolean bool = anyBool.toBoolean();
+    private void processBoolean(ValueNode anyBool, List<String> relName) {
+        Boolean bool = anyBool.asBoolean();
         updateFieldStats(buildFieldName(relName), Boolean.class, bool);
     }
 
-    private void processString(Any anyString, List<String> relName) {
-        String string = anyString.toString();
+    private void processString(ValueNode anyString, List<String> relName) {
+        String string = anyString.asText();
         updateFieldStats(buildFieldName(relName), String.class, string);
     }
 
@@ -130,7 +138,11 @@ public class CoreFieldStatsJob extends FieldStatsJob {
             if(alreadyRegistered.add(fieldName))
                 updateFieldStatsIsInDocument(fieldStats);
         } catch (ElefanaWrongFieldStatsTypeException e) {
-            e.printStackTrace();
+            if(e.isTryParsing()) {
+                updateFieldStats(fieldName, String.class, value.toString());
+            } else {
+                LOGGER.error("wrong field stats type", e);
+            }
         }
     }
 

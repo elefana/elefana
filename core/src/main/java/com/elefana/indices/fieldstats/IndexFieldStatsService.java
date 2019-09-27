@@ -16,20 +16,23 @@
 
 package com.elefana.indices.fieldstats;
 
+import com.elefana.api.exception.NoSuchApiException;
 import com.elefana.api.indices.GetFieldStatsRequest;
 import com.elefana.api.indices.GetFieldStatsResponse;
-import com.jsoniter.any.Any;
+import com.elefana.document.BulkIndexOperation;
 
 import java.util.List;
 
 public interface IndexFieldStatsService {
 
-    public GetFieldStatsRequest prepareGetFieldStatsPost(String indexPattern, String requestBody, boolean clusterLevel);
+    public GetFieldStatsRequest prepareGetFieldStatsPost(String indexPattern, String requestBody, boolean clusterLevel) throws NoSuchApiException;
 
     public GetFieldStatsRequest prepareGetFieldStatsGet(String indexPattern, String fieldGetParam, boolean clusterLevel);
 
     public GetFieldStatsResponse getFieldStats(String indexPattern, List<String> fields, boolean clusterLevel);
-    public void submitDocument(Any document, String index);
+
     public void submitDocument(String document, String index);
+    public void submitDocuments(List<BulkIndexOperation> documents);
+
     public void deleteIndex(String index);
 }

@@ -24,7 +24,6 @@ import com.elefana.indices.fieldstats.state.field.FieldComponent;
 import com.elefana.indices.fieldstats.state.field.FieldStats;
 import com.elefana.indices.fieldstats.state.index.IndexComponent;
 import com.google.common.collect.ImmutableList;
-import com.jsoniter.JsonIterator;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -33,6 +32,7 @@ import org.mockito.stubbing.Answer;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CyclicBarrier;
 
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
@@ -67,7 +67,7 @@ public class StateTest {
 
     @Test
     public void testSubmitDocument() {
-        CoreFieldStatsJob job = new CoreFieldStatsJob(JsonIterator.deserialize(testDocument), testState, loadUnloadManager, TEST_INDEX);
+        CoreFieldStatsJob job = new CoreFieldStatsJob(testDocument, testState, loadUnloadManager, TEST_INDEX);
         job.run();
     }
 
@@ -166,16 +166,29 @@ public class StateTest {
 
     private void submitDocumentNTimes(int n, String document, String index) {
         for(int i = 0; i < n; i++) {
-            CoreFieldStatsJob job = new CoreFieldStatsJob(JsonIterator.deserialize(document), testState, loadUnloadManager, index);
+            CoreFieldStatsJob job = new CoreFieldStatsJob(document, testState, loadUnloadManager, index);
             job.run();
         }
     }
     private void submitDocumentConcurrently(int numberOfThreads, int numberOfDocumentSubmissionsPerThread, String document, String index) {
+        final CyclicBarrier barrier = new CyclicBarrier(numberOfThreads + 1);
         List<Thread> threadList = new ArrayList<>();
         for( int i = 0; i < numberOfThreads; i++) {
-            threadList.add(new Thread(() -> submitDocumentNTimes(numberOfDocumentSubmissionsPerThread, document, index)));
+            threadList.add(new Thread(() -> {
+                try {
+                    barrier.await();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                submitDocumentNTimes(numberOfDocumentSubmissionsPerThread, document, index);
+            }));
         }
         threadList.forEach(Thread::start);
+        try {
+            barrier.await();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         threadList.forEach(thread -> {
             try {
                 thread.join();
@@ -198,11 +211,11 @@ public class StateTest {
 
         Assert.assertEquals(docCount, testState.getIndex(ImmutableList.of("first", "second")).getMaxDocuments());
 
-        FieldStats string = testState.getFieldStatsTypeChecked("string", String.class, ImmutableList.of("first", "second"));
+        FieldStats string = testState.getFieldStats("string", ImmutableList.of("first", "second"));
         Assert.assertEquals(docCount, string.getDocumentCount());
         Assert.assertEquals(docCount * 2, string.getSumDocumentFrequency());
-        Assert.assertEquals("hello", string.getMinimumValue());
-        Assert.assertEquals("there", string.getMaximumValue());
+        Assert.assertEquals("hello", (String)string.getMinimumValue());
+        Assert.assertEquals("there", (String)string.getMaximumValue());
     }
 
     @Test
@@ -359,5 +372,4 @@ public class StateTest {
 
         assertIndexMaxDocEquals(50*100);
     }
-
 }

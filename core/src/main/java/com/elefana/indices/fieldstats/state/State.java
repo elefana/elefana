@@ -50,9 +50,6 @@ public interface State {
     @Nonnull
     <T> FieldStats<T> getFieldStatsTypeChecked(String fieldName, Class<T> tClass, String indices) throws ElefanaWrongFieldStatsTypeException;
 
-    @Nonnull
-    <T> FieldStats<T> getFieldStatsTypeChecked(String fieldName, Class<T> tClass, Collection<String> indices) throws ElefanaWrongFieldStatsTypeException;
-
     @Nullable
     FieldStats getFieldStats(String fieldName, Collection<String> indices);
     @Nullable
