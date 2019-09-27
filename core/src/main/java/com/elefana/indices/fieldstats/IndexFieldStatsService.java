@@ -16,6 +16,7 @@
 
 package com.elefana.indices.fieldstats;
 
+import com.elefana.api.exception.NoSuchApiException;
 import com.elefana.api.indices.GetFieldStatsRequest;
 import com.elefana.api.indices.GetFieldStatsResponse;
 import com.elefana.document.BulkIndexOperation;
