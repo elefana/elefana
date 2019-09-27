@@ -17,10 +17,10 @@
 package com.elefana.indices.fieldstats;
 
 import com.elefana.api.RequestExecutor;
+import com.elefana.api.exception.NoSuchApiException;
 import com.elefana.api.indices.GetFieldStatsRequest;
 import com.elefana.api.indices.GetFieldStatsResponse;
 import com.elefana.document.BulkIndexOperation;
-import com.elefana.indices.fieldstats.job.CoreFieldStatsRemoveIndexJob;
 import com.elefana.indices.IndexFieldMappingService;
 import com.elefana.indices.fieldstats.job.CoreFieldStatsJob;
 import com.elefana.indices.fieldstats.job.CoreFieldStatsJobString;
@@ -33,6 +33,8 @@ import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
 import com.elefana.util.IndexUtils;
 import com.jsoniter.JsonIterator;
+import com.jsoniter.spi.JsonException;
+import io.netty.handler.codec.http.HttpMethod;
 import com.jsoniter.any.Any;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -101,16 +103,25 @@ public class RealtimeIndexFieldStatsService implements IndexFieldStatsService, R
     }
 
     @Override
-    public GetFieldStatsRequest prepareGetFieldStatsPost(String indexPattern, String requestBody, boolean clusterLevel) {
-        List<String> fields = new ArrayList<>();
-        JsonIterator
-                .deserialize(requestBody)
-                .asMap()
-                .get("fields")
-                .asList()
-                .forEach(s -> fields.add(s.toString()));
+    public GetFieldStatsRequest prepareGetFieldStatsPost(String indexPattern, String requestBody, boolean clusterLevel) throws NoSuchApiException {
+        try {
+            List<String> fields = new ArrayList<>();
 
-        return new RealtimeGetFieldStatsRequest(this, indexPattern, fields, clusterLevel);
+            JsonIterator
+                    .deserialize(requestBody)
+                    .asMap()
+                    .get("fields")
+                    .asList()
+                    .forEach(s -> fields.add(s.toString()));
+
+            if (fields.isEmpty()) {
+                throw new NoSuchApiException(HttpMethod.POST, "no fields specified in request body");
+            }
+
+            return new RealtimeGetFieldStatsRequest(this, indexPattern, fields, clusterLevel);
+        } catch (JsonException e) {
+            throw new NoSuchApiException(HttpMethod.POST, "invalid request body");
+        }
     }
 
     @Override
@@ -202,11 +213,6 @@ public class RealtimeIndexFieldStatsService implements IndexFieldStatsService, R
     @Override
     public void submitDocument(String document, String index){
         workerExecutorService.submit(new CoreFieldStatsJobString(document, state, loadUnloadManager, index));
-    }
-
-    @Override
-    public void deleteIndex(String index) {
-        workerExecutorService.submit(new CoreFieldStatsRemoveIndexJob(state, loadUnloadManager, index));
     }
 
     @Override
