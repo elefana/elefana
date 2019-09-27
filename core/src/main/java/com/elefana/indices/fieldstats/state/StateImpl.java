@@ -147,19 +147,10 @@ public class StateImpl implements State{
 
         if(tClass.equals(field.getFieldType()))
             return (FieldStats<T>)field.getIndexFieldStats(index);
+        if((tClass.equals(Long.class) || tClass.equals(Double.class)) && field.getFieldType().equals(String.class))
+            throw new ElefanaWrongFieldStatsTypeException(fieldName, tClass, field.getFieldType(), true);
 
-        throw new ElefanaWrongFieldStatsTypeException(fieldName, tClass);
-    }
-
-    @Override
-    @Nonnull
-    public <T> FieldStats<T> getFieldStatsTypeChecked(String fieldName, Class<T> tClass, Collection<String> indices) throws ElefanaWrongFieldStatsTypeException {
-        Field field = fieldMap.computeIfAbsent(fieldName, key -> new FieldImpl(tClass));
-
-        if(tClass.equals(field.getFieldType()))
-            return (FieldStats<T>)field.getIndexFieldStats(indices);
-
-        throw new ElefanaWrongFieldStatsTypeException(fieldName, tClass);
+        throw new ElefanaWrongFieldStatsTypeException(fieldName, tClass, field.getFieldType());
     }
 
     @Override

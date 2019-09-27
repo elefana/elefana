@@ -17,7 +17,16 @@
 package com.elefana.indices.fieldstats.state.field;
 
 public class ElefanaWrongFieldStatsTypeException extends Exception {
-    public ElefanaWrongFieldStatsTypeException(String fieldName, Class type) {
-        super("A scanned document contains the field " + fieldName + " with the type " + type.getTypeName() + " but the current field stats state has a different type registered");
+    private boolean tryParsing = false;
+    public ElefanaWrongFieldStatsTypeException(String fieldName, Class type, Class expected) {
+        super("A scanned document contains the field " + fieldName + " with the type " + type.getTypeName() + " but the current field stats state has the type " + expected.getTypeName() + " registered");
+    }
+    public ElefanaWrongFieldStatsTypeException(String fieldName, Class type, Class expected, boolean tryParsing) {
+        this(fieldName, type, expected);
+        this.tryParsing = tryParsing;
+    }
+
+    public boolean isTryParsing() {
+        return tryParsing;
     }
 }

@@ -53,7 +53,7 @@ import java.util.concurrent.*;
 @Service
 @DependsOn({"nodeSettingsService"})
 public class RealtimeIndexFieldStatsService implements IndexFieldStatsService, RequestExecutor {
-    private static final Logger LOGGER = LoggerFactory.getLogger(IndexFieldMappingService.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(RealtimeIndexFieldStatsService.class);
 
     @Autowired
     private Environment environment;

@@ -87,6 +87,11 @@ public class LoadUnloadManager {
 
     public void shutdown() {
         scheduledExecutorService.shutdownNow();
+        try {
+            scheduledExecutorService.awaitTermination(30, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     public void someoneWroteToIndex(String indexName) {
