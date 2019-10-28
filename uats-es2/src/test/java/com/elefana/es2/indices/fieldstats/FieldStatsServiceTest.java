@@ -41,7 +41,7 @@ import static org.hamcrest.Matchers.isA;
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = { ElefanaApplication.class })
 @TestPropertySource(locations = "classpath:es2.properties")
-public class RealtimeFieldStatsServiceTest {
+public class FieldStatsServiceTest {
     private static final long BULK_INDEX_TIMEOUT = 30000L;
 
     private static final int RANDOM_SEED = 12947358;
@@ -190,7 +190,7 @@ public class RealtimeFieldStatsServiceTest {
                 .request()
                 .body("{\"fields\":[\"" + field + "\"]}")
                 .when()
-                .post("/" + index + "/_field_stats?level=" + clusterLevel)
+                .post("/" + index + "/_field_stats?level=" + (clusterLevel ? "cluster" : "indices"))
                 .then()
                 .statusCode(200);
     }

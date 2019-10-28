@@ -22,9 +22,9 @@ import java.util.List;
 import java.util.concurrent.Callable;
 
 public class RealtimeGetFieldStatsRequest extends GetFieldStatsRequest {
-	private final RealtimeIndexFieldStatsService indexFieldStatsService;
+	private final IndexFieldStatsService indexFieldStatsService;
 
-	public RealtimeGetFieldStatsRequest(RealtimeIndexFieldStatsService indexFieldStatsService, String indexPattern, List<String> fields, boolean clusterLevel) {
+	public RealtimeGetFieldStatsRequest(IndexFieldStatsService indexFieldStatsService, String indexPattern, List<String> fields, boolean clusterLevel) {
 		super(indexFieldStatsService, indexPattern, fields, clusterLevel);
 		this.indexFieldStatsService = indexFieldStatsService;
 	}

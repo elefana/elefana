@@ -18,6 +18,8 @@ package com.elefana.indices.fieldstats;
 
 import com.elefana.api.RequestExecutor;
 import com.elefana.api.exception.NoSuchApiException;
+import com.elefana.api.indices.GetFieldNamesRequest;
+import com.elefana.api.indices.GetFieldNamesResponse;
 import com.elefana.api.indices.GetFieldStatsRequest;
 import com.elefana.api.indices.GetFieldStatsResponse;
 import com.elefana.document.BulkIndexOperation;
@@ -50,8 +52,8 @@ import java.util.concurrent.*;
 
 @Service
 @DependsOn({"nodeSettingsService"})
-public class RealtimeIndexFieldStatsService implements IndexFieldStatsService, RequestExecutor {
-    private static final Logger LOGGER = LoggerFactory.getLogger(RealtimeIndexFieldStatsService.class);
+public class CoreIndexFieldStatsService implements IndexFieldStatsService, RequestExecutor {
+    private static final Logger LOGGER = LoggerFactory.getLogger(CoreIndexFieldStatsService.class);
 
     @Autowired
     private Environment environment;
@@ -74,7 +76,7 @@ public class RealtimeIndexFieldStatsService implements IndexFieldStatsService, R
 
     @PostConstruct
     public void postConstruct() {
-        state = new StateImpl();
+        state = new StateImpl(environment);
 
         long indexTtlMinutes = environment.getProperty("elefana.service.fieldStats.cache.ttlMinutes", Integer.class, 10);
         loadUnloadManager = new LoadUnloadManager(jdbcTemplate, state, indexTtlMinutes);
@@ -113,12 +115,12 @@ public class RealtimeIndexFieldStatsService implements IndexFieldStatsService, R
                     .forEach(s -> fields.add(s.toString()));
 
             if (fields.isEmpty()) {
-                throw new NoSuchApiException(HttpMethod.POST, "no fields specified in request body");
+                throw new NoSuchApiException(HttpMethod.POST, "No fields specified in request body");
             }
 
             return new RealtimeGetFieldStatsRequest(this, indexPattern, fields, clusterLevel);
         } catch (JsonException e) {
-            throw new NoSuchApiException(HttpMethod.POST, "invalid request body");
+            throw new NoSuchApiException(HttpMethod.POST, "Invalid request body");
         }
     }
 
@@ -133,51 +135,75 @@ public class RealtimeIndexFieldStatsService implements IndexFieldStatsService, R
     @Override
     public GetFieldStatsResponse getFieldStats(String indexPattern, List<String> fields, boolean clusterLevel) {
         GetFieldStatsResponse response = new GetFieldStatsResponse();
-        loadUnloadManager.ensureIndexIsLoaded(indexPattern);
+        loadUnloadManager.ensureIndicesLoaded(indexPattern);
         List<String> indices = state.compileIndexPattern(indexPattern);
 
-        setShards(response);
-        if(clusterLevel)
-            setIndicesClusterLevel(response, indices, fields);
-        else
-            setIndices(response, indices, fields);
+        setResponseShardInfo(response);
 
+        if(clusterLevel) {
+            getFieldStatsClusterLevel(response, indices, fields);
+        } else {
+            getFieldStatsIndicesLevel(response, indices, fields);
+        }
         return response;
     }
 
-    private void setShards(GetFieldStatsResponse response) {
+    @Override
+    public GetFieldNamesRequest prepareGetFieldNames(String indexPattern) {
+        return prepareGetFieldNames(indexPattern, "*");
+    }
+
+    @Override
+    public GetFieldNamesRequest prepareGetFieldNames(String indexPattern, String typePattern) {
+        return new RealtimeIndexFieldNamesRequest(this, indexPattern, typePattern);
+    }
+
+    @Override
+    public GetFieldNamesResponse getFieldNames(String indexPattern, String typePattern) {
+        final GetFieldNamesResponse response = new GetFieldNamesResponse();
+        loadUnloadManager.ensureIndicesLoaded(indexPattern);
+        List<String> indices = state.compileIndexPattern(indexPattern);
+
+        for(String index : indices) {
+            state.getFieldNames(response.getFieldNames(), index);
+        }
+        return response;
+    }
+
+    private void setResponseShardInfo(GetFieldStatsResponse response) {
         response.getShards().put("total", 1);
         response.getShards().put("successful", 1);
         response.getShards().put("failed", 0);
     }
 
-    private void setIndicesClusterLevel(GetFieldStatsResponse response, List<String> indices, List<String> fields) {
+    private void getFieldStatsClusterLevel(GetFieldStatsResponse response, List<String> indices, List<String> fields) {
         indices.forEach(state::stopModificationsOfIndex);
         try {
-            response.getIndices().put("_all", getIndexMap(indices, fields));
+            response.getIndices().put("_all", getFieldStatsMap(indices, fields));
         } finally {
             indices.forEach(state::resumeModificationsOfIndex);
         }
     }
 
-    private void setIndices(GetFieldStatsResponse response, List<String> indices, List<String> fields){
+    private void getFieldStatsIndicesLevel(GetFieldStatsResponse response, List<String> indices, List<String> fields){
         for(String index : indices) {
             state.stopModificationsOfIndex(index);
             try {
-                response.getIndices().put(index, getIndexMap(Collections.singletonList(index), fields));
+                response.getIndices().put(index, getFieldStatsMap(Collections.singletonList(index), fields));
             } finally {
                 state.resumeModificationsOfIndex(index);
             }
         }
     }
 
-    private Map<String, Object> getIndexMap(List<String> indices, List<String> fields) {
-        Map<String, Object> wrappingMap = new HashMap<>();
-        Map<String, Object> fieldsMap = new HashMap<>();
+    private Map<String, Object> getFieldStatsMap(List<String> indices, List<String> fields) {
+        final Map<String, Object> wrappingMap = new HashMap<>();
+        final Map<String, Object> fieldsMap = new HashMap<>();
         for(String field : fields) {
             FieldStats fs = state.getFieldStats(field, indices);
-            if(fs == null)
+            if(fs == null) {
                 continue;
+            }
 
             V2FieldStats fieldStats = new V2FieldStats();
             fieldStats.max_doc = state.getIndex(indices).getMaxDocuments();
@@ -197,9 +223,10 @@ public class RealtimeIndexFieldStatsService implements IndexFieldStatsService, R
     }
 
     @Override
-    public void submitDocuments(List<BulkIndexOperation> documents) {
-        for(BulkIndexOperation i: documents) {
-            workerExecutorService.submit(new CoreFieldStatsJob(i.getSource(), state, loadUnloadManager, i.getIndex()));
+    public void submitDocuments(List<BulkIndexOperation> documents, int from, int size) {
+        for (int i = from; i < from + size && i < documents.size(); i++) {
+            BulkIndexOperation operation = documents.get(i);
+            workerExecutorService.submit(new CoreFieldStatsJob(operation.getSource(), state, loadUnloadManager, operation.getIndex()));
         }
     }
 

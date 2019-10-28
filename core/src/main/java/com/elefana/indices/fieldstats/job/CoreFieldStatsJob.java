@@ -122,10 +122,11 @@ public class CoreFieldStatsJob extends FieldStatsJob {
     }
 
     private String buildFieldName(List<String> name) {
-        StringBuilder builder = new StringBuilder();
+        final StringBuilder builder = new StringBuilder();
         int i;
-        for(i = 0; i < name.size() - 1; i++)
+        for(i = 0; i < name.size() - 1; i++) {
             builder.append(name.get(i)).append('.');
+        }
         builder.append(name.get(i));
         return builder.toString();
     }
@@ -135,8 +136,9 @@ public class CoreFieldStatsJob extends FieldStatsJob {
             FieldStats<T> fieldStats = state.getFieldStatsTypeChecked(fieldName, tClass, indexName);
 
             updateFieldStatsFoundOccurrence(fieldStats, value);
-            if(alreadyRegistered.add(fieldName))
+            if(alreadyRegistered.add(fieldName)) {
                 updateFieldStatsIsInDocument(fieldStats);
+            }
         } catch (ElefanaWrongFieldStatsTypeException e) {
             if(e.isTryParsing()) {
                 updateFieldStats(fieldName, String.class, value.toString());

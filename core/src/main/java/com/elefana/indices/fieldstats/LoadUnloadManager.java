@@ -98,7 +98,7 @@ public class LoadUnloadManager {
         lastIndexUse.compute(indexName, (name, timestamp) -> System.currentTimeMillis());
     }
 
-    public void ensureIndexIsLoaded(String indexPattern) {
+    public void ensureIndicesLoaded(String indexPattern) {
         loadUnloadLock.lock();
         try {
             List<String> missing = missingIndices.stream().filter(i -> StateImpl.matches(indexPattern, i)).collect(Collectors.toList());

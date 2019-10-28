@@ -16,14 +16,17 @@
 
 package com.elefana.indices.fieldstats;
 
+import com.elefana.api.RequestExecutor;
 import com.elefana.api.exception.NoSuchApiException;
+import com.elefana.api.indices.GetFieldNamesRequest;
+import com.elefana.api.indices.GetFieldNamesResponse;
 import com.elefana.api.indices.GetFieldStatsRequest;
 import com.elefana.api.indices.GetFieldStatsResponse;
 import com.elefana.document.BulkIndexOperation;
 
 import java.util.List;
 
-public interface IndexFieldStatsService {
+public interface IndexFieldStatsService extends RequestExecutor {
 
     public GetFieldStatsRequest prepareGetFieldStatsPost(String indexPattern, String requestBody, boolean clusterLevel) throws NoSuchApiException;
 
@@ -31,8 +34,15 @@ public interface IndexFieldStatsService {
 
     public GetFieldStatsResponse getFieldStats(String indexPattern, List<String> fields, boolean clusterLevel);
 
+    public GetFieldNamesRequest prepareGetFieldNames(String indexPattern);
+
+    public GetFieldNamesRequest prepareGetFieldNames(String indexPattern, String typePattern);
+
+    public GetFieldNamesResponse getFieldNames(String indexPattern, String typePattern);
+
     public void submitDocument(String document, String index);
-    public void submitDocuments(List<BulkIndexOperation> documents);
+
+    public void submitDocuments(List<BulkIndexOperation> documents, int from, int size);
 
     public void deleteIndex(String index);
 }

@@ -698,16 +698,6 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 	}
 
 	@Override
-	public GetFieldNamesRequest prepareGetFieldNames(String indexPattern) {
-		return new PsqlGetFieldNamesRequest(this, indexPattern);
-	}
-
-	@Override
-	public GetFieldNamesRequest prepareGetFieldNames(String indexPattern, String typePattern) {
-		return new PsqlGetFieldNamesRequest(this, indexPattern, typePattern);
-	}
-
-	@Override
 	public GetFieldMappingsRequest prepareGetFieldMappings() {
 		return new PsqlGetFieldMappingsRequest(this);
 	}

@@ -26,6 +26,7 @@ import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 @ThreadSafe
 public interface State {
@@ -54,5 +55,7 @@ public interface State {
     FieldStats getFieldStats(String fieldName, Collection<String> indices);
     @Nullable
     FieldStats getFieldStats(String fieldName, String indices);
+
+    void getFieldNames(Set<String> result, String index);
 
 }

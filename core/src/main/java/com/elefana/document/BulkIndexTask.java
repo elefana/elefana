@@ -186,7 +186,7 @@ public abstract class BulkIndexTask implements Callable<List<BulkItemResponse>> 
 				psqlTime.stop();
 
 				// index is the only supported bulk operation, therefore always submit the document
-				fieldStatsService.submitDocuments(indexOperations);
+				fieldStatsService.submitDocuments(indexOperations, from, size);
 
 				ingestTable.markData(stagingTableId);
 				ingestTable.unlockTable(stagingTableId);

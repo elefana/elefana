@@ -58,8 +58,8 @@ public class FieldImpl implements Field {
     }
 
     @Override
-    public boolean hasIndexFieldStats(String name){
-        return fieldStats.containsKey(name);
+    public boolean hasIndexFieldStats(String indexName){
+        return fieldStats.containsKey(indexName);
     }
 
     @Override

@@ -13,21 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
+package com.elefana.indices.fieldstats;
 
-package com.elefana.indices.fieldstats.state.field;
+import com.elefana.api.RequestExecutor;
+import com.elefana.api.indices.GetFieldNamesRequest;
+import com.elefana.api.indices.GetFieldNamesResponse;
 
-import java.util.Collection;
+import java.util.concurrent.Callable;
 
-public interface Field {
-    FieldStats getIndexFieldStats(String indexName);
-    FieldStats getIndexFieldStats(Collection<String> indices);
-    FieldStats getFieldStats();
+public class RealtimeIndexFieldNamesRequest extends GetFieldNamesRequest {
+	private final IndexFieldStatsService indexFieldStatsService;
 
-    boolean hasIndexFieldStats(String indexName);
+	public RealtimeIndexFieldNamesRequest(IndexFieldStatsService indexFieldStatsService, String indexPattern, String typePattern) {
+		super(indexFieldStatsService, indexPattern, typePattern);
+		this.indexFieldStatsService = indexFieldStatsService;
+	}
 
-    void deleteIndexFieldStats(String indexName);
-
-    Class getFieldType();
-
-    void load(String indexName, FieldComponent fieldComponent);
+	@Override
+	protected Callable<GetFieldNamesResponse> internalExecute() {
+		return () -> indexFieldStatsService.getFieldNames(indexPattern, typePattern);
+	}
 }

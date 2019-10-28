@@ -16,6 +16,9 @@
 
 package com.elefana.indices.fieldstats.state.index;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.locks.Lock;
@@ -24,6 +27,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 @ThreadSafe
 public class IndexImpl implements Index {
+    private static final Logger LOGGER = LoggerFactory.getLogger(IndexImpl.class);
+
     private LongAdder maxDocs = new LongAdder();
     private ReadWriteLock indexLock = new ReentrantReadWriteLock();
 

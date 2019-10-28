@@ -56,7 +56,7 @@ public class TableIndexCreator implements Runnable {
 			//Only master node can create indices
 			return;
 		}
-		final long interval = Math.min(nodeSettingsService.getFieldStatsInterval(), nodeSettingsService.getMappingInterval());
+		final long interval = nodeSettingsService.getMappingInterval();
 
 		tableIndexQueue = new TableIndexQueue(jdbcTemplate, taskScheduler, interval);
 		fieldIndexQueue = new TableFieldIndexQueue(jdbcTemplate, taskScheduler, interval);

@@ -230,7 +230,7 @@ public class ApiRouter {
 				final String indexPattern = urlDecode(urlComponents[0]);
 				switch (urlComponents[1].toLowerCase()) {
 				case "_field_names":
-					return indexFieldMappingService.prepareGetFieldNames(indexPattern);
+					return indexFieldStatsService.prepareGetFieldNames(indexPattern);
 				case "_mapping":
 					return indexFieldMappingService.prepareGetFieldMappings(indexPattern);
 				case "_field_caps":
@@ -250,7 +250,7 @@ public class ApiRouter {
 				final String typePattern = urlDecode(urlComponents[2]);
 				switch (urlComponents[1].toLowerCase()) {
 				case "_field_names":
-					return indexFieldMappingService.prepareGetFieldNames(indexPattern, typePattern);
+					return indexFieldStatsService.prepareGetFieldNames(indexPattern, typePattern);
 				case "_mapping":
 					return indexFieldMappingService.prepareGetFieldMappings(indexPattern, typePattern);
 				}

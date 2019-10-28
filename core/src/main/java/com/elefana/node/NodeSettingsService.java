@@ -76,7 +76,6 @@ public class NodeSettingsService {
 	private boolean flattenJson;
 	private boolean regenerateDuplicateIds;
 	private int bulkParallelisation;
-	private long fieldStatsInterval;
 	private long mappingInterval;
 	private double mappingSampleSize;
 	private int fallbackMappingSampleSize;
@@ -123,7 +122,6 @@ public class NodeSettingsService {
 		flattenJson = environment.getProperty("elefana.flattenJson", Boolean.class, false);
 		bulkParallelisation = Math.max(1,
 				environment.getRequiredProperty("elefana.bulkParallelisation", Integer.class));
-		fieldStatsInterval = environment.getRequiredProperty("elefana.fieldStatsInterval", Long.class);
 		mappingInterval = environment.getRequiredProperty("elefana.mappingInterval", Long.class);
 		mappingSampleSize = environment.getRequiredProperty("elefana.mappingSampleSize", Double.class);
 		fallbackMappingSampleSize = environment.getRequiredProperty("elefana.fallbackMappingSampleSize", Integer.class);
@@ -338,10 +336,6 @@ public class NodeSettingsService {
 
 	public int getBulkParallelisation() {
 		return bulkParallelisation;
-	}
-
-	public long getFieldStatsInterval() {
-		return fieldStatsInterval;
 	}
 
 	public long getMappingInterval() {

@@ -16,25 +16,47 @@
 
 package com.elefana.indices.fieldstats.state;
 
+import com.elefana.document.BulkIndexTask;
 import com.elefana.indices.fieldstats.state.field.*;
 import com.elefana.indices.fieldstats.state.index.Index;
 import com.elefana.indices.fieldstats.state.index.IndexComponent;
 import com.elefana.indices.fieldstats.state.index.IndexImpl;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.jsoniter.output.JsonStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.core.env.Environment;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @ThreadSafe
 public class StateImpl implements State{
+    private static final Logger LOGGER = LoggerFactory.getLogger(StateImpl.class);
+
     private Map<String, Index> indexMap = new ConcurrentHashMap<>();
     private Map<String, Field> fieldMap = new ConcurrentHashMap<>();
+
+    private Cache<String, Set<String>> fieldNamesCache;
+
+    public StateImpl(Environment environment) {
+        if(environment != null) {
+            fieldNamesCache = CacheBuilder.newBuilder().
+                    maximumSize(environment.getProperty("elefana.service.field.cache.names.expire.size", Integer.class, 250)).
+		            expireAfterAccess(environment.getProperty("elefana.service.field.cache.names.expire.time", Long.class, 500L), TimeUnit.SECONDS).
+                    build();
+        } else {
+	        fieldNamesCache = CacheBuilder.newBuilder().maximumSize(10).expireAfterAccess(1L, TimeUnit.SECONDS).build();
+        }
+    }
 
     @Override
     public void stopModificationsOfIndex(String index) {
@@ -133,6 +155,7 @@ public class StateImpl implements State{
     @Override
     public Index getIndex(Collection<String> indices) {
         Index acc = new IndexImpl();
+
         for(String s : indices) {
             Index i = getIndex(s);
             acc = acc.merge(i);
@@ -145,11 +168,16 @@ public class StateImpl implements State{
     public <T> FieldStats<T> getFieldStatsTypeChecked(String fieldName, Class<T> tClass, String index) throws ElefanaWrongFieldStatsTypeException {
         Field field = fieldMap.computeIfAbsent(fieldName, key -> new FieldImpl(tClass));
 
-        if(tClass.equals(field.getFieldType()))
-            return (FieldStats<T>)field.getIndexFieldStats(index);
-        if((tClass.equals(Long.class) || tClass.equals(Double.class)) && field.getFieldType().equals(String.class))
-            throw new ElefanaWrongFieldStatsTypeException(fieldName, tClass, field.getFieldType(), true);
+        if(!field.hasIndexFieldStats(index)) {
+	        fieldNamesCache.invalidate(index);
+        }
 
+        if(tClass.equals(field.getFieldType())) {
+            return (FieldStats<T>) field.getIndexFieldStats(index);
+        }
+        if((tClass.equals(Long.class) || tClass.equals(Double.class)) && field.getFieldType().equals(String.class)) {
+            throw new ElefanaWrongFieldStatsTypeException(fieldName, tClass, field.getFieldType(), true);
+        }
         throw new ElefanaWrongFieldStatsTypeException(fieldName, tClass, field.getFieldType());
     }
 
@@ -176,6 +204,29 @@ public class StateImpl implements State{
     }
 
     @Override
+    public void getFieldNames(Set<String> result, String index) {
+        try {
+            result.addAll(fieldNamesCache.get(index, new Callable<Set<String>>() {
+                @Override
+                public Set<String> call() throws Exception {
+                    final Set<String> result = new HashSet<String>();
+                    for(String fieldName : fieldMap.keySet()) {
+                        final Field field = fieldMap.get(fieldName);
+                        if(field == null) {
+                            continue;
+                        } else if(field.hasIndexFieldStats(index)) {
+                            result.add(fieldName);
+                        }
+                    }
+                    return result;
+                }
+            }));
+        } catch (ExecutionException e) {
+            LOGGER.error(e.getMessage(), e);
+        }
+    }
+
+    @Override
     public List<String> compileIndexPattern(String indexPattern) {
         return indexMap
                 .keySet()
@@ -193,8 +244,9 @@ public class StateImpl implements State{
         String[] singleIndices = pattern.split(",");
         for(String singleIndexPattern : singleIndices) {
             boolean matches = index.matches(singleIndexPattern.replaceAll("\\*", "\\.*"));
-            if(matches)
+            if(matches) {
                 return true;
+            }
         }
         return false;
     }

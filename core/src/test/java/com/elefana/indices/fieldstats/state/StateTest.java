@@ -51,7 +51,7 @@ public class StateTest {
 
     @Before
     public void before() {
-        testState = new StateImpl();
+        testState = new StateImpl(null);
         loadUnloadManager = mock(LoadUnloadManager.class);
         doAnswer(new Answer() {
             @Override

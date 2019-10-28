@@ -69,7 +69,7 @@ public class LoadUnloadManagerTest {
         List<Thread> threads = new ArrayList<>();
         for(int i = 0; i < 5; i++){
             threads.add(new Thread(() -> {
-                loadUnloadManager.ensureIndexIsLoaded(TEST_INDEX);
+                loadUnloadManager.ensureIndicesLoaded(TEST_INDEX);
             }));
         }
         threads.forEach(Thread::start);
@@ -89,12 +89,12 @@ public class LoadUnloadManagerTest {
         List<Thread> threads = new ArrayList<>();
         for(int i = 0; i < 5; i++){
             threads.add(new Thread(() -> {
-                loadUnloadManager.ensureIndexIsLoaded(TEST_INDEX);
+                loadUnloadManager.ensureIndicesLoaded(TEST_INDEX);
             }));
         }
         for(int i = 0; i < 5; i++){
             threads.add(new Thread(() -> {
-                loadUnloadManager.ensureIndexIsLoaded(TEST_INDEX_TWO);
+                loadUnloadManager.ensureIndicesLoaded(TEST_INDEX_TWO);
             }));
         }
         threads.forEach(Thread::start);
@@ -114,7 +114,7 @@ public class LoadUnloadManagerTest {
     @Test
     public void testDeleteMissingIndex() throws ElefanaWrongFieldStatsTypeException {
         loadUnloadManager.deleteIndex(TEST_INDEX_DELETE);
-        loadUnloadManager.ensureIndexIsLoaded(TEST_INDEX_DELETE);
+        loadUnloadManager.ensureIndicesLoaded(TEST_INDEX_DELETE);
 
         verify(testState, times(0)).load(any());
         verify(testState, times(1)).deleteIndex(anyString());

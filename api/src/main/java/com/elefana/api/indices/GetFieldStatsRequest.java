@@ -36,7 +36,7 @@ public abstract class GetFieldStatsRequest extends ApiRequest<GetFieldStatsRespo
 		return indexPattern;
 	}
 
-	public boolean getClusterLevel() {
+	public boolean isClusterLevel() {
 		return clusterLevel;
 	}
 

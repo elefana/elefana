@@ -18,10 +18,6 @@ package com.elefana.indices;
 import com.elefana.api.indices.*;
 
 public interface IndexFieldMappingService {
-
-	public GetFieldNamesRequest prepareGetFieldNames(String indexPattern);
-
-	public GetFieldNamesRequest prepareGetFieldNames(String indexPattern, String typePattern);
 	
 	public GetFieldMappingsRequest prepareGetFieldMappings();
 	
