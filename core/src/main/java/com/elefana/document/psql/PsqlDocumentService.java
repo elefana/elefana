@@ -543,7 +543,6 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 				break;
 			case CREATE:
 			case OVERWRITE:
-				indexFieldStatsService.submitDocument(document, index);
 			default:
 				break;
 			}
@@ -667,6 +666,10 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 				result.setCreated(false);
 			} else {
 				result.setCreated(true);
+			}
+
+			if(opType != IndexOpType.UPDATE) {
+				indexFieldStatsService.submitDocument(document, index);
 			}
 
 			indexFieldMappingService.scheduleIndexForMappingAndStats(index);

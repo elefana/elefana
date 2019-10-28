@@ -148,13 +148,13 @@ public abstract class BulkIndexTask implements Callable<List<BulkItemResponse>> 
 					if(flatten) {
 						final Timer.Context flattenTime = flattenTimer.time();
 						escapedJson = IndexUtils.flattenJson(indexOperation.getSource());
-						indexOperation.setSource(escapedJson);
 						flattenTime.stop();
 					} else {
 						final Timer.Context escapeTime = flattenTimer.time();
 						escapedJson = IndexUtils.psqlEscapeString(indexOperation.getSource());
 						escapeTime.stop();
 					}
+					indexOperation.setSource(escapedJson);
 
 					final StringBuilder rowBuilder = IndexUtils.POOLED_STRING_BUILDER.get();
 					rowBuilder.append(indexOperation.getIndex());
