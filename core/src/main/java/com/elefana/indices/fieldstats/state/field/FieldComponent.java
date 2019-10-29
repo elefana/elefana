@@ -53,6 +53,31 @@ public class FieldComponent {
         }
 
         @Override
+        public void updateMin(T value) {
+
+        }
+
+        @Override
+        public void updateMax(T value) {
+
+        }
+
+        @Override
+        public void addDocumentCount(long amount) {
+
+        }
+
+        @Override
+        public void addSumDocumentFrequency(long amount) {
+
+        }
+
+        @Override
+        public void addSumTotalTermFrequency(long amount) {
+
+        }
+
+        @Override
         public FieldStats<T> merge(FieldStats<T> other) {
             return null;
         }

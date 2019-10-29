@@ -58,6 +58,14 @@ public class StateImpl implements State{
         }
     }
 
+    protected Index createIndex(String index) {
+        return new IndexImpl();
+    }
+
+    protected Field createField(String fieldName, Class type) {
+        return new FieldImpl(type);
+    }
+
     @Override
     public void stopModificationsOfIndex(String index) {
         getIndex(index).getStopCountingLock().lock();
@@ -98,17 +106,16 @@ public class StateImpl implements State{
         try {
             indexMap.compute(indexComponent.name, (name, index) -> {
                 if (index == null) {
-                    return indexComponent.construct();
-                } else {
-                    index.mergeAndModifySelf(indexComponent.construct());
-                    return index;
+                    index = createIndex(name);
                 }
+                index.mergeAndModifySelf(indexComponent.construct());
+                return index;
             });
 
             indexComponent.fields.forEach((fieldName, fieldComponent) -> {
                 fieldMap.compute(fieldName, (name, field) -> {
                     if (field == null) {
-                        Field newField = fieldComponent.constructField();
+                        Field newField = createField(name, fieldComponent.type);
                         newField.load(indexComponent.name, fieldComponent);
                         return newField;
                     } else {
@@ -149,7 +156,7 @@ public class StateImpl implements State{
 
     @Override
     public Index getIndex(String indexName) {
-        return indexMap.computeIfAbsent(indexName, key -> new IndexImpl());
+        return indexMap.computeIfAbsent(indexName, key -> createIndex(indexName));
     }
 
     @Override
@@ -166,7 +173,7 @@ public class StateImpl implements State{
     @Override
     @Nonnull
     public <T> FieldStats<T> getFieldStatsTypeChecked(String fieldName, Class<T> tClass, String index) throws ElefanaWrongFieldStatsTypeException {
-        Field field = fieldMap.computeIfAbsent(fieldName, key -> new FieldImpl(tClass));
+        Field field = fieldMap.computeIfAbsent(fieldName, key -> createField(fieldName, tClass));
 
         if(!field.hasIndexFieldStats(index)) {
 	        fieldNamesCache.invalidate(index);

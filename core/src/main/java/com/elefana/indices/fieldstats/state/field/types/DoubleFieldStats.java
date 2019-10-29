@@ -38,12 +38,12 @@ public class DoubleFieldStats extends FieldStatsImpl<Double> {
     }
 
     @Override
-    protected void updateMin(Double value) {
+    public void updateMin(Double value) {
         minValue.accumulate(value);
     }
 
     @Override
-    protected void updateMax(Double value) {
+    public void updateMax(Double value) {
         maxValue.accumulate(value);
     }
 

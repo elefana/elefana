@@ -26,12 +26,12 @@ public abstract class ComparableFieldStats<T extends Comparable<T>> extends Fiel
     private AtomicReference<T> maxValue = new AtomicReference<>();
 
     @Override
-    protected void updateMin(T value) {
+    public void updateMin(T value) {
         minValue.accumulateAndGet(value, this::nullSafeMin);
     }
 
     @Override
-    protected void updateMax(T value) {
+    public void updateMax(T value) {
         maxValue.accumulateAndGet(value, this::nullSafeMax);
     }
 

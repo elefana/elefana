@@ -23,11 +23,21 @@ public interface FieldStats<T> {
 
     T getMaximumValue();
 
+    void updateMin(T value);
+
+    void updateMax(T value);
+
     long getDocumentCount();
+
+    void addDocumentCount(long amount);
 
     long getSumDocumentFrequency();
 
+    void addSumDocumentFrequency(long amount);
+
     long getSumTotalTermFrequency();
+
+    void addSumTotalTermFrequency(long amount);
 
     void updateSingeOccurrence(T value);
 

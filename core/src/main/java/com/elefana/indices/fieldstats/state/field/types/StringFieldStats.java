@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 public class StringFieldStats extends ComparableFieldStats<String> {
 
     @Override
-    protected void updateMin(String value) {
+    public void updateMin(String value) {
         if(value != null){
             List<String> words = Arrays.stream(value.split("\\W+")).map(String::toLowerCase).collect(Collectors.toList());
             if(words.size() > 0) {
@@ -42,7 +42,7 @@ public class StringFieldStats extends ComparableFieldStats<String> {
     }
 
     @Override
-    protected void updateMax(String value) {
+    public void updateMax(String value) {
         if(value != null) {
             List<String> words = Arrays.stream(value.split("\\W+")).map(String::toLowerCase).collect(Collectors.toList());
             if(words.size() > 0) {

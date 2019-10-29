@@ -45,13 +45,27 @@ public abstract class FieldStatsImpl<T> implements FieldStats<T> {
 
     protected abstract long getDocFrequencyAddend(T value);
     protected abstract long getTotalTermFrequencyAddend(T value);
-    protected abstract void updateMin(T value);
-    protected abstract void updateMax(T value);
 
     @Override
     public abstract T getMinimumValue();
+
     @Override
     public abstract T getMaximumValue();
+
+    @Override
+    public void addDocumentCount(long amount) {
+        docCount.add(amount);
+    }
+
+    @Override
+    public void addSumDocumentFrequency(long amount) {
+        sumDocFrequency.accumulate(amount);
+    }
+
+    @Override
+    public void addSumTotalTermFrequency(long amount) {
+        sumTotalTermFrequency.accumulate(amount);
+    }
 
     @Override
     public long getDocumentCount() {

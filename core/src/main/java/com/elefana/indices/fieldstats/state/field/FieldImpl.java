@@ -26,17 +26,21 @@ import java.util.concurrent.ConcurrentHashMap;
 @ThreadSafe
 public class FieldImpl implements Field {
     private Map<String, FieldStats> fieldStats = new ConcurrentHashMap<>();
-    private Class type;
+    protected Class type;
 
     public FieldImpl(Class type) {
         this.type = type;
+    }
+
+    protected FieldStats createFieldStats(String indexName) {
+        return FieldComponent.getFieldStats(type);
     }
 
     @Override
     @Nonnull
     public FieldStats getIndexFieldStats(String indexName) {
         return fieldStats.computeIfAbsent(indexName, key ->
-                FieldComponent.getFieldStats(type)
+                createFieldStats(indexName)
         );
     }
 
@@ -81,7 +85,9 @@ public class FieldImpl implements Field {
     public void load(String indexName, FieldComponent fieldComponent) {
         fieldStats.compute(indexName, (name, fieldStats) -> {
             if(fieldStats == null) {
-                return fieldComponent.construct();
+                FieldStats result = createFieldStats(indexName);
+                result.mergeAndModifySelf(fieldComponent.construct());
+                return result;
             } else {
                 fieldStats.mergeAndModifySelf(fieldComponent.construct());
                 return fieldStats;

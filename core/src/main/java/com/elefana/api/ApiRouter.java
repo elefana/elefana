@@ -452,7 +452,14 @@ public class ApiRouter {
 				case "stats":
 					// _nodes/stats
 					return nodesService.prepareAllNodesStats();
+			case "_local":
+				// _nodes/_local
+				return nodesService.prepareLocalNodeStats();
+			case "_all":
+				// _nodes/_all
+				return nodesService.prepareAllNodesStats();
 			}
+			throw new NoSuchApiException(method, url);
 		case 3: {
 			if (urlComponents[2].equals("stats")) {
 				// _nodes/node ids/stats
@@ -486,6 +493,7 @@ public class ApiRouter {
 							return nodesService.prepareNodesStats(nodes.split(","), filter);
 					}
 			}
+			throw new NoSuchApiException(method, url);
 		}
 		}
 		throw new NoSuchApiException(method, url);

@@ -56,27 +56,27 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
     private static final Logger LOGGER = LoggerFactory.getLogger(CoreIndexFieldStatsService.class);
 
     @Autowired
-    private Environment environment;
+    protected Environment environment;
     @Autowired
-    private NodeSettingsService nodeSettingsService;
+    protected NodeSettingsService nodeSettingsService;
     @Autowired
-    private VersionInfoService versionInfoService;
+    protected VersionInfoService versionInfoService;
     @Autowired
-    private PsqlIndexTemplateService indexTemplateService;
+    protected PsqlIndexTemplateService indexTemplateService;
     @Autowired
-    private TaskScheduler taskScheduler;
+    protected TaskScheduler taskScheduler;
     @Autowired
-    private JdbcTemplate jdbcTemplate;
+    protected JdbcTemplate jdbcTemplate;
     @Autowired
-    private IndexUtils indexUtils;
+    protected IndexUtils indexUtils;
 
-    private ExecutorService workerExecutorService, requestExecutorService;
-    private State state;
-    private LoadUnloadManager loadUnloadManager;
+    protected ExecutorService workerExecutorService, requestExecutorService;
+    protected State state;
+    protected LoadUnloadManager loadUnloadManager;
 
     @PostConstruct
     public void postConstruct() {
-        state = new StateImpl(environment);
+        state = createState(environment);
 
         long indexTtlMinutes = environment.getProperty("elefana.service.fieldStats.cache.ttlMinutes", Integer.class, 10);
         loadUnloadManager = new LoadUnloadManager(jdbcTemplate, state, indexTtlMinutes);
@@ -100,6 +100,10 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
         } catch (InterruptedException e) {}
 
         loadUnloadManager.unloadAll();
+    }
+
+    protected State createState(Environment environment) {
+        return new StateImpl(environment);
     }
 
     @Override

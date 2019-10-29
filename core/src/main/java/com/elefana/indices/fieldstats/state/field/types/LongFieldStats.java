@@ -37,12 +37,12 @@ public class LongFieldStats extends FieldStatsImpl<Long> {
     }
 
     @Override
-    protected void updateMin(Long value) {
+    public void updateMin(Long value) {
         minValue.accumulate(value);
     }
 
     @Override
-    protected void updateMax(Long value) {
+    public void updateMax(Long value) {
         maxValue.accumulate(value);
     }
 
