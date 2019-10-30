@@ -17,11 +17,9 @@
 package com.elefana.indices.fieldstats;
 
 import com.elefana.api.RequestExecutor;
+import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.NoSuchApiException;
-import com.elefana.api.indices.GetFieldNamesRequest;
-import com.elefana.api.indices.GetFieldNamesResponse;
-import com.elefana.api.indices.GetFieldStatsRequest;
-import com.elefana.api.indices.GetFieldStatsResponse;
+import com.elefana.api.indices.*;
 import com.elefana.document.BulkIndexOperation;
 import com.elefana.indices.fieldstats.job.CoreFieldStatsJob;
 import com.elefana.indices.fieldstats.job.CoreFieldStatsRemoveIndexJob;
@@ -78,8 +76,10 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
     public void postConstruct() {
         state = createState(environment);
 
-        long indexTtlMinutes = environment.getProperty("elefana.service.fieldStats.cache.ttlMinutes", Integer.class, 10);
-        loadUnloadManager = new LoadUnloadManager(jdbcTemplate, state, indexTtlMinutes);
+        if (nodeSettingsService.isMasterNode()) {
+            long indexTtlMinutes = environment.getProperty("elefana.service.fieldStats.cache.ttlMinutes", Integer.class, 10);
+            loadUnloadManager = new LoadUnloadManager(jdbcTemplate, state, indexTtlMinutes);
+        }
 
         final int workerThreadNumber = environment.getProperty("elefana.service.fieldStats.workerThreads", Integer.class, 2);
         workerExecutorService = Executors.newFixedThreadPool(workerThreadNumber);
@@ -92,18 +92,25 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
     public void preDestroy() {
         requestExecutorService.shutdown();
         workerExecutorService.shutdown();
-        loadUnloadManager.shutdown();
 
         try {
             requestExecutorService.awaitTermination(120, TimeUnit.SECONDS);
             workerExecutorService.awaitTermination(120, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {}
+        } catch (InterruptedException e) {
+        }
 
-        loadUnloadManager.unloadAll();
+        if (nodeSettingsService.isMasterNode()) {
+            loadUnloadManager.shutdown();
+            loadUnloadManager.unloadAll();
+        }
     }
 
     protected State createState(Environment environment) {
         return new StateImpl(environment);
+    }
+
+    protected void ensureIndicesLoaded(String indexPattern) {
+        loadUnloadManager.ensureIndicesLoaded(indexPattern);
     }
 
     @Override
@@ -139,12 +146,12 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
     @Override
     public GetFieldStatsResponse getFieldStats(String indexPattern, List<String> fields, boolean clusterLevel) {
         GetFieldStatsResponse response = new GetFieldStatsResponse();
-        loadUnloadManager.ensureIndicesLoaded(indexPattern);
+        ensureIndicesLoaded(indexPattern);
         List<String> indices = state.compileIndexPattern(indexPattern);
 
         setResponseShardInfo(response);
 
-        if(clusterLevel) {
+        if (clusterLevel) {
             getFieldStatsClusterLevel(response, indices, fields);
         } else {
             getFieldStatsIndicesLevel(response, indices, fields);
@@ -165,10 +172,10 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
     @Override
     public GetFieldNamesResponse getFieldNames(String indexPattern, String typePattern) {
         final GetFieldNamesResponse response = new GetFieldNamesResponse();
-        loadUnloadManager.ensureIndicesLoaded(indexPattern);
+        ensureIndicesLoaded(indexPattern);
         List<String> indices = state.compileIndexPattern(indexPattern);
 
-        for(String index : indices) {
+        for (String index : indices) {
             state.getFieldNames(response.getFieldNames(), index);
         }
         return response;
@@ -189,8 +196,8 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
         }
     }
 
-    private void getFieldStatsIndicesLevel(GetFieldStatsResponse response, List<String> indices, List<String> fields){
-        for(String index : indices) {
+    private void getFieldStatsIndicesLevel(GetFieldStatsResponse response, List<String> indices, List<String> fields) {
+        for (String index : indices) {
             state.stopModificationsOfIndex(index);
             try {
                 response.getIndices().put(index, getFieldStatsMap(Collections.singletonList(index), fields));
@@ -203,15 +210,15 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
     private Map<String, Object> getFieldStatsMap(List<String> indices, List<String> fields) {
         final Map<String, Object> wrappingMap = new HashMap<>();
         final Map<String, Object> fieldsMap = new HashMap<>();
-        for(String field : fields) {
+        for (String field : fields) {
             FieldStats fs = state.getFieldStats(field, indices);
-            if(fs == null) {
+            if (fs == null) {
                 continue;
             }
 
             V2FieldStats fieldStats = new V2FieldStats();
             fieldStats.max_doc = state.getIndex(indices).getMaxDocuments();
-            fieldStats.density = (long)fs.getDensity(state.getIndex(indices));
+            fieldStats.density = (long) fs.getDensity(state.getIndex(indices));
             fieldStats.doc_count = fs.getDocumentCount();
             fieldStats.sum_doc_freq = fs.getSumDocumentFrequency();
             fieldStats.sum_total_term_freq = fs.getSumTotalTermFrequency();
@@ -230,6 +237,11 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
     public void submitDocuments(List<BulkIndexOperation> documents, int from, int size) {
         for (int i = from; i < from + size && i < documents.size(); i++) {
             BulkIndexOperation operation = documents.get(i);
+
+            if (isStatsDisabled(operation.getIndex())) {
+                continue;
+            }
+
             workerExecutorService.submit(new CoreFieldStatsJob(operation.getSource(), state, loadUnloadManager, operation.getIndex()));
         }
     }
@@ -240,12 +252,30 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
     }
 
     @Override
-    public void submitDocument(String document, String index){
+    public void submitDocument(String document, String index) {
+        if (isStatsDisabled(index)) {
+            return;
+        }
         workerExecutorService.submit(new CoreFieldStatsJob(document, state, loadUnloadManager, index));
     }
 
     @Override
     public <T> Future<T> submit(Callable<T> request) {
         return requestExecutorService.submit(request);
+    }
+
+    private boolean isStatsDisabled(String index) {
+        try {
+            final IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndex(index);
+            if(indexTemplate == null) {
+                return false;
+            }
+            if(indexTemplate.getStorage() == null) {
+                return false;
+            }
+            return indexTemplate.getStorage().isFieldStatsDisabled();
+        } catch (ElefanaException e) {
+            return false;
+        }
     }
 }

@@ -28,4 +28,14 @@ public class TestUtils {
 				.then()
 				.statusCode(200);
 	}
+
+	public static void disableMappingForIndex(String index) {
+		given()
+				.request()
+				.body("{\"template\": \"" + index + "\",\"storage\": {\"mapping_disabled\": true}}")
+				.when()
+				.put("/_template/" + index)
+				.then()
+				.statusCode(200);
+	}
 }

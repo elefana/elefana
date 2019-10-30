@@ -93,10 +93,10 @@ public class StateImpl implements State{
         resumeModificationsOfIndex(name);
     }
 
-    private void deleteLockedIndex(String name) {
-        getIndex(name).delete();
+    private void deleteLockedIndex(String indexName) {
+        getIndex(indexName).delete();
         fieldMap.forEach((fieldName, field) -> {
-            field.deleteIndexFieldStats(name);
+            field.deleteIndexFieldStats(indexName);
         });
     }
 

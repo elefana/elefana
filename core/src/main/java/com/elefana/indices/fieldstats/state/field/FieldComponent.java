@@ -96,6 +96,11 @@ public class FieldComponent {
         public void mergeAndModifySelf(FieldStats<T> other) {
 
         }
+
+        @Override
+        public void delete() {
+
+        }
     }
 
     public FieldComponent(String minValue, String maxValue, long docCount, long sumDocFreq, long sumTotalTermFreq, Class type) {

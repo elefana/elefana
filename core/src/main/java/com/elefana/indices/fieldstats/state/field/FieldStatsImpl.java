@@ -120,6 +120,10 @@ public abstract class FieldStatsImpl<T> implements FieldStats<T> {
         this.updateMin(other.getMinimumValue());
     }
 
+    @Override
+    public void delete() {
+    }
+
     private long mergePossiblyUnsupportedValues(long a, long b) {
         if (a == -1 || b == -1)
             return -1;

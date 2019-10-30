@@ -23,6 +23,7 @@ import com.elefana.indices.fieldstats.state.StateImpl;
 import com.elefana.indices.fieldstats.state.field.ElefanaWrongFieldStatsTypeException;
 import com.elefana.indices.fieldstats.state.field.FieldComponent;
 import com.elefana.indices.fieldstats.state.index.IndexComponent;
+import com.elefana.node.NodeSettingsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -39,20 +40,21 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 public class LoadUnloadManager {
-    private long INDEX_TTL;
     private static final Logger LOGGER = LoggerFactory.getLogger(IndexFieldMappingService.class);
 
-    private JdbcTemplate jdbcTemplate;
-    private State state;
+    private final JdbcTemplate jdbcTemplate;
+    private final State state;
     private final Lock loadUnloadLock = new ReentrantLock();
     private final Set<String> missingIndices = ConcurrentHashMap.newKeySet();
+    private final long indexTtl;
+
     private Map<String, Long> lastIndexUse = new ConcurrentHashMap<>();
     private ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 
     public LoadUnloadManager(JdbcTemplate jdbcTemplate, State state, long ttlMinutes) {
         this.jdbcTemplate = jdbcTemplate;
         this.state = state;
-        this.INDEX_TTL = ttlMinutes * 60 * 1000;
+        this.indexTtl = ttlMinutes * 60 * 1000;
 
         missingIndices.addAll(jdbcTemplate.queryForList("SELECT _indexname FROM elefana_field_stats_index", String.class));
         scheduledExecutorService.scheduleAtFixedRate(this::unloadUnusedIndices, 0L, Math.max(ttlMinutes / 2, 1), TimeUnit.MINUTES);
@@ -61,7 +63,7 @@ public class LoadUnloadManager {
     private void unloadUnusedIndices() {
         long now = System.currentTimeMillis();
         lastIndexUse.forEach((index, timestamp) -> {
-            if(now - timestamp > INDEX_TTL) {
+            if(now - timestamp > indexTtl) {
                 loadUnloadLock.lock();
                 try {
                     if (!missingIndices.contains(index)) {

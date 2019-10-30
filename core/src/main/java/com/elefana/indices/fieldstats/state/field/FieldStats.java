@@ -48,4 +48,6 @@ public interface FieldStats<T> {
     void updateFieldIsInDocument();
 
     void mergeAndModifySelf(FieldStats<T> other);
+
+    void delete();
 }
