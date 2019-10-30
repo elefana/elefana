@@ -27,10 +27,7 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 
 @Service
 public class PsqlNodesService implements NodesService, RequestExecutor {
@@ -56,6 +53,10 @@ public class PsqlNodesService implements NodesService, RequestExecutor {
 	@PreDestroy
 	public void preDestroy() {
 		executorService.shutdown();
+
+		try {
+			executorService.awaitTermination(120, TimeUnit.SECONDS);
+		} catch (InterruptedException e) {}
 	}
 
 	public NodesStatsResponse getAllNodesStats() {

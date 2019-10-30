@@ -115,6 +115,10 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 	@PreDestroy
 	public void preDestroy() {
 		searchCountExecutorService.shutdown();
+
+		try {
+			searchCountExecutorService.awaitTermination(120, TimeUnit.SECONDS);
+		} catch (InterruptedException e) {}
 	}
 
 	public MultiSearchResponse multiSearch(String httpRequest) throws ElefanaException {

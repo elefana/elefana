@@ -133,6 +133,11 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 	public void preDestroy() {
 		bulkRequestExecutorService.shutdown();
 		bulkProcessingExecutorService.shutdown();
+
+		try {
+			bulkRequestExecutorService.awaitTermination(120, TimeUnit.SECONDS);
+			bulkProcessingExecutorService.awaitTermination(120, TimeUnit.SECONDS);
+		} catch (InterruptedException e) {}
 	}
 
 	@Override

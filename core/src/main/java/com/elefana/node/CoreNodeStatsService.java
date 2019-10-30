@@ -105,6 +105,10 @@ public class CoreNodeStatsService implements NodeStatsService {
 	@PreDestroy
 	public void preDestroy() {
 		scheduledExecutorService.shutdown();
+
+		try {
+			scheduledExecutorService.awaitTermination(120, TimeUnit.SECONDS);
+		} catch (InterruptedException e) {}
 	}
 
 	public NodeStats getNodeStats(String... infoFields) {

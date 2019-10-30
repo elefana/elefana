@@ -29,14 +29,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 
 @Service
 @DependsOn("nodeSettingsService")
@@ -73,6 +71,15 @@ public class PsqlClusterService implements ClusterService, RequestExecutor {
 		clusterInfoResponse.setClusterName(nodeSettingsService.getClusterName());
 		clusterInfoResponse.setClusterUuid(nodeSettingsService.getClusterId());
 		clusterInfoResponse.setTagline(TAGLINE);
+	}
+
+	@PreDestroy
+	public void preDestroy() {
+		executorService.shutdown();
+
+		try {
+			executorService.awaitTermination(120, TimeUnit.SECONDS);
+		} catch (InterruptedException e) {}
 	}
 
 	public String getNodeName() {

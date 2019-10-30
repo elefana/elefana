@@ -69,6 +69,10 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 	@PreDestroy
 	public void preDestroy() {
 		executorService.shutdown();
+
+		try {
+			executorService.awaitTermination(120, TimeUnit.SECONDS);
+		} catch (InterruptedException e) {}
 	}
 	
 	@Override

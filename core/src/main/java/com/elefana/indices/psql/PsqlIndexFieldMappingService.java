@@ -122,6 +122,10 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 			mappingScheduledTask.cancel(false);
 		}
 		executorService.shutdown();
+
+		try {
+			executorService.awaitTermination(120, TimeUnit.SECONDS);
+		} catch (InterruptedException e) {}
 	}
 
 	public List<String> getFieldNamesByMapping(String index, String type) {

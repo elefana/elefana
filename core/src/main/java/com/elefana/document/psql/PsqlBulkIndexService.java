@@ -49,6 +49,7 @@ import java.util.LinkedList;
 import java.util.Queue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
@@ -99,6 +100,10 @@ public class PsqlBulkIndexService implements Runnable {
 	public void preDestroy() {
 		running.set(false);
 		executorService.shutdown();
+
+		try {
+			executorService.awaitTermination(120, TimeUnit.SECONDS);
+		} catch (InterruptedException e) {}
 
 		additionalTeardown();
 	}

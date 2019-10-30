@@ -58,6 +58,10 @@ public class TableGarbageCollector implements Runnable {
 	@PreDestroy
 	public void preDestroy() {
 		scheduledExecutorService.shutdown();
+
+		try {
+			scheduledExecutorService.awaitTermination(120, TimeUnit.SECONDS);
+		} catch (InterruptedException e) {}
 	}
 	
 	public void queueTemporaryTablesForDeletion(List<String> tablesNames) {

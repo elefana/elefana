@@ -95,8 +95,8 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
         loadUnloadManager.shutdown();
 
         try {
-            requestExecutorService.awaitTermination(30, TimeUnit.SECONDS);
-            workerExecutorService.awaitTermination(30, TimeUnit.SECONDS);
+            requestExecutorService.awaitTermination(120, TimeUnit.SECONDS);
+            workerExecutorService.awaitTermination(120, TimeUnit.SECONDS);
         } catch (InterruptedException e) {}
 
         loadUnloadManager.unloadAll();

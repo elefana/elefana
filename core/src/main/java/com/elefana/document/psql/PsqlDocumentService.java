@@ -49,10 +49,7 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 
 @Service
 public class PsqlDocumentService implements DocumentService, RequestExecutor {
@@ -90,6 +87,10 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 	@PreDestroy
 	public void preDestroy() {
 		executorService.shutdown();
+
+		try {
+			executorService.awaitTermination(120, TimeUnit.SECONDS);
+		} catch (InterruptedException e) {}
 	}
 
 	@Override
