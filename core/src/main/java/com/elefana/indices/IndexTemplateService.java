@@ -15,6 +15,7 @@
  ******************************************************************************/
 package com.elefana.indices;
 
+import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.indices.*;
 
 public interface IndexTemplateService {
@@ -27,5 +28,5 @@ public interface IndexTemplateService {
 	
 	public PutIndexTemplateRequest preparePutIndexTemplate(String templateId, String requestBody);
 
-	public IndexTemplate getIndexTemplateForIndex(String index);
+	public IndexTemplate getIndexTemplateForIndex(String index)  throws ElefanaException;
 }
