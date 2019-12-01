@@ -16,6 +16,7 @@
 package com.elefana.util;
 
 import com.elefana.api.exception.ElefanaException;
+import com.fasterxml.jackson.core.io.CharTypes;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.netty.buffer.ByteBuf;
@@ -354,13 +355,23 @@ public interface IndexUtils {
 				stringBuilder.append(':');
 				stringBuilder.append(field.getValue().booleanValue());
 				appendedField = true;
+			} else if(field.getValue().isTextual()) {
+				stringBuilder.append('\"');
+				stringBuilder.append(prefix);
+				stringBuilder.append(field.getKey());
+				stringBuilder.append('\"');
+				stringBuilder.append(':');
+				stringBuilder.append('\"');
+				CharTypes.appendQuoted(stringBuilder, field.getValue().textValue());
+				stringBuilder.append('\"');
+				appendedField = true;
 			} else {
 				stringBuilder.append('\"');
 				stringBuilder.append(prefix);
 				stringBuilder.append(field.getKey());
 				stringBuilder.append('\"');
 				stringBuilder.append(':');
-				stringBuilder.append(field.getValue().toString());
+				stringBuilder.append(field.getValue().asText());
 				appendedField = true;
 			}
 		}
@@ -438,6 +449,17 @@ public interface IndexUtils {
 				stringBuilder.append('\"');
 				stringBuilder.append(':');
 				stringBuilder.append(nextNode.booleanValue());
+				appendedField = true;
+			} else if(nextNode.isTextual()) {
+				stringBuilder.append('\"');
+				stringBuilder.append(prefix);
+				stringBuilder.append('_');
+				stringBuilder.append(i);
+				stringBuilder.append('\"');
+				stringBuilder.append(':');
+				stringBuilder.append('\"');
+				CharTypes.appendQuoted(stringBuilder, nextNode.textValue());
+				stringBuilder.append('\"');
 				appendedField = true;
 			} else {
 				stringBuilder.append('\"');
