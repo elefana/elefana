@@ -301,10 +301,11 @@ public interface IndexUtils {
 			if(field.getValue().isArray()) {
 				if (field.getValue().size() > 0) {
 					final String key = field.getKey();
-					final StringBuilder newPrefix = new StringBuilder(prefix.length() + key.length() + 1);
+					final PooledStringBuilder newPrefix = PooledStringBuilder.allocate();
 					newPrefix.append(prefix);
 					newPrefix.append(key);
 					appendedField = flattenJson(newPrefix.toString(), field.getValue().elements(), stringBuilder);
+					newPrefix.release();
 				} else {
 					stringBuilder.append('\"');
 					stringBuilder.append(prefix);
@@ -317,11 +318,12 @@ public interface IndexUtils {
 			} else if(field.getValue().isObject()) {
 				if(field.getValue().size() > 0) {
 					final String key = field.getKey();
-					final StringBuilder newPrefix = new StringBuilder(prefix.length() + key.length() + 2);
+					final PooledStringBuilder newPrefix = PooledStringBuilder.allocate();
 					newPrefix.append(prefix);
 					newPrefix.append(key);
 					newPrefix.append('_');
 					appendedField = flattenJson(newPrefix.toString(), field.getValue(), stringBuilder);
+					newPrefix.release();
 				} else {
 					stringBuilder.append('\"');
 					stringBuilder.append(prefix);
@@ -390,11 +392,12 @@ public interface IndexUtils {
 
 			if(nextNode.isArray()) {
 				if (nextNode.size() > 0) {
-					final StringBuilder newPrefix = new StringBuilder(prefix.length() + 3);
+					final PooledStringBuilder newPrefix = PooledStringBuilder.allocate();
 					newPrefix.append(prefix);
 					newPrefix.append('_');
 					newPrefix.append(i);
 					appendedField = flattenJson(newPrefix.toString(), nextNode.elements(), stringBuilder);
+					newPrefix.release();
 				} else {
 					stringBuilder.append('\"');
 					stringBuilder.append(prefix);
@@ -407,12 +410,13 @@ public interface IndexUtils {
 				}
 			} else if(nextNode.isObject()) {
 				if(nextNode.size() > 0) {
-					final StringBuilder newPrefix = new StringBuilder(prefix.length() + 4);
+					final PooledStringBuilder newPrefix = PooledStringBuilder.allocate();
 					newPrefix.append(prefix);
 					newPrefix.append('_');
 					newPrefix.append(i);
 					newPrefix.append('_');
 					appendedField = flattenJson(newPrefix.toString(), nextNode, stringBuilder);
+					newPrefix.release();
 				} else {
 					stringBuilder.append('\"');
 					stringBuilder.append(prefix);

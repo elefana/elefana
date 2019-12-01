@@ -20,7 +20,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Stream;
 
 public class NoAllocStringReplace {
-	private static final CumulativeAverage AVG_ARRAY_SIZE = new CumulativeAverage(16);
+	public static final CumulativeAverage AVG_ARRAY_SIZE = new CumulativeAverage(16);
 	private static final ConcurrentLinkedQueue<NoAllocStringReplace> POOL = new ConcurrentLinkedQueue<NoAllocStringReplace>();
 
 	public static NoAllocStringReplace allocate(String value) {
