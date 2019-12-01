@@ -21,13 +21,13 @@ import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.NoSuchApiException;
 import com.elefana.api.indices.*;
 import com.elefana.document.BulkIndexOperation;
+import com.elefana.indices.IndexTemplateService;
 import com.elefana.indices.fieldstats.job.CoreFieldStatsJob;
 import com.elefana.indices.fieldstats.job.CoreFieldStatsRemoveIndexJob;
 import com.elefana.indices.fieldstats.response.V2FieldStats;
 import com.elefana.indices.fieldstats.state.State;
 import com.elefana.indices.fieldstats.state.StateImpl;
 import com.elefana.indices.fieldstats.state.field.FieldStats;
-import com.elefana.indices.psql.PsqlIndexTemplateService;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
 import com.elefana.util.IndexUtils;
@@ -60,7 +60,7 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
     @Autowired
     protected VersionInfoService versionInfoService;
     @Autowired
-    protected PsqlIndexTemplateService indexTemplateService;
+    protected IndexTemplateService indexTemplateService;
     @Autowired
     protected TaskScheduler taskScheduler;
     @Autowired
@@ -274,7 +274,7 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
                 return false;
             }
             return indexTemplate.getStorage().isFieldStatsDisabled();
-        } catch (ElefanaException e) {
+        } catch (Exception e) {
             return false;
         }
     }

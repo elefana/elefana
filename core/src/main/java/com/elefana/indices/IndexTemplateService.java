@@ -15,10 +15,7 @@
  ******************************************************************************/
 package com.elefana.indices;
 
-import com.elefana.api.indices.GetIndexTemplateForIndexRequest;
-import com.elefana.api.indices.GetIndexTemplateRequest;
-import com.elefana.api.indices.ListIndexTemplatesRequest;
-import com.elefana.api.indices.PutIndexTemplateRequest;
+import com.elefana.api.indices.*;
 
 public interface IndexTemplateService {
 	
@@ -29,4 +26,6 @@ public interface IndexTemplateService {
 	public GetIndexTemplateRequest prepareGetIndexTemplate(String templateId, boolean fetchSource);
 	
 	public PutIndexTemplateRequest preparePutIndexTemplate(String templateId, String requestBody);
+
+	public IndexTemplate getIndexTemplateForIndex(String index);
 }
