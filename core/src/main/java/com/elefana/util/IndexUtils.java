@@ -16,6 +16,9 @@
 package com.elefana.util;
 
 import com.elefana.api.exception.ElefanaException;
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.core.io.CharTypes;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -33,6 +36,7 @@ import java.util.Map;
 public interface IndexUtils {
 	public static final SecureRandom SECURE_RANDOM = new SecureRandom();
 	public static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+	public static final JsonFactory JSON_FACTORY = new JsonFactory();
 
 	public static final String DATA_TABLE = "elefana_data";
 	public static final String PARTITION_TRACKING_TABLE = "elefana_partition_tracking";
@@ -278,127 +282,127 @@ public interface IndexUtils {
 
 		final StringBuilder result = POOLED_STRING_BUILDER.get();
 
-		final JsonNode root = OBJECT_MAPPER.readTree(str.dispose());
+		final JsonParser jsonParser = JSON_FACTORY.createParser(str.dispose());
+		jsonParser.nextToken();
+
 		result.append('{');
-		flattenJson("", root, result);
+		flattenJsonObject("", jsonParser, result);
 		result.append('}');
+
+		jsonParser.close();
 
 		FLATTEN_JSON_CAPACITY.add(result.length());
 		return result.toString();
 	}
 
-	public static boolean flattenJson(String prefix, JsonNode obj, StringBuilder stringBuilder) {
-		final Iterator<Map.Entry<String, JsonNode>> iterator = obj.fields();
-
+	public static boolean flattenJsonObject(String prefix, final JsonParser jsonParser, StringBuilder stringBuilder) throws IOException {
 		boolean appendedField = false;
-		while(iterator.hasNext()) {
-			final Map.Entry<String, JsonNode> field = iterator.next();
-
+		while(jsonParser.nextToken() != JsonToken.END_OBJECT) {
 			if (appendedField) {
 				stringBuilder.append(',');
 			}
 
-			if(field.getValue().isArray()) {
-				if (field.getValue().size() > 0) {
-					final String key = field.getKey();
-					final PooledStringBuilder newPrefix = PooledStringBuilder.allocate();
-					newPrefix.append(prefix);
-					newPrefix.append(key);
-					appendedField = flattenJson(newPrefix.toString(), field.getValue().elements(), stringBuilder);
-					newPrefix.release();
-				} else {
+			final String fieldName = jsonParser.getCurrentName();
+			jsonParser.nextToken();
+			if(jsonParser.currentToken() == JsonToken.START_OBJECT) {
+				final PooledStringBuilder newPrefix = PooledStringBuilder.allocate();
+				newPrefix.append(prefix);
+				newPrefix.append(fieldName);
+				newPrefix.append('_');
+				appendedField = flattenJsonObject(newPrefix.toString(), jsonParser, stringBuilder);
+				newPrefix.release();
+
+				if(!appendedField) {
 					stringBuilder.append('\"');
 					stringBuilder.append(prefix);
-					stringBuilder.append(field.getKey());
+					stringBuilder.append(fieldName);
 					stringBuilder.append('\"');
 					stringBuilder.append(':');
 					stringBuilder.append("null");
 					appendedField = true;
 				}
-			} else if(field.getValue().isObject()) {
-				if(field.getValue().size() > 0) {
-					final String key = field.getKey();
-					final PooledStringBuilder newPrefix = PooledStringBuilder.allocate();
-					newPrefix.append(prefix);
-					newPrefix.append(key);
-					newPrefix.append('_');
-					appendedField = flattenJson(newPrefix.toString(), field.getValue(), stringBuilder);
-					newPrefix.release();
-				} else {
+			} else if(jsonParser.currentToken() == JsonToken.START_ARRAY) {
+				final PooledStringBuilder newPrefix = PooledStringBuilder.allocate();
+				newPrefix.append(prefix);
+				newPrefix.append(fieldName);
+				appendedField = flattenJsonArray(newPrefix.toString(), jsonParser, stringBuilder);
+				newPrefix.release();
+
+				if(!appendedField) {
 					stringBuilder.append('\"');
 					stringBuilder.append(prefix);
-					stringBuilder.append(field.getKey());
+					stringBuilder.append(fieldName);
 					stringBuilder.append('\"');
 					stringBuilder.append(':');
 					stringBuilder.append("null");
 					appendedField = true;
 				}
-			} else if(field.getValue().isNull()) {
+			} else if(jsonParser.currentToken() == JsonToken.VALUE_NULL) {
 				stringBuilder.append('\"');
 				stringBuilder.append(prefix);
-				stringBuilder.append(field.getKey());
-				stringBuilder.append('\"');
-				stringBuilder.append(':');
-				stringBuilder.append("null");
+				stringBuilder.append(fieldName);
+				stringBuilder.append("\":null");
 				appendedField = true;
-			} else if(field.getValue().isNumber()) {
+			} else if(jsonParser.currentToken() == JsonToken.VALUE_TRUE) {
 				stringBuilder.append('\"');
 				stringBuilder.append(prefix);
-				stringBuilder.append(field.getKey());
-				stringBuilder.append('\"');
-				stringBuilder.append(':');
-				stringBuilder.append(field.getValue().numberValue());
+				stringBuilder.append(fieldName);
+				stringBuilder.append("\":true");
 				appendedField = true;
-			} else if(field.getValue().isBoolean()) {
+			} else if(jsonParser.currentToken() == JsonToken.VALUE_FALSE) {
 				stringBuilder.append('\"');
 				stringBuilder.append(prefix);
-				stringBuilder.append(field.getKey());
-				stringBuilder.append('\"');
-				stringBuilder.append(':');
-				stringBuilder.append(field.getValue().booleanValue());
+				stringBuilder.append(fieldName);
+				stringBuilder.append("\":false");
 				appendedField = true;
-			} else if(field.getValue().isTextual()) {
+			} else if(jsonParser.currentToken() == JsonToken.VALUE_NUMBER_INT) {
 				stringBuilder.append('\"');
 				stringBuilder.append(prefix);
-				stringBuilder.append(field.getKey());
+				stringBuilder.append(fieldName);
 				stringBuilder.append('\"');
 				stringBuilder.append(':');
-				stringBuilder.append('\"');
-				CharTypes.appendQuoted(stringBuilder, field.getValue().textValue());
-				stringBuilder.append('\"');
+				stringBuilder.append(jsonParser.getValueAsInt());
 				appendedField = true;
-			} else {
+			} else if(jsonParser.currentToken() == JsonToken.VALUE_NUMBER_FLOAT) {
 				stringBuilder.append('\"');
 				stringBuilder.append(prefix);
-				stringBuilder.append(field.getKey());
+				stringBuilder.append(fieldName);
 				stringBuilder.append('\"');
 				stringBuilder.append(':');
-				stringBuilder.append(field.getValue().asText());
+				stringBuilder.append(jsonParser.getValueAsDouble());
+				appendedField = true;
+			} else if(jsonParser.currentToken() == JsonToken.VALUE_STRING) {
+				stringBuilder.append('\"');
+				stringBuilder.append(prefix);
+				stringBuilder.append(fieldName);
+				stringBuilder.append('\"');
+				stringBuilder.append(':');
+				stringBuilder.append('\"');
+				CharTypes.appendQuoted(stringBuilder, jsonParser.getValueAsString());
+				stringBuilder.append('\"');
 				appendedField = true;
 			}
 		}
 		return appendedField;
 	}
 
-	public static boolean flattenJson(String prefix, Iterator<JsonNode> list, StringBuilder stringBuilder) {
+	public static boolean flattenJsonArray(String prefix, final JsonParser jsonParser, StringBuilder stringBuilder) throws IOException {
 		boolean appendedField = false;
 		int i = 0;
-		while(list.hasNext()) {
-			final JsonNode nextNode = list.next();
-
+		while(jsonParser.nextToken() != JsonToken.END_ARRAY) {
 			if(appendedField) {
 				stringBuilder.append(',');
 			}
 
-			if(nextNode.isArray()) {
-				if (nextNode.size() > 0) {
-					final PooledStringBuilder newPrefix = PooledStringBuilder.allocate();
-					newPrefix.append(prefix);
-					newPrefix.append('_');
-					newPrefix.append(i);
-					appendedField = flattenJson(newPrefix.toString(), nextNode.elements(), stringBuilder);
-					newPrefix.release();
-				} else {
+			if(jsonParser.currentToken() == JsonToken.START_ARRAY) {
+				final PooledStringBuilder newPrefix = PooledStringBuilder.allocate();
+				newPrefix.append(prefix);
+				newPrefix.append('_');
+				newPrefix.append(i);
+				appendedField = flattenJsonArray(newPrefix.toString(), jsonParser, stringBuilder);
+				newPrefix.release();
+
+				if(!appendedField) {
 					stringBuilder.append('\"');
 					stringBuilder.append(prefix);
 					stringBuilder.append('_');
@@ -408,16 +412,16 @@ public interface IndexUtils {
 					stringBuilder.append("null");
 					appendedField = true;
 				}
-			} else if(nextNode.isObject()) {
-				if(nextNode.size() > 0) {
-					final PooledStringBuilder newPrefix = PooledStringBuilder.allocate();
-					newPrefix.append(prefix);
-					newPrefix.append('_');
-					newPrefix.append(i);
-					newPrefix.append('_');
-					appendedField = flattenJson(newPrefix.toString(), nextNode, stringBuilder);
-					newPrefix.release();
-				} else {
+			} else if(jsonParser.currentToken() == JsonToken.START_OBJECT) {
+				final PooledStringBuilder newPrefix = PooledStringBuilder.allocate();
+				newPrefix.append(prefix);
+				newPrefix.append('_');
+				newPrefix.append(i);
+				newPrefix.append('_');
+				appendedField = flattenJsonObject(newPrefix.toString(), jsonParser, stringBuilder);
+				newPrefix.release();
+
+				if(!appendedField) {
 					stringBuilder.append('\"');
 					stringBuilder.append(prefix);
 					stringBuilder.append('_');
@@ -427,52 +431,55 @@ public interface IndexUtils {
 					stringBuilder.append("null");
 					appendedField = true;
 				}
-			} else if(nextNode.isNull()) {
+			} else if(jsonParser.currentToken() == JsonToken.VALUE_NULL) {
 				stringBuilder.append('\"');
 				stringBuilder.append(prefix);
 				stringBuilder.append('_');
 				stringBuilder.append(i);
-				stringBuilder.append('\"');
-				stringBuilder.append(':');
-				stringBuilder.append("null");
+				stringBuilder.append("\":null");
 				appendedField = true;
-			} else if(nextNode.isNumber()) {
+			} else if(jsonParser.currentToken() == JsonToken.VALUE_NUMBER_INT) {
 				stringBuilder.append('\"');
 				stringBuilder.append(prefix);
 				stringBuilder.append('_');
 				stringBuilder.append(i);
 				stringBuilder.append('\"');
 				stringBuilder.append(':');
-				stringBuilder.append(nextNode.numberValue());
+				stringBuilder.append(jsonParser.getValueAsInt());
 				appendedField = true;
-			} else if(nextNode.isBoolean()) {
+			} else if(jsonParser.currentToken() == JsonToken.VALUE_NUMBER_FLOAT) {
 				stringBuilder.append('\"');
 				stringBuilder.append(prefix);
 				stringBuilder.append('_');
 				stringBuilder.append(i);
 				stringBuilder.append('\"');
 				stringBuilder.append(':');
-				stringBuilder.append(nextNode.booleanValue());
+				stringBuilder.append(jsonParser.getValueAsDouble());
 				appendedField = true;
-			} else if(nextNode.isTextual()) {
+			} else if(jsonParser.currentToken() == JsonToken.VALUE_TRUE) {
 				stringBuilder.append('\"');
 				stringBuilder.append(prefix);
 				stringBuilder.append('_');
 				stringBuilder.append(i);
-				stringBuilder.append('\"');
-				stringBuilder.append(':');
-				stringBuilder.append('\"');
-				CharTypes.appendQuoted(stringBuilder, nextNode.textValue());
-				stringBuilder.append('\"');
+				stringBuilder.append("\":true");
 				appendedField = true;
-			} else {
+			} else if(jsonParser.currentToken() == JsonToken.VALUE_FALSE) {
+				stringBuilder.append('\"');
+				stringBuilder.append(prefix);
+				stringBuilder.append('_');
+				stringBuilder.append(i);
+				stringBuilder.append("\":false");
+				appendedField = true;
+			} else if(jsonParser.currentToken() == JsonToken.VALUE_STRING) {
 				stringBuilder.append('\"');
 				stringBuilder.append(prefix);
 				stringBuilder.append('_');
 				stringBuilder.append(i);
 				stringBuilder.append('\"');
 				stringBuilder.append(':');
-				stringBuilder.append(nextNode.toString());
+				stringBuilder.append('\"');
+				CharTypes.appendQuoted(stringBuilder, jsonParser.getValueAsString());
+				stringBuilder.append('\"');
 				appendedField = true;
 			}
 			i++;
