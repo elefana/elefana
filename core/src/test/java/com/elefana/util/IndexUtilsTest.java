@@ -203,12 +203,13 @@ public class IndexUtilsTest {
 
 	@Test
 	public void testFlattenJsonString() throws IOException {
-		final String json = "{\"nestedJson\": \"{\\\"nestedKey\\\":\\\"nestedValue\\\"}\", \"int\": 123, \"bool\": true, \"string\": \"str\", \"array\":[100, 101, 102], \"arrayObj\":[{\"int\": 124}, {\"int\": 125}, {\"double\": 1.01234}], \"object\":{\"a\":1,\"b\":2}}";
+		final String json = "{\"nestedJson\": \"{\\\"nestedKey\\\":\\\"nestedValue\\\"}\", \"int\": 123, \"bool\": true, \"long\": 1234567890123, \"string\": \"str\", \"array\":[100, 101, 102], \"arrayObj\":[{\"int\": 124}, {\"int\": 125}, {\"double\": 1.01234}], \"object\":{\"a\":1,\"b\":2}}";
 		final StringBuilder expectedResult = new StringBuilder();
 		expectedResult.append('{');
 		expectedResult.append("\"nestedJson\":\"{\\\\\\\"nestedKey\\\\\\\":\\\\\\\"nestedValue\\\\\\\"}\",");
 		expectedResult.append("\"int\":123,");
 		expectedResult.append("\"bool\":true,");
+		expectedResult.append("\"long\":1234567890123,");
 		expectedResult.append("\"string\":\"str\",");
 		expectedResult.append("\"array_0\":100,");
 		expectedResult.append("\"array_1\":101,");
