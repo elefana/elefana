@@ -48,7 +48,7 @@ subprojects {
 		esQueryStringVersion = '1.0.3'
 		guavaVersion = '28.0-jre'
 		hikariVersion = '3.3.1'
-		jacksonVersion = '2.9.8'
+		jacksonVersion = '2.9.10'
 		jodaVersion = '2.9.9'
 		jsoniterVersion = '0.9.21'
 		metricsVersion = '4.0.3'
