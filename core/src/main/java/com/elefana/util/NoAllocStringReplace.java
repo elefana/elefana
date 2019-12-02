@@ -15,16 +15,24 @@
  ******************************************************************************/
 package com.elefana.util;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Stream;
 
 public class NoAllocStringReplace {
-	public static final CumulativeAverage AVG_ARRAY_SIZE = new CumulativeAverage(16);
-	private static final ConcurrentLinkedQueue<NoAllocStringReplace> POOL = new ConcurrentLinkedQueue<NoAllocStringReplace>();
+	public static final CumulativeAverage AVG_ARRAY_SIZE = new CumulativeAverage(256);
+
+	private static final Lock LOCK = new ReentrantLock();
+	private static final List<NoAllocStringReplace> POOL = new ArrayList<NoAllocStringReplace>();
 
 	public static NoAllocStringReplace allocate(String value) {
-		NoAllocStringReplace result = POOL.poll();
+		LOCK.lock();
+		NoAllocStringReplace result = POOL.isEmpty() ? null : POOL.remove(0);
+		LOCK.unlock();
 		if(result == null) {
 			result = new NoAllocStringReplace();
 		}
@@ -151,17 +159,19 @@ public class NoAllocStringReplace {
 		if(length > 0) {
 			AVG_ARRAY_SIZE.add(str.length / length > 2 ? length : str.length);
 		}
-		POOL.offer(this);
+
+		LOCK.lock();
+		POOL.add(this);
+		LOCK.unlock();
 	}
 
 	public String disposeWithResult() {
 		if(length <= 0) {
-			POOL.offer(this);
+			dispose();
 			return "";
 		} else {
-			AVG_ARRAY_SIZE.add(str.length / length > 2 ? length : str.length);
 			final String result = new String(str, 0, length);
-			POOL.offer(this);
+			dispose();
 			return result;
 		}
 	}
