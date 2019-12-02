@@ -36,7 +36,12 @@ import java.util.Map;
 public interface IndexUtils {
 	public static final SecureRandom SECURE_RANDOM = new SecureRandom();
 	public static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-	public static final JsonFactory JSON_FACTORY = new JsonFactory();
+	public static final JsonFactory JSON_FACTORY = new JsonFactory() {
+		{
+			enable(JsonParser.Feature.ALLOW_SINGLE_QUOTES);
+			enable(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES);
+		}
+	};
 
 	public static final String DATA_TABLE = "elefana_data";
 	public static final String PARTITION_TRACKING_TABLE = "elefana_partition_tracking";
@@ -107,178 +112,11 @@ public interface IndexUtils {
 		return true;
 	}
 
-	public static final String [] ESCAPE_SEARCH = new String [] {
-			"\\\"",
-			"\n \"",
-			"\n  \"",
-			"\n   \"",
-			"\n    \"",
-			"\n",
-			"\r",
-			"\t",
-			"\f",
-			"\b",
-			"\u0000"
-	};
-	public static final String [] ESCAPE_REPLACE = new String [] {
-			"\\\\\\\"",
-			" \"",
-			" \"",
-			" \"",
-			" \"",
-			"\\\\n",
-			"\\\\r",
-			"\\\\t",
-			"\\\\f",
-			"\\\\b",
-			""
-	};
-	public static final String [] ESCAPE_PRE_ESCAPE = new String [] {
-			"\\\\\\\"",
-			"\\\\n",
-			"\\\\r",
-			"\\\\t",
-			"\\\\f",
-			"\\\\b"
-	};
-	
-	/**
-	 * If JSON string contains \" we need to escape it as \\" for PSQL to handle correctly
-	 * @param json The original JSON string
-	 * @return The escaped JSON string
-	 */
-	public static String psqlEscapeString(String json) {
-		if(NoAllocStringReplace.contains(json, ESCAPE_PRE_ESCAPE)) {
-			return json;
-		}
-		final NoAllocStringReplace str = NoAllocStringReplace.allocate(json);
-		str.replaceAndEscapeUnicode(ESCAPE_SEARCH, ESCAPE_REPLACE);
-		return str.dispose();
-
-//		if(json.contains("\\\\\\")) {
-//			return json;
-//		}
-//		json = json.replace("\u0000", "");
-//		json = json.replace("\\\"", "\\\\\\\"");
-//		final StringBuilder result = new StringBuilder(json);
-//
-//		int replaceOffset = 0;
-//		for(int i = 0; i < json.length(); i++) {
-//			final char c0 = json.charAt(i);
-//			switch(json.charAt(i)) {
-//			default:
-//				break;
-//			case 0x00:
-//				continue;
-//			case '\\':
-//				switch(json.charAt(i + 1)) {
-//				case '\\':
-//					i++;
-//					break;
-//				case 'u':
-//					boolean allDigits = true;
-//					if(i + 5 >= json.length()) {
-//						continue;
-//					}
-//					for(int j = i + 2; j <= i + 5 && j < json.length(); j++) {
-//						if(!Character.isDigit(json.charAt(j))) {
-//							allDigits = false;
-//							break;
-//						}
-//					}
-//					if(allDigits) {
-//						//Unicode sequence
-//						result.insert(i + replaceOffset, '\\');
-//						replaceOffset ++;
-//					}
-//					break;
-//				default:
-//					continue;
-//				}
-//				break;
-//			}
-//		}
-//		return result.toString();
-	}
-	
-	public static String psqlUnescapeString(String json) {
-		for(int i = 0; i < json.length(); i++) {
-			if(json.charAt(i) != '\\') {
-				continue;
-			}
-			switch(json.charAt(i + 1)) {
-			case '\\':
-				if(i + 2 >= json.length()) {
-					continue;
-				}
-				switch(json.charAt(i + 2)) {
-				case '\\':
-					if(i + 3 >= json.length()) {
-						continue;
-					}
-					switch(json.charAt(i + 3)) {
-					case '\"':
-						json = json.substring(0, i) + json.substring(i + 2);
-						continue;
-					}
-					break;
-				case 0x85:
-				case 'n':
-					if(i > 0) {
-						json = json.substring(0, i) + '\n' + json.substring(i + 3);
-					} else {
-						json = '\n' + json.substring(i + 3);
-					}
-					break;
-				case 'r':
-					if(i > 0) {
-						json = json.substring(0, i) + '\r' + json.substring(i + 3);
-					} else {
-						json = '\r' + json.substring(i + 3);
-					}
-					break;
-				case 't':
-					if(i > 0) {
-						json = json.substring(0, i) + '\t' + json.substring(i + 3);
-					} else {
-						json = '\t' + json.substring(i + 3);
-					}
-					break;
-				case 'f':
-					if(i > 0) {
-						json = json.substring(0, i) + '\f' + json.substring(i + 3);
-					} else {
-						json = '\f' + json.substring(i + 3);
-					}
-					break;
-				case 'b':
-					if(i > 0) {
-						json = json.substring(0, i) + '\b' + json.substring(i + 3);
-					} else {
-						json = '\b' + json.substring(i + 3);
-					}
-					break;
-				case 'u':
-					if(i > 0) {
-						json = json.substring(0, i) + json.substring(i + 1);
-					} else {
-						json = json.substring(i + 1);
-					}
-					break;
-				}
-				break;
-			default:
-				continue;
-			}
-		}
-		return json;
-	}
-
 	public static final CumulativeAverage FLATTEN_JSON_CAPACITY = new CumulativeAverage(32);
 
 	public static String flattenJson(String json) throws IOException {
 		final NoAllocStringReplace str = NoAllocStringReplace.allocate(json);
-		str.replaceAndEscapeUnicode(ESCAPE_SEARCH, ESCAPE_REPLACE);
+		str.replaceAndEscapeUnicode(EscapeUtils.ESCAPE_SEARCH, EscapeUtils.ESCAPE_REPLACE);
 
 		final StringBuilder result = POOLED_STRING_BUILDER.get();
 
@@ -309,8 +147,7 @@ public interface IndexUtils {
 				newPrefix.append(prefix);
 				newPrefix.append(fieldName);
 				newPrefix.append('_');
-				appendedField = flattenJsonObject(newPrefix.toString(), jsonParser, stringBuilder);
-				newPrefix.release();
+				appendedField = flattenJsonObject(newPrefix.toStringAndRelease(), jsonParser, stringBuilder);
 
 				if(!appendedField) {
 					stringBuilder.append('\"');
@@ -325,8 +162,7 @@ public interface IndexUtils {
 				final PooledStringBuilder newPrefix = PooledStringBuilder.allocate();
 				newPrefix.append(prefix);
 				newPrefix.append(fieldName);
-				appendedField = flattenJsonArray(newPrefix.toString(), jsonParser, stringBuilder);
-				newPrefix.release();
+				appendedField = flattenJsonArray(newPrefix.toStringAndRelease(), jsonParser, stringBuilder);
 
 				if(!appendedField) {
 					stringBuilder.append('\"');
@@ -378,7 +214,7 @@ public interface IndexUtils {
 				stringBuilder.append('\"');
 				stringBuilder.append(':');
 				stringBuilder.append('\"');
-				CharTypes.appendQuoted(stringBuilder, jsonParser.getText());
+				EscapeUtils.appendQuoted(stringBuilder, jsonParser.getTextCharacters(), jsonParser.getTextOffset(), jsonParser.getTextLength());
 				stringBuilder.append('\"');
 				appendedField = true;
 			}
@@ -399,8 +235,7 @@ public interface IndexUtils {
 				newPrefix.append(prefix);
 				newPrefix.append('_');
 				newPrefix.append(i);
-				appendedField = flattenJsonArray(newPrefix.toString(), jsonParser, stringBuilder);
-				newPrefix.release();
+				appendedField = flattenJsonArray(newPrefix.toStringAndRelease(), jsonParser, stringBuilder);
 
 				if(!appendedField) {
 					stringBuilder.append('\"');
@@ -418,8 +253,7 @@ public interface IndexUtils {
 				newPrefix.append('_');
 				newPrefix.append(i);
 				newPrefix.append('_');
-				appendedField = flattenJsonObject(newPrefix.toString(), jsonParser, stringBuilder);
-				newPrefix.release();
+				appendedField = flattenJsonObject(newPrefix.toStringAndRelease(), jsonParser, stringBuilder);
 
 				if(!appendedField) {
 					stringBuilder.append('\"');
@@ -478,7 +312,7 @@ public interface IndexUtils {
 				stringBuilder.append('\"');
 				stringBuilder.append(':');
 				stringBuilder.append('\"');
-				CharTypes.appendQuoted(stringBuilder, jsonParser.getText());
+				EscapeUtils.appendQuoted(stringBuilder, jsonParser.getTextCharacters(), jsonParser.getTextOffset(), jsonParser.getTextLength());
 				stringBuilder.append('\"');
 				appendedField = true;
 			}

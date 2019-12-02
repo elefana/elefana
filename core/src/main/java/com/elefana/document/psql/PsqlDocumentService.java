@@ -27,6 +27,7 @@ import com.elefana.indices.fieldstats.IndexFieldStatsService;
 import com.elefana.indices.psql.PsqlIndexFieldMappingService;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
+import com.elefana.util.EscapeUtils;
 import com.elefana.util.IndexUtils;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.spi.TypeLiteral;
@@ -174,7 +175,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 				result.setFound(true);
 
 				if(getRequest.isFetchSource()) {
-					result.setSource(JsonIterator.deserialize(IndexUtils.psqlUnescapeString(resultSet.getString("_source")),
+					result.setSource(JsonIterator.deserialize(EscapeUtils.psqlUnescapeString(resultSet.getString("_source")),
 							new TypeLiteral<Map<String, Object>>() {
 							}));
 				} else {
@@ -245,7 +246,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 						getResponse.setType(resultSet.getString("_type"));
 						getResponse.setId(resultSet.getString("_id"));
 						getResponse.setSource(
-								JsonIterator.deserialize(IndexUtils.psqlUnescapeString(resultSet.getString("_source")),
+								JsonIterator.deserialize(EscapeUtils.psqlUnescapeString(resultSet.getString("_source")),
 										new TypeLiteral<Map<String, Object>>() {
 										}));
 						result.getDocs().add(getResponse);
@@ -316,7 +317,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 							getResponse.setType(resultSet.getString("_type"));
 							getResponse.setId(resultSet.getString("_id"));
 							getResponse.setSource(JsonIterator.deserialize(
-									IndexUtils.psqlUnescapeString(resultSet.getString("_source")),
+									EscapeUtils.psqlUnescapeString(resultSet.getString("_source")),
 									new TypeLiteral<Map<String, Object>>() {
 									}));
 							result.getDocs().add(getResponse);
@@ -390,7 +391,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 								getResponse.setType(resultSet.getString("_type"));
 								getResponse.setId(resultSet.getString("_id"));
 								getResponse.setSource(JsonIterator.deserialize(
-										IndexUtils.psqlUnescapeString(resultSet.getString("_source")),
+										EscapeUtils.psqlUnescapeString(resultSet.getString("_source")),
 										new TypeLiteral<Map<String, Object>>() {
 										}));
 								result.getDocs().add(getResponse);
@@ -559,8 +560,8 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 				throw new ShardFailedException(e);
 			}
 		}
-		document = IndexUtils.psqlEscapeString(document);
-		document = IndexUtils.psqlEscapeString(document);
+		document = EscapeUtils.psqlEscapeString(document);
+		document = EscapeUtils.psqlEscapeString(document);
 
 		final long timestamp = indexUtils.getTimestamp(index, document);
 		final long bucket1s = timestamp - (timestamp % ONE_SECOND_IN_MILLIS);

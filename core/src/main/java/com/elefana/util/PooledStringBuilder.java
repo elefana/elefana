@@ -27,6 +27,12 @@ public class PooledStringBuilder implements Serializable, Appendable, CharSequen
 
 	private final StringBuilder backingBuilder = new StringBuilder(32);
 
+	public String toStringAndRelease() {
+		final String result = toString();
+		release();
+		return result;
+	}
+
 	public void release() {
 		backingBuilder.setLength(0);
 		POOL.offer(this);

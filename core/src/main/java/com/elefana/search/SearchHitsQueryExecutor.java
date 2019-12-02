@@ -18,6 +18,7 @@ package com.elefana.search;
 import com.codahale.metrics.Histogram;
 import com.elefana.api.search.SearchHit;
 import com.elefana.api.search.SearchResponse;
+import com.elefana.util.EscapeUtils;
 import com.elefana.util.IndexUtils;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.spi.TypeLiteral;
@@ -128,7 +129,7 @@ public abstract class SearchHitsQueryExecutor {
 			searchHit._type = hitsRowSet.getString("_type");
 			searchHit._id = hitsRowSet.getString("_id");
 			searchHit._score = 1.0;
-			searchHit._source = JsonIterator.deserialize(IndexUtils.psqlUnescapeString(hitsRowSet.getString("_source")),
+			searchHit._source = JsonIterator.deserialize(EscapeUtils.psqlUnescapeString(hitsRowSet.getString("_source")),
 					new TypeLiteral<Map<String, Object>>() {
 					});
 			results.add(searchHit);

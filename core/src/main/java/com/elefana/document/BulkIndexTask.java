@@ -22,6 +22,7 @@ import com.elefana.api.document.DocumentShardInfo;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.document.ingest.IngestTable;
 import com.elefana.indices.fieldstats.IndexFieldStatsService;
+import com.elefana.util.EscapeUtils;
 import com.elefana.util.IndexUtils;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.spi.JsonException;
@@ -151,7 +152,7 @@ public abstract class BulkIndexTask implements Callable<List<BulkItemResponse>> 
 						flattenTime.stop();
 					} else {
 						final Timer.Context escapeTime = flattenTimer.time();
-						escapedJson = IndexUtils.psqlEscapeString(indexOperation.getSource());
+						escapedJson = EscapeUtils.psqlEscapeString(indexOperation.getSource());
 						escapeTime.stop();
 					}
 					indexOperation.setSource(escapedJson);

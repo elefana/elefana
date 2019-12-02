@@ -1,5 +1,6 @@
 package com.elefana.perf;
 
+import com.elefana.util.EscapeUtils;
 import com.elefana.util.IndexUtils;
 import org.openjdk.jmh.annotations.*;
 
@@ -26,6 +27,6 @@ public class PsqlEscapePerformanceTest {
 	@BenchmarkMode(value= Mode.Throughput)
 	@Group("JSON")
 	public void testFlatten(JsonFlattenPerformanceTest.TestState state) throws IOException {
-		final String result = IndexUtils.psqlEscapeString(state.json);
+		final String result = EscapeUtils.psqlEscapeString(state.json);
 	}
 }
