@@ -124,7 +124,7 @@ public interface IndexUtils {
 		jsonParser.nextToken();
 
 		result.append('{');
-		flattenJsonObject("", jsonParser, result);
+		flattenJsonObject(jsonParser, result, "");
 		result.append('}');
 
 		jsonParser.close();
@@ -133,7 +133,7 @@ public interface IndexUtils {
 		return result.toString();
 	}
 
-	public static boolean flattenJsonObject(String prefix, final JsonParser jsonParser, StringBuilder stringBuilder) throws IOException {
+	public static boolean flattenJsonObject(final JsonParser jsonParser, StringBuilder stringBuilder, CharSequence prefix) throws IOException {
 		boolean appendedField = false;
 		while(jsonParser.nextToken() != JsonToken.END_OBJECT) {
 			if (appendedField) {
@@ -147,7 +147,8 @@ public interface IndexUtils {
 				newPrefix.append(prefix);
 				newPrefix.append(fieldName);
 				newPrefix.append('_');
-				appendedField = flattenJsonObject(newPrefix.toStringAndRelease(), jsonParser, stringBuilder);
+				appendedField = flattenJsonObject(jsonParser, stringBuilder, newPrefix);
+				newPrefix.release();
 
 				if(!appendedField) {
 					stringBuilder.append('\"');
@@ -162,7 +163,8 @@ public interface IndexUtils {
 				final PooledStringBuilder newPrefix = PooledStringBuilder.allocate();
 				newPrefix.append(prefix);
 				newPrefix.append(fieldName);
-				appendedField = flattenJsonArray(newPrefix.toStringAndRelease(), jsonParser, stringBuilder);
+				appendedField = flattenJsonArray(jsonParser, stringBuilder, newPrefix);
+				newPrefix.release();
 
 				if(!appendedField) {
 					stringBuilder.append('\"');
@@ -222,7 +224,7 @@ public interface IndexUtils {
 		return appendedField;
 	}
 
-	public static boolean flattenJsonArray(String prefix, final JsonParser jsonParser, StringBuilder stringBuilder) throws IOException {
+	public static boolean flattenJsonArray(final JsonParser jsonParser, StringBuilder stringBuilder, CharSequence prefix) throws IOException {
 		boolean appendedField = false;
 		int i = 0;
 		while(jsonParser.nextToken() != JsonToken.END_ARRAY) {
@@ -235,7 +237,8 @@ public interface IndexUtils {
 				newPrefix.append(prefix);
 				newPrefix.append('_');
 				newPrefix.append(i);
-				appendedField = flattenJsonArray(newPrefix.toStringAndRelease(), jsonParser, stringBuilder);
+				appendedField = flattenJsonArray(jsonParser, stringBuilder, newPrefix);
+				newPrefix.release();
 
 				if(!appendedField) {
 					stringBuilder.append('\"');
@@ -253,7 +256,8 @@ public interface IndexUtils {
 				newPrefix.append('_');
 				newPrefix.append(i);
 				newPrefix.append('_');
-				appendedField = flattenJsonObject(newPrefix.toStringAndRelease(), jsonParser, stringBuilder);
+				appendedField = flattenJsonObject(jsonParser, stringBuilder, newPrefix);
+				newPrefix.release();
 
 				if(!appendedField) {
 					stringBuilder.append('\"');
