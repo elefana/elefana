@@ -15,15 +15,10 @@
  ******************************************************************************/
 package com.elefana.util;
 
-import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
-
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Queue;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 

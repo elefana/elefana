@@ -147,7 +147,11 @@ public class NoAllocStringReplace {
 		}
 	}
 
-	public String dispose() {
+	public void dispose() {
+		POOL.offer(this);
+	}
+
+	public String disposeWithResult() {
 		if(length <= 0) {
 			POOL.offer(this);
 			return "";
@@ -157,6 +161,14 @@ public class NoAllocStringReplace {
 			POOL.offer(this);
 			return result;
 		}
+	}
+
+	public char[] getCharArray() {
+		return str;
+	}
+
+	public int getContentLength() {
+		return length;
 	}
 
 	public static boolean contains(String str, String [] search) {

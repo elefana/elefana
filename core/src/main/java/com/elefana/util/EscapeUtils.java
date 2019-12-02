@@ -181,6 +181,6 @@ public class EscapeUtils {
 		}
 		final NoAllocStringReplace str = NoAllocStringReplace.allocate(json);
 		str.replaceAndEscapeUnicode(ESCAPE_SEARCH, ESCAPE_REPLACE);
-		return str.dispose();
+		return str.disposeWithResult();
 	}
 }

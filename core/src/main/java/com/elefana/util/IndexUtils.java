@@ -19,9 +19,6 @@ import com.elefana.api.exception.ElefanaException;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.core.io.CharTypes;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.netty.buffer.ByteBuf;
 
 import java.io.File;
@@ -29,15 +26,14 @@ import java.io.IOException;
 import java.security.SecureRandom;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 
 public interface IndexUtils {
 	public static final SecureRandom SECURE_RANDOM = new SecureRandom();
-	public static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 	public static final JsonFactory JSON_FACTORY = new JsonFactory() {
 		{
+			enable(JsonFactory.Feature.USE_THREAD_LOCAL_FOR_BUFFER_RECYCLING);
+
 			enable(JsonParser.Feature.ALLOW_SINGLE_QUOTES);
 			enable(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES);
 		}
@@ -120,13 +116,14 @@ public interface IndexUtils {
 
 		final StringBuilder result = POOLED_STRING_BUILDER.get();
 
-		final JsonParser jsonParser = JSON_FACTORY.createParser(str.dispose());
+		final JsonParser jsonParser = JSON_FACTORY.createParser(str.getCharArray(), 0, str.getContentLength());
 		jsonParser.nextToken();
 
 		result.append('{');
 		flattenJsonObject(jsonParser, result, "");
 		result.append('}');
 
+		str.dispose();
 		jsonParser.close();
 
 		FLATTEN_JSON_CAPACITY.add(result.length());
