@@ -89,6 +89,8 @@ public class NoAllocStringReplace {
 		if(search.length != replace.length) {
 			throw new RuntimeException("search and replace arrays must be same length");
 		}
+		boolean match = true;
+
 		for(int i = 0; i < length; i++) {
 			for(int j = 0; j < search.length; j++) {
 				if(search[j] == null || replace[j] == null) {
@@ -100,8 +102,8 @@ public class NoAllocStringReplace {
 				if(search[j].length() > length - i) {
 					continue;
 				}
+				match = true;
 
-				boolean match = true;
 				for(int k = 0; k < search[j].length() && i + k < length; k++) {
 					if(str[i + k] != search[j].charAt(k)) {
 						match = false;
