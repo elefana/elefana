@@ -94,11 +94,13 @@ public class NoAllocStringReplace {
 		final int searchArrayLength = search.length;
 		int searchLength = 0;
 		String searchStr = null;
+		String replaceStr = null;
 
 		for(int i = 0; i < length; i++) {
 			for(int j = 0; j < searchArrayLength; j++) {
 				searchStr = search[j];
-				if(searchStr == null || replace[j] == null) {
+				replaceStr = replace[j];
+				if(searchStr == null || replaceStr == null) {
 					continue;
 				}
 				if(searchStr.isEmpty()) {
@@ -117,8 +119,8 @@ public class NoAllocStringReplace {
 					}
 				}
 				if(match) {
-					replace(i, searchStr, replace[j]);
-					i += replace[j].length() - 1;
+					replace(i, searchStr, replaceStr);
+					i += replaceStr.length() - 1;
 				}
 			}
 			escapeUnicode(i);
