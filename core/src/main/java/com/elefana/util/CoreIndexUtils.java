@@ -63,6 +63,15 @@ public class CoreIndexUtils implements IndexUtils {
 	private static final IndexStorageSettings DEFAULT_INDEX_STORAGE_SETTINGS = new IndexStorageSettings();
 	private static final Logger LOGGER = LoggerFactory.getLogger(CoreIndexUtils.class);
 
+	private static final LoadingCache<String, String> INDEX_NAME_TO_TABLE_NAME_CACHE = CacheBuilder.newBuilder().
+			maximumSize(100).expireAfterAccess(5L, TimeUnit.MINUTES).
+			build(new CacheLoader<String, String>() {
+				@Override
+				public String load(String index) throws Exception {
+					return internalConvertIndexNameToTableName(index);
+				}
+			});
+
 	private final Map<String, String[]> jsonPathCache = new ConcurrentHashMap<String, String[]>();
 	private final Set<String> knownTables = new ConcurrentSkipListSet<String>();
 	private final Lock tableCreationLock = new ReentrantLock();
@@ -333,6 +342,8 @@ public class CoreIndexUtils implements IndexUtils {
 
 	@Override
 	public void ensureIndexExists(String indexName) throws ElefanaException {
+		indexName = indexName.intern();
+
 		final String tableName = convertIndexNameToTableName(indexName);
 		if (isKnownTable(tableName)) {
 			return;
@@ -599,6 +610,14 @@ public class CoreIndexUtils implements IndexUtils {
 	}
 
 	public static String convertIndexNameToTableName(String indexName) {
+		try {
+			return INDEX_NAME_TO_TABLE_NAME_CACHE.get(indexName);
+		} catch (ExecutionException e) {
+			return internalConvertIndexNameToTableName(indexName);
+		}
+	}
+
+	public static String internalConvertIndexNameToTableName(String indexName) {
 		indexName = indexName.replace(".", "_f_");
 		indexName = indexName.replace("-", "_m_");
 		indexName = indexName.replace(":", "_c_");
@@ -606,6 +625,8 @@ public class CoreIndexUtils implements IndexUtils {
 		if (!Character.isLetter(indexName.charAt(0))) {
 			indexName = "_" + indexName;
 		}
+
+		indexName.intern();
 		return indexName;
 	}
 
