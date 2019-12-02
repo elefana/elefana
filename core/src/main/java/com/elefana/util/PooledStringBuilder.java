@@ -19,11 +19,24 @@ import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Queue;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class PooledStringBuilder implements Serializable, Appendable, CharSequence {
-	private static final Queue<PooledStringBuilder> POOL = new ConcurrentLinkedQueue<PooledStringBuilder>();
+	private static final int INITIAL_POOL_SIZE = 32;
+	private static final Lock LOCK = new ReentrantLock();
+	private static final List<PooledStringBuilder> POOL = new ArrayList<PooledStringBuilder>(INITIAL_POOL_SIZE + 1);
+
+	static {
+		for(int i = 0; i < INITIAL_POOL_SIZE; i++) {
+			POOL.add(new PooledStringBuilder());
+		}
+	}
 
 	private final StringBuilder backingBuilder = new StringBuilder(32);
 
@@ -35,11 +48,16 @@ public class PooledStringBuilder implements Serializable, Appendable, CharSequen
 
 	public void release() {
 		backingBuilder.setLength(0);
-		POOL.offer(this);
+
+		LOCK.lock();
+		POOL.add(this);
+		LOCK.unlock();
 	}
 
 	public static PooledStringBuilder allocate() {
-		final PooledStringBuilder result = POOL.poll();
+		LOCK.lock();
+		final PooledStringBuilder result = POOL.isEmpty() ? null : POOL.remove(0);
+		LOCK.unlock();
 		if(result == null) {
 			return new PooledStringBuilder();
 		}
