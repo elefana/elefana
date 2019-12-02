@@ -361,7 +361,7 @@ public interface IndexUtils {
 				stringBuilder.append(fieldName);
 				stringBuilder.append('\"');
 				stringBuilder.append(':');
-				stringBuilder.append(jsonParser.getValueAsLong());
+				stringBuilder.append(jsonParser.getLongValue());
 				appendedField = true;
 			} else if(jsonParser.currentToken() == JsonToken.VALUE_NUMBER_FLOAT) {
 				stringBuilder.append('\"');
@@ -369,7 +369,7 @@ public interface IndexUtils {
 				stringBuilder.append(fieldName);
 				stringBuilder.append('\"');
 				stringBuilder.append(':');
-				stringBuilder.append(jsonParser.getValueAsDouble());
+				stringBuilder.append(jsonParser.getDoubleValue());
 				appendedField = true;
 			} else if(jsonParser.currentToken() == JsonToken.VALUE_STRING) {
 				stringBuilder.append('\"');
@@ -378,7 +378,7 @@ public interface IndexUtils {
 				stringBuilder.append('\"');
 				stringBuilder.append(':');
 				stringBuilder.append('\"');
-				CharTypes.appendQuoted(stringBuilder, jsonParser.getValueAsString());
+				CharTypes.appendQuoted(stringBuilder, jsonParser.getText());
 				stringBuilder.append('\"');
 				appendedField = true;
 			}
@@ -445,7 +445,7 @@ public interface IndexUtils {
 				stringBuilder.append(i);
 				stringBuilder.append('\"');
 				stringBuilder.append(':');
-				stringBuilder.append(jsonParser.getValueAsLong());
+				stringBuilder.append(jsonParser.getLongValue());
 				appendedField = true;
 			} else if(jsonParser.currentToken() == JsonToken.VALUE_NUMBER_FLOAT) {
 				stringBuilder.append('\"');
@@ -454,7 +454,7 @@ public interface IndexUtils {
 				stringBuilder.append(i);
 				stringBuilder.append('\"');
 				stringBuilder.append(':');
-				stringBuilder.append(jsonParser.getValueAsDouble());
+				stringBuilder.append(jsonParser.getDoubleValue());
 				appendedField = true;
 			} else if(jsonParser.currentToken() == JsonToken.VALUE_TRUE) {
 				stringBuilder.append('\"');
@@ -478,7 +478,7 @@ public interface IndexUtils {
 				stringBuilder.append('\"');
 				stringBuilder.append(':');
 				stringBuilder.append('\"');
-				CharTypes.appendQuoted(stringBuilder, jsonParser.getValueAsString());
+				CharTypes.appendQuoted(stringBuilder, jsonParser.getText());
 				stringBuilder.append('\"');
 				appendedField = true;
 			}
