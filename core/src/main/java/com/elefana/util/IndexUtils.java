@@ -361,7 +361,7 @@ public interface IndexUtils {
 				stringBuilder.append(fieldName);
 				stringBuilder.append('\"');
 				stringBuilder.append(':');
-				stringBuilder.append(jsonParser.getValueAsInt());
+				stringBuilder.append(jsonParser.getValueAsLong());
 				appendedField = true;
 			} else if(jsonParser.currentToken() == JsonToken.VALUE_NUMBER_FLOAT) {
 				stringBuilder.append('\"');
@@ -445,7 +445,7 @@ public interface IndexUtils {
 				stringBuilder.append(i);
 				stringBuilder.append('\"');
 				stringBuilder.append(':');
-				stringBuilder.append(jsonParser.getValueAsInt());
+				stringBuilder.append(jsonParser.getValueAsLong());
 				appendedField = true;
 			} else if(jsonParser.currentToken() == JsonToken.VALUE_NUMBER_FLOAT) {
 				stringBuilder.append('\"');
