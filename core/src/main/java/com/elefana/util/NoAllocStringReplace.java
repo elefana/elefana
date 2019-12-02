@@ -123,7 +123,7 @@ public class NoAllocStringReplace {
 		//Shift chars to right
 		char [] oldStr = str;
 		if(str.length < length) {
-			str = new char[length + (length / 2)];
+			str = new char[length * 2];
 			if(index > 0) {
 				System.arraycopy(oldStr, 0, str, 0, index);
 			}
