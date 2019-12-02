@@ -148,6 +148,9 @@ public class NoAllocStringReplace {
 	}
 
 	public void dispose() {
+		if(length > 0) {
+			AVG_ARRAY_SIZE.add(str.length / length > 2 ? length : str.length);
+		}
 		POOL.offer(this);
 	}
 
