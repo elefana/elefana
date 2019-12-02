@@ -25,7 +25,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class PooledStringBuilder implements Serializable, Appendable, CharSequence {
 	private static final Queue<PooledStringBuilder> POOL = new ConcurrentLinkedQueue<PooledStringBuilder>();
 
-	private final StringBuilder backingBuilder = new StringBuilder(64);
+	private final StringBuilder backingBuilder = new StringBuilder(32);
 
 	public void release() {
 		backingBuilder.setLength(0);
