@@ -91,27 +91,33 @@ public class NoAllocStringReplace {
 		}
 		boolean match = true;
 
+		final int searchArrayLength = search.length;
+		int searchLength = 0;
+		String searchStr = null;
+
 		for(int i = 0; i < length; i++) {
-			for(int j = 0; j < search.length; j++) {
-				if(search[j] == null || replace[j] == null) {
+			for(int j = 0; j < searchArrayLength; j++) {
+				searchStr = search[j];
+				if(searchStr == null || replace[j] == null) {
 					continue;
 				}
-				if(search[j].isEmpty()) {
+				if(searchStr.isEmpty()) {
 					continue;
 				}
-				if(search[j].length() > length - i) {
+				if(searchStr.length() > length - i) {
 					continue;
 				}
 				match = true;
+				searchLength = searchStr.length();
 
-				for(int k = 0; k < search[j].length() && i + k < length; k++) {
-					if(str[i + k] != search[j].charAt(k)) {
+				for(int k = 0; k < searchLength && i + k < length; k++) {
+					if(str[i + k] != searchStr.charAt(k)) {
 						match = false;
 						break;
 					}
 				}
 				if(match) {
-					replace(i, search[j], replace[j]);
+					replace(i, searchStr, replace[j]);
 					i += replace[j].length() - 1;
 				}
 			}
