@@ -138,8 +138,8 @@ public interface IndexUtils {
 			}
 
 			final String fieldName = jsonParser.getCurrentName();
-			jsonParser.nextToken();
-			if(jsonParser.currentToken() == JsonToken.START_OBJECT) {
+			final JsonToken nextToken = jsonParser.nextToken();
+			if(nextToken == JsonToken.START_OBJECT) {
 				final PooledStringBuilder newPrefix = PooledStringBuilder.allocate();
 				newPrefix.append(prefix);
 				newPrefix.append(fieldName);
@@ -156,7 +156,7 @@ public interface IndexUtils {
 					stringBuilder.append("null");
 					appendedField = true;
 				}
-			} else if(jsonParser.currentToken() == JsonToken.START_ARRAY) {
+			} else if(nextToken == JsonToken.START_ARRAY) {
 				final PooledStringBuilder newPrefix = PooledStringBuilder.allocate();
 				newPrefix.append(prefix);
 				newPrefix.append(fieldName);
@@ -172,25 +172,25 @@ public interface IndexUtils {
 					stringBuilder.append("null");
 					appendedField = true;
 				}
-			} else if(jsonParser.currentToken() == JsonToken.VALUE_NULL) {
+			} else if(nextToken == JsonToken.VALUE_NULL) {
 				stringBuilder.append('\"');
 				stringBuilder.append(prefix);
 				stringBuilder.append(fieldName);
 				stringBuilder.append("\":null");
 				appendedField = true;
-			} else if(jsonParser.currentToken() == JsonToken.VALUE_TRUE) {
+			} else if(nextToken == JsonToken.VALUE_TRUE) {
 				stringBuilder.append('\"');
 				stringBuilder.append(prefix);
 				stringBuilder.append(fieldName);
 				stringBuilder.append("\":true");
 				appendedField = true;
-			} else if(jsonParser.currentToken() == JsonToken.VALUE_FALSE) {
+			} else if(nextToken == JsonToken.VALUE_FALSE) {
 				stringBuilder.append('\"');
 				stringBuilder.append(prefix);
 				stringBuilder.append(fieldName);
 				stringBuilder.append("\":false");
 				appendedField = true;
-			} else if(jsonParser.currentToken() == JsonToken.VALUE_NUMBER_INT) {
+			} else if(nextToken == JsonToken.VALUE_NUMBER_INT) {
 				stringBuilder.append('\"');
 				stringBuilder.append(prefix);
 				stringBuilder.append(fieldName);
@@ -198,7 +198,7 @@ public interface IndexUtils {
 				stringBuilder.append(':');
 				stringBuilder.append(jsonParser.getLongValue());
 				appendedField = true;
-			} else if(jsonParser.currentToken() == JsonToken.VALUE_NUMBER_FLOAT) {
+			} else if(nextToken == JsonToken.VALUE_NUMBER_FLOAT) {
 				stringBuilder.append('\"');
 				stringBuilder.append(prefix);
 				stringBuilder.append(fieldName);
@@ -206,7 +206,7 @@ public interface IndexUtils {
 				stringBuilder.append(':');
 				stringBuilder.append(jsonParser.getDoubleValue());
 				appendedField = true;
-			} else if(jsonParser.currentToken() == JsonToken.VALUE_STRING) {
+			} else if(nextToken == JsonToken.VALUE_STRING) {
 				stringBuilder.append('\"');
 				stringBuilder.append(prefix);
 				stringBuilder.append(fieldName);
@@ -224,12 +224,15 @@ public interface IndexUtils {
 	public static boolean flattenJsonArray(final JsonParser jsonParser, StringBuilder stringBuilder, CharSequence prefix) throws IOException {
 		boolean appendedField = false;
 		int i = 0;
+		JsonToken currentToken = null;
+
 		while(jsonParser.nextToken() != JsonToken.END_ARRAY) {
 			if(appendedField) {
 				stringBuilder.append(',');
 			}
 
-			if(jsonParser.currentToken() == JsonToken.START_ARRAY) {
+			currentToken = jsonParser.currentToken();
+			if(currentToken == JsonToken.START_ARRAY) {
 				final PooledStringBuilder newPrefix = PooledStringBuilder.allocate();
 				newPrefix.append(prefix);
 				newPrefix.append('_');
@@ -247,7 +250,7 @@ public interface IndexUtils {
 					stringBuilder.append("null");
 					appendedField = true;
 				}
-			} else if(jsonParser.currentToken() == JsonToken.START_OBJECT) {
+			} else if(currentToken == JsonToken.START_OBJECT) {
 				final PooledStringBuilder newPrefix = PooledStringBuilder.allocate();
 				newPrefix.append(prefix);
 				newPrefix.append('_');
@@ -266,14 +269,14 @@ public interface IndexUtils {
 					stringBuilder.append("null");
 					appendedField = true;
 				}
-			} else if(jsonParser.currentToken() == JsonToken.VALUE_NULL) {
+			} else if(currentToken == JsonToken.VALUE_NULL) {
 				stringBuilder.append('\"');
 				stringBuilder.append(prefix);
 				stringBuilder.append('_');
 				stringBuilder.append(i);
 				stringBuilder.append("\":null");
 				appendedField = true;
-			} else if(jsonParser.currentToken() == JsonToken.VALUE_NUMBER_INT) {
+			} else if(currentToken == JsonToken.VALUE_NUMBER_INT) {
 				stringBuilder.append('\"');
 				stringBuilder.append(prefix);
 				stringBuilder.append('_');
@@ -282,7 +285,7 @@ public interface IndexUtils {
 				stringBuilder.append(':');
 				stringBuilder.append(jsonParser.getLongValue());
 				appendedField = true;
-			} else if(jsonParser.currentToken() == JsonToken.VALUE_NUMBER_FLOAT) {
+			} else if(currentToken == JsonToken.VALUE_NUMBER_FLOAT) {
 				stringBuilder.append('\"');
 				stringBuilder.append(prefix);
 				stringBuilder.append('_');
@@ -291,21 +294,21 @@ public interface IndexUtils {
 				stringBuilder.append(':');
 				stringBuilder.append(jsonParser.getDoubleValue());
 				appendedField = true;
-			} else if(jsonParser.currentToken() == JsonToken.VALUE_TRUE) {
+			} else if(currentToken == JsonToken.VALUE_TRUE) {
 				stringBuilder.append('\"');
 				stringBuilder.append(prefix);
 				stringBuilder.append('_');
 				stringBuilder.append(i);
 				stringBuilder.append("\":true");
 				appendedField = true;
-			} else if(jsonParser.currentToken() == JsonToken.VALUE_FALSE) {
+			} else if(currentToken == JsonToken.VALUE_FALSE) {
 				stringBuilder.append('\"');
 				stringBuilder.append(prefix);
 				stringBuilder.append('_');
 				stringBuilder.append(i);
 				stringBuilder.append("\":false");
 				appendedField = true;
-			} else if(jsonParser.currentToken() == JsonToken.VALUE_STRING) {
+			} else if(currentToken == JsonToken.VALUE_STRING) {
 				stringBuilder.append('\"');
 				stringBuilder.append(prefix);
 				stringBuilder.append('_');

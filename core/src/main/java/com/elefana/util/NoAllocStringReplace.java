@@ -56,7 +56,7 @@ public class NoAllocStringReplace {
 		value.getChars(0, value.length(), str, 0);
 	}
 
-	private void escapeUnicode(int index) {
+	public void escapeUnicode(int index) {
 		if(index > length - 5) {
 			return;
 		}
@@ -119,7 +119,7 @@ public class NoAllocStringReplace {
 		}
 	}
 
-	private void insert(int index, int shift, String value) {
+	public void insert(int index, int shift, String value) {
 		final int oldLength = length;
 		length += shift;
 		//Shift chars to right
@@ -136,7 +136,7 @@ public class NoAllocStringReplace {
 		value.getChars(0, value.length(), str, index);
 	}
 
-	private void replace(int index, String search, String replace) {
+	public void replace(int index, String search, String replace) {
 		if(search.length() == replace.length()) {
 			//Direct replace
 			replace.getChars(0, replace.length(), str, index);
