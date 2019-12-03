@@ -19,12 +19,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Stream;
 
 public class NoAllocStringReplace {
-	public static final CumulativeAverage AVG_ARRAY_SIZE = new CumulativeAverage(256);
+	public static final AtomicInteger MAX_ARRAY_SIZE = new AtomicInteger(256);
 
 	private static final Lock LOCK = new ReentrantLock();
 	private static final List<NoAllocStringReplace> POOL = new ArrayList<NoAllocStringReplace>();
@@ -45,12 +46,12 @@ public class NoAllocStringReplace {
 
 	private NoAllocStringReplace() {
 		super();
-		str = new char[AVG_ARRAY_SIZE.avg()];
+		str = new char[MAX_ARRAY_SIZE.get()];
 	}
 
 	public void set(String value) {
 		if(value.length() > str.length) {
-			str = new char[value.length() + (value.length() / 2)];
+			str = new char[value.length() * 2];
 		}
 		length = value.length();
 		value.getChars(0, value.length(), str, 0);
@@ -167,7 +168,7 @@ public class NoAllocStringReplace {
 
 	public void dispose() {
 		if(length > 0) {
-			AVG_ARRAY_SIZE.add(str.length / length > 2 ? length : str.length);
+			MAX_ARRAY_SIZE.set(Math.max(length, MAX_ARRAY_SIZE.get()));
 		}
 
 		LOCK.lock();

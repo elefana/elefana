@@ -93,10 +93,12 @@ public class NoAllocStringReplaceTest {
     @Test
     public void testReplace() {
         NoAllocStringReplace str = NoAllocStringReplace.allocate("this is a l\nong string");
+        final char [] originalCharArray = str.getCharArray();
         str.replaceAndEscapeUnicode(new String[] { "\n" }, new String[] { "\\\\n" });
         String ret = str.disposeWithResult();
 
         Assert.assertEquals("this is a l\\\\nong string", ret);
+        Assert.assertEquals(originalCharArray, str.getCharArray());
     }
 
     @Test
@@ -156,10 +158,12 @@ public class NoAllocStringReplaceTest {
     @Test
     public void testEscapeUnicodeCharacter() {
         NoAllocStringReplace str = NoAllocStringReplace.allocate("abd\\u8932eeee");
+        final char [] originalCharArray = str.getCharArray();
         str.replaceAndEscapeUnicode(new String[] { "b" }, new String[] { "xNewx" });
         String ret = str.disposeWithResult();
 
         Assert.assertEquals("axNewxd\\\\u8932eeee", ret);
+        Assert.assertEquals(originalCharArray, str.getCharArray());
     }
 
     @Test
@@ -221,5 +225,17 @@ public class NoAllocStringReplaceTest {
         NoAllocStringReplace str = NoAllocStringReplace.allocate(null);
         str.replaceAndEscapeUnicode(new String[] { "b" }, new String[] { "xNewx" });
         String ret = str.disposeWithResult();
+    }
+
+    @Test
+    public void testAllocateWithInsufficientSpace() {
+        NoAllocStringReplace str = NoAllocStringReplace.allocate(new String(new char[256 * 2]));
+        final char [] originalCharArray = str.getCharArray();
+        Assert.assertEquals(1024, originalCharArray.length);
+
+        str.replaceAndEscapeUnicode(new String[] { "" + (char) 0 }, new String[] { "xNewx" });
+        String ret = str.disposeWithResult();
+
+        Assert.assertNotEquals(originalCharArray.length, str.getCharArray().length);
     }
 }
