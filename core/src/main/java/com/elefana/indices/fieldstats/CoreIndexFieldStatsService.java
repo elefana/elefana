@@ -80,10 +80,14 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
             loadUnloadManager = new LoadUnloadManager(jdbcTemplate, state, indexTtlMinutes);
         }
 
-        final int workerThreadNumber = environment.getProperty("elefana.service.fieldStats.workerThreads", Integer.class, 2);
+        final int totalIngestThreads = environment.getProperty("elefana.service.bulk.ingest.threads", Integer.class,
+                Runtime.getRuntime().availableProcessors());
+        final int totalProcessingThreads = (nodeSettingsService.getBulkParallelisation() * totalIngestThreads) + 1;
+
+        final int workerThreadNumber = environment.getProperty("elefana.service.fieldStats.workerThreads", Integer.class, totalProcessingThreads);
         workerExecutorService = Executors.newFixedThreadPool(workerThreadNumber);
 
-        final int requestThreadNumber = environment.getProperty("elefana.service.fieldStats.requestThreads", Integer.class, 1);
+        final int requestThreadNumber = environment.getProperty("elefana.service.fieldStats.requestThreads", Integer.class, 2);
         requestExecutorService = Executors.newFixedThreadPool(requestThreadNumber);
     }
 
