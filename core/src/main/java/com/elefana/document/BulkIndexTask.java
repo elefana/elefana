@@ -204,7 +204,6 @@ public abstract class BulkIndexTask implements Callable<List<BulkItemResponse>> 
 				BulkItemResponse responseEntry = createEntry(i, "index", indexOperation.getIndex(),
 						indexOperation.getType(), indexOperation.getId(), BulkItemResponse.STATUS_CREATED);
 				results.add(responseEntry);
-				indexOperation.release();
 			}
 			totalSuccess = results.size();
 			totalFailed = 0;

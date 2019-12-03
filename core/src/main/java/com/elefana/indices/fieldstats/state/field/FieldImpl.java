@@ -74,6 +74,9 @@ public class FieldImpl implements Field {
     @Override
     public void deleteIndexFieldStats(String indexName) {
         FieldStats fieldStats = this.fieldStats.remove(indexName);
+        if(fieldStats == null) {
+            return;
+        }
         fieldStats.delete();
     }
 

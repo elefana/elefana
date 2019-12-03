@@ -16,7 +16,6 @@
 
 package com.elefana.indices.fieldstats.state;
 
-import com.elefana.document.BulkIndexTask;
 import com.elefana.indices.fieldstats.state.field.*;
 import com.elefana.indices.fieldstats.state.index.Index;
 import com.elefana.indices.fieldstats.state.index.IndexComponent;
@@ -67,42 +66,32 @@ public class StateImpl implements State{
     }
 
     @Override
-    public void stopModificationsOfIndex(String index) {
-        getIndex(index).getStopCountingLock().lock();
+    public void lockIndex(String index) {
+        getIndex(index).getLock().lock();
     }
 
     @Override
-    public void resumeModificationsOfIndex(String index) {
-        getIndex(index).getStopCountingLock().unlock();
-    }
-
-    @Override
-    public void startIndexModification(String index) {
-        getIndex(index).getCountingLock().lock();
-    }
-
-    @Override
-    public void finishIndexModification(String index) {
-        getIndex(index).getCountingLock().unlock();
+    public void unlockIndex(String index) {
+        getIndex(index).getLock().unlock();
     }
 
     @Override
     public void deleteIndex(String name) {
-        stopModificationsOfIndex(name);
+        lockIndex(name);
         deleteLockedIndex(name);
-        resumeModificationsOfIndex(name);
+        unlockIndex(name);
     }
 
     private void deleteLockedIndex(String indexName) {
-        getIndex(indexName).delete();
         fieldMap.forEach((fieldName, field) -> {
             field.deleteIndexFieldStats(indexName);
         });
+        getIndex(indexName).delete();
     }
 
     @Override
     public void load(IndexComponent indexComponent) throws ElefanaWrongFieldStatsTypeException {
-        startIndexModification(indexComponent.name);
+        lockIndex(indexComponent.name);
         try {
             indexMap.compute(indexComponent.name, (name, index) -> {
                 if (index == null) {
@@ -129,13 +118,13 @@ public class StateImpl implements State{
                 });
             });
         } finally {
-            finishIndexModification(indexComponent.name);
+            unlockIndex(indexComponent.name);
         }
     }
 
     @Override
     public IndexComponent unload(String indexName) {
-        stopModificationsOfIndex(indexName);
+        lockIndex(indexName);
 
         Index index = getIndex(indexName);
         IndexComponent indexComponent = new IndexComponent(indexName, index.getMaxDocuments());
@@ -150,7 +139,7 @@ public class StateImpl implements State{
 
         deleteLockedIndex(indexName);
 
-        resumeModificationsOfIndex(indexName);
+        unlockIndex(indexName);
         return indexComponent;
     }
 

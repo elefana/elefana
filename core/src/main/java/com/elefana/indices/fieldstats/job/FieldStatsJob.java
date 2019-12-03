@@ -29,4 +29,28 @@ public abstract class FieldStatsJob implements Runnable {
         this.indexName = indexName;
         this.loadUnloadManager = loadUnloadManager;
     }
+
+    public State getState() {
+        return state;
+    }
+
+    public String getIndexName() {
+        return indexName;
+    }
+
+    public LoadUnloadManager getLoadUnloadManager() {
+        return loadUnloadManager;
+    }
+
+    public void setState(State state) {
+        this.state = state;
+    }
+
+    public void setIndexName(String indexName) {
+        this.indexName = indexName;
+    }
+
+    public void setLoadUnloadManager(LoadUnloadManager loadUnloadManager) {
+        this.loadUnloadManager = loadUnloadManager;
+    }
 }

@@ -23,14 +23,15 @@ import javax.annotation.concurrent.ThreadSafe;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 @ThreadSafe
 public class IndexImpl implements Index {
     private static final Logger LOGGER = LoggerFactory.getLogger(IndexImpl.class);
 
-    private LongAdder maxDocs = new LongAdder();
-    private ReadWriteLock indexLock = new ReentrantReadWriteLock();
+    private final LongAdder maxDocs = new LongAdder();
+    private final Lock indexLock = new ReentrantLock();
 
     public IndexImpl(){}
 
@@ -39,13 +40,8 @@ public class IndexImpl implements Index {
     }
 
     @Override
-    public Lock getCountingLock() {
-        return indexLock.readLock();
-    }
-
-    @Override
-    public Lock getStopCountingLock() {
-        return indexLock.writeLock();
+    public Lock getLock() {
+        return indexLock;
     }
 
     @Override

@@ -15,12 +15,13 @@
  ******************************************************************************/
 package com.elefana.document;
 
+import com.elefana.indices.fieldstats.job.DocumentSourceProvider;
 import com.jsoniter.annotation.JsonIgnore;
 
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-public class BulkIndexOperation {
+public class BulkIndexOperation implements DocumentSourceProvider {
 	@JsonIgnore
 	private static final Queue<BulkIndexOperation> POOL = new ConcurrentLinkedQueue<BulkIndexOperation>();
 	
@@ -29,6 +30,8 @@ public class BulkIndexOperation {
 	private String id;
 	private String source;
 	private long timestamp;
+
+	private boolean released = false;
 	
 	@JsonIgnore
 	public static BulkIndexOperation allocate() {
@@ -36,10 +39,15 @@ public class BulkIndexOperation {
 		if(result == null) {
 			return new BulkIndexOperation();
 		}
+		result.released = false;
 		return result;
 	}	
 	
 	public void release() {
+		if(released) {
+			return;
+		}
+		released = true;
 		POOL.offer(this);
 	}
 
@@ -87,5 +95,15 @@ public class BulkIndexOperation {
 	@JsonIgnore
 	public String toString() {
 		return "BulkIndexOperation [index=" + index + ", type=" + type + ", id=" + id + ", source=" + source + "]";
+	}
+
+	@Override
+	public String getDocument() {
+		return source;
+	}
+
+	@Override
+	public void dispose() {
+		release();
 	}
 }

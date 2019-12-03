@@ -36,11 +36,8 @@ public interface State {
     void load(IndexComponent indexComponent) throws ElefanaWrongFieldStatsTypeException;
     IndexComponent unload(String indexName);
 
-    void stopModificationsOfIndex(String index);
-    void resumeModificationsOfIndex(String index);
-
-    void startIndexModification(String index);
-    void finishIndexModification(String index);
+    void lockIndex(String index);
+    void unlockIndex(String index);
 
     // Indices
     Index getIndex(String indexName);

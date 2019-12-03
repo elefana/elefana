@@ -13,19 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
+package com.elefana.indices.fieldstats.job;
 
-package com.elefana.indices.fieldstats.state.index;
+public class SingleDocumentSourceProvider implements DocumentSourceProvider {
+	private final String document;
 
-import java.util.concurrent.locks.Lock;
+	public SingleDocumentSourceProvider(String document) {
+		this.document = document;
+	}
 
-public interface Index {
-    Lock getLock();
+	@Override
+	public String getDocument() {
+		return document;
+	}
 
-    public long getMaxDocuments();
-    public void incrementMaxDocuments();
-    public Index merge(Index other);
-
-    void mergeAndModifySelf(Index other);
-
-    void delete();
+	@Override
+	public void dispose() {
+	}
 }

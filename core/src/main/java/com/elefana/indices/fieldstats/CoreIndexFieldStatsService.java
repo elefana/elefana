@@ -17,7 +17,6 @@
 package com.elefana.indices.fieldstats;
 
 import com.elefana.api.RequestExecutor;
-import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.NoSuchApiException;
 import com.elefana.api.indices.*;
 import com.elefana.document.BulkIndexOperation;
@@ -188,21 +187,21 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
     }
 
     private void getFieldStatsClusterLevel(GetFieldStatsResponse response, List<String> indices, List<String> fields) {
-        indices.forEach(state::stopModificationsOfIndex);
+        indices.forEach(state::lockIndex);
         try {
             response.getIndices().put("_all", getFieldStatsMap(indices, fields));
         } finally {
-            indices.forEach(state::resumeModificationsOfIndex);
+            indices.forEach(state::unlockIndex);
         }
     }
 
     private void getFieldStatsIndicesLevel(GetFieldStatsResponse response, List<String> indices, List<String> fields) {
         for (String index : indices) {
-            state.stopModificationsOfIndex(index);
+            state.lockIndex(index);
             try {
                 response.getIndices().put(index, getFieldStatsMap(Collections.singletonList(index), fields));
             } finally {
-                state.resumeModificationsOfIndex(index);
+                state.unlockIndex(index);
             }
         }
     }
@@ -235,6 +234,7 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
 
     @Override
     public void submitDocuments(List<BulkIndexOperation> documents, int from, int size) {
+        CoreFieldStatsJob fieldStatsJob = null;
         for (int i = from; i < from + size && i < documents.size(); i++) {
             BulkIndexOperation operation = documents.get(i);
 
@@ -242,7 +242,18 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
                 continue;
             }
 
-            workerExecutorService.submit(new CoreFieldStatsJob(operation.getSource(), state, loadUnloadManager, operation.getIndex()));
+            if(fieldStatsJob == null) {
+                fieldStatsJob = CoreFieldStatsJob.allocate(state, loadUnloadManager, operation.getIndex());
+            } else if(!fieldStatsJob.getIndexName().equals(operation.getIndex())) {
+                workerExecutorService.submit(fieldStatsJob);
+                fieldStatsJob = CoreFieldStatsJob.allocate(state, loadUnloadManager, operation.getIndex());
+            }
+
+            fieldStatsJob.addDocument(operation);
+        }
+
+        if(fieldStatsJob != null) {
+            workerExecutorService.submit(fieldStatsJob);
         }
     }
 
@@ -256,7 +267,9 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
         if (isStatsDisabled(index)) {
             return;
         }
-        workerExecutorService.submit(new CoreFieldStatsJob(document, state, loadUnloadManager, index));
+        final CoreFieldStatsJob fieldStatsJob = CoreFieldStatsJob.allocate(state, loadUnloadManager, index);
+        fieldStatsJob.addDocument(document);
+        workerExecutorService.submit(fieldStatsJob);
     }
 
     @Override

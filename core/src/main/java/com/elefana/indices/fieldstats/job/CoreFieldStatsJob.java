@@ -16,10 +16,13 @@
 
 package com.elefana.indices.fieldstats.job;
 
+import com.elefana.document.BulkIndexOperation;
 import com.elefana.indices.fieldstats.LoadUnloadManager;
 import com.elefana.indices.fieldstats.state.State;
 import com.elefana.indices.fieldstats.state.field.ElefanaWrongFieldStatsTypeException;
 import com.elefana.indices.fieldstats.state.field.FieldStats;
+import com.elefana.util.CumulativeAverage;
+import com.elefana.util.PooledStringBuilder;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.TreeNode;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -32,103 +35,143 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.util.*;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 @NotThreadSafe
 public class CoreFieldStatsJob extends FieldStatsJob {
     private static final Logger LOGGER = LoggerFactory.getLogger(CoreFieldStatsJob.class);
+    private static final Lock LOCK = new ReentrantLock();
+    private static final List<CoreFieldStatsJob> POOL = new ArrayList<CoreFieldStatsJob>(32);
+    private static final CumulativeAverage AVG_BATCH_SIZE = new CumulativeAverage(128);
 
     private static JsonFactory jsonFactory = new JsonFactory().setCodec(new ObjectMapper());
 
-    protected String document;
-    private Set<String> alreadyRegistered = new HashSet<>();
+    private final List<DocumentSourceProvider> documents = new ArrayList<DocumentSourceProvider>(AVG_BATCH_SIZE.avg());
+    private final Set<String> alreadyRegistered = new HashSet<>();
 
-    public CoreFieldStatsJob(String document, State state, LoadUnloadManager loadUnloadManager, String indexName) {
+    private CoreFieldStatsJob(State state, LoadUnloadManager loadUnloadManager, String indexName) {
         super(state, loadUnloadManager, indexName);
-        this.document = document;
+    }
+
+    public static CoreFieldStatsJob allocate(State state, LoadUnloadManager loadUnloadManager, String indexName) {
+        LOCK.lock();
+        final CoreFieldStatsJob result = POOL.isEmpty() ? null : POOL.remove(0);
+        LOCK.unlock();
+        if(result == null) {
+            return new CoreFieldStatsJob(state, loadUnloadManager, indexName);
+        }
+
+        result.setIndexName(indexName);
+        result.setLoadUnloadManager(loadUnloadManager);
+        result.setState(state);
+        return result;
+    }
+
+    public void release() {
+        AVG_BATCH_SIZE.add(documents.size());
+
+        documents.clear();
+        alreadyRegistered.clear();
+
+        LOCK.lock();
+        POOL.add(this);
+        LOCK.unlock();
+    }
+
+    public void addDocument(BulkIndexOperation bulkIndexOperation) {
+        documents.add(bulkIndexOperation);
+    }
+
+    public void addDocument(String document) {
+        documents.add(new SingleDocumentSourceProvider(document));
     }
 
     @Override
     public void run() {
-        alreadyRegistered.clear();
-        state.startIndexModification(indexName);
+        state.lockIndex(indexName);
+        int docIndex = 0;
+
         try {
-            processAny(jsonFactory.createParser(document).readValueAsTree(), new ArrayList<>());
-            updateIndex(indexName);
+            for(docIndex = 0; docIndex < documents.size(); docIndex++) {
+                final DocumentSourceProvider documentSourceProvider = documents.get(docIndex);
+                processAny(jsonFactory.createParser(documentSourceProvider.getDocument()).readValueAsTree(), "");
+                documentSourceProvider.dispose();
+
+                updateIndexMaxDocs(indexName);
+            }
             loadUnloadManager.someoneWroteToIndex(indexName);
         } catch(Exception e) {
+            for(; docIndex < documents.size(); docIndex++) {
+                documents.get(docIndex).dispose();
+            }
+
             LOGGER.error("Exception in Analyse Job", e);
         } finally {
-            state.finishIndexModification(indexName);
+            state.unlockIndex(indexName);
+            release();
         }
     }
 
-    private void processAny(TreeNode any, List<String> relName) {
+    private void processAny(TreeNode any, String prefix) {
         if (any.isObject()) {
-            processObject((ObjectNode)any, relName);
+            processObject((ObjectNode)any, prefix);
         } else if (any.isArray()) {
-            processList((ArrayNode)any, relName);
+            processList((ArrayNode)any, prefix);
         } else if (any.isValueNode()) {
             ValueNode valueNode = (ValueNode)any;
             if (valueNode.isNumber()) {
-                processNumber(valueNode, relName);
+                processNumber(valueNode, prefix);
             } else if (valueNode.isTextual()) {
-                processString(valueNode, relName);
+                processString(valueNode, prefix);
             } else if (valueNode.isBoolean()) {
-                processBoolean(valueNode, relName);
+                processBoolean(valueNode, prefix);
             }
         } else {
             LOGGER.info("No type matched for document: " + any.toString());
         }
     }
 
-    private void processObject(ObjectNode anyObject, List<String> relName) {
+    private void processObject(ObjectNode anyObject, String prefix) {
         Iterator<Map.Entry<String, JsonNode>> fields = anyObject.fields();
         while (fields.hasNext()) {
             Map.Entry<String, JsonNode> fieldName = fields.next();
-            processAny(fieldName.getValue(), addToFieldName(relName, fieldName.getKey()));
+            final PooledStringBuilder stringBuilder = PooledStringBuilder.allocate();
+            if(prefix.length() > 0) {
+                stringBuilder.append(prefix);
+                stringBuilder.append('.');
+                stringBuilder.append(fieldName.getKey());
+                processAny(fieldName.getValue(), stringBuilder.toStringAndRelease());
+            } else {
+                processAny(fieldName.getValue(), fieldName.getKey());
+            }
         }
     }
 
-    private List<String> addToFieldName(List<String> old, String n) {
-        List<String> ret = new ArrayList<>(old);
-        ret.add(n);
-        return ret;
-    }
-
-    private void processList(ArrayNode anyList, List<String> relName) {
+    private void processList(ArrayNode anyList, String prefix) {
         Iterator<JsonNode> elements = anyList.elements();
         while(elements.hasNext()) {
-            processAny(elements.next(), relName);
+            processAny(elements.next(), prefix);
         }
     }
 
-    private void processNumber(ValueNode anyNumber, List<String> relName) {
+    private void processNumber(ValueNode anyNumber, String prefix) {
         if (anyNumber.isIntegralNumber()) {
             long longNumber = anyNumber.asLong();
-            updateFieldStats(buildFieldName(relName), Long.class, longNumber);
+            updateFieldStats(prefix, Long.class, longNumber);
         } else if (anyNumber.isFloatingPointNumber()) {
-            updateFieldStats(buildFieldName(relName), Double.class, anyNumber.asDouble());
+            updateFieldStats(prefix, Double.class, anyNumber.asDouble());
         }
     }
 
-    private void processBoolean(ValueNode anyBool, List<String> relName) {
+    private void processBoolean(ValueNode anyBool, String prefix) {
         Boolean bool = anyBool.asBoolean();
-        updateFieldStats(buildFieldName(relName), Boolean.class, bool);
+        updateFieldStats(prefix, Boolean.class, bool);
     }
 
-    private void processString(ValueNode anyString, List<String> relName) {
+    private void processString(ValueNode anyString, String prefix) {
         String string = anyString.asText();
-        updateFieldStats(buildFieldName(relName), String.class, string);
-    }
-
-    private String buildFieldName(List<String> name) {
-        final StringBuilder builder = new StringBuilder();
-        int i;
-        for(i = 0; i < name.size() - 1; i++) {
-            builder.append(name.get(i)).append('.');
-        }
-        builder.append(name.get(i));
-        return builder.toString();
+        updateFieldStats(prefix, String.class, string);
     }
 
     private <T> void updateFieldStats(String fieldName, Class<T> tClass, T value) {
@@ -156,7 +199,7 @@ public class CoreFieldStatsJob extends FieldStatsJob {
         fieldStats.updateFieldIsInDocument();
     }
 
-    private void updateIndex(String indexName) {
+    private void updateIndexMaxDocs(String indexName) {
         state.getIndex(indexName).incrementMaxDocuments();
     }
 }

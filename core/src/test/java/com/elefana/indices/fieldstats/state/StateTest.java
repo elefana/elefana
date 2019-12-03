@@ -67,7 +67,8 @@ public class StateTest {
 
     @Test
     public void testSubmitDocument() {
-        CoreFieldStatsJob job = new CoreFieldStatsJob(testDocument, testState, loadUnloadManager, TEST_INDEX);
+        CoreFieldStatsJob job = CoreFieldStatsJob.allocate(testState, loadUnloadManager, TEST_INDEX);
+        job.addDocument(testDocument);
         job.run();
     }
 
@@ -80,11 +81,11 @@ public class StateTest {
     public void testIndexReturn() {
         submitDocumentNTimes(20, testDocument, TEST_INDEX);
 
-        assertIndexMaxDocEquals(20);
+        assertIndexMaxDocEquals(20, TEST_INDEX);
     }
 
-    private void assertIndexMaxDocEquals(long expected) {
-        long indexMaxDocs = testState.getIndex(TEST_INDEX).getMaxDocuments();
+    private void assertIndexMaxDocEquals(long expected, String index) {
+        long indexMaxDocs = testState.getIndex(index).getMaxDocuments();
         Assert.assertEquals(expected, indexMaxDocs);
     }
 
@@ -140,7 +141,7 @@ public class StateTest {
         Assert.assertEquals(100, bool.getDocumentCount());
         Assert.assertEquals(100, bool.getSumDocumentFrequency());
 
-        assertIndexMaxDocEquals(100);
+        assertIndexMaxDocEquals(100, TEST_INDEX);
         FieldStats string = testState.getFieldStatsTypeChecked("string", String.class, TEST_INDEX);
         Assert.assertEquals(100, string.getDocumentCount());
         Assert.assertEquals(100 * 2, string.getSumDocumentFrequency());
@@ -156,7 +157,7 @@ public class StateTest {
         Assert.assertEquals(100 * 100, bool.getDocumentCount());
         Assert.assertEquals(100 * 100, bool.getSumDocumentFrequency());
 
-        assertIndexMaxDocEquals(100 * 100);
+        assertIndexMaxDocEquals(100 * 100, TEST_INDEX);
         FieldStats string = testState.getFieldStatsTypeChecked("string", String.class, TEST_INDEX);
         Assert.assertEquals(100 * 100, string.getDocumentCount());
         Assert.assertEquals(100 * 100 * 2, string.getSumDocumentFrequency());
@@ -166,7 +167,8 @@ public class StateTest {
 
     private void submitDocumentNTimes(int n, String document, String index) {
         for(int i = 0; i < n; i++) {
-            CoreFieldStatsJob job = new CoreFieldStatsJob(document, testState, loadUnloadManager, index);
+            CoreFieldStatsJob job = CoreFieldStatsJob.allocate(testState, loadUnloadManager, index);
+            job.addDocument(document);
             job.run();
         }
     }
@@ -265,7 +267,7 @@ public class StateTest {
         Assert.assertEquals("hello", string.getMinimumValue());
         Assert.assertEquals("there", string.getMaximumValue());
 
-        assertIndexMaxDocEquals(10);
+        assertIndexMaxDocEquals(10, TEST_INDEX);
     }
 
     @Test
@@ -283,7 +285,7 @@ public class StateTest {
         Assert.assertEquals("aa", string.getMinimumValue());
         Assert.assertEquals("there", string.getMaximumValue());
 
-        assertIndexMaxDocEquals(20 + 10);
+        assertIndexMaxDocEquals(20 + 10, TEST_INDEX);
     }
 
     @Test
@@ -319,7 +321,7 @@ public class StateTest {
         Assert.assertEquals("aa", string.getMinimumValue());
         Assert.assertEquals("there", string.getMaximumValue());
 
-        assertIndexMaxDocEquals(10*10 + 50*20);
+        assertIndexMaxDocEquals(10*10 + 50*20, TEST_INDEX);
     }
 
     @Test
@@ -340,15 +342,16 @@ public class StateTest {
 
     @Test
     public void testUnloadAndLoadIndexConcurrent() throws ElefanaWrongFieldStatsTypeException {
+        final String index = TEST_INDEX + "2";
+
         List<Thread> threadList = new ArrayList<>();
         for( int i = 0; i < 50; i++) {
-            threadList.add(new Thread(() -> submitDocumentNTimes(100, testDocument, TEST_INDEX)));
+            threadList.add(new Thread(() -> submitDocumentNTimes(100, testDocument, index)));
         }
         for(int i = 0; i < 10; i++) {
             threadList.add(new Thread(() -> {
                 try {
-                    IndexComponent c = testState.unload(TEST_INDEX);
-                    //System.out.println(c);
+                    IndexComponent c = testState.unload(index);
                     testState.load(c);
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -364,12 +367,12 @@ public class StateTest {
             }
         });
 
-        FieldStats string = testState.getFieldStatsTypeChecked("string", String.class, TEST_INDEX);
+        FieldStats string = testState.getFieldStatsTypeChecked("string", String.class, index);
         Assert.assertEquals(50*100, string.getDocumentCount());
         Assert.assertEquals(50*100*2, string.getSumDocumentFrequency());
         Assert.assertEquals("hello", string.getMinimumValue());
         Assert.assertEquals("there", string.getMaximumValue());
 
-        assertIndexMaxDocEquals(50*100);
+        assertIndexMaxDocEquals(50*100, index);
     }
 }
