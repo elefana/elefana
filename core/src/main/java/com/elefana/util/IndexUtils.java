@@ -138,6 +138,8 @@ public interface IndexUtils {
 			}
 
 			final String fieldName = jsonParser.getCurrentName();
+			fieldName.intern();
+
 			final JsonToken nextToken = jsonParser.nextToken();
 			if(nextToken == JsonToken.START_OBJECT) {
 				final PooledStringBuilder newPrefix = PooledStringBuilder.allocate();
