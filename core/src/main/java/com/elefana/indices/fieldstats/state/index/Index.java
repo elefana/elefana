@@ -19,8 +19,6 @@ package com.elefana.indices.fieldstats.state.index;
 import java.util.concurrent.locks.Lock;
 
 public interface Index {
-    Lock getLock();
-
     public long getMaxDocuments();
     public void incrementMaxDocuments();
     public Index merge(Index other);

@@ -191,22 +191,12 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
     }
 
     private void getFieldStatsClusterLevel(GetFieldStatsResponse response, List<String> indices, List<String> fields) {
-        indices.forEach(state::lockIndex);
-        try {
-            response.getIndices().put("_all", getFieldStatsMap(indices, fields));
-        } finally {
-            indices.forEach(state::unlockIndex);
-        }
+        response.getIndices().put("_all", getFieldStatsMap(indices, fields));
     }
 
     private void getFieldStatsIndicesLevel(GetFieldStatsResponse response, List<String> indices, List<String> fields) {
         for (String index : indices) {
-            state.lockIndex(index);
-            try {
-                response.getIndices().put(index, getFieldStatsMap(Collections.singletonList(index), fields));
-            } finally {
-                state.unlockIndex(index);
-            }
+            response.getIndices().put(index, getFieldStatsMap(Collections.singletonList(index), fields));
         }
     }
 

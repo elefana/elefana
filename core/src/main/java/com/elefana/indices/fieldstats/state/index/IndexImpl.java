@@ -31,17 +31,11 @@ public class IndexImpl implements Index {
     private static final Logger LOGGER = LoggerFactory.getLogger(IndexImpl.class);
 
     private final LongAdder maxDocs = new LongAdder();
-    private final Lock indexLock = new ReentrantLock();
 
     public IndexImpl(){}
 
     IndexImpl(long maxDocs) {
         this.maxDocs.add(maxDocs);
-    }
-
-    @Override
-    public Lock getLock() {
-        return indexLock;
     }
 
     @Override

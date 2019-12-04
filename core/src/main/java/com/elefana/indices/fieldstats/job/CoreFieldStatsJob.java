@@ -93,7 +93,6 @@ public class CoreFieldStatsJob extends FieldStatsJob {
 
         for(docIndex = 0; docIndex < documents.size(); docIndex++) {
             try {
-                state.lockIndex(indexName);
                 final DocumentSourceProvider documentSourceProvider = documents.get(docIndex);
                 processAny(jsonFactory.createParser(documentSourceProvider.getDocument()).readValueAsTree(), "");
                 documentSourceProvider.dispose();
@@ -103,8 +102,6 @@ public class CoreFieldStatsJob extends FieldStatsJob {
             } catch(Exception e) {
                 documents.get(docIndex).dispose();
                 LOGGER.error("Exception in Analyse Job", e);
-            } finally {
-                state.unlockIndex(indexName);
             }
         }
 
