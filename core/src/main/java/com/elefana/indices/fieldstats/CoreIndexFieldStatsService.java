@@ -233,6 +233,7 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
             BulkIndexOperation operation = documents.get(i);
 
             if (isStatsDisabled(operation.getIndex())) {
+                operation.release();
                 continue;
             }
 
