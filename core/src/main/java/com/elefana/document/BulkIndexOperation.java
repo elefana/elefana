@@ -47,6 +47,11 @@ public class BulkIndexOperation implements DocumentSourceProvider {
 		if(released) {
 			return;
 		}
+		index = null;
+		type = null;
+		id = null;
+		source = null;
+
 		released = true;
 		POOL.offer(this);
 	}
