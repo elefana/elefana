@@ -31,6 +31,7 @@ public class BulkIndexOperation implements DocumentSourceProvider {
 	private String source;
 	private long timestamp;
 
+	@JsonIgnore
 	private boolean released = false;
 	
 	@JsonIgnore

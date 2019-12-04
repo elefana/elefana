@@ -247,6 +247,7 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
             }
 
             fieldStatsJob.addDocument(operation);
+            operation.release();
         }
 
         if(fieldStatsJob != null) {

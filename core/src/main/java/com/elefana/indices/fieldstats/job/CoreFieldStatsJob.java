@@ -47,7 +47,7 @@ public class CoreFieldStatsJob extends FieldStatsJob {
 
     private static JsonFactory jsonFactory = new JsonFactory().setCodec(new ObjectMapper());
 
-    private final List<DocumentSourceProvider> documents = new ArrayList<DocumentSourceProvider>(AVG_BATCH_SIZE.avg());
+    private final List<String> documents = new ArrayList<String>(AVG_BATCH_SIZE.avg());
     private final Set<String> alreadyRegistered = new HashSet<>();
 
     private CoreFieldStatsJob(State state, LoadUnloadManager loadUnloadManager, String indexName) {
@@ -80,11 +80,11 @@ public class CoreFieldStatsJob extends FieldStatsJob {
     }
 
     public void addDocument(BulkIndexOperation bulkIndexOperation) {
-        documents.add(bulkIndexOperation);
+        documents.add(bulkIndexOperation.getSource());
     }
 
     public void addDocument(String document) {
-        documents.add(new SingleDocumentSourceProvider(document));
+        documents.add(document);
     }
 
     @Override
@@ -93,14 +93,12 @@ public class CoreFieldStatsJob extends FieldStatsJob {
 
         for(docIndex = 0; docIndex < documents.size(); docIndex++) {
             try {
-                final DocumentSourceProvider documentSourceProvider = documents.get(docIndex);
-                processAny(jsonFactory.createParser(documentSourceProvider.getDocument()).readValueAsTree(), "");
-                documentSourceProvider.dispose();
+                final String document = documents.get(docIndex);
+                processAny(jsonFactory.createParser(document).readValueAsTree(), "");
 
                 updateIndexMaxDocs(indexName);
                 loadUnloadManager.someoneWroteToIndex(indexName);
             } catch(Exception e) {
-                documents.get(docIndex).dispose();
                 LOGGER.error("Exception in Analyse Job", e);
             }
         }
