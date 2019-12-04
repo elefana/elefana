@@ -30,6 +30,8 @@ import com.elefana.indices.fieldstats.state.field.FieldStats;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
 import com.elefana.util.IndexUtils;
+import com.elefana.util.NamedThreadFactory;
+import com.fasterxml.jackson.databind.util.Named;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.spi.JsonException;
 import io.netty.handler.codec.http.HttpMethod;
@@ -85,10 +87,10 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
         final int totalProcessingThreads = (nodeSettingsService.getBulkParallelisation() * totalIngestThreads) + 1;
 
         final int workerThreadNumber = environment.getProperty("elefana.service.fieldStats.workerThreads", Integer.class, totalProcessingThreads);
-        workerExecutorService = Executors.newFixedThreadPool(workerThreadNumber);
+        workerExecutorService = Executors.newFixedThreadPool(workerThreadNumber, new NamedThreadFactory("fieldStatsService-statsWorker"));
 
         final int requestThreadNumber = environment.getProperty("elefana.service.fieldStats.requestThreads", Integer.class, 2);
-        requestExecutorService = Executors.newFixedThreadPool(requestThreadNumber);
+        requestExecutorService = Executors.newFixedThreadPool(requestThreadNumber, new NamedThreadFactory("fieldStatsService-requestExecutor"));
     }
 
     @PreDestroy
