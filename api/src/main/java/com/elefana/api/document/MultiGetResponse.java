@@ -15,13 +15,12 @@
  ******************************************************************************/
 package com.elefana.api.document;
 
+import com.elefana.api.ApiResponse;
+import com.elefana.api.json.JsonUtils;
+import io.netty.handler.codec.http.HttpResponseStatus;
+
 import java.util.ArrayList;
 import java.util.List;
-
-import com.elefana.api.ApiResponse;
-import com.jsoniter.output.JsonStream;
-
-import io.netty.handler.codec.http.HttpResponseStatus;
 
 public class MultiGetResponse extends ApiResponse {
 	private final List<GetResponse> docs = new ArrayList<GetResponse>();
@@ -36,6 +35,6 @@ public class MultiGetResponse extends ApiResponse {
 	
 	@Override
 	public String toJsonString() {
-		return JsonStream.serialize(this);
+		return JsonUtils.toJsonString(this);
 	}
 }

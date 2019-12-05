@@ -20,12 +20,11 @@ import com.elefana.api.document.BulkItemResponse;
 import com.elefana.api.document.BulkOpType;
 import com.elefana.api.document.DocumentShardInfo;
 import com.elefana.api.exception.ElefanaException;
+import com.elefana.api.json.JsonUtils;
 import com.elefana.document.ingest.IngestTable;
 import com.elefana.indices.fieldstats.IndexFieldStatsService;
 import com.elefana.util.EscapeUtils;
 import com.elefana.util.IndexUtils;
-import com.jsoniter.JsonIterator;
-import com.jsoniter.spi.JsonException;
 import org.postgresql.copy.CopyIn;
 import org.postgresql.copy.CopyManager;
 import org.postgresql.jdbc.PgConnection;
@@ -37,7 +36,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import java.nio.charset.Charset;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 
 public abstract class BulkIndexTask implements Callable<List<BulkItemResponse>> {
@@ -217,8 +218,8 @@ public abstract class BulkIndexTask implements Callable<List<BulkItemResponse>> 
 
 				if (!foundBadEntry) {
 					try {
-						JsonIterator.deserialize(indexOperation.getSource()).toString();
-					} catch (JsonException ex) {
+						JsonUtils.fromJsonString(indexOperation.getSource(), Map.class);
+					} catch (Exception ex) {
 						LOGGER.error("Invalid JSON: " + indexOperation.getSource());
 						foundBadEntry = true;
 					}

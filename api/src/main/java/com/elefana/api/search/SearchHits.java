@@ -15,10 +15,10 @@
  ******************************************************************************/
 package com.elefana.api.search;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.ArrayList;
 import java.util.List;
-
-import com.jsoniter.annotation.JsonProperty;
 
 public class SearchHits {
 	private int total;

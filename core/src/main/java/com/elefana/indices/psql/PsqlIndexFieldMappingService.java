@@ -20,17 +20,16 @@ import com.elefana.api.RequestExecutor;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.ShardFailedException;
 import com.elefana.api.indices.*;
-import com.elefana.indices.*;
+import com.elefana.api.json.JsonUtils;
+import com.elefana.indices.FieldMapper;
+import com.elefana.indices.IndexFieldMappingService;
+import com.elefana.indices.V2FieldMapper;
+import com.elefana.indices.V5FieldMapper;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
 import com.elefana.util.IndexUtils;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
-import com.jsoniter.JsonIterator;
-import com.jsoniter.output.JsonStream;
-import com.jsoniter.spi.TypeLiteral;
 import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -152,7 +151,7 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 			SqlRowSet rowSet = jdbcTemplate
 					.queryForRowSet("SELECT _field_names FROM elefana_index_field_names WHERE _index = ? AND _type = ?", index, type);
 			while (rowSet.next()) {
-				results.addAll(JsonIterator.deserialize(rowSet.getString("_field_names"), new TypeLiteral<List<String>>(){}));
+				results.addAll(JsonUtils.fromJsonString(rowSet.getString("_field_names"), List.class));
 			}
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
@@ -230,7 +229,7 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 	}
 
 	public void putMapping(String index, String mappingBody) throws ElefanaException {
-		Map<String, Object> mappings = (Map<String, Object>) JsonIterator.deserialize(mappingBody, new TypeLiteral<Map<String, Object>>(){}).get("mappings");
+		Map<String, Object> mappings = (Map<String, Object>) JsonUtils.fromJsonString(mappingBody, Map.class).get("mappings");
 		if (mappings == null) {
 			return;
 		}
@@ -240,7 +239,7 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 	}
 
 	public void putMapping(String index, String type, String mappingBody) throws ElefanaException {
-		putIndexMapping(index, type, JsonIterator.deserialize(mappingBody, new TypeLiteral<Map<String, Object>>(){}));
+		putIndexMapping(index, type, JsonUtils.fromJsonString(mappingBody, Map.class));
 	}
 
 	private void putIndexMapping(String index, String type, Map<String, Object> newMappings) throws ElefanaException {
@@ -450,7 +449,7 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 				SqlRowSet rowSet = jdbcTemplate.queryForRowSet(
 						"SELECT _capabilities FROM elefana_index_field_capabilities WHERE _index = ? LIMIT 1", index);
 				if (rowSet.next()) {
-					result.getFields().putAll(JsonIterator.deserialize(rowSet.getString("_capabilities"), new TypeLiteral<Map<String, Object>>(){}));
+					result.getFields().putAll(JsonUtils.fromJsonString(rowSet.getString("_capabilities"), Map.class));
 				}
 			} catch (Exception e) {
 				LOGGER.error(e.getMessage(), e);
@@ -465,7 +464,7 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 			SqlRowSet rowSet = jdbcTemplate
 					.queryForRowSet("SELECT _type, _mapping FROM elefana_index_mapping WHERE _index = ?", index);
 			while (rowSet.next()) {
-				results.put(rowSet.getString("_type"), JsonIterator.deserialize(rowSet.getString("_mapping"), new TypeLiteral<Map<String, Object>>(){}));
+				results.put(rowSet.getString("_type"), JsonUtils.fromJsonString(rowSet.getString("_mapping"), Map.class));
 			}
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
@@ -478,7 +477,7 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 			SqlRowSet rowSet = jdbcTemplate.queryForRowSet(
 					"SELECT _mapping FROM elefana_index_mapping WHERE _index = ? AND _type = ? LIMIT 1", index, type);
 			if (rowSet.next()) {
-				return JsonIterator.deserialize(rowSet.getString("_mapping"), new TypeLiteral<Map<String, Object>>(){});
+				return JsonUtils.fromJsonString(rowSet.getString("_mapping"), Map.class);
 			}
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
@@ -553,7 +552,7 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 				}
 				mapping.put(type, typeMappings);
 			}
-			Map<String, Object> document = JsonIterator.deserialize(rowSet.getString("_source"), new TypeLiteral<Map<String, Object>>(){});
+			Map<String, Object> document = JsonUtils.fromJsonString(rowSet.getString("_source"), Map.class);
 			fieldMapper.generateMappings(typeMappings, document);
 			fieldMapper.generateFieldNames(fieldNames, document);
 
@@ -570,7 +569,7 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 			SqlRowSet rowSet) throws Exception {
 		int totalSamples = 0;
 		while (rowSet.next()) {
-			Map<String, Object> document = JsonIterator.deserialize(rowSet.getString("_source"), new TypeLiteral<Map<String, Object>>(){});
+			Map<String, Object> document = JsonUtils.fromJsonString(rowSet.getString("_source"), Map.class);
 			fieldMapper.generateMappings(typeMappings, document);
 			fieldMapper.generateFieldNames(fieldNames, document);
 			totalSamples++;
@@ -598,7 +597,7 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 		Map<String, Object> fields = new HashMap<String, Object>();
 
 		while (indexMappingSet.next()) {
-			Map<String, Object> mappings = JsonIterator.deserialize(indexMappingSet.getString("_mapping"), new TypeLiteral<Map<String, Object>>(){});
+			Map<String, Object> mappings = JsonUtils.fromJsonString(indexMappingSet.getString("_mapping"), Map.class);
 			Map<String, Object> properties = (Map) mappings.get("properties");
 			for (String propertyKey : properties.keySet()) {
 				if (fields.containsKey(propertyKey)) {
@@ -615,7 +614,7 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 		try {
 			PGobject jsonObject = new PGobject();
 			jsonObject.setType("json");
-			jsonObject.setValue(JsonStream.serialize(fields));
+			jsonObject.setValue(JsonUtils.toJsonString(fields));
 			jdbcTemplate.update(
 					"INSERT INTO elefana_index_field_capabilities (_index, _capabilities) VALUES (?, ?) ON CONFLICT (_index) DO UPDATE SET _capabilities = EXCLUDED._capabilities",
 					index, jsonObject);
@@ -669,7 +668,7 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 
 	private void saveFieldNames(String index, String type, Set<String> fieldNames) throws ElefanaException {
 		try {
-			final String json = JsonStream.serialize(fieldNames);
+			final String json = JsonUtils.toJsonString(fieldNames);
 			PGobject jsonObject = new PGobject();
 			jsonObject.setType("json");
 			jsonObject.setValue(json);
@@ -687,7 +686,7 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 
 	private void saveMappings(String index, String type, Map<String, Object> mappings) throws ElefanaException {
 		try {
-			final String json = JsonStream.serialize(mappings);
+			final String json = JsonUtils.toJsonString(mappings);
 			PGobject jsonObject = new PGobject();
 			jsonObject.setType("json");
 			jsonObject.setValue(json);

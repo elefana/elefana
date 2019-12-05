@@ -17,7 +17,7 @@ package com.elefana.api.indices;
 
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
-import com.jsoniter.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 public abstract class GetFieldNamesRequest extends ApiRequest<GetFieldNamesResponse> {
 	@JsonIgnore

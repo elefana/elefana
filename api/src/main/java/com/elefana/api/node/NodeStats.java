@@ -15,18 +15,11 @@
  ******************************************************************************/
 package com.elefana.api.node;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.Map;
 
-import com.elefana.api.json.NodeStatsDecoder;
-import com.jsoniter.annotation.JsonProperty;
-import com.jsoniter.spi.JsoniterSpi;
-
 public abstract class NodeStats {
-	
-	static {
-		JsoniterSpi.registerTypeDecoder(NodeStats.class, new NodeStatsDecoder());
-	}
-	
 	private String name;
 	@JsonProperty("transport_address")
 	private String transportAddress;

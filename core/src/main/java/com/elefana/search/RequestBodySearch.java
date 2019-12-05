@@ -17,14 +17,13 @@ package com.elefana.search;
 
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.indices.IndexTemplate;
+import com.elefana.api.json.JsonUtils;
 import com.elefana.search.agg.AggregationsParser;
 import com.elefana.search.agg.RootAggregationContext;
 import com.elefana.search.query.Query;
 import com.elefana.search.query.QueryParser;
 import com.elefana.search.sort.Sort;
-import com.jsoniter.JsonIterator;
-import com.jsoniter.ValueType;
-import com.jsoniter.any.Any;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,17 +54,17 @@ public class RequestBodySearch {
 		this.query = QueryParser.parseQuery(originalQuery);
 		
 		if(originalQuery != null && !originalQuery.isEmpty()) {
-			Any context = JsonIterator.deserialize(originalQuery);
+			JsonNode context = JsonUtils.extractJsonNode(originalQuery);
 			sort.parse(context);
 			querySqlOrderClause = sort.toSqlClause();
 			
-			if(context.get("size").valueType().equals(ValueType.NUMBER)) {
-				size = context.get("size").toInt();
+			if(context.get("size").isNumber()) {
+				size = context.get("size").asInt();
 			} else {
 				size = 10;
 			}
-			if(context.get("from").valueType().equals(ValueType.NUMBER)) {
-				from = context.get("from").toInt();
+			if(context.get("from").isNumber()) {
+				from = context.get("from").asInt();
 			} else {
 				from = 0;
 			}

@@ -15,13 +15,12 @@
  ******************************************************************************/
 package com.elefana.api.indices;
 
+import com.elefana.api.ApiResponse;
+import com.elefana.api.json.JsonUtils;
+import io.netty.handler.codec.http.HttpResponseStatus;
+
 import java.util.HashMap;
 import java.util.Map;
-
-import com.elefana.api.ApiResponse;
-import com.jsoniter.output.JsonStream;
-
-import io.netty.handler.codec.http.HttpResponseStatus;
 
 public class GetFieldCapabilitiesResponse extends ApiResponse {
 	private final Map<String, Object> fields = new HashMap<String, Object>();
@@ -32,7 +31,7 @@ public class GetFieldCapabilitiesResponse extends ApiResponse {
 	
 	@Override
 	public String toJsonString() {
-		return JsonStream.serialize(this);
+		return JsonUtils.toJsonString(this);
 	}
 
 	public Map<String, Object> getFields() {

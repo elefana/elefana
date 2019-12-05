@@ -15,10 +15,10 @@
  ******************************************************************************/
 package com.elefana.api.indices;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.util.HashMap;
 import java.util.Map;
-
-import com.jsoniter.annotation.JsonIgnore;
 
 public class IndexTemplate {
 	private final Map<String, Object> settings = new HashMap<String, Object>();

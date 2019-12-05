@@ -15,13 +15,12 @@
  ******************************************************************************/
 package com.elefana.api.indices;
 
+import com.elefana.api.ApiResponse;
+import com.elefana.api.json.JsonUtils;
+import io.netty.handler.codec.http.HttpResponseStatus;
+
 import java.util.HashMap;
 import java.util.Map;
-
-import com.elefana.api.ApiResponse;
-import com.jsoniter.output.JsonStream;
-
-import io.netty.handler.codec.http.HttpResponseStatus;
 
 public class ListIndexTemplatesResponse extends ApiResponse {
 	private final Map<String, IndexTemplate> templates = new HashMap<String, IndexTemplate>(1);
@@ -36,6 +35,6 @@ public class ListIndexTemplatesResponse extends ApiResponse {
 	
 	@Override
 	public String toJsonString() {
-		return JsonStream.serialize(this);
+		return JsonUtils.toJsonString(this);
 	}
 }

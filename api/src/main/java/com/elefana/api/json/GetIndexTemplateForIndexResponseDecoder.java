@@ -15,30 +15,36 @@
  ******************************************************************************/
 package com.elefana.api.json;
 
-import java.io.IOException;
-
 import com.elefana.api.indices.GetIndexTemplateForIndexResponse;
 import com.elefana.api.indices.IndexTemplate;
-import com.jsoniter.JsonIterator;
-import com.jsoniter.ValueType;
-import com.jsoniter.any.Any;
-import com.jsoniter.spi.Decoder;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 
-public class GetIndexTemplateForIndexResponseDecoder implements Decoder {
+import java.io.IOException;
+
+public class GetIndexTemplateForIndexResponseDecoder extends StdDeserializer<GetIndexTemplateForIndexResponse> {
+
+	public GetIndexTemplateForIndexResponseDecoder() {
+		this(null);
+	}
+
+	public GetIndexTemplateForIndexResponseDecoder(Class<?> vc) {
+		super(vc);
+	}
 
 	@Override
-	public Object decode(JsonIterator iter) throws IOException {
-		Any any = iter.readAny();
+	public GetIndexTemplateForIndexResponse deserialize(JsonParser parser, DeserializationContext ctxt) throws IOException, JsonProcessingException {
+		final JsonNode any = parser.getCodec().readTree(parser);
 
 		final String index = any.get("index").toString();
-		final String tempalteId = any.get("templateId").valueType().equals(ValueType.NULL) ? null
-				: any.get("templateId").toString();
-		final IndexTemplate indexTemplate = any.get("template").valueType().equals(ValueType.NULL) ? null
-				: any.get("template").as(IndexTemplate.class);
+		final String tempalteId = any.get("templateId").isNull() ? null : any.get("templateId").textValue();
+		final IndexTemplate indexTemplate = any.get("template").isNull() ? null : JsonUtils.OBJECT_MAPPER.readValue(any.get("template").toString(), IndexTemplate.class);
 
-		GetIndexTemplateForIndexResponse result = new GetIndexTemplateForIndexResponse(index, tempalteId);
+		final GetIndexTemplateForIndexResponse result = new GetIndexTemplateForIndexResponse(index, tempalteId);
 		result.setIndexTemplate(indexTemplate);
 		return result;
 	}
-
 }

@@ -15,11 +15,12 @@
  ******************************************************************************/
 package com.elefana.api;
 
-import com.jsoniter.JsonIterator;
-import com.jsoniter.output.JsonStream;
+import com.elefana.api.json.JsonUtils;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.netty.handler.codec.http.HttpResponseStatus;
 
 public class AckResponse extends ApiResponse {
+	@JsonProperty
 	private boolean acknowledged = true;
 
 	public AckResponse() {
@@ -36,6 +37,6 @@ public class AckResponse extends ApiResponse {
 
 	@Override
 	public String toJsonString() {
-		return JsonStream.serialize(this);
+		return JsonUtils.toJsonString(this);
 	}
 }

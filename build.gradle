@@ -195,7 +195,7 @@ project(":" + rootProject.name + "-api") {
 	description = 'Elefana API classes'
 	
 	dependencies {
-		compile "com.jsoniter:jsoniter:$jsoniterVersion"
+		compile "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
 		compile "io.netty:netty-codec-http:$nettyVersion"
 		
 		testCompile('org.springframework.boot:spring-boot-starter-test')
@@ -217,7 +217,6 @@ project(":" + rootProject.name + "-core") {
 		compile "com.github.oshi:oshi-core:$oshiVersion"
 		compile "net.java.dev.jna:jna:$jnaVersion"
 		compile "net.java.dev.jna:jna-platform:$jnaVersion"
-		compile "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
 		compile "org.mini2Dx:natives-loader:$nativesLoaderVersion"
 		compile "com.zaxxer:HikariCP:$hikariVersion"
 		compile "com.fasterxml.uuid:java-uuid-generator:${uuidGeneratorVersion}"

@@ -15,24 +15,15 @@
  ******************************************************************************/
 package com.elefana.api.document;
 
+import com.elefana.api.ApiResponse;
+import com.elefana.api.json.JsonUtils;
+import io.netty.handler.codec.http.HttpResponseStatus;
+
 import java.util.ArrayList;
 import java.util.List;
 
-import com.elefana.api.ApiResponse;
-import com.elefana.api.json.BulkResponseDecoder;
-import com.elefana.api.json.V5BulkResponseEncoder;
-import com.jsoniter.output.JsonStream;
-import com.jsoniter.spi.JsoniterSpi;
-
-import io.netty.handler.codec.http.HttpResponseStatus;
-
 public class BulkResponse extends ApiResponse {	
-	
-	static {
-		JsoniterSpi.registerTypeDecoder(BulkResponse.class, new BulkResponseDecoder());
-		JsoniterSpi.registerTypeEncoder(BulkResponse.class, new V5BulkResponseEncoder());
-	}
-	
+
 	private long took;
 	private boolean errors;
 	private final List<BulkItemResponse> items;
@@ -69,7 +60,7 @@ public class BulkResponse extends ApiResponse {
 
 	@Override
 	public String toJsonString() {
-		return JsonStream.serialize(this);
+		return JsonUtils.toJsonString(this);
 	}
 
 	@Override

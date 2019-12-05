@@ -15,30 +15,37 @@
  ******************************************************************************/
 package com.elefana.api.json;
 
-import com.elefana.api.indices.GetIndexTemplateForIndexResponse;
 import com.elefana.api.indices.GetIndexTemplateResponse;
 import com.elefana.api.indices.IndexTemplate;
-import com.jsoniter.JsonIterator;
-import com.jsoniter.ValueType;
-import com.jsoniter.any.Any;
-import com.jsoniter.spi.Decoder;
-import com.jsoniter.spi.TypeLiteral;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 
 import java.io.IOException;
-import java.util.Map;
+import java.util.Iterator;
 
-public class GetIndexTemplateResponseDecoder implements Decoder {
+public class GetIndexTemplateResponseDecoder extends StdDeserializer<GetIndexTemplateResponse> {
+
+	public GetIndexTemplateResponseDecoder() {
+		this(null);
+	}
+
+	public GetIndexTemplateResponseDecoder(Class<?> vc) {
+		super(vc);
+	}
 
 	@Override
-	public Object decode(JsonIterator iter) throws IOException {
-		final Any any = iter.readAny();
-		final Map<String, Any> templatesMap = any.asMap();
+	public GetIndexTemplateResponse deserialize(JsonParser parser, DeserializationContext ctxt) throws IOException, JsonProcessingException {
+		final JsonNode any = parser.getCodec().readTree(parser);
 
 		final GetIndexTemplateResponse result = new GetIndexTemplateResponse();
-		for(String templateId : templatesMap.keySet()) {
-			result.getTemplates().put(templateId, templatesMap.get(templateId).as(IndexTemplate.class));
+		final Iterator<String> templateNames = any.fieldNames();
+		while(templateNames.hasNext()) {
+			final String templateId = templateNames.next();
+			result.getTemplates().put(templateId, JsonUtils.OBJECT_MAPPER.readValue(any.get(templateId).toString(), IndexTemplate.class));
 		}
 		return result;
 	}
-
 }

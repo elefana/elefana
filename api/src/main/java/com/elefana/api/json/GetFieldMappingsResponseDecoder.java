@@ -15,21 +15,29 @@
  ******************************************************************************/
 package com.elefana.api.json;
 
+import com.elefana.api.indices.GetFieldMappingsResponse;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
+
 import java.io.IOException;
 import java.util.Map;
 
-import com.elefana.api.indices.GetFieldMappingsResponse;
-import com.jsoniter.JsonIterator;
-import com.jsoniter.spi.Decoder;
-import com.jsoniter.spi.TypeLiteral;
+public class GetFieldMappingsResponseDecoder extends StdDeserializer<GetFieldMappingsResponse> {
 
-public class GetFieldMappingsResponseDecoder implements Decoder {
-
-	@Override
-	public Object decode(JsonIterator iter) throws IOException {
-		GetFieldMappingsResponse result = new GetFieldMappingsResponse();
-		result.getIndicesMappings().putAll(iter.read(new TypeLiteral<Map<String, Object>>(){}));
-		return result;
+	public GetFieldMappingsResponseDecoder() {
+		this(null);
 	}
 
+	public GetFieldMappingsResponseDecoder(Class<?> vc) {
+		super(vc);
+	}
+
+	@Override
+	public GetFieldMappingsResponse deserialize(JsonParser p, DeserializationContext ctxt) throws IOException, JsonProcessingException {
+		GetFieldMappingsResponse result = new GetFieldMappingsResponse();
+		result.getIndicesMappings().putAll(JsonUtils.fromJsonString(p.getText(), Map.class));
+		return result;
+	}
 }

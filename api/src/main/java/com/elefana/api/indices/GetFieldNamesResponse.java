@@ -16,8 +16,8 @@
 package com.elefana.api.indices;
 
 import com.elefana.api.ApiResponse;
-import com.jsoniter.annotation.JsonProperty;
-import com.jsoniter.output.JsonStream;
+import com.elefana.api.json.JsonUtils;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.netty.handler.codec.http.HttpResponseStatus;
 
 import java.util.HashSet;
@@ -33,7 +33,7 @@ public class GetFieldNamesResponse extends ApiResponse {
 
 	@Override
 	public String toJsonString() {
-		return JsonStream.serialize(this);
+		return JsonUtils.toJsonString(this);
 	}
 
 	public Set<String> getFieldNames() {

@@ -18,27 +18,34 @@ package com.elefana.api.json;
 import com.elefana.api.node.NodeStats;
 import com.elefana.api.node.v2.V2NodeStats;
 import com.elefana.api.node.v5.V5NodeStats;
-import com.jsoniter.JsonIterator;
-import com.jsoniter.ValueType;
-import com.jsoniter.any.Any;
-import com.jsoniter.spi.Decoder;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 
 import java.io.IOException;
 
-public class NodeStatsDecoder implements Decoder {
+public class NodeStatsDecoder extends StdDeserializer<NodeStats> {
+
+	public NodeStatsDecoder() {
+		this(null);
+	}
+
+	public NodeStatsDecoder(Class<?> vc) {
+		super(vc);
+	}
 
 	@Override
-	public Object decode(JsonIterator iter) throws IOException {
-		Any any = iter.readAny();
+	public NodeStats deserialize(JsonParser parser, DeserializationContext ctxt) throws IOException, JsonProcessingException {
+		final JsonNode any = parser.getCodec().readTree(parser);
 
 		NodeStats result = null;
-		if (any.get("http_address").valueType().equals(ValueType.STRING)
-				|| any.get("http_address").valueType().equals(ValueType.NULL)) {
-			result = any.as(V2NodeStats.class);
+		if (any.get("http_address").isTextual() || any.get("http_address").isNull()) {
+			result = JsonUtils.OBJECT_MAPPER.readValue(any.toString(), V2NodeStats.class);
 		} else {
-			result = any.as(V5NodeStats.class);
+			result = JsonUtils.OBJECT_MAPPER.readValue(any.toString(), V5NodeStats.class);
 		}
 		return result;
 	}
-
 }

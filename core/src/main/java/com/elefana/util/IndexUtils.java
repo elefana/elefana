@@ -16,6 +16,7 @@
 package com.elefana.util;
 
 import com.elefana.api.exception.ElefanaException;
+import com.elefana.api.json.JsonUtils;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
@@ -30,14 +31,6 @@ import java.util.List;
 
 public interface IndexUtils {
 	public static final SecureRandom SECURE_RANDOM = new SecureRandom();
-	public static final JsonFactory JSON_FACTORY = new JsonFactory() {
-		{
-			enable(JsonFactory.Feature.USE_THREAD_LOCAL_FOR_BUFFER_RECYCLING);
-
-			enable(JsonParser.Feature.ALLOW_SINGLE_QUOTES);
-			enable(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES);
-		}
-	};
 
 	public static final String DATA_TABLE = "elefana_data";
 	public static final String PARTITION_TRACKING_TABLE = "elefana_partition_tracking";
@@ -116,7 +109,7 @@ public interface IndexUtils {
 
 		final StringBuilder result = POOLED_STRING_BUILDER.get();
 
-		final JsonParser jsonParser = JSON_FACTORY.createParser(str.getCharArray(), 0, str.getContentLength());
+		final JsonParser jsonParser = JsonUtils.JSON_FACTORY.createParser(str.getCharArray(), 0, str.getContentLength());
 		jsonParser.nextToken();
 
 		result.append('{');

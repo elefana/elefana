@@ -1,93 +1,90 @@
+/*******************************************************************************
+ * Copyright 2018 Viridian Software Limited
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ ******************************************************************************/
 package com.elefana.api.json;
 
 import com.elefana.api.document.BulkItemResponse;
 import com.elefana.api.document.BulkResponse;
-import com.jsoniter.output.JsonStream;
-import com.jsoniter.spi.Encoder;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 
 import java.io.IOException;
 
-public class V2BulkResponseEncoder implements Encoder {
+public class V2BulkResponseEncoder extends StdSerializer<BulkResponse> {
+
+	public V2BulkResponseEncoder() {
+		this(null);
+	}
+
+	public V2BulkResponseEncoder(Class<BulkResponse> clazz) {
+		super(clazz);
+	}
 
 	@Override
-	public void encode(Object obj, JsonStream stream) throws IOException {
-		stream.writeObjectStart();
+	public void serialize(BulkResponse bulkResponse, JsonGenerator stream, SerializerProvider provider) throws IOException {
+		stream.writeStartObject();
+		
+		stream.writeNumberField("took", bulkResponse.getTook());
+		stream.writeBooleanField("errors", bulkResponse.isErrors());
 
-		BulkResponse bulkResponse = (BulkResponse) obj;
-		stream.writeObjectField("took");
-		stream.writeVal(bulkResponse.getTook());
-		stream.writeMore();
-
-		stream.writeObjectField("errors");
-		stream.writeVal(bulkResponse.isErrors());
-		stream.writeMore();
-
-		stream.writeObjectField("items");
-		stream.writeArrayStart();
+		stream.writeFieldName("items");
+		stream.writeStartArray();
 
 		for(int i = 0; i < bulkResponse.getItems().size(); i++) {
 			BulkItemResponse itemResponse = bulkResponse.getItems().get(i);
-			stream.writeObjectStart();
+			stream.writeStartObject();
 
 			switch(itemResponse.getOpType()) {
 			case DELETE:
-				stream.writeObjectField("delete");
+				stream.writeFieldName("delete");
 				break;
 			case INDEX:
 			default:
-				stream.writeObjectField("create");
+				stream.writeFieldName("create");
 				break;
 			}
 
-			stream.writeObjectStart();
-			stream.writeObjectField("_index");
-			stream.writeVal(itemResponse.getIndex());
-			stream.writeMore();
-
-			stream.writeObjectField("_type");
-			stream.writeVal(itemResponse.getType());
-			stream.writeMore();
-
-			stream.writeObjectField("_id");
-			stream.writeVal(itemResponse.getId());
-			stream.writeMore();
-
-			stream.writeObjectField("result");
-			stream.writeVal(itemResponse.getResult());
+			stream.writeStartObject();
+			stream.writeStringField("_index", itemResponse.getIndex());
+			stream.writeStringField("_type", itemResponse.getType());
+			stream.writeStringField("_id", itemResponse.getId());
+			stream.writeStringField("result", itemResponse.getResult());
 
 			if(!itemResponse.isFailed()) {
-				stream.writeMore();
-				stream.writeObjectField("_version");
-				stream.writeVal(itemResponse.getVersion());
-
-				stream.writeMore();
-				stream.writeObjectField("status");
+				stream.writeNumberField("_version", itemResponse.getVersion());
 
 				switch(itemResponse.getOpType()) {
 				case DELETE:
-					stream.writeVal(200);
+					stream.writeNumberField("status", 200);
 					break;
 				case INDEX:
 				default:
-					stream.writeVal(201);
+					stream.writeNumberField("status", 201);
 					break;
 				}
 			} else {
-				stream.writeMore();
-				stream.writeObjectField("status");
-				stream.writeVal(500);
+				stream.writeNumberField("status", 500);
 			}
 
-			stream.writeObjectEnd();
-			stream.writeObjectEnd();
-
-			if(i < bulkResponse.getItems().size() - 1) {
-				stream.writeMore();
-			}
+			stream.writeEndObject();
+			stream.writeEndObject();
 		}
 
-		stream.writeArrayEnd();
+		stream.writeEndArray();
 
-		stream.writeObjectEnd();
+		stream.writeEndObject();
 	}
 }

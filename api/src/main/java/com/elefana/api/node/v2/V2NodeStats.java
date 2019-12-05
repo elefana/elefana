@@ -16,7 +16,7 @@
 package com.elefana.api.node.v2;
 
 import com.elefana.api.node.NodeStats;
-import com.jsoniter.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class V2NodeStats extends NodeStats {
 	private final V2NodeAttributes attributes = new V2NodeAttributes();

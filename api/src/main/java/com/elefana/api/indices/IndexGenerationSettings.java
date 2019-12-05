@@ -15,11 +15,11 @@
  ******************************************************************************/
 package com.elefana.api.indices;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-
-import com.jsoniter.annotation.JsonProperty;
 
 public class IndexGenerationSettings {
 	@JsonProperty("mode")

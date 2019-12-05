@@ -15,7 +15,7 @@
  ******************************************************************************/
 package com.elefana.api.indices;
 
-import com.jsoniter.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.Objects;
 

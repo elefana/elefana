@@ -16,7 +16,7 @@
 package com.elefana.api.node.v5;
 
 import com.elefana.api.json.EmptyJsonObject;
-import com.jsoniter.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class V5TransportAttributes {
 	@JsonProperty("bound_address")

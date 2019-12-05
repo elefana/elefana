@@ -15,9 +15,6 @@
  ******************************************************************************/
 package com.elefana;
 
-import com.jsoniter.JsonIterator;
-import com.jsoniter.extra.PreciseFloatSupport;
-import com.jsoniter.spi.DecodingMode;
 import org.mini2Dx.natives.OsInformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,17 +42,11 @@ public class ElefanaApplication implements ApplicationListener<ContextRefreshedE
 	private static boolean APPLICATION_STARTED = false;
 	private static ConfigurableApplicationContext APP_CONTEXT;
 	
-	static {
-		PreciseFloatSupport.enable();
-	}
-	
 	public static boolean isApplicationStarted() {
 		return APPLICATION_STARTED;
 	}
 
 	public static void main(String[] args) {
-		JsonIterator.setMode(DecodingMode.REFLECTION_MODE);
-
 		String configDirectory = null;
 		if(args.length > 0) {
 			for(int i = 0; i < args.length; i++) {
@@ -73,8 +64,6 @@ public class ElefanaApplication implements ApplicationListener<ContextRefreshedE
 	}
 
 	public static void start(String testConfigDirectory) {
-		JsonIterator.setMode(DecodingMode.REFLECTION_MODE);
-		
 		SpringApplicationBuilder springApplicationBuilder = new SpringApplicationBuilder(ElefanaApplication.class);
 		APP_CONTEXT = springApplicationBuilder.sources(ElefanaApplication.class).properties(getProperties(testConfigDirectory))
 				.bannerMode(Mode.OFF).run();

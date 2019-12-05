@@ -15,14 +15,13 @@
  ******************************************************************************/
 package com.elefana.api.indices;
 
+import com.elefana.api.ApiResponse;
+import com.elefana.api.json.JsonUtils;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import io.netty.handler.codec.http.HttpResponseStatus;
+
 import java.util.HashMap;
 import java.util.Map;
-
-import com.elefana.api.ApiResponse;
-import com.jsoniter.annotation.JsonProperty;
-import com.jsoniter.output.JsonStream;
-
-import io.netty.handler.codec.http.HttpResponseStatus;
 
 public class RefreshIndexResponse extends ApiResponse {
 	@JsonProperty("_shards")
@@ -34,7 +33,7 @@ public class RefreshIndexResponse extends ApiResponse {
 
 	@Override
 	public String toJsonString() {
-		return JsonStream.serialize(this);
+		return JsonUtils.toJsonString(this);
 	}
 
 	public Map<String, Object> getShards() {

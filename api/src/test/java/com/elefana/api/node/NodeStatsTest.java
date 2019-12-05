@@ -15,15 +15,13 @@
  ******************************************************************************/
 package com.elefana.api.node;
 
-import org.junit.Assert;
-import org.junit.Test;
-
+import com.elefana.api.json.JsonUtils;
 import com.elefana.api.node.v2.V2NodeStats;
 import com.elefana.api.node.v5.V5HttpAttributes;
 import com.elefana.api.node.v5.V5NodeStats;
 import com.elefana.api.node.v5.V5TransportAttributes;
-import com.jsoniter.JsonIterator;
-import com.jsoniter.output.JsonStream;
+import org.junit.Assert;
+import org.junit.Test;
 
 public class NodeStatsTest {
 
@@ -33,8 +31,8 @@ public class NodeStatsTest {
 		expectedNodeStats.setHttpAddress("127.0.0.1");
 		expectedNodeStats.getAttributes().setData(true);
 		
-		String json = JsonStream.serialize(expectedNodeStats);
-		NodeStats result = JsonIterator.deserialize(json, NodeStats.class);
+		String json = JsonUtils.toJsonString(expectedNodeStats);
+		NodeStats result = JsonUtils.fromJsonString(json, NodeStats.class);
 		Assert.assertEquals(true, result instanceof V2NodeStats);
 		
 		V2NodeStats v2Result = (V2NodeStats) result;
@@ -50,8 +48,8 @@ public class NodeStatsTest {
 		expectedNodeStats.setTransport(new V5TransportAttributes());
 		expectedNodeStats.getTransport().setPublishAddress("127.0.0.1");
 		
-		String json = JsonStream.serialize(expectedNodeStats);
-		NodeStats result = JsonIterator.deserialize(json, NodeStats.class);
+		String json = JsonUtils.toJsonString(expectedNodeStats);
+		NodeStats result = JsonUtils.fromJsonString(json, NodeStats.class);
 		Assert.assertEquals(expectedNodeStats, result);
 	}
 }

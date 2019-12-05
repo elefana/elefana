@@ -15,14 +15,13 @@
  ******************************************************************************/
 package com.elefana.api.document;
 
-import java.util.HashMap;
-
+import com.elefana.api.indices.GetIndexTemplateForIndexResponse;
+import com.elefana.api.indices.IndexTemplate;
+import com.elefana.api.json.JsonUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.elefana.api.indices.GetIndexTemplateForIndexResponse;
-import com.elefana.api.indices.IndexTemplate;
-import com.jsoniter.JsonIterator;
+import java.util.HashMap;
 
 
 public class GetIndexTemplateForIndexResponseTest {
@@ -39,7 +38,7 @@ public class GetIndexTemplateForIndexResponseTest {
 		expected.setIndexTemplate(indexTemplate);
 		
 		final String json = expected.toJsonString();
-		final GetIndexTemplateForIndexResponse result = JsonIterator.deserialize(json, GetIndexTemplateForIndexResponse.class);
+		final GetIndexTemplateForIndexResponse result = JsonUtils.fromJsonString(json, GetIndexTemplateForIndexResponse.class);
 		Assert.assertEquals(expected.toJsonString(), result.toJsonString());
 	}
 	
@@ -50,7 +49,7 @@ public class GetIndexTemplateForIndexResponseTest {
 		final GetIndexTemplateForIndexResponse expected = new GetIndexTemplateForIndexResponse(index, null);
 		
 		final String json = expected.toJsonString();
-		final GetIndexTemplateForIndexResponse result = JsonIterator.deserialize(json, GetIndexTemplateForIndexResponse.class);
+		final GetIndexTemplateForIndexResponse result = JsonUtils.fromJsonString(json, GetIndexTemplateForIndexResponse.class);
 		Assert.assertEquals(expected, result);
 	}
 }

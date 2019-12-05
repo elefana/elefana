@@ -16,20 +16,13 @@
 package com.elefana.api.indices;
 
 import com.elefana.api.ApiResponse;
-import com.elefana.api.json.GetIndexTemplateForIndexResponseDecoder;
-import com.elefana.api.json.GetIndexTemplateResponseDecoder;
-import com.jsoniter.output.JsonStream;
-import com.jsoniter.spi.JsoniterSpi;
+import com.elefana.api.json.JsonUtils;
 import io.netty.handler.codec.http.HttpResponseStatus;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class GetIndexTemplateResponse extends ApiResponse {
-	static {
-		JsoniterSpi.registerTypeDecoder(GetIndexTemplateResponse.class, new GetIndexTemplateResponseDecoder());
-	}
-
 	protected String templateId;
 	protected final Map<String, IndexTemplate> templates = new HashMap<String, IndexTemplate>(1);
 
@@ -44,7 +37,7 @@ public class GetIndexTemplateResponse extends ApiResponse {
 	
 	@Override
 	public String toJsonString() {
-		return JsonStream.serialize(templates);
+		return JsonUtils.toJsonString(templates);
 	}
 
 	public Map<String, IndexTemplate> getTemplates() {

@@ -22,6 +22,7 @@ import com.elefana.api.exception.DocumentAlreadyExistsException;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.ShardFailedException;
 import com.elefana.api.indices.DeleteIndexRequest;
+import com.elefana.api.json.JsonUtils;
 import com.elefana.document.DocumentService;
 import com.elefana.indices.fieldstats.IndexFieldStatsService;
 import com.elefana.indices.psql.PsqlIndexFieldMappingService;
@@ -29,8 +30,6 @@ import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
 import com.elefana.util.EscapeUtils;
 import com.elefana.util.IndexUtils;
-import com.jsoniter.JsonIterator;
-import com.jsoniter.spi.TypeLiteral;
 import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -175,9 +174,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 				result.setFound(true);
 
 				if(getRequest.isFetchSource()) {
-					result.setSource(JsonIterator.deserialize(EscapeUtils.psqlUnescapeString(resultSet.getString("_source")),
-							new TypeLiteral<Map<String, Object>>() {
-							}));
+					result.setSource(JsonUtils.fromJsonString(EscapeUtils.psqlUnescapeString(resultSet.getString("_source")), Map.class));
 				} else {
 					result.setSource(new HashMap<String, Object>());
 				}
@@ -192,8 +189,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 	}
 
 	public MultiGetResponse multiGet(String requestBody) throws ElefanaException {
-		Map<String, Object> request = JsonIterator.deserialize(requestBody, new TypeLiteral<Map<String, Object>>() {
-		});
+		Map<String, Object> request = JsonUtils.fromJsonString(requestBody, Map.class);
 		List<Object> requestItems = (List<Object>) request.get("docs");
 
 		MultiGetResponse result = new MultiGetResponse();
@@ -245,10 +241,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 						getResponse.setIndex(resultSet.getString("_index"));
 						getResponse.setType(resultSet.getString("_type"));
 						getResponse.setId(resultSet.getString("_id"));
-						getResponse.setSource(
-								JsonIterator.deserialize(EscapeUtils.psqlUnescapeString(resultSet.getString("_source")),
-										new TypeLiteral<Map<String, Object>>() {
-										}));
+						getResponse.setSource(JsonUtils.fromJsonString(EscapeUtils.psqlUnescapeString(resultSet.getString("_source")), Map.class));
 						result.getDocs().add(getResponse);
 					}
 				} catch (Exception e) {
@@ -268,8 +261,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 	}
 
 	public MultiGetResponse multiGet(String indexPattern, String requestBody) throws ElefanaException {
-		Map<String, Object> request = JsonIterator.deserialize(requestBody, new TypeLiteral<Map<String, Object>>() {
-		});
+		Map<String, Object> request = JsonUtils.fromJsonString(requestBody, Map.class);
 		List<Object> requestItems = (List<Object>) request.get("docs");
 
 		MultiGetResponse result = new MultiGetResponse();
@@ -316,10 +308,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 							getResponse.setIndex(resultSet.getString("_index"));
 							getResponse.setType(resultSet.getString("_type"));
 							getResponse.setId(resultSet.getString("_id"));
-							getResponse.setSource(JsonIterator.deserialize(
-									EscapeUtils.psqlUnescapeString(resultSet.getString("_source")),
-									new TypeLiteral<Map<String, Object>>() {
-									}));
+							getResponse.setSource(JsonUtils.fromJsonString(EscapeUtils.psqlUnescapeString(resultSet.getString("_source")), Map.class));
 							result.getDocs().add(getResponse);
 						}
 					} catch (Exception e) {
@@ -341,8 +330,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 
 	public MultiGetResponse multiGet(String indexPattern, String typePattern, String requestBody)
 			throws ElefanaException {
-		Map<String, Object> request = JsonIterator.deserialize(requestBody, new TypeLiteral<Map<String, Object>>() {
-		});
+		Map<String, Object> request = JsonUtils.fromJsonString(requestBody, Map.class);
 		List<Object> requestItems = (List<Object>) request.get("docs");
 
 		MultiGetResponse result = new MultiGetResponse();
@@ -390,10 +378,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 								getResponse.setIndex(resultSet.getString("_index"));
 								getResponse.setType(resultSet.getString("_type"));
 								getResponse.setId(resultSet.getString("_id"));
-								getResponse.setSource(JsonIterator.deserialize(
-										EscapeUtils.psqlUnescapeString(resultSet.getString("_source")),
-										new TypeLiteral<Map<String, Object>>() {
-										}));
+								getResponse.setSource(JsonUtils.fromJsonString(EscapeUtils.psqlUnescapeString(resultSet.getString("_source")), Map.class));
 								result.getDocs().add(getResponse);
 							}
 						} catch (Exception e) {
@@ -541,7 +526,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 		case V_2_4_3:
 			switch (opType) {
 			case UPDATE:
-				document = JsonIterator.deserialize(document).get("doc").toString();
+				document = JsonUtils.extractJsonNode(document, "doc").toString();
 				break;
 			case CREATE:
 			case OVERWRITE:

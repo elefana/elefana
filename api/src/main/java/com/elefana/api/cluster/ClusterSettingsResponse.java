@@ -15,13 +15,12 @@
  ******************************************************************************/
 package com.elefana.api.cluster;
 
+import com.elefana.api.ApiResponse;
+import com.elefana.api.json.JsonUtils;
+import io.netty.handler.codec.http.HttpResponseStatus;
+
 import java.util.HashMap;
 import java.util.Map;
-
-import com.elefana.api.ApiResponse;
-import com.jsoniter.output.JsonStream;
-
-import io.netty.handler.codec.http.HttpResponseStatus;
 
 public class ClusterSettingsResponse extends ApiResponse {
 	private final Map<String, Object> defaults = new HashMap<String, Object>();
@@ -54,6 +53,6 @@ public class ClusterSettingsResponse extends ApiResponse {
 
 	@Override
 	public String toJsonString() {
-		return JsonStream.serialize(this);
+		return JsonUtils.toJsonString(this);
 	}
 }

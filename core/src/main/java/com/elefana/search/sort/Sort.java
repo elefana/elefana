@@ -15,12 +15,11 @@
  ******************************************************************************/
 package com.elefana.search.sort;
 
-import com.jsoniter.ValueType;
-import com.jsoniter.any.Any;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 
 public class Sort {
 	private static final String KEY_SORT = "sort";
@@ -44,14 +43,16 @@ public class Sort {
 		return result.toString();
 	}
 	
-	public void parse(Any searchContext) {
-		if(!searchContext.get(KEY_SORT).valueType().equals(ValueType.ARRAY)) {
+	public void parse(JsonNode searchContext) {
+		if(!searchContext.get(KEY_SORT).isArray()) {
 			return;
 		}
-		for(Any sortClause : searchContext.get(KEY_SORT).asList()) {
-			if(sortClause.valueType().equals(ValueType.STRING)) {
-				clauses.add(new SortClause(sortClause.toString(), true));
-			} else if(sortClause.valueType().equals(ValueType.OBJECT)) {
+		final Iterator<JsonNode> jsonNodeIterator = searchContext.get(KEY_SORT).elements();
+		while(jsonNodeIterator.hasNext()) {
+			final JsonNode sortClause = jsonNodeIterator.next();
+			if(sortClause.isTextual()) {
+				clauses.add(new SortClause(sortClause.textValue(), true));
+			} else if(sortClause.isObject()) {
 				final Map<String, Any> sortObject = sortClause.asMap();
 				for(String field : sortObject.keySet()) {
 					Any fieldSort = sortObject.get(field);

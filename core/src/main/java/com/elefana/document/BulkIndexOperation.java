@@ -16,7 +16,7 @@
 package com.elefana.document;
 
 import com.elefana.indices.fieldstats.job.DocumentSourceProvider;
-import com.jsoniter.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;

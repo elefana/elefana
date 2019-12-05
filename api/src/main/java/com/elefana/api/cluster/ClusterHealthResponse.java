@@ -16,9 +16,8 @@
 package com.elefana.api.cluster;
 
 import com.elefana.api.ApiResponse;
-import com.jsoniter.annotation.JsonProperty;
-import com.jsoniter.output.JsonStream;
-
+import com.elefana.api.json.JsonUtils;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.netty.handler.codec.http.HttpResponseStatus;
 
 public class ClusterHealthResponse extends ApiResponse {
@@ -60,7 +59,7 @@ public class ClusterHealthResponse extends ApiResponse {
 
 	@Override
 	public String toJsonString() {
-		return JsonStream.serialize(this);
+		return JsonUtils.toJsonString(this);
 	}
 
 	public String getClusterName() {

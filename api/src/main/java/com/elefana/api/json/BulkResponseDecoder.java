@@ -15,52 +15,61 @@
  ******************************************************************************/
 package com.elefana.api.json;
 
-import java.io.IOException;
-
 import com.elefana.api.document.BulkItemResponse;
 import com.elefana.api.document.BulkOpType;
 import com.elefana.api.document.BulkResponse;
-import com.jsoniter.JsonIterator;
-import com.jsoniter.ValueType;
-import com.jsoniter.any.Any;
-import com.jsoniter.spi.Decoder;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 
-public class BulkResponseDecoder implements Decoder {
+import java.io.IOException;
+
+public class BulkResponseDecoder extends StdDeserializer<BulkResponse> {
+
+	public BulkResponseDecoder() {
+		this(null);
+	}
+
+	protected BulkResponseDecoder(Class<?> vc) {
+		super(vc);
+	}
 
 	@Override
-	public Object decode(JsonIterator iter) throws IOException {
-		Any any = iter.readAny();
+	public BulkResponse deserialize(JsonParser parser, DeserializationContext ctxt) throws IOException, JsonProcessingException {
+		JsonNode any = parser.getCodec().readTree(parser);
 		BulkResponse result = new BulkResponse();
-		result.setErrors(any.get("errors").toBoolean());
-		result.setTook(any.get("took").toLong());
-		
-		Any itemsAny = any.get("items");
+		result.setErrors(any.get("errors").asBoolean());
+		result.setTook(any.get("took").asLong());
+
+		JsonNode itemsAny = any.get("items");
 		for(int i = 0; i < itemsAny.size(); i++) {
-			Any itemAny = itemsAny.get(i);
-		
-			Any responseAny = null;
-			
+			JsonNode itemAny = itemsAny.get(i);
+
+			JsonNode responseAny = null;
+
 			BulkItemResponse itemResponse = null;
-			if(itemAny.get("index").valueType().equals(ValueType.OBJECT)) {
+			if(itemAny.get("index").isObject()) {
 				responseAny = itemAny.get("index");
 				itemResponse = new BulkItemResponse(i, BulkOpType.INDEX);
-			} else if(itemAny.get("delete").valueType().equals(ValueType.OBJECT)) {
+			} else if(itemAny.get("delete").isObject()) {
 				responseAny = itemAny.get("delete");
 				itemResponse = new BulkItemResponse(i, BulkOpType.DELETE);
 			}
-			
-			itemResponse.setIndex(responseAny.get("_index").toString());
-			itemResponse.setType(responseAny.get("_type").toString());
-			itemResponse.setId(responseAny.get("_id").toString());
-			itemResponse.setResult(responseAny.get("result").toString());
-			
+
+			itemResponse.setIndex(responseAny.get("_index").asText());
+			itemResponse.setType(responseAny.get("_type").asText());
+			itemResponse.setId(responseAny.get("_id").asText());
+			itemResponse.setResult(responseAny.get("result").asText());
+
 			if(!itemResponse.isFailed()) {
-				itemResponse.setVersion(responseAny.get("_version").toInt());
+				itemResponse.setVersion(responseAny.get("_version").asInt());
 			}
 			result.getItems().add(itemResponse);
 		}
-		
+
 		return result;
 	}
-
 }

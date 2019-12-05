@@ -15,11 +15,9 @@
  ******************************************************************************/
 package com.elefana.api.document;
 
+import com.elefana.api.json.JsonUtils;
 import org.junit.Assert;
 import org.junit.Test;
-
-import com.jsoniter.JsonIterator;
-import com.jsoniter.output.JsonStream;
 
 
 public class BulkItemResponseTest {
@@ -45,8 +43,8 @@ public class BulkItemResponseTest {
 		failedResponse.setResult(BulkItemResponse.STATUS_FAILED);
 		expected.getItems().add(failedResponse);
 		
-		String json = JsonStream.serialize(expected);
-		BulkResponse result = JsonIterator.deserialize(json, BulkResponse.class);
+		String json = JsonUtils.toJsonString(expected);
+		BulkResponse result = JsonUtils.fromJsonString(json, BulkResponse.class);
 		Assert.assertEquals(expected, result);
 	}
 }

@@ -15,13 +15,12 @@
  ******************************************************************************/
 package com.elefana.api.search;
 
+import com.elefana.api.ApiResponse;
+import com.elefana.api.json.JsonUtils;
+import io.netty.handler.codec.http.HttpResponseStatus;
+
 import java.util.ArrayList;
 import java.util.List;
-
-import com.elefana.api.ApiResponse;
-import com.jsoniter.output.JsonStream;
-
-import io.netty.handler.codec.http.HttpResponseStatus;
 
 public class MultiSearchResponse extends ApiResponse {
 	private final List<SearchResponse> responses = new ArrayList<SearchResponse>(1);
@@ -36,6 +35,6 @@ public class MultiSearchResponse extends ApiResponse {
 
 	@Override
 	public String toJsonString() {
-		return JsonStream.serialize(this);
+		return JsonUtils.toJsonString(this);
 	}
 }

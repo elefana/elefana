@@ -24,6 +24,7 @@ import com.elefana.api.document.*;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.indices.IndexTemplate;
 import com.elefana.api.indices.IndexTimeBucket;
+import com.elefana.api.json.JsonUtils;
 import com.elefana.api.json.V2BulkResponseEncoder;
 import com.elefana.api.json.V5BulkResponseEncoder;
 import com.elefana.document.*;
@@ -37,11 +38,10 @@ import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
 import com.elefana.util.IndexUtils;
 import com.elefana.util.NamedThreadFactory;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
-import com.jsoniter.spi.JsonException;
-import com.jsoniter.spi.JsoniterSpi;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -118,15 +118,17 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 		jsonFlattenTimer = metricRegistry.timer(MetricRegistry.name("json",  "duration", "flatten"));
 		jsonEscapeTimer = metricRegistry.timer(MetricRegistry.name("json", "duration", "escape"));
 
+		final SimpleModule bulkResponseModule = new SimpleModule();
 		switch(versionInfoService.getApiVersion()) {
 		case V_5_5_2:
-			JsoniterSpi.registerTypeEncoder(BulkResponse.class, new V2BulkResponseEncoder());
+			bulkResponseModule.addSerializer(BulkResponse.class, new V2BulkResponseEncoder());
 			break;
 		default:
 		case V_2_4_3:
-			JsoniterSpi.registerTypeEncoder(BulkResponse.class, new V5BulkResponseEncoder());
+			bulkResponseModule.addSerializer(BulkResponse.class, new V5BulkResponseEncoder());
 			break;
 		}
+		JsonUtils.OBJECT_MAPPER.registerModule(bulkResponseModule);
 	}
 
 	@PreDestroy
@@ -241,7 +243,7 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 						break;
 					}
 					// TODO: Handle other operations
-				} catch (JsonException e) {
+				} catch (Exception e) {
 					LOGGER.error("Error parsing JSON at line number " + (i + 1) + ": " + lines[i] + "} - " + e.getMessage(), e);
 					bulkApiResponse.setErrors(true);
 				}

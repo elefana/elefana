@@ -15,12 +15,11 @@
  ******************************************************************************/
 package com.elefana.api.exception;
 
+import com.elefana.api.json.JsonUtils;
+import io.netty.handler.codec.http.HttpResponseStatus;
+
 import java.util.HashMap;
 import java.util.Map;
-
-import com.jsoniter.output.JsonStream;
-
-import io.netty.handler.codec.http.HttpResponseStatus;
 
 public class NoSuchDocumentException extends ElefanaException {
 	private static final long serialVersionUID = 923131659302915891L;
@@ -41,6 +40,6 @@ public class NoSuchDocumentException extends ElefanaException {
 		result.put("_type", type);
 		result.put("_id", id);
 		result.put("found", false);
-		return JsonStream.serialize(result);
+		return JsonUtils.toJsonString(result);
 	}
 }
