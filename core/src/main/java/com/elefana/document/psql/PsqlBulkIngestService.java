@@ -212,17 +212,21 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 
 		final Timer.Context serializationTimer = bulkIngestSerializationTimer.time();
 		try {
+			int operationLineStartIndex = 0;
+			int documentLineStartIndex = 0;
 			while(matcher.find()) {
 				char [] operationLine = OPERATION_CHAR_ARRAY.get();
-				int operationLineLength = matcher.end() - matcher.start() + 1;
+				int operationLineLength = (matcher.start() - operationLineStartIndex) + 1;
 
 				if(operationLine.length < operationLineLength) {
 					operationLine = new char[operationLineLength * 2];
 					OPERATION_CHAR_ARRAY.set(operationLine);
 				}
 
-				requestBody.getChars(matcher.start(), matcher.end(), operationLine, 0);
+				requestBody.getChars(operationLineStartIndex, matcher.start(), operationLine, 0);
 				operationLine[operationLineLength - 1] = '}';
+
+				documentLineStartIndex = matcher.end();
 
 				char [] documentLine = null;
 				int documentLineLength = 0;
@@ -242,16 +246,17 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 
 						documentLine = DOCUMENT_CHAR_ARRAY.get();
 						matcher.find();
-						documentLineLength = matcher.end() - matcher.start() + 1;
+						documentLineLength = (matcher.start() - documentLineStartIndex) + 1;
+						operationLineStartIndex = matcher.end();
 
 						if(documentLine.length < documentLineLength) {
 							documentLine = new char[documentLineLength * 2];
 							DOCUMENT_CHAR_ARRAY.set(documentLine);
 						}
 
-						requestBody.getChars(matcher.start(), matcher.end(), documentLine, 0);
+						requestBody.getChars(documentLineStartIndex, matcher.start(), documentLine, 0);
 						documentLine[documentLineLength - 1] = '}';
-
+						
 						indexOperation.setDocument(documentLine, documentLineLength);
 						indexOperation.setTimestamp(indexUtils.getTimestamp(indexOperation.getIndex(), indexOperation.getDocument(), indexOperation.getDocumentLength()));
 
@@ -270,6 +275,7 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 						LOGGER.error("Invalid JSON at " + new String(operationLine, 0, operationLineLength));
 						break;
 					}
+					break;
 				}
 				operationJsonParser.close();
 			}

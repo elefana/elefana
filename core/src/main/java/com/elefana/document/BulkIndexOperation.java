@@ -71,15 +71,15 @@ public class BulkIndexOperation implements DocumentSourceProvider {
 				continue;
 			}
 			switch(jsonParser.getText()) {
-			case "index":
+			case "_index":
 				jsonParser.nextToken();
 				index = jsonParser.getText();
 				break;
-			case "type":
+			case "_type":
 				jsonParser.nextToken();
 				type = jsonParser.getText();
 				break;
-			case "id":
+			case "_id":
 				jsonParser.nextToken();
 				id = jsonParser.getText();
 				break;

@@ -800,7 +800,7 @@ public class BulkApiTest {
 	private void validateBulkResponseWithArabicAndLineBreak(String responseBody) {
 		final Iterator<JsonNode> docs =  JsonUtils.extractJsonNode(responseBody).get("hits").get("hits").iterator();
 		while(docs.hasNext()) {
-			Assert.assertEquals("مناقشة سبل استخدام يونكود في النظ\r\n القائمة وفيما يخص التطبيقات ال", docs.next().get("_source").get("field").toString());
+			Assert.assertEquals("مناقشة سبل استخدام يونكود في النظ\r\n القائمة وفيما يخص التطبيقات ال", docs.next().get("_source").get("field").textValue());
 		}
 	}
 
