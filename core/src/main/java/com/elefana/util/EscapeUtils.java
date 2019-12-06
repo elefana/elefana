@@ -15,6 +15,7 @@
  ******************************************************************************/
 package com.elefana.util;
 
+import com.elefana.indices.fieldstats.job.DocumentSourceProvider;
 import com.fasterxml.jackson.core.io.CharacterEscapes;
 
 public class EscapeUtils {
@@ -182,5 +183,18 @@ public class EscapeUtils {
 		final NoAllocStringReplace str = NoAllocStringReplace.allocate(json);
 		str.replaceAndEscapeUnicode(ESCAPE_SEARCH, ESCAPE_REPLACE);
 		return str.disposeWithResult();
+	}
+
+	/**
+	 * If JSON string contains \" we need to escape it as \\" for PSQL to handle correctly
+	 */
+	public static void psqlEscapeString(DocumentSourceProvider documentSourceProvider) {
+		if(NoAllocStringReplace.contains(documentSourceProvider, ESCAPE_PRE_ESCAPE)) {
+			return;
+		}
+		final NoAllocStringReplace str = NoAllocStringReplace.allocate(documentSourceProvider.getDocument(), documentSourceProvider.getDocumentLength());
+		str.replaceAndEscapeUnicode(ESCAPE_SEARCH, ESCAPE_REPLACE);
+		documentSourceProvider.setDocument(str.getCharArray(), str.getContentLength());
+		str.dispose();
 	}
 }

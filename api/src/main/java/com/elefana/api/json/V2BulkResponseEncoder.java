@@ -18,20 +18,12 @@ package com.elefana.api.json;
 import com.elefana.api.document.BulkItemResponse;
 import com.elefana.api.document.BulkResponse;
 import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 
 import java.io.IOException;
 
-public class V2BulkResponseEncoder extends StdSerializer<BulkResponse> {
-
-	public V2BulkResponseEncoder() {
-		this(null);
-	}
-
-	public V2BulkResponseEncoder(Class<BulkResponse> clazz) {
-		super(clazz);
-	}
+public class V2BulkResponseEncoder extends JsonSerializer<BulkResponse> {
 
 	@Override
 	public void serialize(BulkResponse bulkResponse, JsonGenerator stream, SerializerProvider provider) throws IOException {

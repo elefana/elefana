@@ -58,12 +58,12 @@ public class RequestBodySearch {
 			sort.parse(context);
 			querySqlOrderClause = sort.toSqlClause();
 			
-			if(context.get("size").isNumber()) {
+			if(context.has("size") && context.get("size").isNumber()) {
 				size = context.get("size").asInt();
 			} else {
 				size = 10;
 			}
-			if(context.get("from").isNumber()) {
+			if(context.has("from") && context.get("from").isNumber()) {
 				from = context.get("from").asInt();
 			} else {
 				from = 0;

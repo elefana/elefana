@@ -16,16 +16,16 @@
 package com.elefana.search.query;
 
 import com.elefana.api.indices.IndexTemplate;
-import com.jsoniter.any.Any;
+import com.fasterxml.jackson.databind.JsonNode;
 
 public class ExistsQuery extends Query {
 	private static final String KEY_FIELD = "field";
 	
 	private String fieldName;
 	
-	public ExistsQuery(Any queryContext) {
+	public ExistsQuery(JsonNode queryContext) {
 		super();
-		this.fieldName = queryContext.get(KEY_FIELD).toString();
+		this.fieldName = queryContext.get(KEY_FIELD).textValue();
 	}
 	
 	@Override

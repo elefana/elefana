@@ -16,18 +16,37 @@
 package com.elefana.indices.fieldstats.job;
 
 public class SingleDocumentSourceProvider implements DocumentSourceProvider {
-	private final String document;
+	private char [] document;
+	private int documentLength;
 
 	public SingleDocumentSourceProvider(String document) {
+		this.document = document.toCharArray();
+		this.documentLength = document.length();
+	}
+
+	public SingleDocumentSourceProvider(char[] document, int documentLength) {
 		this.document = document;
+		this.documentLength = documentLength;
 	}
 
 	@Override
-	public String getDocument() {
+	public char [] getDocument() {
 		return document;
 	}
 
 	@Override
+	public void setDocument(char[] document, int length) {
+		this.document = document;
+		this.documentLength = length;
+	}
+
+	@Override
+	public int getDocumentLength() {
+		return documentLength;
+	}
+
+	@Override
 	public void dispose() {
+		document = null;
 	}
 }

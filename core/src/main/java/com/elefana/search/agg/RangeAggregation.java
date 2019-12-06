@@ -17,8 +17,7 @@ package com.elefana.search.agg;
 
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.search.PsqlQueryComponents;
-import com.jsoniter.ValueType;
-import com.jsoniter.any.Any;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,31 +37,35 @@ public class RangeAggregation extends BucketAggregation {
 	private final Set<Range> ranges = new HashSet<Range>();
 	private boolean keyed = false;
 	
-	public RangeAggregation(String aggregationName, Any context) {
+	public RangeAggregation(String aggregationName, JsonNode context) {
 		super();
 		this.aggregationName = aggregationName;
-		this.fieldName = context.get(KEY_FIELD).toString();
-		
-		Any rangesContext = context.get(KEY_RANGES);
-		if(rangesContext.valueType().equals(ValueType.INVALID)) {
+		this.fieldName = context.get(KEY_FIELD).textValue();
+
+		if(!context.has(KEY_RANGES) || !context.get(KEY_RANGES).isArray()) {
 			return;
 		}
-		for(Any rangeContext : rangesContext.asList()) {
-			Range range = new Range();
-			Any fromContext = rangeContext.get(KEY_FROM);
-			Any toContext = rangeContext.get(KEY_TO);
-			if(!fromContext.valueType().equals(ValueType.INVALID)) {
+		final JsonNode rangesContext = context.get(KEY_RANGES);
+
+		for(int i = 0; i < rangesContext.size(); i++) {
+			final JsonNode rangeContext = rangesContext.get(i);
+			final Range range = new Range();
+
+
+			if(rangeContext.has(KEY_FROM)) {
+				final JsonNode fromContext = rangeContext.get(KEY_FROM);
 				if(fromContext.toString().indexOf('.') > 0) {
-					range.doubleFrom = fromContext.toDouble();
+					range.doubleFrom = fromContext.asDouble();
 				} else {
-					range.longFrom = fromContext.toLong();
+					range.longFrom = fromContext.asLong();
 				}
 			}
-			if(!toContext.valueType().equals(ValueType.INVALID)) {
+			if(rangeContext.has(KEY_TO)) {
+				final JsonNode toContext = rangeContext.get(KEY_TO);
 				if(toContext.toString().indexOf('.') > 0) {
-					range.doubleTo = toContext.toDouble();
+					range.doubleTo = toContext.asDouble();
 				} else {
-					range.longTo = toContext.toLong();
+					range.longTo = toContext.asLong();
 				}
 			}
 			ranges.add(range);

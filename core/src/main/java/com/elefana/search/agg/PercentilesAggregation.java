@@ -15,8 +15,7 @@
  ******************************************************************************/
 package com.elefana.search.agg;
 
-import com.jsoniter.ValueType;
-import com.jsoniter.any.Any;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -33,16 +32,16 @@ public class PercentilesAggregation extends Aggregation {
 	private final String fieldName;
 	private final double [] percents;
 	
-	public PercentilesAggregation(String aggregationName, Any context) {
+	public PercentilesAggregation(String aggregationName, JsonNode context) {
 		super();
 		this.aggregationName = aggregationName;
-		this.fieldName = context.get(KEY_FIELD).toString();
+		this.fieldName = context.get(KEY_FIELD).textValue();
 		
-		Any percentsContext = context.get(KEY_PERCENTS);
-		if(percentsContext.valueType().equals(ValueType.ARRAY)) {
+		final JsonNode percentsContext = context.get(KEY_PERCENTS);
+		if(percentsContext.isArray()) {
 			percents = new double[percentsContext.size()];
 			for(int i = 0; i < percentsContext.size(); i++) {
-				percents[i] = percentsContext.get(i).toDouble();
+				percents[i] = percentsContext.get(i).asDouble();
 			}
 		} else {
 			percents = DEFAULT_PERCENTS;

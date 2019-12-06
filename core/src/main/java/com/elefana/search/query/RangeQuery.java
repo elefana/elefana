@@ -16,10 +16,11 @@
 package com.elefana.search.query;
 
 import com.elefana.api.indices.IndexTemplate;
-import com.jsoniter.ValueType;
-import com.jsoniter.any.Any;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Iterator;
 
 public class RangeQuery extends Query {
 	private static final Logger LOGGER = LoggerFactory.getLogger(RangeQuery.class);
@@ -36,33 +37,34 @@ public class RangeQuery extends Query {
 	protected boolean includeUpper = false;
 	protected double boost = 1.0;
 
-	public RangeQuery(Any queryContext) {
+	public RangeQuery(JsonNode queryContext) {
 		super();
 
-		for(Object fieldKey : queryContext.keys()) {
-			final String fieldName = fieldKey.toString();
+		final Iterator<String> fieldNames = queryContext.fieldNames();
+		while(fieldNames.hasNext()) {
+			final String fieldName = fieldNames.next();
 			this.fieldName = fieldName;
 
-			Any fieldContext = queryContext.get(fieldName);
+			final JsonNode fieldContext = queryContext.get(fieldName);
 
-			if (!fieldContext.get(KEY_GTE).valueType().equals(ValueType.INVALID)) {
+			if(fieldContext.has(KEY_GTE)) {
 				includeLower = true;
 				setFrom(fieldContext.get(KEY_GTE));
-			} else if (!fieldContext.get(KEY_GT).valueType().equals(ValueType.INVALID)) {
+			} else if(fieldContext.has(KEY_GT)) {
 				includeLower = false;
 				setFrom(fieldContext.get(KEY_GT));
 			}
 
-			if (!fieldContext.get(KEY_LTE).valueType().equals(ValueType.INVALID)) {
+			if(fieldContext.has(KEY_LTE)) {
 				includeUpper = true;
 				setTo(fieldContext.get(KEY_LTE));
-			} else if (!fieldContext.get(KEY_LT).valueType().equals(ValueType.INVALID)) {
+			} else if(fieldContext.has(KEY_LT)) {
 				includeUpper = false;
 				setTo(fieldContext.get(KEY_LT));
 			}
 
-			if (!fieldContext.get(KEY_BOOST).valueType().equals(ValueType.INVALID)) {
-				boost = fieldContext.get(KEY_BOOST).toDouble();
+			if(fieldContext.has(KEY_BOOST)) {
+				boost = fieldContext.get(KEY_BOOST).asDouble();
 			}
 		}
 	}
@@ -99,11 +101,11 @@ public class RangeQuery extends Query {
 		return result.toString();
 	}
 
-	private void setFrom(Any value) {
-		from = value.toString();
+	private void setFrom(JsonNode value) {
+		from = value.textValue();
 	}
 
-	private void setTo(Any value) {
-		to = value.toString();
+	private void setTo(JsonNode value) {
+		to = value.textValue();
 	}
 }

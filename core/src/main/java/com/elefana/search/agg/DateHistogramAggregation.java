@@ -20,7 +20,7 @@ import com.elefana.api.exception.InvalidAggregationFieldType;
 import com.elefana.api.exception.NoSuchMappingException;
 import com.elefana.api.search.SearchResponse;
 import com.elefana.search.PsqlQueryComponents;
-import com.jsoniter.any.Any;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
@@ -47,11 +47,11 @@ public class DateHistogramAggregation extends BucketAggregation {
 	private final String fieldName;
 	private final String interval;
 
-	public DateHistogramAggregation(String aggregationName, Any context) {
+	public DateHistogramAggregation(String aggregationName, JsonNode context) {
 		super();
 		this.aggregationName = aggregationName;
-		this.fieldName = context.get(KEY_FIELD).toString();
-		this.interval = context.get(KEY_INTERVAL).toString();
+		this.fieldName = context.get(KEY_FIELD).textValue();
+		this.interval = context.get(KEY_INTERVAL).textValue();
 	}
 
 	@Override

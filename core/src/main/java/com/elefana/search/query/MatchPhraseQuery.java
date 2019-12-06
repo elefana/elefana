@@ -15,11 +15,11 @@
  ******************************************************************************/
 package com.elefana.search.query;
 
-import com.jsoniter.any.Any;
+import com.fasterxml.jackson.databind.JsonNode;
 
 public class MatchPhraseQuery extends MatchQuery {
 
-	public MatchPhraseQuery(Any queryContext) {
+	public MatchPhraseQuery(JsonNode queryContext) {
 		super(queryContext);
 		matchMode = MatchMode.PHRASE;
 	}

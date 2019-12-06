@@ -16,12 +16,12 @@
 package com.elefana.search.query;
 
 import com.elefana.api.indices.IndexTemplate;
+import com.elefana.api.json.JsonUtils;
 import com.elefana.esqs.EsFieldQuery;
 import com.elefana.esqs.EsQueryOperator;
 import com.elefana.esqs.EsQueryString;
 import com.elefana.esqs.EsQueryStringWalker;
-import com.jsoniter.ValueType;
-import com.jsoniter.any.Any;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,34 +45,42 @@ public class QueryStringQuery extends Query implements EsQueryStringWalker {
 
 	private String mostRecentField = null;
 	
-	public QueryStringQuery(Any queryContext) {
+	public QueryStringQuery(JsonNode queryContext) {
 		super();
 
-		Any defaultFieldContext = queryContext.get(KEY_DEFAULT_FIELD);
-		if (defaultFieldContext.valueType().equals(ValueType.STRING)) {
-			defaultField = defaultFieldContext.toString();
-		} else {
-			defaultField = null;
+		if(queryContext.has(KEY_DEFAULT_FIELD)) {
+			final JsonNode defaultFieldContext = queryContext.get(KEY_DEFAULT_FIELD);
+			if (defaultFieldContext.isTextual()) {
+				defaultField = defaultFieldContext.textValue();
+			} else {
+				defaultField = null;
+			}
 		}
 
-		Any defaultOperatorContext = queryContext.get(KEY_DEFAULT_OPERATOR);
-		if (defaultOperatorContext.valueType().equals(ValueType.STRING)
-				&& (defaultOperatorContext.toString().equalsIgnoreCase("OR")
-						|| defaultOperatorContext.toString().equalsIgnoreCase("AND"))) {
-			defaultOperator = defaultOperatorContext.toString().toUpperCase();
+		if(queryContext.has(KEY_DEFAULT_OPERATOR)) {
+			final JsonNode defaultOperatorContext = queryContext.get(KEY_DEFAULT_OPERATOR);
+			if (defaultOperatorContext.isTextual()
+					&& (defaultOperatorContext.textValue().equalsIgnoreCase("OR")
+					|| defaultOperatorContext.textValue().equalsIgnoreCase("AND"))) {
+				defaultOperator = defaultOperatorContext.textValue().toUpperCase();
+			}
 		}
 
-		Any fieldsContext = queryContext.get(KEY_FIELDS);
-		if (fieldsContext.valueType().equals(ValueType.ARRAY)) {
-			fields = new ArrayList<String>(fieldsContext.size());
-			for (int i = 0; i < fieldsContext.size(); i++) {
-				fields.add(fieldsContext.get(i).toString());
+		if(queryContext.has(KEY_FIELDS)) {
+			final JsonNode fieldsContext = queryContext.get(KEY_FIELDS);
+			if (fieldsContext.isArray()) {
+				fields = new ArrayList<String>(fieldsContext.size());
+				for (int i = 0; i < fieldsContext.size(); i++) {
+					fields.add(fieldsContext.get(i).textValue());
+				}
+			} else {
+				fields = null;
 			}
 		} else {
 			fields = null;
 		}
 
-		EsQueryString queryString = EsQueryString.parse(queryContext.get(KEY_QUERY).toString());
+		EsQueryString queryString = EsQueryString.parse(queryContext.get(KEY_QUERY).textValue());
 		
 		if(fields != null && !fields.isEmpty()) {
 			for(int i = 0; i < fields.size(); i++) {
@@ -86,6 +94,7 @@ public class QueryStringQuery extends Query implements EsQueryStringWalker {
 		}
 		
 		sqlQuery = queryBuilder.toString();
+		LOGGER.info(sqlQuery);
 	}
 
 	@Override

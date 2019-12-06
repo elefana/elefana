@@ -37,11 +37,11 @@ import com.elefana.indices.psql.PsqlIndexTemplateService;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
 import com.elefana.util.IndexUtils;
+import com.elefana.util.JsonCharArray;
 import com.elefana.util.NamedThreadFactory;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.jsoniter.JsonIterator;
-import com.jsoniter.ValueType;
-import com.jsoniter.any.Any;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,6 +54,8 @@ import javax.annotation.PreDestroy;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor {
@@ -64,7 +66,10 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 
 	private static final String OPERATION_INDEX = "index";
 	private static final String NEW_LINE = "\\}(\\s)*\n";
+	private static final Pattern NEW_LINE_PATTERN = Pattern.compile(NEW_LINE);
 
+	private static final JsonCharArray OPERATION_CHAR_ARRAY = new JsonCharArray();
+	private static final JsonCharArray DOCUMENT_CHAR_ARRAY = new JsonCharArray();
 	public static final int MINIMUM_BULK_SIZE = 250;
 	
 	@Autowired
@@ -196,8 +201,8 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 	public BulkResponse bulkOperations(String requestBody) throws ElefanaException {
 		final Timer.Context totalTimer = bulkIngestTotalTimer.time();
 
-		final String[] lines = requestBody.split(NEW_LINE);
-		int responseCapacity = lines.length / 2;
+		final Matcher matcher = NEW_LINE_PATTERN.matcher(requestBody);
+		final int responseCapacity = matcher.groupCount() / 2;
 		bulkOperationsBatchSize.mark(responseCapacity);
 
 		final BulkResponse bulkApiResponse = new BulkResponse(responseCapacity + 1);
@@ -207,47 +212,70 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 
 		final Timer.Context serializationTimer = bulkIngestSerializationTimer.time();
 		try {
-			for (int i = 0; i < lines.length; i += 2) {
-				if (i + 1 >= lines.length) {
-					break;
+			while(matcher.find()) {
+				char [] operationLine = OPERATION_CHAR_ARRAY.get();
+				int operationLineLength = matcher.end() - matcher.start() + 1;
+
+				if(operationLine.length < operationLineLength) {
+					operationLine = new char[operationLineLength * 2];
+					OPERATION_CHAR_ARRAY.set(operationLine);
 				}
-				try {
-					final String line = lines[i] + "}";
-					Any operation = JsonIterator.deserialize(line);
-					if (!operation.get(OPERATION_INDEX).valueType().equals(ValueType.INVALID)) {
-						final String sourceLine = lines[i + 1] + "}";
-						Any indexOperationTarget = operation.get(OPERATION_INDEX);
 
-						BulkIndexOperation indexOperation = BulkIndexOperation.allocate();
-						indexOperation.setIndex(indexOperationTarget.get(BulkHashIndexTask.KEY_INDEX).toString());
-						indexOperation.setType(indexOperationTarget.get(BulkHashIndexTask.KEY_TYPE).toString());
-						indexOperation.setSource(sourceLine);
+				requestBody.getChars(matcher.start(), matcher.end(), operationLine, 0);
+				operationLine[operationLineLength - 1] = '}';
 
-						indexOperation.setTimestamp(
-								indexUtils.getTimestamp(indexOperation.getIndex(), indexOperation.getSource()));
+				char [] documentLine = null;
+				int documentLineLength = 0;
 
-						if (!indexOperationTarget.get(BulkHashIndexTask.KEY_ID).valueType().equals(ValueType.INVALID)) {
-							indexOperation.setId(indexOperationTarget.get(BulkHashIndexTask.KEY_ID).toString());
-						} else {
+				final JsonParser operationJsonParser = JsonUtils.JSON_FACTORY.createParser(operationLine, 0, operationLineLength);
+				while(operationJsonParser.currentToken() != JsonToken.END_OBJECT) {
+					final JsonToken operationToken = operationJsonParser.nextToken();
+
+					if(operationToken != JsonToken.FIELD_NAME) {
+						continue;
+					}
+
+					switch(operationJsonParser.getText()) {
+					case "index":
+						final BulkIndexOperation indexOperation = BulkIndexOperation.allocate();
+						indexOperation.read(operationJsonParser);
+
+						documentLine = DOCUMENT_CHAR_ARRAY.get();
+						matcher.find();
+						documentLineLength = matcher.end() - matcher.start() + 1;
+
+						if(documentLine.length < documentLineLength) {
+							documentLine = new char[documentLineLength * 2];
+							DOCUMENT_CHAR_ARRAY.set(documentLine);
+						}
+
+						requestBody.getChars(matcher.start(), matcher.end(), documentLine, 0);
+						documentLine[documentLineLength - 1] = '}';
+
+						indexOperation.setDocument(documentLine, documentLineLength);
+						indexOperation.setTimestamp(indexUtils.getTimestamp(indexOperation.getIndex(), indexOperation.getDocument(), indexOperation.getDocumentLength()));
+
+						if(indexOperation.getId() == null) {
 							indexOperation.setId(indexUtils.generateDocumentId(indexOperation.getIndex(),
-									indexOperation.getType(), indexOperation.getSource()));
+									indexOperation.getType(), indexOperation.getDocument(), indexOperation.getDocumentLength()));
 						}
 
 						if (!indexOperations.containsKey(indexOperation.getIndex())) {
-							indexOperations.put(indexOperation.getIndex(), new ArrayList<BulkIndexOperation>(1));
+							indexOperations.put(indexOperation.getIndex(), new ArrayList<BulkIndexOperation>(responseCapacity + 1));
 						}
 						indexOperations.get(indexOperation.getIndex()).add(indexOperation);
-					} else {
+						break;
+					default:
 						bulkApiResponse.setErrors(true);
-						LOGGER.error("Invalid JSON at line number " + (i + 1) + ": " + line);
+						LOGGER.error("Invalid JSON at " + new String(operationLine, 0, operationLineLength));
 						break;
 					}
-					// TODO: Handle other operations
-				} catch (Exception e) {
-					LOGGER.error("Error parsing JSON at line number " + (i + 1) + ": " + lines[i] + "} - " + e.getMessage(), e);
-					bulkApiResponse.setErrors(true);
 				}
+				operationJsonParser.close();
 			}
+		} catch (Exception e) {
+			LOGGER.error("Error parsing JSON - " + e.getMessage(), e);
+			bulkApiResponse.setErrors(true);
 		} finally {
 			serializationTimer.stop();
 		}

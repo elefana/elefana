@@ -17,9 +17,8 @@ package com.elefana.search.query;
 
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.UnsupportedQueryTypeException;
-import com.jsoniter.JsonIterator;
-import com.jsoniter.ValueType;
-import com.jsoniter.any.Any;
+import com.elefana.api.json.JsonUtils;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,52 +49,52 @@ public class QueryParser {
 		if(content == null || content.isEmpty()) {
 			return new MatchAllQuery();
 		}
-		Any contentContext = JsonIterator.deserialize(content);
-		if(!contentContext.get(FIELD_QUERY).valueType().equals(ValueType.INVALID)) {
+		final JsonNode contentContext = JsonUtils.extractJsonNode(content);
+		if(contentContext.has(FIELD_QUERY)) {
 			return parseQuery(contentContext.get(FIELD_QUERY));
 		}
 		return new MatchAllQuery();
 	}
 	
-	public static Query parseQuery(Any queryContext) throws ElefanaException {
-		if(!queryContext.get(QUERY_BOOL).valueType().equals(ValueType.INVALID)) {
+	public static Query parseQuery(JsonNode queryContext) throws ElefanaException {
+		if(queryContext.has(QUERY_BOOL)) {
 			return new BoolQuery(queryContext.get(QUERY_BOOL));
-		} else if(!queryContext.get(QUERY_DIS_MAX).valueType().equals(ValueType.INVALID)) {
+		} else if(queryContext.has(QUERY_DIS_MAX)) {
 			return new DisMaxQuery(queryContext.get(QUERY_DIS_MAX));
-		}else if(!queryContext.get(QUERY_EXISTS).valueType().equals(ValueType.INVALID)) {
+		} else if(queryContext.has(QUERY_EXISTS)) {
 			return new ExistsQuery(queryContext.get(QUERY_EXISTS));
-		} else if(!queryContext.get(QUERY_FILTERED).valueType().equals(ValueType.INVALID)) {
+		} else if(queryContext.has(QUERY_FILTERED)) {
 			return new FilteredQuery(queryContext.get(QUERY_FILTERED));
-		} else if(!queryContext.get(QUERY_IDS).valueType().equals(ValueType.INVALID)) {
+		} else if(queryContext.has(QUERY_IDS)) {
 			return new IdsQuery(queryContext.get(QUERY_IDS));
-		} else if(!queryContext.get(QUERY_MATCH_ALL).valueType().equals(ValueType.INVALID)) {
+		} else if(queryContext.has(QUERY_MATCH_ALL)) {
 			return new MatchAllQuery();
-		} else if(!queryContext.get(QUERY_MATCH_PHRASE_PREFIX).valueType().equals(ValueType.INVALID)) {
+		} else if(queryContext.has(QUERY_MATCH_PHRASE_PREFIX)) {
 			return new MatchPhrasePrefixQuery(queryContext.get(QUERY_MATCH_PHRASE_PREFIX));
-		} else if(!queryContext.get(QUERY_MATCH_PHRASE).valueType().equals(ValueType.INVALID)) {
+		} else if(queryContext.has(QUERY_MATCH_PHRASE)) {
 			return new MatchPhraseQuery(queryContext.get(QUERY_MATCH_PHRASE));
-		} else if(!queryContext.get(QUERY_MATCH).valueType().equals(ValueType.INVALID)) {
+		} else if(queryContext.has(QUERY_MATCH)) {
 			return new MatchQuery(queryContext.get(QUERY_MATCH));
-		} else if(!queryContext.get(QUERY_MULTI_MATCH).valueType().equals(ValueType.INVALID)) {
+		} else if(queryContext.has(QUERY_MULTI_MATCH)) {
 			
-		} else if(!queryContext.get(QUERY_PREFIX).valueType().equals(ValueType.INVALID)) {
+		} else if(queryContext.has(QUERY_PREFIX)) {
 			return new PrefixQuery(queryContext.get(QUERY_PREFIX));
-		} else if(!queryContext.get(QUERY_QUERY_STRING).valueType().equals(ValueType.INVALID)) {
+		} else if(queryContext.has(QUERY_QUERY_STRING)) {
 			return new QueryStringQuery(queryContext.get(QUERY_QUERY_STRING));
-		} else if(!queryContext.get(QUERY_RANGE).valueType().equals(ValueType.INVALID)) {
+		} else if(queryContext.has(QUERY_RANGE)) {
 			return new RangeQuery(queryContext.get(QUERY_RANGE));
-		} else if(!queryContext.get(QUERY_REGEXP).valueType().equals(ValueType.INVALID)) {
+		} else if(queryContext.has(QUERY_REGEXP)) {
 			return new RegexpQuery(queryContext.get(QUERY_REGEXP));
-		} else if(!queryContext.get(QUERY_TERM).valueType().equals(ValueType.INVALID)) {
+		} else if(queryContext.has(QUERY_TERM)) {
 			return new TermQuery(queryContext.get(QUERY_TERM));
-		} else if(!queryContext.get(QUERY_TYPE).valueType().equals(ValueType.INVALID)) {
+		} else if(queryContext.has(QUERY_TYPE)) {
 			return new TypeQuery(queryContext.get(QUERY_TYPE));
-		} else if(!queryContext.get(QUERY_WILDCARD).valueType().equals(ValueType.INVALID)) {
+		} else if(queryContext.has(QUERY_WILDCARD)) {
 			return new WildcardQuery(queryContext.get(QUERY_WILDCARD));
 		}
 		
 		//Handle nested query contexts
-		if(!queryContext.get(FIELD_QUERY).valueType().equals(ValueType.INVALID)) {
+		if(queryContext.has(FIELD_QUERY)) {
 			return parseQuery(queryContext.get(FIELD_QUERY));
 		}
 		

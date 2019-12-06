@@ -80,7 +80,7 @@ public class CoreFieldStatsJob extends FieldStatsJob {
     }
 
     public void addDocument(BulkIndexOperation bulkIndexOperation) {
-        documents.add(bulkIndexOperation.getSource());
+        documents.add(new String(bulkIndexOperation.getDocument(), 0, bulkIndexOperation.getDocumentLength()));
     }
 
     public void addDocument(String document) {

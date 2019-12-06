@@ -15,7 +15,7 @@
  ******************************************************************************/
 package com.elefana.search.agg;
 
-import com.jsoniter.any.Any;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import java.util.HashMap;
 import java.util.List;
@@ -27,10 +27,10 @@ public class AvgAggregation extends Aggregation {
 	private final String aggregationName;
 	private final String fieldName;
 	
-	public AvgAggregation(String aggregationName, Any context) {
+	public AvgAggregation(String aggregationName, JsonNode context) {
 		super();
 		this.aggregationName = aggregationName;
-		this.fieldName = context.get(KEY_FIELD).toString();
+		this.fieldName = context.get(KEY_FIELD).textValue();
 	}
 
 	@Override

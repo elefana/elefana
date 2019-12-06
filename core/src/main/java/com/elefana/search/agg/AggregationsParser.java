@@ -17,13 +17,13 @@ package com.elefana.search.agg;
 
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.UnsupportedAggregationTypeException;
-import com.jsoniter.JsonIterator;
-import com.jsoniter.ValueType;
-import com.jsoniter.any.Any;
+import com.elefana.api.json.JsonUtils;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 public class AggregationsParser {
@@ -45,26 +45,27 @@ public class AggregationsParser {
 	private static final String AGGREGATION_RANGE = "range";
 
 	public static List<Aggregation> parseAggregations(String content) throws ElefanaException {
-		Any contentContext = JsonIterator.deserialize(content);
-		if(!contentContext.get(FIELD_AGGS).valueType().equals(ValueType.INVALID)) {
+		JsonNode contentContext = JsonUtils.extractJsonNode(content);
+		if(contentContext.has(FIELD_AGGS)) {
 			return parseAggregations(contentContext.get(FIELD_AGGS));
-		} else if(!contentContext.get(FIELD_AGGREGATIONS).valueType().equals(ValueType.INVALID)) {
+		} else if(contentContext.has(FIELD_AGGREGATIONS)) {
 			return parseAggregations(contentContext.get(FIELD_AGGREGATIONS));
 		}
 		return null;
 	}
 	
-	public static List<Aggregation> parseAggregations(Any context) throws ElefanaException {
+	public static List<Aggregation> parseAggregations(JsonNode context) throws ElefanaException {
 		List<Aggregation> result = new ArrayList<Aggregation>();
-		
-		for(Object aggregationKey : context.keys()) {
-			String aggregationName = aggregationKey.toString();
-			Any aggregationContext = context.get(aggregationName);
-			Aggregation aggregation = parseAggregation(aggregationName, aggregationContext);
-			
-			if(!aggregationContext.get(FIELD_AGGS).valueType().equals(ValueType.INVALID)) {
+
+		final Iterator<String> keyIterator = context.fieldNames();
+		while(keyIterator.hasNext()) {
+			final String aggregationName = keyIterator.next();
+			final JsonNode aggregationContext = context.get(aggregationName);
+			final Aggregation aggregation = parseAggregation(aggregationName, aggregationContext);
+
+			if(aggregationContext.has(FIELD_AGGS)) {
 				aggregation.getSubAggregations().addAll(parseAggregations(aggregationContext.get(FIELD_AGGS)));
-			} else if(!aggregationContext.get(FIELD_AGGREGATIONS).valueType().equals(ValueType.INVALID)) {
+			} else if(aggregationContext.has(FIELD_AGGREGATIONS)) {
 				aggregation.getSubAggregations().addAll(parseAggregations(aggregationContext.get(FIELD_AGGREGATIONS)));
 			}
 			result.add(aggregation);
@@ -72,36 +73,35 @@ public class AggregationsParser {
 		return result;
 	}
 	
-	public static Aggregation parseAggregation(String aggregationName, Any context) throws ElefanaException {
-		if(!context.get(AGGREGATION_AVG).valueType().equals(ValueType.INVALID)) {
+	public static Aggregation parseAggregation(String aggregationName, JsonNode context) throws ElefanaException {
+		if(context.has(AGGREGATION_AVG)) {
 			return new AvgAggregation(aggregationName, context.get(AGGREGATION_AVG));
 		}
-		if(!context.get(AGGREGATION_CARDINALITY).valueType().equals(ValueType.INVALID)) {
+		if(context.has(AGGREGATION_CARDINALITY)) {
 			return new CardinalityAggregation(aggregationName, context.get(AGGREGATION_CARDINALITY));
 		}
-		if(!context.get(AGGREGATION_MIN).valueType().equals(ValueType.INVALID)) {
+		if(context.has(AGGREGATION_MIN)) {
 			return new MinAggregation(aggregationName, context.get(AGGREGATION_MIN));
 		}
-		if(!context.get(AGGREGATION_MAX).valueType().equals(ValueType.INVALID)) {
+		if(context.has(AGGREGATION_MAX)) {
 			return new MaxAggregation(aggregationName, context.get(AGGREGATION_MAX));
 		}
-		if(!context.get(AGGREGATION_PERCENTILES).valueType().equals(ValueType.INVALID)) {
+		if(context.has(AGGREGATION_PERCENTILES)) {
 			return new PercentilesAggregation(aggregationName, context.get(AGGREGATION_PERCENTILES));
 		}
-		if(!context.get(AGGREGATION_STATS).valueType().equals(ValueType.INVALID)) {
+		if(context.has(AGGREGATION_STATS)) {
 			return new StatsAggregation(aggregationName, context.get(AGGREGATION_STATS));
 		}
-		if(!context.get(AGGREGATION_SUM).valueType().equals(ValueType.INVALID)) {
+		if(context.has(AGGREGATION_SUM)) {
 			return new SumAggregation(aggregationName, context.get(AGGREGATION_SUM));
 		}
-		if(!context.get(AGGREGATION_VALUE_COUNT).valueType().equals(ValueType.INVALID)) {
+		if(context.has(AGGREGATION_VALUE_COUNT)) {
 			return new ValueCountAggregation(aggregationName, context.get(AGGREGATION_VALUE_COUNT));
 		}
-		
-		if(!context.get(AGGREGATION_RANGE).valueType().equals(ValueType.INVALID)) {
+		if(context.has(AGGREGATION_RANGE)) {
 			return new RangeAggregation(aggregationName, context.get(AGGREGATION_RANGE));
 		}
-		if(!context.get(AGGREGATION_DATE_HISTOGRAM).valueType().equals(ValueType.INVALID)) {
+		if(context.has(AGGREGATION_DATE_HISTOGRAM)) {
 			return new DateHistogramAggregation(aggregationName, context.get(AGGREGATION_DATE_HISTOGRAM));
 		}
 		throw new UnsupportedAggregationTypeException(aggregationName);

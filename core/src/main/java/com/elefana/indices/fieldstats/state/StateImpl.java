@@ -22,7 +22,6 @@ import com.elefana.indices.fieldstats.state.index.IndexComponent;
 import com.elefana.indices.fieldstats.state.index.IndexImpl;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import com.jsoniter.output.JsonStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.env.Environment;
@@ -35,9 +34,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
@@ -252,11 +249,6 @@ public class StateImpl implements State{
                 .collect(Collectors.toList());
         indexLock.readLock().unlock();
         return result;
-    }
-
-    public String serialize() {
-        JsonStream.serialize(indexMap);
-        return "";
     }
 
     public static boolean matches(String pattern, String index) {

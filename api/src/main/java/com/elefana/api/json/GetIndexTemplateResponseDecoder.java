@@ -20,25 +20,18 @@ import com.elefana.api.indices.IndexTemplate;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 
 import java.io.IOException;
 import java.util.Iterator;
 
-public class GetIndexTemplateResponseDecoder extends StdDeserializer<GetIndexTemplateResponse> {
-
-	public GetIndexTemplateResponseDecoder() {
-		this(null);
-	}
-
-	public GetIndexTemplateResponseDecoder(Class<?> vc) {
-		super(vc);
-	}
+public class GetIndexTemplateResponseDecoder extends JsonDeserializer<GetIndexTemplateResponse> {
 
 	@Override
 	public GetIndexTemplateResponse deserialize(JsonParser parser, DeserializationContext ctxt) throws IOException, JsonProcessingException {
-		final JsonNode any = parser.getCodec().readTree(parser);
+		final JsonNode any = ctxt.readValue(parser, JsonNode.class);
 
 		final GetIndexTemplateResponse result = new GetIndexTemplateResponse();
 		final Iterator<String> templateNames = any.fieldNames();

@@ -21,6 +21,7 @@ import com.elefana.api.RequestExecutor;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.ShardFailedException;
 import com.elefana.api.indices.IndexTemplate;
+import com.elefana.api.json.JsonUtils;
 import com.elefana.api.search.MultiSearchRequest;
 import com.elefana.api.search.MultiSearchResponse;
 import com.elefana.api.search.SearchRequest;
@@ -31,8 +32,6 @@ import com.elefana.node.NodeSettingsService;
 import com.elefana.search.*;
 import com.elefana.table.TableGarbageCollector;
 import com.elefana.util.IndexUtils;
-import com.jsoniter.JsonIterator;
-import com.jsoniter.spi.TypeLiteral;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -136,9 +135,7 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 		final MultiSearchResponse result = new MultiSearchResponse();
 
 		for (int i = 0; i < lines.length; i += 2) {
-			Map<String, Object> indexTypeInfo = JsonIterator.deserialize(lines[i],
-					new TypeLiteral<Map<String, Object>>() {
-					});
+			Map<String, Object> indexTypeInfo = JsonUtils.fromJsonString(lines[i], Map.class);
 			indexTypeInfo.putIfAbsent("index", fallbackIndex);
 			indexTypeInfo.putIfAbsent("type", fallbackType);
 

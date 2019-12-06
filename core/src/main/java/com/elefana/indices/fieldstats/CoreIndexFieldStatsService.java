@@ -19,6 +19,7 @@ package com.elefana.indices.fieldstats;
 import com.elefana.api.RequestExecutor;
 import com.elefana.api.exception.NoSuchApiException;
 import com.elefana.api.indices.*;
+import com.elefana.api.json.JsonUtils;
 import com.elefana.document.BulkIndexOperation;
 import com.elefana.indices.IndexTemplateService;
 import com.elefana.indices.fieldstats.job.CoreFieldStatsJob;
@@ -31,9 +32,7 @@ import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
 import com.elefana.util.IndexUtils;
 import com.elefana.util.NamedThreadFactory;
-import com.fasterxml.jackson.databind.util.Named;
-import com.jsoniter.JsonIterator;
-import com.jsoniter.spi.JsonException;
+import com.fasterxml.jackson.databind.JsonNode;
 import io.netty.handler.codec.http.HttpMethod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -123,19 +122,16 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
         try {
             List<String> fields = new ArrayList<>();
 
-            JsonIterator
-                    .deserialize(requestBody)
-                    .asMap()
-                    .get("fields")
-                    .asList()
-                    .forEach(s -> fields.add(s.toString()));
-
+            final JsonNode jsonNode = JsonUtils.extractJsonNode(requestBody, "fields");
+            for(int i = 0; i < jsonNode.size(); i++) {
+                fields.add(jsonNode.get(i).textValue());
+            }
             if (fields.isEmpty()) {
                 throw new NoSuchApiException(HttpMethod.POST, "No fields specified in request body");
             }
 
             return new RealtimeGetFieldStatsRequest(this, indexPattern, fields, clusterLevel);
-        } catch (JsonException e) {
+        } catch (Exception e) {
             throw new NoSuchApiException(HttpMethod.POST, "Invalid request body");
         }
     }

@@ -21,25 +21,16 @@ import com.elefana.api.document.BulkResponse;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 
 import java.io.IOException;
 
-public class BulkResponseDecoder extends StdDeserializer<BulkResponse> {
-
-	public BulkResponseDecoder() {
-		this(null);
-	}
-
-	protected BulkResponseDecoder(Class<?> vc) {
-		super(vc);
-	}
+public class BulkResponseDecoder extends JsonDeserializer<BulkResponse> {
 
 	@Override
 	public BulkResponse deserialize(JsonParser parser, DeserializationContext ctxt) throws IOException, JsonProcessingException {
-		JsonNode any = parser.getCodec().readTree(parser);
+		JsonNode any = ctxt.readValue(parser, JsonNode.class);
 		BulkResponse result = new BulkResponse();
 		result.setErrors(any.get("errors").asBoolean());
 		result.setTook(any.get("took").asLong());
@@ -51,12 +42,14 @@ public class BulkResponseDecoder extends StdDeserializer<BulkResponse> {
 			JsonNode responseAny = null;
 
 			BulkItemResponse itemResponse = null;
-			if(itemAny.get("index").isObject()) {
-				responseAny = itemAny.get("index");
+			if(itemAny.has("create") && itemAny.get("create").isObject()) {
+				responseAny = itemAny.get("create");
 				itemResponse = new BulkItemResponse(i, BulkOpType.INDEX);
-			} else if(itemAny.get("delete").isObject()) {
+			} else if(itemAny.has("delete") && itemAny.get("delete").isObject()) {
 				responseAny = itemAny.get("delete");
 				itemResponse = new BulkItemResponse(i, BulkOpType.DELETE);
+			} else {
+				continue;
 			}
 
 			itemResponse.setIndex(responseAny.get("_index").asText());

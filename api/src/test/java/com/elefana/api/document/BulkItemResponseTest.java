@@ -16,6 +16,8 @@
 package com.elefana.api.document;
 
 import com.elefana.api.json.JsonUtils;
+import com.elefana.api.json.V2BulkResponseEncoder;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -24,6 +26,10 @@ public class BulkItemResponseTest {
 
 	@Test
 	public void testEncodeDecode() {
+		final SimpleModule module = new SimpleModule();
+		module.addSerializer(BulkResponse.class, new V2BulkResponseEncoder());
+		JsonUtils.OBJECT_MAPPER.registerModule(module);
+
 		BulkResponse expected = new BulkResponse();
 		expected.setErrors(true);
 		expected.setTook(1001L);

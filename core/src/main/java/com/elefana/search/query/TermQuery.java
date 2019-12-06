@@ -16,10 +16,11 @@
 package com.elefana.search.query;
 
 import com.elefana.api.indices.IndexTemplate;
-import com.jsoniter.ValueType;
-import com.jsoniter.any.Any;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Iterator;
 
 public class TermQuery extends Query {
 	private static final Logger LOGGER = LoggerFactory.getLogger(TermQuery.class);
@@ -31,20 +32,21 @@ public class TermQuery extends Query {
 	protected String value;
 	protected double boost = 1.0f;
 	
-	public TermQuery(Any queryContext) {
+	public TermQuery(JsonNode queryContext) {
 		super();
-		for(Object fieldKey : queryContext.keys()) {
-			final String fieldName = fieldKey.toString();
+		final Iterator<String> fieldNames = queryContext.fieldNames();
+		while(fieldNames.hasNext()) {
+			final String fieldName = fieldNames.next();
 			this.fieldName = fieldName;
-			
-			Any fieldContext = queryContext.get(fieldName);
-			if(fieldContext.valueType().equals(ValueType.OBJECT)) {
-				this.value = fieldContext.get(KEY_VALUE).toString();
-				if(fieldContext.keys().contains(KEY_BOOST)) {
-					this.boost = fieldContext.get(KEY_BOOST).toDouble();
+
+			final JsonNode fieldContext = queryContext.get(fieldName);
+			if(fieldContext.isObject()) {
+				this.value = fieldContext.get(KEY_VALUE).textValue();
+				if(fieldContext.has(KEY_BOOST)) {
+					this.boost = fieldContext.get(KEY_BOOST).asDouble();
 				}
 			} else {
-				this.value = fieldContext.toString();
+				this.value = fieldContext.textValue();
 			}
 		}
 	}

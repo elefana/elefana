@@ -149,14 +149,13 @@ public abstract class BulkIndexTask implements Callable<List<BulkItemResponse>> 
 					final String escapedJson;
 					if(flatten) {
 						final Timer.Context flattenTime = flattenTimer.time();
-						escapedJson = IndexUtils.flattenJson(indexOperation.getSource());
+						IndexUtils.flattenJson(indexOperation);
 						flattenTime.stop();
 					} else {
 						final Timer.Context escapeTime = flattenTimer.time();
-						escapedJson = EscapeUtils.psqlEscapeString(indexOperation.getSource());
+						EscapeUtils.psqlEscapeString(indexOperation);
 						escapeTime.stop();
 					}
-					indexOperation.setSource(escapedJson);
 
 					final StringBuilder rowBuilder = IndexUtils.POOLED_STRING_BUILDER.get();
 					rowBuilder.append(indexOperation.getIndex());
@@ -176,7 +175,7 @@ public abstract class BulkIndexTask implements Callable<List<BulkItemResponse>> 
 					rowBuilder.append(bucket1d);
 					rowBuilder.append(DELIMITER);
 					rowBuilder.append(ESCAPE);
-					rowBuilder.append(escapedJson);
+					rowBuilder.append(indexOperation.getDocument(), 0, indexOperation.getDocumentLength());
 					rowBuilder.append(ESCAPE);
 					rowBuilder.append(NEW_LINE);
 
@@ -218,9 +217,9 @@ public abstract class BulkIndexTask implements Callable<List<BulkItemResponse>> 
 
 				if (!foundBadEntry) {
 					try {
-						JsonUtils.fromJsonString(indexOperation.getSource(), Map.class);
+						JsonUtils.fromJsonString(indexOperation.getDocument(), Map.class);
 					} catch (Exception ex) {
-						LOGGER.error("Invalid JSON: " + indexOperation.getSource());
+						LOGGER.error("Invalid JSON: " + indexOperation.getDocument());
 						foundBadEntry = true;
 					}
 				}

@@ -15,17 +15,14 @@
  ******************************************************************************/
 package com.elefana.es2;
 
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.notNullValue;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Scanner;
-import java.util.UUID;
-
-import com.elefana.TestUtils;
+import com.elefana.DocumentedTest;
+import com.elefana.ElefanaApplication;
+import com.elefana.api.json.JsonUtils;
+import com.fasterxml.jackson.databind.JsonNode;
+import io.restassured.RestAssured;
+import io.restassured.http.ContentType;
 import io.restassured.path.json.exception.JsonPathException;
+import io.restassured.response.ValidatableResponse;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -34,14 +31,14 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 
-import com.elefana.DocumentedTest;
-import com.elefana.ElefanaApplication;
-import com.jsoniter.JsonIterator;
-import com.jsoniter.any.Any;
+import java.io.IOException;
+import java.util.List;
+import java.util.Scanner;
+import java.util.UUID;
 
-import io.restassured.RestAssured;
-import io.restassured.http.ContentType;
-import io.restassured.response.ValidatableResponse;
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.notNullValue;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = { ElefanaApplication.class })
@@ -176,8 +173,8 @@ public class DocumentApiTest extends DocumentedTest {
 			.statusCode(200)
 			.log().all();
 		
-		Any expectedAny = JsonIterator.deserialize(document);
-		Any resultAny = JsonIterator.deserialize(response.extract().asString()).get("_source");
+		JsonNode expectedAny = JsonUtils.extractJsonNode(document);
+		JsonNode resultAny = JsonUtils.extractJsonNode(response.extract().asString()).get("_source");
 		Assert.assertEquals(expectedAny, resultAny);
 		Assert.assertEquals(expectedAny.get("message").toString(), resultAny.get("message").toString());
 		
@@ -202,7 +199,7 @@ public class DocumentApiTest extends DocumentedTest {
 			.log().all()
 			.statusCode(200);
 		
-		resultAny = JsonIterator.deserialize(response.extract().asString()).get("docs").get(0).get("_source");
+		resultAny = JsonUtils.extractJsonNode(response.extract().asString()).get("docs").get(0).get("_source");
 		Assert.assertEquals(expectedAny, resultAny);
 		Assert.assertEquals(expectedAny.get("message").toString(), resultAny.get("message").toString());
 	}

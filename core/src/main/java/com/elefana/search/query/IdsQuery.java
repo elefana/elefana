@@ -16,8 +16,7 @@
 package com.elefana.search.query;
 
 import com.elefana.api.indices.IndexTemplate;
-import com.jsoniter.ValueType;
-import com.jsoniter.any.Any;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,29 +30,33 @@ public class IdsQuery extends Query {
 	protected final List<String> values = new ArrayList<String>();
 	protected double boost = 1.0;
 	
-	public IdsQuery(Any queryContext) {
+	public IdsQuery(JsonNode queryContext) {
 		super();
-		
-		Any typeContext = queryContext.get(KEY_TYPE);
-		if(typeContext.valueType().equals(ValueType.ARRAY)) {
-			for(Any type : typeContext.asList()) {
-				types.add(type.toString());
+
+		if(queryContext.has(KEY_TYPE)) {
+			final JsonNode typeContext = queryContext.get(KEY_TYPE);
+			if(typeContext.isArray()) {
+				for(int i = 0; i < typeContext.size(); i++) {
+					types.add(typeContext.get(i).textValue());
+				}
+			} else if(typeContext.isTextual()) {
+				types.add(typeContext.toString());
 			}
-		} else if(typeContext.valueType().equals(ValueType.STRING)) {
-			types.add(typeContext.toString());
 		}
-		
-		Any valuesContext = queryContext.get(KEY_VALUES);
-		if(valuesContext.valueType().equals(ValueType.ARRAY)) {
-			for(Any value : valuesContext.asList()) {
-				values.add(value.toString());
+
+		if(queryContext.has(KEY_VALUES)) {
+			final JsonNode valuesContext = queryContext.get(KEY_VALUES);
+			if(valuesContext.isArray()) {
+				for(int i = 0; i < valuesContext.size(); i++) {
+					values.add(valuesContext.get(i).textValue());
+				}
+			} else if(valuesContext.isTextual()) {
+				values.add(valuesContext.toString());
 			}
-		} else if(valuesContext.valueType().equals(ValueType.STRING)) {
-			values.add(valuesContext.toString());
 		}
-		
-		if(queryContext.get(KEY_BOOST).valueType().equals(ValueType.NUMBER)) {
-			boost = queryContext.get(KEY_BOOST).toDouble();
+
+		if(queryContext.has(KEY_BOOST) && queryContext.get(KEY_BOOST).isNumber()) {
+			boost = queryContext.get(KEY_BOOST).asDouble();
 		}
 	}
 	

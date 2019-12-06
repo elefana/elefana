@@ -15,7 +15,7 @@
  ******************************************************************************/
 package com.elefana.search.agg;
 
-import com.jsoniter.any.Any;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,10 +31,10 @@ public class SumAggregation extends Aggregation {
 	private final String aggregationName;
 	private final String fieldName;
 	
-	public SumAggregation(String aggregationName, Any context) {
+	public SumAggregation(String aggregationName, JsonNode context) {
 		super();
 		this.aggregationName = aggregationName;
-		this.fieldName = context.get(KEY_FIELD).toString();
+		this.fieldName = context.get(KEY_FIELD).textValue();
 	}
 
 	@Override

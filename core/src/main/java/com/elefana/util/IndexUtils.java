@@ -17,6 +17,7 @@ package com.elefana.util;
 
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.json.JsonUtils;
+import com.elefana.indices.fieldstats.job.DocumentSourceProvider;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
@@ -46,6 +47,8 @@ public interface IndexUtils {
 
 	public String generateDocumentId(String index, String type, String source);
 
+	public String generateDocumentId(String index, String type, char [] document, int documentLength);
+
 	public List<String> listIndices() throws ElefanaException;
 
 	public List<String> listIndicesForIndexPattern(List<String> indexPatterns) throws ElefanaException;
@@ -57,6 +60,8 @@ public interface IndexUtils {
 	public String getQueryTarget(String indexName);
 	
 	public long getTimestamp(String index, String document) throws ElefanaException;
+
+	public long getTimestamp(String index, char [] document, int documentLength) throws ElefanaException;
 
 	public void ensureIndexExists(String indexName) throws ElefanaException;
 	
@@ -121,6 +126,10 @@ public interface IndexUtils {
 
 		FLATTEN_JSON_CAPACITY.add(result.length());
 		return result.toString();
+	}
+
+	public static void flattenJson(DocumentSourceProvider sourceProvider) throws IOException {
+
 	}
 
 	public static boolean flattenJsonObject(final JsonParser jsonParser, StringBuilder stringBuilder, CharSequence prefix) throws IOException {

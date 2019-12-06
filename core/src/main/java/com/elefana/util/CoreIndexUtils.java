@@ -18,20 +18,21 @@ package com.elefana.util;
 import com.codahale.metrics.MetricRegistry;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.ShardFailedException;
-import com.elefana.api.indices.*;
+import com.elefana.api.indices.GetIndexTemplateForIndexRequest;
+import com.elefana.api.indices.GetIndexTemplateForIndexResponse;
+import com.elefana.api.indices.IndexStorageSettings;
+import com.elefana.api.indices.IndexTemplate;
+import com.elefana.api.json.JsonUtils;
 import com.elefana.indices.IndexTemplateService;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.table.TableIndexCreator;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.uuid.EthernetAddress;
 import com.fasterxml.uuid.Generators;
 import com.fasterxml.uuid.impl.TimeBasedGenerator;
-import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import com.jsoniter.JsonIterator;
-import com.jsoniter.ValueType;
-import com.jsoniter.any.Any;
 import com.zaxxer.hikari.HikariDataSource;
 import net.openhft.hashing.LongHashFunction;
 import org.slf4j.Logger;
@@ -165,6 +166,11 @@ public class CoreIndexUtils implements IndexUtils {
 		return uuidGenerator.generate().toString();
 	}
 
+	@Override
+	public String generateDocumentId(String index, String type, char[] document, int documentLength) {
+		return uuidGenerator.generate().toString();
+	}
+
 	public List<String> listIndices() throws ElefanaException {
 		final String query = "SELECT _index FROM " + PARTITION_TRACKING_TABLE;
 		final List<String> results = new ArrayList<String>(1);
@@ -259,17 +265,37 @@ public class CoreIndexUtils implements IndexUtils {
 			path = timestampPath.split("\\.");
 			jsonPathCache.put(timestampPath, path);
 		}
-		Any json = JsonIterator.deserialize(document);
-		for (int i = 0; i < path.length; i++) {
-			if (json.valueType().equals(ValueType.INVALID)) {
-				return System.currentTimeMillis();
-			}
-			json = json.get(path[i]);
-		}
-		if (!json.valueType().equals(ValueType.NUMBER)) {
+		final JsonNode json = JsonUtils.extractJsonNode(document, path);
+		if (!json.isNumber()) {
 			return System.currentTimeMillis();
 		}
-		return json.toLong();
+		return json.asLong();
+	}
+
+	@Override
+	public long getTimestamp(String index, char[] document, int documentLength) throws ElefanaException {
+		final GetIndexTemplateForIndexRequest indexTemplateForIndexRequest = indexTemplateService
+				.prepareGetIndexTemplateForIndex(index);
+		final GetIndexTemplateForIndexResponse indexTemplateForIndexResponse = indexTemplateForIndexRequest.get();
+		final IndexTemplate indexTemplate = indexTemplateForIndexResponse.getIndexTemplate();
+		if (indexTemplate == null) {
+			return System.currentTimeMillis();
+		}
+		String timestampPath = indexTemplate.getStorage().getTimestampPath();
+		if (timestampPath == null) {
+			return System.currentTimeMillis();
+		}
+
+		String[] path = jsonPathCache.get(timestampPath);
+		if (path == null) {
+			path = timestampPath.split("\\.");
+			jsonPathCache.put(timestampPath, path);
+		}
+		final JsonNode json = JsonUtils.extractJsonNode(document, documentLength, path);
+		if (!json.isNumber()) {
+			return System.currentTimeMillis();
+		}
+		return json.asLong();
 	}
 
 	@Override

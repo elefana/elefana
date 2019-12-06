@@ -21,27 +21,20 @@ import com.elefana.api.node.v5.V5NodeStats;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 
 import java.io.IOException;
 
-public class NodeStatsDecoder extends StdDeserializer<NodeStats> {
-
-	public NodeStatsDecoder() {
-		this(null);
-	}
-
-	public NodeStatsDecoder(Class<?> vc) {
-		super(vc);
-	}
+public class NodeStatsDecoder extends JsonDeserializer<NodeStats> {
 
 	@Override
 	public NodeStats deserialize(JsonParser parser, DeserializationContext ctxt) throws IOException, JsonProcessingException {
-		final JsonNode any = parser.getCodec().readTree(parser);
+		final JsonNode any = ctxt.readValue(parser, JsonNode.class);
 
 		NodeStats result = null;
-		if (any.get("http_address").isTextual() || any.get("http_address").isNull()) {
+		if (any.has("http_address") && (any.get("http_address").isTextual() || any.get("http_address").isNull())) {
 			result = JsonUtils.OBJECT_MAPPER.readValue(any.toString(), V2NodeStats.class);
 		} else {
 			result = JsonUtils.OBJECT_MAPPER.readValue(any.toString(), V5NodeStats.class);

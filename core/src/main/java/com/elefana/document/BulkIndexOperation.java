@@ -17,18 +17,24 @@ package com.elefana.document;
 
 import com.elefana.indices.fieldstats.job.DocumentSourceProvider;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
 
+import java.io.IOException;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class BulkIndexOperation implements DocumentSourceProvider {
 	@JsonIgnore
 	private static final Queue<BulkIndexOperation> POOL = new ConcurrentLinkedQueue<BulkIndexOperation>();
+	private static AtomicInteger MAX_SOURCE_LENGTH = new AtomicInteger(2048);
 	
 	private String index;
 	private String type;
 	private String id;
-	private String source;
+	private char [] document = new char[MAX_SOURCE_LENGTH.get()];
+	private int documentLength;
 	private long timestamp;
 
 	@JsonIgnore
@@ -51,10 +57,34 @@ public class BulkIndexOperation implements DocumentSourceProvider {
 		index = null;
 		type = null;
 		id = null;
-		source = null;
+		documentLength = 0;
 
 		released = true;
 		POOL.offer(this);
+	}
+
+	public void read(JsonParser jsonParser) throws IOException {
+		while(jsonParser.currentToken() != JsonToken.END_OBJECT) {
+			final JsonToken nextToken = jsonParser.nextToken();
+
+			if(nextToken != JsonToken.FIELD_NAME) {
+				continue;
+			}
+			switch(jsonParser.getText()) {
+			case "index":
+				jsonParser.nextToken();
+				index = jsonParser.getText();
+				break;
+			case "type":
+				jsonParser.nextToken();
+				type = jsonParser.getText();
+				break;
+			case "id":
+				jsonParser.nextToken();
+				id = jsonParser.getText();
+				break;
+			}
+		}
 	}
 
 	public String getIndex() {
@@ -81,12 +111,14 @@ public class BulkIndexOperation implements DocumentSourceProvider {
 		this.id = id;
 	}
 
-	public String getSource() {
-		return source;
-	}
+	public void setDocument(char [] document, int documentLength) {
+		if(this.document.length < documentLength) {
+			MAX_SOURCE_LENGTH.set(Math.max(documentLength * 2, MAX_SOURCE_LENGTH.get()));
+			this.document = new char[MAX_SOURCE_LENGTH.get()];
+		}
 
-	public void setSource(String source) {
-		this.source = source;
+		System.arraycopy(document, 0, this.document, 0, documentLength);
+		this.documentLength = documentLength;
 	}
 
 	public long getTimestamp() {
@@ -100,12 +132,21 @@ public class BulkIndexOperation implements DocumentSourceProvider {
 	@Override
 	@JsonIgnore
 	public String toString() {
-		return "BulkIndexOperation [index=" + index + ", type=" + type + ", id=" + id + ", source=" + source + "]";
+		return "BulkIndexOperation [index=" + index + ", type=" + type + ", id=" + id + ", source=" + document + "]";
 	}
 
 	@Override
-	public String getDocument() {
-		return source;
+	public char[] getDocument() {
+		return document;
+	}
+
+	@Override
+	public int getDocumentLength() {
+		return documentLength;
+	}
+
+	public void setDocumentLength(int documentLength) {
+		this.documentLength = documentLength;
 	}
 
 	@Override

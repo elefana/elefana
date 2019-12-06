@@ -16,8 +16,9 @@
 package com.elefana.search.query;
 
 import com.elefana.api.indices.IndexTemplate;
-import com.jsoniter.ValueType;
-import com.jsoniter.any.Any;
+import com.fasterxml.jackson.databind.JsonNode;
+
+import java.util.Iterator;
 
 public class RegexpQuery extends Query {
 	private static final String KEY_VALUE = "value";
@@ -27,25 +28,27 @@ public class RegexpQuery extends Query {
 	protected String value;
 	protected double boost = 1.0f;
 	
-	public RegexpQuery(Any queryContext) {
+	public RegexpQuery(JsonNode queryContext) {
 		super();
-		
-		for(Object fieldKey : queryContext.keys()) {
-			final String fieldName = fieldKey.toString();
+
+		final Iterator<String> fieldNames = queryContext.fieldNames();
+		while(fieldNames.hasNext()) {
+			final String fieldName = fieldNames.next();
 			this.fieldName = fieldName;
-			
-			Any fieldContext = queryContext.get(fieldName);
-			if(fieldContext.valueType().equals(ValueType.OBJECT)) {
-				this.value = fieldContext.get(KEY_VALUE).toString();
-				
-				if(!fieldContext.get(KEY_BOOST).equals(ValueType.INVALID)) {
-					this.boost = fieldContext.get(KEY_BOOST).toDouble();
+
+			final JsonNode fieldContext = queryContext.get(fieldName);
+			if(fieldContext.isObject()) {
+				this.value = fieldContext.get(KEY_VALUE).textValue();
+
+				if(fieldContext.has(KEY_BOOST)) {
+					this.boost = fieldContext.get(KEY_BOOST).asDouble();
 				}
 			} else {
-				this.value = fieldContext.toString();
+				this.value = fieldContext.textValue();
 			}
 			break;
 		}
+
 		this.value = value.replace(".*", "%");
 		this.value = value.replace(".", "_");
 	}

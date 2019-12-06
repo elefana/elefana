@@ -16,8 +16,9 @@
 package com.elefana.search.query;
 
 import com.elefana.api.indices.IndexTemplate;
-import com.jsoniter.ValueType;
-import com.jsoniter.any.Any;
+import com.fasterxml.jackson.databind.JsonNode;
+
+import java.util.Iterator;
 
 public class PrefixQuery extends Query {
 	private static final String KEY_VALUE = "value";
@@ -27,22 +28,23 @@ public class PrefixQuery extends Query {
 	protected String value;
 	protected double boost = 1.0f;
 
-	public PrefixQuery(Any queryContext) {
+	public PrefixQuery(JsonNode queryContext) {
 		super();
-		
-		for(Object fieldKey : queryContext.keys()) {
-			final String fieldName = fieldKey.toString();
+
+		final Iterator<String> fieldNames = queryContext.fieldNames();
+		while(fieldNames.hasNext()) {
+			final String fieldName = fieldNames.next();
 			this.fieldName = fieldName;
-			
-			Any fieldContext = queryContext.get(fieldName);
-			if(fieldContext.valueType().equals(ValueType.OBJECT)) {
+
+			final JsonNode fieldContext = queryContext.get(fieldName);
+			if(fieldContext.isObject()) {
 				value = fieldContext.get(KEY_VALUE).toString();
-				
-				if(!fieldContext.get(KEY_BOOST).valueType().equals(ValueType.INVALID)) {
-					boost = fieldContext.get(KEY_BOOST).toDouble();
+
+				if(fieldContext.has(KEY_BOOST) && fieldContext.get(KEY_BOOST).isNumber()) {
+					boost = fieldContext.get(KEY_BOOST).asDouble();
 				}
 			} else {
-				value = fieldContext.toString();
+				value = fieldContext.textValue();
 			}
 			break;
 		}

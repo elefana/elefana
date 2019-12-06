@@ -15,6 +15,7 @@
  ******************************************************************************/
 package com.elefana.api.node;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.Map;
@@ -30,11 +31,14 @@ public abstract class NodeStats {
 	private Map<String, Object> os;
 	private Map<String, Object> jvm;
 	private Map<String, Object> process;
-	
+
+	@JsonIgnore
 	public abstract boolean isMasterNode();
-	
+
+	@JsonIgnore
 	public abstract boolean isDataNode();
-	
+
+	@JsonIgnore
 	public abstract boolean isIngestNode();
 
 	public String getName() {

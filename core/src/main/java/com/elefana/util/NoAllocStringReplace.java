@@ -15,6 +15,8 @@
  ******************************************************************************/
 package com.elefana.util;
 
+import com.elefana.indices.fieldstats.job.DocumentSourceProvider;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -41,6 +43,19 @@ public class NoAllocStringReplace {
 		return result;
 	}
 
+	public static NoAllocStringReplace allocate(char [] value, int length) {
+		LOCK.lock();
+		NoAllocStringReplace result = POOL.isEmpty() ? null : POOL.remove(0);
+		LOCK.unlock();
+		if(result == null) {
+			result = new NoAllocStringReplace();
+		}
+		result.set(value, length);
+		return result;
+	}
+
+	private char [] pooledStr;
+
 	private char [] str;
 	private int length;
 
@@ -55,6 +70,12 @@ public class NoAllocStringReplace {
 		}
 		length = value.length();
 		value.getChars(0, value.length(), str, 0);
+	}
+
+	public void set(char [] value, int length) {
+		pooledStr = str;
+		str = value;
+		this.length = length;
 	}
 
 	public void escapeUnicode(int index) {
@@ -171,6 +192,11 @@ public class NoAllocStringReplace {
 			MAX_ARRAY_SIZE.set(Math.max(length, MAX_ARRAY_SIZE.get()));
 		}
 
+		if(pooledStr != null) {
+			str = pooledStr;
+			pooledStr = null;
+		}
+
 		LOCK.lock();
 		POOL.add(this);
 		LOCK.unlock();
@@ -221,13 +247,37 @@ public class NoAllocStringReplace {
 			}
 		}
 		return false;
+	}
 
-		/*if(str == null || search == null)
+	public static boolean contains(DocumentSourceProvider documentSourceProvider, String [] search) {
+		return contains(documentSourceProvider.getDocument(), documentSourceProvider.getDocumentLength(), search);
+	}
+
+	public static boolean contains(char [] str, int length, String [] search) {
+		if(str == null || search == null)
 			return false;
 
-		return Stream.of(search)
-				.filter(Objects::nonNull)
-				.filter(s -> !s.isEmpty())
-				.anyMatch(str::contains);*/
+		for(int i = 0; i < length; i++) {
+			for(int j = 0; j < search.length; j++) {
+				if(search[j] == null) {
+					continue;
+				}
+				if(search[j].isEmpty()) {
+					continue;
+				}
+
+				boolean match = true;
+				for(int k = 0; k < search[j].length() && i + k < length; k++) {
+					if(str[i + k] != search[j].charAt(k)) {
+						match = false;
+						break;
+					}
+				}
+				if(match) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 }

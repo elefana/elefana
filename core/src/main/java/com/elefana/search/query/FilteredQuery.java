@@ -17,8 +17,7 @@ package com.elefana.search.query;
 
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.indices.IndexTemplate;
-import com.jsoniter.ValueType;
-import com.jsoniter.any.Any;
+import com.fasterxml.jackson.databind.JsonNode;
 
 public class FilteredQuery extends Query {
 	private static final String KEY_QUERY = "query";
@@ -26,15 +25,15 @@ public class FilteredQuery extends Query {
 	
 	private Query query, filter;
 	
-	public FilteredQuery(Any queryContext) throws ElefanaException {
+	public FilteredQuery(JsonNode queryContext) throws ElefanaException {
 		super();
-		
-		if(!queryContext.get(KEY_QUERY).valueType().equals(ValueType.INVALID)) {
+
+		if(queryContext.has(KEY_QUERY)) {
 			query = QueryParser.parseQuery(queryContext.get(KEY_QUERY));
 		} else {
 			query = new MatchAllQuery();
 		}
-		if(!queryContext.get(KEY_FILTER).valueType().equals(ValueType.INVALID)) {
+		if(queryContext.has(KEY_FILTER)) {
 			filter = QueryParser.parseQuery(queryContext.get(KEY_FILTER));
 		} else {
 			filter = new MatchAllQuery();

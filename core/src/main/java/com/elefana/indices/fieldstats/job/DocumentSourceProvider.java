@@ -16,7 +16,11 @@
 package com.elefana.indices.fieldstats.job;
 
 public interface DocumentSourceProvider {
-	public String getDocument();
+	public char [] getDocument();
+
+	public void setDocument(char [] document, int length);
+
+	public int getDocumentLength();
 
 	public void dispose();
 }

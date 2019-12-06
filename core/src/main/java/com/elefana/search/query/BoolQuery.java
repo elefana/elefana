@@ -17,8 +17,7 @@ package com.elefana.search.query;
 
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.indices.IndexTemplate;
-import com.jsoniter.ValueType;
-import com.jsoniter.any.Any;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,50 +46,64 @@ public class BoolQuery extends Query {
 	private boolean disabledCoord = false;
 	private boolean adjustPureNegative = true;
 
-	public BoolQuery(Any queryContext) throws ElefanaException {
+	public BoolQuery(JsonNode queryContext) throws ElefanaException {
 		super();
 
-		if (queryContext.get(KEY_MUST).valueType().equals(ValueType.OBJECT)) {
-			mustClauses.add(QueryParser.parseQuery(queryContext.get(KEY_MUST)));
-		} else if (queryContext.get(KEY_MUST).valueType().equals(ValueType.ARRAY)) {
-			for(Any mustContext : queryContext.get(KEY_MUST).asList()) {
-				mustClauses.add(QueryParser.parseQuery(mustContext));
+		if(queryContext.has(KEY_MUST)) {
+			final JsonNode mustNode = queryContext.get(KEY_MUST);
+			if (mustNode.isObject()) {
+				mustClauses.add(QueryParser.parseQuery(mustNode));
+			} else if (mustNode.isArray()) {
+				for(int i = 0; i < mustNode.size(); i++) {
+					final JsonNode mustContext = mustNode.get(i);
+					mustClauses.add(QueryParser.parseQuery(mustContext));
+				}
 			}
 		}
-		
-		if (queryContext.get(KEY_MUST_NOT).valueType().equals(ValueType.OBJECT)) {
-			mustNotClauses.add(QueryParser.parseQuery(queryContext.get(KEY_MUST_NOT)));
-		} else if (queryContext.get(KEY_MUST_NOT).valueType().equals(ValueType.ARRAY)) {
-			for(Any mustNotContext : queryContext.get(KEY_MUST_NOT).asList()) {
-				mustNotClauses.add(QueryParser.parseQuery(mustNotContext));
+
+		if(queryContext.has(KEY_MUST_NOT)) {
+			final JsonNode mostNotNode = queryContext.get(KEY_MUST_NOT);
+			if (mostNotNode.isObject()) {
+				mustNotClauses.add(QueryParser.parseQuery(mostNotNode));
+			} else if (mostNotNode.isArray()) {
+				for(int i = 0; i < mostNotNode.size(); i++) {
+					final JsonNode mustNotContext = mostNotNode.get(i);
+					mustNotClauses.add(QueryParser.parseQuery(mustNotContext));
+				}
 			}
 		}
-		
-		if (queryContext.get(KEY_FILTER).valueType().equals(ValueType.OBJECT)) {
-			filterClauses.add(QueryParser.parseQuery(queryContext.get(KEY_FILTER)));
-		} else if (queryContext.get(KEY_FILTER).valueType().equals(ValueType.ARRAY)) {
-			for(Any filterContext : queryContext.get(KEY_FILTER).asList()) {
-				filterClauses.add(QueryParser.parseQuery(filterContext));
+
+		if(queryContext.has(KEY_FILTER)) {
+			final JsonNode filterNode = queryContext.get(KEY_FILTER);
+			if (filterNode.isObject()) {
+				filterClauses.add(QueryParser.parseQuery(filterNode));
+			} else if (filterNode.isArray()) {
+				for(int i = 0; i < filterNode.size(); i++) {
+					final JsonNode filterContext = filterNode.get(i);
+					filterClauses.add(QueryParser.parseQuery(filterContext));
+				}
 			}
 		}
-		
-		if (queryContext.get(KEY_SHOULD).valueType().equals(ValueType.ARRAY)) {
-			for(Any shouldContext : queryContext.get(KEY_SHOULD).asList()) {
+
+		if(queryContext.has(KEY_SHOULD)) {
+			final JsonNode shouldNode = queryContext.get(KEY_SHOULD);
+			for(int i = 0; i < shouldNode.size(); i++) {
+				final JsonNode shouldContext = shouldNode.get(i);
 				shouldClauses.add(QueryParser.parseQuery(shouldContext));
 			}
 		}
-		
-		if (queryContext.get(KEY_MINIMUM_SHOULD_MATCH).valueType().equals(ValueType.STRING)) {
-			this.minimumShouldMatch = queryContext.get(KEY_MINIMUM_SHOULD_MATCH).toString();
+
+		if(queryContext.has(KEY_MINIMUM_SHOULD_MATCH) && queryContext.get(KEY_MINIMUM_SHOULD_MATCH).isTextual()) {
+			this.minimumShouldMatch = queryContext.get(KEY_MINIMUM_SHOULD_MATCH).textValue();
 		}
-		if (queryContext.get(KEY_BOOST).valueType().equals(ValueType.NUMBER)) {
-			this.boost = queryContext.get(KEY_BOOST).toDouble();
+		if(queryContext.has(KEY_BOOST) && queryContext.get(KEY_BOOST).isNumber()) {
+			this.boost = queryContext.get(KEY_BOOST).asDouble();
 		}
-		if (queryContext.get(KEY_DISABLE_COORD).valueType().equals(ValueType.BOOLEAN)) {
-			this.disabledCoord = queryContext.get(KEY_DISABLE_COORD).toBoolean();
+		if(queryContext.has(KEY_DISABLE_COORD) && queryContext.get(KEY_DISABLE_COORD).isBoolean()) {
+			this.disabledCoord = queryContext.get(KEY_DISABLE_COORD).asBoolean();
 		}
-		if (queryContext.get(KEY_ADJUST_PURE_NEGATIVE).valueType().equals(ValueType.BOOLEAN)) {
-			this.adjustPureNegative = queryContext.get(KEY_ADJUST_PURE_NEGATIVE).toBoolean();
+		if(queryContext.has(KEY_ADJUST_PURE_NEGATIVE) && queryContext.get(KEY_ADJUST_PURE_NEGATIVE).isBoolean()) {
+			this.adjustPureNegative = queryContext.get(KEY_ADJUST_PURE_NEGATIVE).asBoolean();
 		}
 	}
 

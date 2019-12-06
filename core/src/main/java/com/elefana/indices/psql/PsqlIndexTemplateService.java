@@ -22,11 +22,9 @@ import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.NoSuchTemplateException;
 import com.elefana.api.exception.ShardFailedException;
 import com.elefana.api.indices.*;
+import com.elefana.api.json.JsonUtils;
 import com.elefana.indices.IndexTemplateService;
-import com.jsoniter.JsonIterator;
-import com.jsoniter.ValueType;
-import com.jsoniter.any.Any;
-import com.jsoniter.spi.TypeLiteral;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -114,10 +112,8 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 			while (rowSet.next()) {
 				IndexTemplate indexTemplate = new IndexTemplate();
 				indexTemplate.setTemplate(rowSet.getString("_index_pattern"));
-				indexTemplate.setStorage(JsonIterator.deserialize(rowSet.getString("_storage"), IndexStorageSettings.class));
-				indexTemplate.setMappings(
-						JsonIterator.deserialize(rowSet.getString("_mappings"), new TypeLiteral<Map<String, Object>>() {
-						}));
+				indexTemplate.setStorage(JsonUtils.fromJsonString(rowSet.getString("_storage"), IndexStorageSettings.class));
+				indexTemplate.setMappings(JsonUtils.fromJsonString(rowSet.getString("_mappings"), Map.class));
 
 				final String templateId = rowSet.getString("_template_id");
 				results.put(templateId, indexTemplate);
@@ -155,10 +151,8 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 
 			if(fetchSource) {
 				result.setTemplate(rowSet.getString("_index_pattern"));
-				result.setStorage(JsonIterator.deserialize(rowSet.getString("_storage"), IndexStorageSettings.class));
-				result.setMappings(
-						JsonIterator.deserialize(rowSet.getString("_mappings"), new TypeLiteral<Map<String, Object>>() {
-						}));
+				result.setStorage(JsonUtils.fromJsonString(rowSet.getString("_storage"), IndexStorageSettings.class));
+				result.setMappings(JsonUtils.fromJsonString(rowSet.getString("_mappings"), Map.class));
 			} else {
 				result.setTemplate(rowSet.getString("_index_pattern"));
 				result.setMappings(new HashMap<String, Object>());
@@ -261,8 +255,8 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 	}
 
 	public AckResponse putIndexTemplate(String templateId, String requestBody) throws ElefanaException {
-		Any templateData = JsonIterator.deserialize(requestBody);
-		if (templateData.get("template").valueType().equals(ValueType.INVALID)) {
+		final JsonNode templateData = JsonUtils.extractJsonNode(requestBody);
+		if (!templateData.has("template")) {
 			throw new BadRequestException();
 		}
 
@@ -271,7 +265,7 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 
 			PGobject storageObject = new PGobject();
 			storageObject.setType("json");
-			if(templateData.get("storage").valueType().equals(ValueType.OBJECT)) {
+			if(templateData.has("storage") && templateData.get("storage").isObject()) {
 				storageObject.setValue(templateData.get("storage").toString());
 			} else {
 				storageObject.setValue("{}");
@@ -279,7 +273,7 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 			
 			PGobject mappingsObject = new PGobject();
 			mappingsObject.setType("json");
-			if (templateData.get("mappings").valueType().equals(ValueType.OBJECT)) {
+			if (templateData.has("mappings") && templateData.get("mappings").isObject()) {
 				mappingsObject.setValue(templateData.get("mappings").toString());
 			} else {
 				mappingsObject.setValue("{}");

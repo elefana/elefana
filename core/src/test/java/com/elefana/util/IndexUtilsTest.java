@@ -15,14 +15,13 @@
  ******************************************************************************/
 package com.elefana.util;
 
-import java.io.IOException;
-import java.util.Scanner;
-
-import com.jsoniter.JsonIterator;
-import com.jsoniter.ValueType;
-import com.jsoniter.any.Any;
+import com.elefana.api.json.JsonUtils;
+import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.io.IOException;
 
 
 public class IndexUtilsTest {
@@ -54,31 +53,31 @@ public class IndexUtilsTest {
 	public void testFlattenJsonStringWithLineBreakInContent() throws IOException {
 		final String json = "{\"str\":\"This a value with a \n line break\"}";
 		final String result = IndexUtils.flattenJson(json);
-		final Any any = JsonIterator.deserialize(result);
-		Assert.assertEquals(ValueType.STRING, any.get("str").valueType());
+		final JsonNode any = JsonUtils.extractJsonNode(result);
+		Assert.assertEquals(JsonToken.VALUE_STRING, any.get("str").asToken());
 	}
 
 	@Test
 	public void testFlattenJsonStringWithLineBreakBetweenContent() throws IOException {
 		final String json = "{\"str\":\"This a value with a line break\",\n \"int\": 0}";
 		final String result = IndexUtils.flattenJson(json);
-		final Any any = JsonIterator.deserialize(result);
-		Assert.assertEquals(ValueType.STRING, any.get("str").valueType());
+		final JsonNode any =  JsonUtils.extractJsonNode(result);
+		Assert.assertEquals(JsonToken.VALUE_STRING, any.get("str").asToken());
 	}
 
 	@Test
 	public void testFlattenJsonStringWithLineBreakInAndBetweenContent() throws IOException {
 		final String json = "{\"str\":\"This a value with\n a line break\",\n \"int\": 0}";
 		final String result = IndexUtils.flattenJson(json);
-		final Any any = JsonIterator.deserialize(result);
-		Assert.assertEquals(ValueType.STRING, any.get("str").valueType());
+		final JsonNode any =  JsonUtils.extractJsonNode(result);
+		Assert.assertEquals(JsonToken.VALUE_STRING, any.get("str").asToken());
 	}
 
 	@Test
 	public void testFlattenJsonStringWithTab() throws IOException {
 		final String json = "{\"str\":\"This a value with a \t tab\"}";
 		final String result = IndexUtils.flattenJson(json);
-		final Any any = JsonIterator.deserialize(result);
-		Assert.assertEquals(ValueType.STRING, any.get("str").valueType());
+		final JsonNode any =  JsonUtils.extractJsonNode(result);
+		Assert.assertEquals(JsonToken.VALUE_STRING, any.get("str").asToken());
 	}
 }

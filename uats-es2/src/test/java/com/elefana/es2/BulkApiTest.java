@@ -17,9 +17,9 @@ package com.elefana.es2;
 
 import com.elefana.ElefanaApplication;
 import com.elefana.TestUtils;
+import com.elefana.api.json.JsonUtils;
 import com.elefana.document.psql.PsqlBulkIngestService;
-import com.jsoniter.JsonIterator;
-import com.jsoniter.any.Any;
+import com.fasterxml.jackson.databind.JsonNode;
 import io.restassured.RestAssured;
 import io.restassured.config.DecoderConfig;
 import io.restassured.config.EncoderConfig;
@@ -34,7 +34,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 
-import java.util.List;
+import java.util.Iterator;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -763,9 +763,9 @@ public class BulkApiTest {
 	}
 
 	private void validateBulkResponseWithJsonString(String responseBody) {
-		final List<Any> docs = JsonIterator.deserialize(responseBody).get("hits").get("hits").asList();
-		for(int i = 0; i < docs.size(); i++) {
-			Assert.assertEquals("{\"field\":\"{\\\"key\\\":\\\"value\\\"}\"}", docs.get(i).get("_source").toString());
+		final Iterator<JsonNode> docs =  JsonUtils.extractJsonNode(responseBody).get("hits").get("hits").iterator();
+		while(docs.hasNext()) {
+			Assert.assertEquals("{\"field\":\"{\\\"key\\\":\\\"value\\\"}\"}", docs.next().get("_source").toString());
 		}
 	}
 
@@ -780,9 +780,9 @@ public class BulkApiTest {
 	}
 
 	private void validateBulkResponseWithLineBreak(String responseBody) {
-		final List<Any> docs = JsonIterator.deserialize(responseBody).get("hits").get("hits").asList();
-		for(int i = 0; i < docs.size(); i++) {
-			Assert.assertEquals("This has a \nline break.", docs.get(i).get("_source").get("field").toString());
+		final Iterator<JsonNode> docs = JsonUtils.extractJsonNode(responseBody).get("hits").get("hits").iterator();
+		while(docs.hasNext()) {
+			Assert.assertEquals("This has a \nline break.", docs.next().get("_source").get("field").toString());
 		}
 	}
 
@@ -798,9 +798,9 @@ public class BulkApiTest {
 	}
 
 	private void validateBulkResponseWithArabicAndLineBreak(String responseBody) {
-		final List<Any> docs = JsonIterator.deserialize(responseBody).get("hits").get("hits").asList();
-		for(int i = 0; i < docs.size(); i++) {
-			Assert.assertEquals("مناقشة سبل استخدام يونكود في النظ\r\n القائمة وفيما يخص التطبيقات ال", docs.get(i).get("_source").get("field").toString());
+		final Iterator<JsonNode> docs =  JsonUtils.extractJsonNode(responseBody).get("hits").get("hits").iterator();
+		while(docs.hasNext()) {
+			Assert.assertEquals("مناقشة سبل استخدام يونكود في النظ\r\n القائمة وفيما يخص التطبيقات ال", docs.next().get("_source").get("field").toString());
 		}
 	}
 
@@ -815,9 +815,9 @@ public class BulkApiTest {
 	}
 
 	private void validateBulkResponseWithPipe(String responseBody) {
-		final List<Any> docs = JsonIterator.deserialize(responseBody).get("hits").get("hits").asList();
-		for(int i = 0; i < docs.size(); i++) {
-			Assert.assertEquals("مناقشة سبل استخدام يونكود في النظ| القائمة وفيما يخص التطبيقات ال", docs.get(i).get("_source").get("field").toString());
+		final Iterator<JsonNode> docs =  JsonUtils.extractJsonNode(responseBody).get("hits").get("hits").iterator();
+		while(docs.hasNext()) {
+			Assert.assertEquals("مناقشة سبل استخدام يونكود في النظ| القائمة وفيما يخص التطبيقات ال", docs.next().get("_source").get("field").toString());
 		}
 	}
 
@@ -832,9 +832,9 @@ public class BulkApiTest {
 	}
 
 	private void validateBulkResponseWithCarriageReturn(String responseBody) {
-		final List<Any> docs = JsonIterator.deserialize(responseBody).get("hits").get("hits").asList();
-		for(int i = 0; i < docs.size(); i++) {
-			Assert.assertEquals("This has a \rcarriage return.", docs.get(i).get("_source").get("field").toString());
+		final Iterator<JsonNode> docs =  JsonUtils.extractJsonNode(responseBody).get("hits").get("hits").iterator();
+		while(docs.hasNext()) {
+			Assert.assertEquals("This has a \rcarriage return.", docs.next().get("_source").get("field").toString());
 		}
 	}
 
@@ -849,9 +849,9 @@ public class BulkApiTest {
 	}
 
 	private void validateBulkResponseWithCarriageReturnAndLineBreak(String responseBody) {
-		final List<Any> docs = JsonIterator.deserialize(responseBody).get("hits").get("hits").asList();
-		for(int i = 0; i < docs.size(); i++) {
-			Assert.assertEquals("This has a \r\ncarriage return and line break.", docs.get(i).get("_source").get("field").toString());
+		final Iterator<JsonNode> docs =  JsonUtils.extractJsonNode(responseBody).get("hits").get("hits").iterator();
+		while(docs.hasNext()) {
+			Assert.assertEquals("This has a \r\ncarriage return and line break.", docs.next().get("_source").get("field").toString());
 		}
 	}
 
@@ -866,9 +866,9 @@ public class BulkApiTest {
 	}
 
 	private void validateBulkResponseWithTab(String responseBody) {
-		final List<Any> docs = JsonIterator.deserialize(responseBody).get("hits").get("hits").asList();
-		for(int i = 0; i < docs.size(); i++) {
-			Assert.assertEquals("This has a \ttab.", docs.get(i).get("_source").get("field").toString());
+		final Iterator<JsonNode> docs =  JsonUtils.extractJsonNode(responseBody).get("hits").get("hits").iterator();
+		while(docs.hasNext()) {
+			Assert.assertEquals("This has a \ttab.", docs.next().get("_source").get("field").toString());
 		}
 	}
 
@@ -883,9 +883,9 @@ public class BulkApiTest {
 	}
 
 	private void validateBulkResponseWithNull(String responseBody) {
-		final List<Any> docs = JsonIterator.deserialize(responseBody).get("hits").get("hits").asList();
-		for(int i = 0; i < docs.size(); i++) {
-			Assert.assertEquals("This has a null.", docs.get(i).get("_source").get("field").toString());
+		final Iterator<JsonNode> docs =  JsonUtils.extractJsonNode(responseBody).get("hits").get("hits").iterator();
+		while(docs.hasNext()) {
+			Assert.assertEquals("This has a null.", docs.next().get("_source").get("field").toString());
 		}
 	}
 
@@ -900,9 +900,9 @@ public class BulkApiTest {
 	}
 
 	private void validateBulkResponseWithEmoji(String responseBody) {
-		final List<Any> docs = JsonIterator.deserialize(responseBody).get("hits").get("hits").asList();
-		for(int i = 0; i < docs.size(); i++) {
-			Assert.assertEquals("\uD83D\uDCE3This has an emoji.", docs.get(i).get("_source").get("field").toString());
+		final Iterator<JsonNode> docs =  JsonUtils.extractJsonNode(responseBody).get("hits").get("hits").iterator();
+		while(docs.hasNext()) {
+			Assert.assertEquals("\uD83D\uDCE3This has an emoji.", docs.next().get("_source").get("field").toString());
 		}
 	}
 
@@ -917,9 +917,9 @@ public class BulkApiTest {
 	}
 
 	private void validateBulkResponseWithEscapedNull(String responseBody) {
-		final List<Any> docs = JsonIterator.deserialize(responseBody).get("hits").get("hits").asList();
-		for(int i = 0; i < docs.size(); i++) {
-			Assert.assertEquals("This has a \u0000null.", docs.get(i).get("_source").get("field").toString());
+		final Iterator<JsonNode> docs =  JsonUtils.extractJsonNode(responseBody).get("hits").get("hits").iterator();
+		while(docs.hasNext()) {
+			Assert.assertEquals("This has a \u0000null.", docs.next().get("_source").get("field").toString());
 		}
 	}
 }

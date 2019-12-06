@@ -25,6 +25,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 
 import java.io.IOException;
@@ -32,6 +33,8 @@ import java.io.IOException;
 public class JsonUtils {
 	public static final ObjectMapper OBJECT_MAPPER = new ObjectMapper() {
 		{
+			configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+
 			final SimpleModule simpleModule = new SimpleModule();
 			simpleModule.addDeserializer(BulkResponse.class, new BulkResponseDecoder());
 			simpleModule.addDeserializer(GetFieldMappingsResponse.class, new GetFieldMappingsResponseDecoder());
@@ -61,6 +64,27 @@ public class JsonUtils {
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
+		}
+		return result;
+	}
+
+	public static JsonNode extractJsonNode(char [] json, int jsonLength, String... path) {
+		JsonNode result = null;
+		JsonParser jsonParser = null;
+		try {
+			jsonParser = JSON_FACTORY.createParser(json, 0, jsonLength);
+			result = jsonParser.readValueAsTree();;
+			if(path != null) {
+				for(int i = 0; i < path.length; i++) {
+					result = result.get(path[i]);
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				jsonParser.close();
+			} catch (IOException e) {}
 		}
 		return result;
 	}

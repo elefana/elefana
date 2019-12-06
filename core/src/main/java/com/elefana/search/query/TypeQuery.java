@@ -16,8 +16,7 @@
 package com.elefana.search.query;
 
 import com.elefana.api.indices.IndexTemplate;
-import com.jsoniter.ValueType;
-import com.jsoniter.any.Any;
+import com.fasterxml.jackson.databind.JsonNode;
 
 public class TypeQuery extends Query {
 	private static final String KEY_VALUE = "value";
@@ -26,13 +25,13 @@ public class TypeQuery extends Query {
 	protected String value;
 	protected double boost = 1.0;
 	
-	public TypeQuery(Any queryContext) {
+	public TypeQuery(JsonNode queryContext) {
 		super();
 		
-		value = queryContext.get(KEY_VALUE).toString();
-		
-		if(!queryContext.get(KEY_BOOST).valueType().equals(ValueType.INVALID)) {
-			boost = queryContext.get(KEY_BOOST).toDouble();
+		value = queryContext.get(KEY_VALUE).textValue();
+
+		if(queryContext.has(KEY_BOOST) && queryContext.get(KEY_BOOST).isNumber()) {
+			boost = queryContext.get(KEY_BOOST).asDouble();
 		}
 	}
 

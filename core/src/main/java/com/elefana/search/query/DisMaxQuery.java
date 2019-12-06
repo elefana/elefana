@@ -17,8 +17,7 @@ package com.elefana.search.query;
 
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.indices.IndexTemplate;
-import com.jsoniter.ValueType;
-import com.jsoniter.any.Any;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,12 +27,13 @@ public class DisMaxQuery extends Query {
 	
 	private final List<Query> queries = new ArrayList<Query>();
 	
-	public DisMaxQuery(Any queryContext) throws ElefanaException {
+	public DisMaxQuery(JsonNode queryContext) throws ElefanaException {
 		super();
-		
-		if(!queryContext.get(KEY_QUERIES).valueType().equals(ValueType.INVALID)) {
-			for(Any query : queryContext.get(KEY_QUERIES).asList()) {
-				queries.add(QueryParser.parseQuery(query));
+
+		if(queryContext.has(KEY_QUERIES) && queryContext.get(KEY_QUERIES).isArray()) {
+			final JsonNode queriesNode = queryContext.get(KEY_QUERIES);
+			for(int i = 0; i < queriesNode.size(); i++) {
+				queries.add(QueryParser.parseQuery(queriesNode.get(i)));
 			}
 		}
 	}

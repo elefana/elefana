@@ -44,6 +44,9 @@ public class Sort {
 	}
 	
 	public void parse(JsonNode searchContext) {
+		if(!searchContext.has(KEY_SORT)) {
+			return;
+		}
 		if(!searchContext.get(KEY_SORT).isArray()) {
 			return;
 		}
@@ -53,15 +56,16 @@ public class Sort {
 			if(sortClause.isTextual()) {
 				clauses.add(new SortClause(sortClause.textValue(), true));
 			} else if(sortClause.isObject()) {
-				final Map<String, Any> sortObject = sortClause.asMap();
-				for(String field : sortObject.keySet()) {
-					Any fieldSort = sortObject.get(field);
-					if(fieldSort.valueType().equals(ValueType.STRING)) {
-						clauses.add(new SortClause(field, fieldSort.toString().equalsIgnoreCase(VALUE_ASC)));
-					} else if(fieldSort.valueType().equals(ValueType.OBJECT)) {
-						Any order = fieldSort.get(KEY_ORDER);
-						if(order.valueType().equals(ValueType.STRING)) {
-							clauses.add(new SortClause(field, order.toString().equalsIgnoreCase(VALUE_ASC)));
+				final Iterator<String> fieldNames = sortClause.fieldNames();
+				while(fieldNames.hasNext()) {
+					final String field = fieldNames.next();
+					final JsonNode fieldSort = sortClause.get(field);
+					if(fieldSort.isTextual()) {
+						clauses.add(new SortClause(field, fieldSort.textValue().equalsIgnoreCase(VALUE_ASC)));
+					} else if(fieldSort.isObject()) {
+						final JsonNode order = fieldSort.get(KEY_ORDER);
+						if(order.isTextual()) {
+							clauses.add(new SortClause(field, order.textValue().equalsIgnoreCase(VALUE_ASC)));
 						} else {
 							clauses.add(new SortClause(field, true));
 						}
