@@ -81,6 +81,7 @@ public class PartitionTableSearchHitsQueryExecutor extends SearchHitsQueryExecut
 			queryBuilder.append(" OFFSET ");
 			queryBuilder.append(from);
 		}
+		LOGGER.info(queryBuilder.toString());
 		return statement.executeQuery(queryBuilder.toString());
 	}
 }

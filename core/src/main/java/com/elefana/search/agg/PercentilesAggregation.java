@@ -36,9 +36,9 @@ public class PercentilesAggregation extends Aggregation {
 		super();
 		this.aggregationName = aggregationName;
 		this.fieldName = context.get(KEY_FIELD).textValue();
-		
-		final JsonNode percentsContext = context.get(KEY_PERCENTS);
-		if(percentsContext.isArray()) {
+
+		if(context.has(KEY_PERCENTS) && context.get(KEY_PERCENTS).isArray()) {
+			final JsonNode percentsContext = context.get(KEY_PERCENTS);
 			percents = new double[percentsContext.size()];
 			for(int i = 0; i < percentsContext.size(); i++) {
 				percents[i] = percentsContext.get(i).asDouble();

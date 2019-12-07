@@ -48,7 +48,7 @@ import static org.hamcrest.Matchers.equalTo;
 public class BulkApiTest {
 	private static final int RANDOM_SEED = 12947358;
 	private static final Random RANDOM = new Random(RANDOM_SEED);
-	private static final long BULK_INDEX_TIMEOUT = 30000L;
+	private static final long BULK_INDEX_TIMEOUT = 60000L;
 	
 	@Before
 	public void setup() {

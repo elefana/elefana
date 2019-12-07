@@ -82,7 +82,7 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
         }
 
         final int totalIngestThreads = environment.getProperty("elefana.service.bulk.ingest.threads", Integer.class,
-                Runtime.getRuntime().availableProcessors());
+                Math.max(2, Runtime.getRuntime().availableProcessors() / 2));
         final int totalProcessingThreads = (nodeSettingsService.getBulkParallelisation() * totalIngestThreads) + 1;
 
         final int workerThreadNumber = environment.getProperty("elefana.service.fieldStats.workerThreads", Integer.class, totalProcessingThreads);

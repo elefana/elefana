@@ -102,10 +102,10 @@ public class RangeQuery extends Query {
 	}
 
 	private void setFrom(JsonNode value) {
-		from = value.textValue();
+		from = value.asText();
 	}
 
 	private void setTo(JsonNode value) {
-		to = value.textValue();
+		to = value.asText();
 	}
 }

@@ -102,7 +102,7 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 	@PostConstruct
 	public void postConstruct() {
 		final int totalIngestThreads = environment.getProperty("elefana.service.bulk.ingest.threads", Integer.class,
-				Runtime.getRuntime().availableProcessors());
+				Math.max(2, Runtime.getRuntime().availableProcessors() / 2));
 		final int totalProcessingThreads = (nodeSettingsService.getBulkParallelisation() * totalIngestThreads) + 1;
 		bulkRequestExecutorService = Executors.newFixedThreadPool(totalIngestThreads, new NamedThreadFactory(REQUEST_THREAD_PREFIX));
 		bulkProcessingExecutorService = Executors.newFixedThreadPool(totalProcessingThreads, new NamedThreadFactory(PROCESSOR_THREAD_PREFIX));

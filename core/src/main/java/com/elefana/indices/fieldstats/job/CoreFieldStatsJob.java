@@ -16,6 +16,7 @@
 
 package com.elefana.indices.fieldstats.job;
 
+import com.elefana.api.json.JsonUtils;
 import com.elefana.document.BulkIndexOperation;
 import com.elefana.indices.fieldstats.LoadUnloadManager;
 import com.elefana.indices.fieldstats.state.State;
@@ -94,7 +95,7 @@ public class CoreFieldStatsJob extends FieldStatsJob {
         for(docIndex = 0; docIndex < documents.size(); docIndex++) {
             try {
                 final String document = documents.get(docIndex);
-                processAny(jsonFactory.createParser(document).readValueAsTree(), "");
+                processAny(JsonUtils.extractJsonNode(document), "");
 
                 updateIndexMaxDocs(indexName);
                 loadUnloadManager.someoneWroteToIndex(indexName);
@@ -194,6 +195,10 @@ public class CoreFieldStatsJob extends FieldStatsJob {
 
     private void updateIndexMaxDocs(String indexName) {
         state.getIndex(indexName).incrementMaxDocuments();
+    }
+
+    public int getTotalDocuments() {
+        return documents.size();
     }
 }
 

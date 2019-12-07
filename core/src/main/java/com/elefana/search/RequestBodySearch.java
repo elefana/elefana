@@ -50,8 +50,9 @@ public class RequestBodySearch {
 		super();
 		this.originalQuery = originalQuery;
 		this.timestamp = System.currentTimeMillis();
-		
+
 		this.query = QueryParser.parseQuery(originalQuery);
+		LOGGER.info(originalQuery + " " + query);
 		
 		if(originalQuery != null && !originalQuery.isEmpty()) {
 			JsonNode context = JsonUtils.extractJsonNode(originalQuery);

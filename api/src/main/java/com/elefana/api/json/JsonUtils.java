@@ -73,7 +73,7 @@ public class JsonUtils {
 		JsonParser jsonParser = null;
 		try {
 			jsonParser = JSON_FACTORY.createParser(json, 0, jsonLength);
-			result = jsonParser.readValueAsTree();;
+			result = jsonParser.readValueAs(JsonNode.class);
 			if(path != null) {
 				for(int i = 0; i < path.length; i++) {
 					result = result.get(path[i]);

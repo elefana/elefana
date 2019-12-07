@@ -261,7 +261,7 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 		}
 
 		try {
-			final String indexPattern = templateData.get("template").toString();
+			final String indexPattern = templateData.get("template").textValue();
 
 			PGobject storageObject = new PGobject();
 			storageObject.setType("json");

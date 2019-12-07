@@ -31,6 +31,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 
+import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 
@@ -60,7 +61,7 @@ public class FieldStatsServiceTest {
         testDocumentNoBool = "{ \"string\": \"Hello there\", \"long\": 23, \"double\": 2.4, \"obj\": { \"bic\": \"EASYATW1\", \"iban\": \"AT12 4321\" }, \"list\": [3,4,5,6,6,4,4,2] } ";
     }
 
-    @Test
+    @Test(timeout=30000)
     public void testFieldStatsGeneration() {
         final String index = UUID.randomUUID().toString();
         final String type = "test";
@@ -86,7 +87,7 @@ public class FieldStatsServiceTest {
                 .body("indices." + index + ".fields.bool.min_value_as_string", isA(String.class));
     }
 
-    @Test
+    @Test(timeout=30000)
     public void testDeleteIndex() {
         final String index = UUID.randomUUID().toString();
         final String type = "test";
@@ -109,13 +110,13 @@ public class FieldStatsServiceTest {
                 .body("indices." + index + ".fields.string.sum_doc_freq", equalTo(documentsAfterDelete * 2));
     }
 
-    @Test
+    @Test(timeout=60000)
     public void testBulkIngest() {
         final int totalDocuments = PsqlBulkIngestService.MINIMUM_BULK_SIZE + RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE);
         final String index = "logs-" + UUID.randomUUID().toString();
         final String type = "test";
 
-        TestUtils.disableMappingAndStatsForIndex(index);
+        TestUtils.disableMappingForIndex(index);
 
         given()
                 .request()
@@ -129,9 +130,16 @@ public class FieldStatsServiceTest {
 
         waitForBulkIngest(totalDocuments, index);
 
-        getFieldStats(index, "string", false)
-                .log().all()
-                .body("_shards.successful", equalTo(1))
+        ValidatableResponse response = getFieldStats(index, "string", false)
+                .log().all();
+        while(response.extract().jsonPath().getInt("indices." + index + ".fields.string.max_doc") != totalDocuments) {
+            try {
+                Thread.sleep(1000);
+            } catch (Exception e) {}
+            response = getFieldStats(index, "string", false).log().all();
+        }
+
+        response.body("_shards.successful", equalTo(1))
                 .body("indices." + index + ".fields.string.max_doc", equalTo(totalDocuments))
                 .body("indices." + index + ".fields.string.doc_count", equalTo(totalDocuments))
                 .body("indices." + index + ".fields.string.sum_doc_freq", equalTo(totalDocuments * 2));
@@ -186,12 +194,27 @@ public class FieldStatsServiceTest {
     }
 
     private ValidatableResponse getFieldStats(String index, String field, boolean clusterLevel) {
-        return given()
+        ValidatableResponse validatableResponse = given()
                 .request()
                 .body("{\"fields\":[\"" + field + "\"]}")
                 .when()
                 .post("/" + index + "/_field_stats?level=" + (clusterLevel ? "cluster" : "indices"))
                 .then()
                 .statusCode(200);
+        Map jsonData = validatableResponse.extract().body().jsonPath().getMap("indices." + index);
+        while(jsonData == null || jsonData.isEmpty()) {
+            try {
+                Thread.sleep(100L);
+            } catch (Exception e) {}
+            validatableResponse = given()
+                    .request()
+                    .body("{\"fields\":[\"" + field + "\"]}")
+                    .when()
+                    .post("/" + index + "/_field_stats?level=" + (clusterLevel ? "cluster" : "indices"))
+                    .then()
+                    .statusCode(200);
+            jsonData = validatableResponse.extract().body().jsonPath().getMap("indices." + index);
+        }
+        return validatableResponse;
     }
 }
