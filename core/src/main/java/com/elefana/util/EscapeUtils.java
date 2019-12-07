@@ -23,7 +23,7 @@ public class EscapeUtils {
 
 	private final static char[] HEX_CHARS = "0123456789ABCDEF".toCharArray();
 
-	public static final String [] ESCAPE_SEARCH = new String [] {
+	public static final String [] PSQL_ESCAPE_SEARCH = new String [] {
 			"\\\"",
 			"\n \"",
 			"\n  \"",
@@ -36,7 +36,7 @@ public class EscapeUtils {
 			"\b",
 			"\u0000"
 	};
-	public static final String [] ESCAPE_REPLACE = new String [] {
+	public static final String [] PSQL_ESCAPE_REPLACE = new String [] {
 			"\\\\\\\"",
 			" \"",
 			" \"",
@@ -49,13 +49,29 @@ public class EscapeUtils {
 			"\\\\b",
 			""
 	};
-	public static final String [] ESCAPE_PRE_ESCAPE = new String [] {
+	public static final String [] PSQL_ESCAPE_PRE_ESCAPE = new String [] {
 			"\\\\\\\"",
 			"\\\\n",
 			"\\\\r",
 			"\\\\t",
 			"\\\\f",
 			"\\\\b"
+	};
+	public static final String [] JSON_ESCAPE_SEARCH = new String [] {
+			"\n",
+			"\r",
+			"\t",
+			"\f",
+			"\b",
+			"\u0000"
+	};
+	public static final String [] JSON_ESCAPE_REPLACE = new String [] {
+			"\\n",
+			"\\r",
+			"\\t",
+			"\\f",
+			"\\b",
+			""
 	};
 
 	static {
@@ -177,11 +193,11 @@ public class EscapeUtils {
 	 * @return The escaped JSON string
 	 */
 	public static String psqlEscapeString(String json) {
-		if(NoAllocStringReplace.contains(json, ESCAPE_PRE_ESCAPE)) {
+		if(NoAllocStringReplace.contains(json, PSQL_ESCAPE_PRE_ESCAPE)) {
 			return json;
 		}
 		final NoAllocStringReplace str = NoAllocStringReplace.allocate(json);
-		str.replaceAndEscapeUnicode(ESCAPE_SEARCH, ESCAPE_REPLACE);
+		str.replaceAndEscapeUnicode(PSQL_ESCAPE_SEARCH, PSQL_ESCAPE_REPLACE);
 		return str.disposeWithResult();
 	}
 
@@ -189,12 +205,18 @@ public class EscapeUtils {
 	 * If JSON string contains \" we need to escape it as \\" for PSQL to handle correctly
 	 */
 	public static void psqlEscapeString(DocumentSourceProvider documentSourceProvider) {
-		if(NoAllocStringReplace.contains(documentSourceProvider, ESCAPE_PRE_ESCAPE)) {
+		if(NoAllocStringReplace.contains(documentSourceProvider, PSQL_ESCAPE_PRE_ESCAPE)) {
 			return;
 		}
 		final NoAllocStringReplace str = NoAllocStringReplace.allocate(documentSourceProvider.getDocument(), documentSourceProvider.getDocumentLength());
-		str.replaceAndEscapeUnicode(ESCAPE_SEARCH, ESCAPE_REPLACE);
+		str.replaceAndEscapeUnicode(PSQL_ESCAPE_SEARCH, PSQL_ESCAPE_REPLACE);
 		documentSourceProvider.setDocument(str.getCharArray(), str.getContentLength());
 		str.dispose();
+	}
+
+	public static String jsonEscapeString(String json) {
+		final NoAllocStringReplace str = NoAllocStringReplace.allocate(json);
+		str.replaceAndEscapeUnicode(JSON_ESCAPE_SEARCH, JSON_ESCAPE_REPLACE);
+		return str.disposeWithResult();
 	}
 }

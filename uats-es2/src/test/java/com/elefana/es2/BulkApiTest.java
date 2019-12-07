@@ -631,7 +631,7 @@ public class BulkApiTest {
 		.then()
 			.statusCode(200)
 			.body("errors", equalTo(true))
-			.body("items.size()", equalTo(totalDocuments));
+			.body("items.size()", equalTo(totalDocuments - 1));
 	}
 	
 	@Test
@@ -782,7 +782,7 @@ public class BulkApiTest {
 	private void validateBulkResponseWithLineBreak(String responseBody) {
 		final Iterator<JsonNode> docs = JsonUtils.extractJsonNode(responseBody).get("hits").get("hits").iterator();
 		while(docs.hasNext()) {
-			Assert.assertEquals("This has a \nline break.", docs.next().get("_source").get("field").toString());
+			Assert.assertEquals("This has a \nline break.", docs.next().get("_source").get("field").textValue());
 		}
 	}
 
@@ -817,7 +817,7 @@ public class BulkApiTest {
 	private void validateBulkResponseWithPipe(String responseBody) {
 		final Iterator<JsonNode> docs =  JsonUtils.extractJsonNode(responseBody).get("hits").get("hits").iterator();
 		while(docs.hasNext()) {
-			Assert.assertEquals("مناقشة سبل استخدام يونكود في النظ| القائمة وفيما يخص التطبيقات ال", docs.next().get("_source").get("field").toString());
+			Assert.assertEquals("مناقشة سبل استخدام يونكود في النظ| القائمة وفيما يخص التطبيقات ال", docs.next().get("_source").get("field").textValue());
 		}
 	}
 
@@ -834,7 +834,7 @@ public class BulkApiTest {
 	private void validateBulkResponseWithCarriageReturn(String responseBody) {
 		final Iterator<JsonNode> docs =  JsonUtils.extractJsonNode(responseBody).get("hits").get("hits").iterator();
 		while(docs.hasNext()) {
-			Assert.assertEquals("This has a \rcarriage return.", docs.next().get("_source").get("field").toString());
+			Assert.assertEquals("This has a \rcarriage return.", docs.next().get("_source").get("field").textValue());
 		}
 	}
 
@@ -851,7 +851,7 @@ public class BulkApiTest {
 	private void validateBulkResponseWithCarriageReturnAndLineBreak(String responseBody) {
 		final Iterator<JsonNode> docs =  JsonUtils.extractJsonNode(responseBody).get("hits").get("hits").iterator();
 		while(docs.hasNext()) {
-			Assert.assertEquals("This has a \r\ncarriage return and line break.", docs.next().get("_source").get("field").toString());
+			Assert.assertEquals("This has a \r\ncarriage return and line break.", docs.next().get("_source").get("field").textValue());
 		}
 	}
 
@@ -868,7 +868,7 @@ public class BulkApiTest {
 	private void validateBulkResponseWithTab(String responseBody) {
 		final Iterator<JsonNode> docs =  JsonUtils.extractJsonNode(responseBody).get("hits").get("hits").iterator();
 		while(docs.hasNext()) {
-			Assert.assertEquals("This has a \ttab.", docs.next().get("_source").get("field").toString());
+			Assert.assertEquals("This has a \ttab.", docs.next().get("_source").get("field").textValue());
 		}
 	}
 
@@ -885,7 +885,7 @@ public class BulkApiTest {
 	private void validateBulkResponseWithNull(String responseBody) {
 		final Iterator<JsonNode> docs =  JsonUtils.extractJsonNode(responseBody).get("hits").get("hits").iterator();
 		while(docs.hasNext()) {
-			Assert.assertEquals("This has a null.", docs.next().get("_source").get("field").toString());
+			Assert.assertEquals("This has a null.", docs.next().get("_source").get("field").textValue());
 		}
 	}
 
@@ -902,7 +902,7 @@ public class BulkApiTest {
 	private void validateBulkResponseWithEmoji(String responseBody) {
 		final Iterator<JsonNode> docs =  JsonUtils.extractJsonNode(responseBody).get("hits").get("hits").iterator();
 		while(docs.hasNext()) {
-			Assert.assertEquals("\uD83D\uDCE3This has an emoji.", docs.next().get("_source").get("field").toString());
+			Assert.assertEquals("\uD83D\uDCE3This has an emoji.", docs.next().get("_source").get("field").textValue());
 		}
 	}
 
@@ -919,7 +919,7 @@ public class BulkApiTest {
 	private void validateBulkResponseWithEscapedNull(String responseBody) {
 		final Iterator<JsonNode> docs =  JsonUtils.extractJsonNode(responseBody).get("hits").get("hits").iterator();
 		while(docs.hasNext()) {
-			Assert.assertEquals("This has a \u0000null.", docs.next().get("_source").get("field").toString());
+			Assert.assertEquals("This has a \\u0000null.", docs.next().get("_source").get("field").textValue());
 		}
 	}
 }

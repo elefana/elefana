@@ -18,7 +18,6 @@ package com.elefana.util;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.json.JsonUtils;
 import com.elefana.indices.fieldstats.job.DocumentSourceProvider;
-import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import io.netty.buffer.ByteBuf;
@@ -110,7 +109,7 @@ public interface IndexUtils {
 
 	public static String flattenJson(String json) throws IOException {
 		final NoAllocStringReplace str = NoAllocStringReplace.allocate(json);
-		str.replaceAndEscapeUnicode(EscapeUtils.ESCAPE_SEARCH, EscapeUtils.ESCAPE_REPLACE);
+		str.replaceAndEscapeUnicode(EscapeUtils.PSQL_ESCAPE_SEARCH, EscapeUtils.PSQL_ESCAPE_REPLACE);
 
 		final StringBuilder result = POOLED_STRING_BUILDER.get();
 

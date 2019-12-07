@@ -127,7 +127,7 @@ public abstract class SearchHitsQueryExecutor {
 			searchHit._type = hitsRowSet.getString("_type");
 			searchHit._id = hitsRowSet.getString("_id");
 			searchHit._score = 1.0;
-			searchHit._source = JsonUtils.fromJsonString(EscapeUtils.psqlUnescapeString(hitsRowSet.getString("_source")), Map.class);
+			searchHit._source = JsonUtils.fromJsonString(EscapeUtils.jsonEscapeString(EscapeUtils.psqlUnescapeString(hitsRowSet.getString("_source"))), Map.class);
 			results.add(searchHit);
 		}
 	}

@@ -340,7 +340,7 @@ public class StateTest {
         Assert.assertEquals("there", string.maxValue);
     }
 
-    @Test
+    @Test(timeout=30000)
     public void testUnloadAndLoadIndexConcurrent() throws ElefanaWrongFieldStatsTypeException {
         final String index = TEST_INDEX + "2";
 
@@ -367,11 +367,21 @@ public class StateTest {
             }
         });
 
-        FieldStats string = testState.getFieldStatsTypeChecked("string", String.class, index);
-        Assert.assertEquals(50*100, string.getDocumentCount());
-        Assert.assertEquals(50*100*2, string.getSumDocumentFrequency());
-        Assert.assertEquals("hello", string.getMinimumValue());
-        Assert.assertEquals("there", string.getMaximumValue());
+        FieldStats result = testState.getFieldStatsTypeChecked("string", String.class, index);
+        final int expectedDocCount = 50*100;
+        final int expectedSumDocFrequency = 50*100*2;
+
+        while(result.getDocumentCount() != expectedDocCount) {
+            result = testState.getFieldStatsTypeChecked("string", String.class, index);
+
+            try {
+                Thread.sleep(100);
+            } catch (Exception e) {}
+        }
+        Assert.assertEquals(expectedDocCount, result.getDocumentCount());
+        Assert.assertEquals(expectedSumDocFrequency, result.getSumDocumentFrequency());
+        Assert.assertEquals("hello", result.getMinimumValue());
+        Assert.assertEquals("there", result.getMaximumValue());
 
         assertIndexMaxDocEquals(50*100, index);
     }
