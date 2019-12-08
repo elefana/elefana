@@ -3,12 +3,12 @@ version: '2.1'
 services:
   master:
     container_name: "elefana-uats-es2-citus-master"
-    image: 'citusdata/citus:8.2.2'
+    image: 'citusdata/citus:9.1.0'
     ports: ["${MASTER_EXTERNAL_PORT:-5435}:5432"]
     labels: ['com.citusdata.role=Master']
   worker:
     container_name: "elefana-uats-es2-citus-worker"
-    image: 'citusdata/citus:8.2.2'
+    image: 'citusdata/citus:9.1.0'
     labels: ['com.citusdata.role=Worker']
     depends_on: { manager: { condition: service_healthy } }
   manager:

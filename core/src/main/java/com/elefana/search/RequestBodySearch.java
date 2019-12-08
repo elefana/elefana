@@ -52,7 +52,10 @@ public class RequestBodySearch {
 		this.timestamp = System.currentTimeMillis();
 
 		this.query = QueryParser.parseQuery(originalQuery);
-		LOGGER.info(originalQuery + " " + query);
+
+		if(debug) {
+			LOGGER.info(originalQuery + " " + query);
+		}
 		
 		if(originalQuery != null && !originalQuery.isEmpty()) {
 			JsonNode context = JsonUtils.extractJsonNode(originalQuery);
