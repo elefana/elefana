@@ -94,6 +94,7 @@ public class CoreFieldStatsJob extends FieldStatsJob {
 
         for(docIndex = 0; docIndex < documents.size(); docIndex++) {
             try {
+                alreadyRegistered.clear();
                 final String document = documents.get(docIndex);
                 processAny(JsonUtils.extractJsonNode(document), "");
 
@@ -164,7 +165,7 @@ public class CoreFieldStatsJob extends FieldStatsJob {
     }
 
     private void processString(ValueNode anyString, String prefix) {
-        String string = anyString.asText();
+        String string = anyString.textValue();
         updateFieldStats(prefix, String.class, string);
     }
 
