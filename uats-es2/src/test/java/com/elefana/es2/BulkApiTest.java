@@ -88,6 +88,10 @@ public class BulkApiTest {
 					.statusCode(200);
 			result = response.extract().body().jsonPath().getInt("hits.total");
 			if(result == totalDocuments) {
+				response.log().all();
+				for(int i = 0; i < totalDocuments; i++) {
+					Assert.assertEquals(index, response.extract().body().jsonPath().get("hits.hits[" + i + "]._index"));
+				}
 				return;
 			}
 
@@ -304,7 +308,7 @@ public class BulkApiTest {
 					.statusCode(200);
 			result = response.extract().body().jsonPath().getInt("hits.total");
 			if(result == totalDocuments) {
-				validateBulkResponseWithNull(response.extract().asString());
+				validateBulkResponseWithNull(index, type, response.extract().asString());
 				return;
 			}
 
@@ -882,10 +886,13 @@ public class BulkApiTest {
 		return result.toString();
 	}
 
-	private void validateBulkResponseWithNull(String responseBody) {
+	private void validateBulkResponseWithNull(String index, String type, String responseBody) {
 		final Iterator<JsonNode> docs =  JsonUtils.extractJsonNode(responseBody).get("hits").get("hits").iterator();
 		while(docs.hasNext()) {
-			Assert.assertEquals("This has a null.", docs.next().get("_source").get("field").textValue());
+			final JsonNode doc = docs.next();
+			Assert.assertEquals(index, doc.get("_index").textValue());
+			Assert.assertEquals(type, doc.get("_type").textValue());
+			Assert.assertEquals("This has a null.", doc.get("_source").get("field").textValue());
 		}
 	}
 

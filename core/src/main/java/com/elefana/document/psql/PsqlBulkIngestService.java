@@ -126,11 +126,11 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 		final SimpleModule bulkResponseModule = new SimpleModule();
 		switch(versionInfoService.getApiVersion()) {
 		case V_5_5_2:
-			bulkResponseModule.addSerializer(BulkResponse.class, new V2BulkResponseEncoder());
+			bulkResponseModule.addSerializer(BulkResponse.class, new V5BulkResponseEncoder());
 			break;
 		default:
 		case V_2_4_3:
-			bulkResponseModule.addSerializer(BulkResponse.class, new V5BulkResponseEncoder());
+			bulkResponseModule.addSerializer(BulkResponse.class, new V2BulkResponseEncoder());
 			break;
 		}
 		JsonUtils.OBJECT_MAPPER.registerModule(bulkResponseModule);
