@@ -113,7 +113,7 @@ public class BulkIndexOperation implements DocumentSourceProvider {
 
 	public void setDocument(char [] document, int documentLength) {
 		if(this.document.length < documentLength) {
-			MAX_SOURCE_LENGTH.set(Math.max(documentLength * 2, MAX_SOURCE_LENGTH.get()));
+			MAX_SOURCE_LENGTH.set(Math.max(documentLength, MAX_SOURCE_LENGTH.get()));
 			this.document = new char[MAX_SOURCE_LENGTH.get()];
 		}
 

@@ -26,15 +26,6 @@ public class ThreadLocalCharArray extends ThreadLocal<char[]> {
 	}
 
 	@Override
-	public char[] get() {
-		char [] result = super.get();
-		if(result.length < MAX_SIZE.get()) {
-			result = new char[MAX_SIZE.get()];
-		}
-		return result;
-	}
-
-	@Override
 	public void set(char[] value) {
 		MAX_SIZE.set(Math.max(MAX_SIZE.get(), value.length));
 		super.set(value);

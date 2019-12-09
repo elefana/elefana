@@ -31,7 +31,7 @@ public class PooledSimpleString {
 	public static PooledSimpleString copyOf(char [] original, int length) {
 		char[] copy = PooledCharArray.allocate();
 		if(copy.length < original.length) {
-			copy = new char[original.length * 2];
+			copy = new char[original.length];
 		}
 		System.arraycopy(original, 0, copy, 0, length);
 		return new PooledSimpleString(copy, length);
@@ -40,7 +40,7 @@ public class PooledSimpleString {
 	public static PooledSimpleString copyOf(String original) {
 		char[] copy = PooledCharArray.allocate();
 		if(copy.length < original.length()) {
-			copy = new char[original.length() * 2];
+			copy = new char[original.length()];
 		}
 		original.getChars(0, original.length(), copy, 0);
 		return new PooledSimpleString(copy, original.length());

@@ -66,7 +66,7 @@ public class NoAllocStringReplace {
 
 	public void set(String value) {
 		if(value.length() > str.length) {
-			str = new char[value.length() * 2];
+			str = new char[value.length() + 1];
 		}
 		length = value.length();
 		value.getChars(0, value.length(), str, 0);

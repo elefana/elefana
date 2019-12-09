@@ -221,7 +221,7 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 				int operationLineLength = (matcher.start() - operationLineStartIndex) + 1;
 
 				if(operationLine.length < operationLineLength) {
-					operationLine = new char[operationLineLength * 2];
+					operationLine = new char[operationLineLength + 1];
 					OPERATION_CHAR_ARRAY.set(operationLine);
 				}
 
@@ -252,7 +252,7 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 						operationLineStartIndex = matcher.end();
 
 						if(documentLine.length < documentLineLength) {
-							documentLine = new char[documentLineLength * 2];
+							documentLine = new char[documentLineLength + 1];
 							DOCUMENT_CHAR_ARRAY.set(documentLine);
 						}
 
