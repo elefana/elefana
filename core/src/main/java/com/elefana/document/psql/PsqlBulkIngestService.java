@@ -36,6 +36,7 @@ import com.elefana.indices.fieldstats.IndexFieldStatsService;
 import com.elefana.indices.psql.PsqlIndexTemplateService;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
+import com.elefana.util.CumulativeAverage;
 import com.elefana.util.IndexUtils;
 import com.elefana.util.JsonCharArray;
 import com.elefana.util.NamedThreadFactory;
@@ -67,8 +68,8 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 	private static final String OPERATION_INDEX = "index";
 	private static final String NEW_LINE = "\\}(\\s)*\n";
 	private static final Pattern NEW_LINE_PATTERN = Pattern.compile(NEW_LINE);
-	private static final AtomicInteger MAX_TOTAL_BATCH_SIZE = new AtomicInteger(250);
-	private static final AtomicInteger MAX_PER_INDEX_BATCH_SIZE = new AtomicInteger(250);
+	private static final CumulativeAverage AVG_TOTAL_BATCH_SIZE = new CumulativeAverage(1);
+	private static final CumulativeAverage AVG_PER_INDEX_BATCH_SIZE = new CumulativeAverage(1);
 
 	private static final JsonCharArray OPERATION_CHAR_ARRAY = new JsonCharArray();
 	private static final JsonCharArray DOCUMENT_CHAR_ARRAY = new JsonCharArray();
@@ -205,7 +206,7 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 
 		final Matcher matcher = NEW_LINE_PATTERN.matcher(requestBody);
 
-		final BulkResponse bulkApiResponse = new BulkResponse(MAX_TOTAL_BATCH_SIZE.get() + 1);
+		final BulkResponse bulkApiResponse = new BulkResponse(AVG_TOTAL_BATCH_SIZE.avg());
 		bulkApiResponse.setErrors(false);
 
 		final Map<String, List<BulkIndexOperation>> indexOperations = new HashMap<String, List<BulkIndexOperation>>();
@@ -267,7 +268,7 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 						}
 
 						if (!indexOperations.containsKey(indexOperation.getIndex())) {
-							indexOperations.put(indexOperation.getIndex(), new ArrayList<BulkIndexOperation>(MAX_PER_INDEX_BATCH_SIZE.get() + 1));
+							indexOperations.put(indexOperation.getIndex(), new ArrayList<BulkIndexOperation>(AVG_PER_INDEX_BATCH_SIZE.avg()));
 						}
 						indexOperations.get(indexOperation.getIndex()).add(indexOperation);
 						batchCount++;
@@ -288,12 +289,12 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 			serializationTimer.stop();
 		}
 
-		MAX_TOTAL_BATCH_SIZE.set(Math.max(batchCount, MAX_TOTAL_BATCH_SIZE.get()));
+		AVG_TOTAL_BATCH_SIZE.add(batchCount);
 		bulkOperationsBatchSize.mark(batchCount);
 
 		for (String index : indexOperations.keySet()) {
 			if(indexOperations.get(index) != null) {
-				MAX_PER_INDEX_BATCH_SIZE.set(Math.max(indexOperations.get(index).size(), MAX_PER_INDEX_BATCH_SIZE.get()));
+				AVG_PER_INDEX_BATCH_SIZE.add(indexOperations.get(index).size());
 			}
 			indexUtils.ensureIndexExists(index);
 
