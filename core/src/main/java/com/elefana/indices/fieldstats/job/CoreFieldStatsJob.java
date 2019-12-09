@@ -23,6 +23,8 @@ import com.elefana.indices.fieldstats.state.State;
 import com.elefana.indices.fieldstats.state.field.ElefanaWrongFieldStatsTypeException;
 import com.elefana.indices.fieldstats.state.field.FieldStats;
 import com.elefana.util.CumulativeAverage;
+import com.elefana.util.PooledCharArray;
+import com.elefana.util.PooledSimpleString;
 import com.elefana.util.PooledStringBuilder;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.TreeNode;
@@ -48,7 +50,7 @@ public class CoreFieldStatsJob extends FieldStatsJob {
 
     private static JsonFactory jsonFactory = new JsonFactory().setCodec(new ObjectMapper());
 
-    private final List<String> documents = new ArrayList<String>(AVG_BATCH_SIZE.avg());
+    private final List<PooledSimpleString> documents = new ArrayList<PooledSimpleString>(AVG_BATCH_SIZE.avg());
     private final Set<String> alreadyRegistered = new HashSet<>();
 
     private CoreFieldStatsJob(State state, LoadUnloadManager loadUnloadManager, String indexName) {
@@ -81,11 +83,11 @@ public class CoreFieldStatsJob extends FieldStatsJob {
     }
 
     public void addDocument(BulkIndexOperation bulkIndexOperation) {
-        documents.add(new String(bulkIndexOperation.getDocument(), 0, bulkIndexOperation.getDocumentLength()));
+        documents.add(PooledSimpleString.copyOf(bulkIndexOperation.getDocument(), bulkIndexOperation.getDocumentLength()));
     }
 
     public void addDocument(String document) {
-        documents.add(document);
+        documents.add(PooledSimpleString.copyOf(document));
     }
 
     @Override
@@ -95,8 +97,9 @@ public class CoreFieldStatsJob extends FieldStatsJob {
         for(docIndex = 0; docIndex < documents.size(); docIndex++) {
             try {
                 alreadyRegistered.clear();
-                final String document = documents.get(docIndex);
-                processAny(JsonUtils.extractJsonNode(document), "");
+                final PooledSimpleString document = documents.get(docIndex);
+                processAny(JsonUtils.extractJsonNode(document.getArray(), document.getLength()), "");
+                document.release();
 
                 updateIndexMaxDocs(indexName);
                 loadUnloadManager.someoneWroteToIndex(indexName);

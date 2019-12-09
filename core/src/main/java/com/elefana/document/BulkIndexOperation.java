@@ -121,6 +121,17 @@ public class BulkIndexOperation implements DocumentSourceProvider {
 		this.documentLength = documentLength;
 	}
 
+	@Override
+	public void setDocument(StringBuilder builder) {
+		if(this.document.length < builder.length()) {
+			MAX_SOURCE_LENGTH.set(Math.max(builder.length(), MAX_SOURCE_LENGTH.get()));
+			this.document = new char[MAX_SOURCE_LENGTH.get()];
+		}
+
+		builder.getChars(0, builder.length(), this.document, 0);
+		this.documentLength = builder.length();
+	}
+
 	public long getTimestamp() {
 		return timestamp;
 	}

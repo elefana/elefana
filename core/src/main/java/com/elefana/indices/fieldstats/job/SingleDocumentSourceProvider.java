@@ -41,6 +41,16 @@ public class SingleDocumentSourceProvider implements DocumentSourceProvider {
 	}
 
 	@Override
+	public void setDocument(StringBuilder builder) {
+		if(this.document.length < builder.length()) {
+			this.document = new char[builder.length()];
+		}
+
+		builder.getChars(0, builder.length(), this.document, 0);
+		this.documentLength = builder.length();
+	}
+
+	@Override
 	public int getDocumentLength() {
 		return documentLength;
 	}

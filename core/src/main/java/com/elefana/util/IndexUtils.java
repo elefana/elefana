@@ -141,15 +141,7 @@ public interface IndexUtils {
 		result.append('}');
 		
 		jsonParser.close();
-
-		final char [] charArrayResult;
-		if(sourceProvider.getDocument().length < result.length()) {
-			charArrayResult = new char[result.length()];
-		} else {
-			charArrayResult = sourceProvider.getDocument();
-		}
-		result.getChars(0, result.length(), charArrayResult, 0);
-		sourceProvider.setDocument(charArrayResult, result.length());
+		sourceProvider.setDocument(result);
 	}
 
 	public static boolean flattenJsonObject(final JsonParser jsonParser, StringBuilder stringBuilder, CharSequence prefix) throws IOException {

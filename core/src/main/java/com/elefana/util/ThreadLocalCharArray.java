@@ -13,16 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package com.elefana.indices.fieldstats.job;
+package com.elefana.util;
 
-public interface DocumentSourceProvider {
-	public char [] getDocument();
+import java.util.concurrent.atomic.AtomicInteger;
 
-	public void setDocument(char [] document, int length);
+public class ThreadLocalCharArray extends ThreadLocal<char[]> {
+	private static final AtomicInteger MAX_SIZE = new AtomicInteger(2048);
 
-	public void setDocument(StringBuilder builder);
+	@Override
+	protected char[] initialValue() {
+		return new char[MAX_SIZE.get()];
+	}
 
-	public int getDocumentLength();
+	@Override
+	public char[] get() {
+		char [] result = super.get();
+		if(result.length < MAX_SIZE.get()) {
+			result = new char[MAX_SIZE.get()];
+		}
+		return result;
+	}
 
-	public void dispose();
+	@Override
+	public void set(char[] value) {
+		MAX_SIZE.set(Math.max(MAX_SIZE.get(), value.length));
+		super.set(value);
+	}
 }

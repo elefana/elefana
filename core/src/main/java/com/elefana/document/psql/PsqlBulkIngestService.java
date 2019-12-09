@@ -38,7 +38,7 @@ import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
 import com.elefana.util.CumulativeAverage;
 import com.elefana.util.IndexUtils;
-import com.elefana.util.JsonCharArray;
+import com.elefana.util.ThreadLocalCharArray;
 import com.elefana.util.NamedThreadFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
@@ -71,8 +71,8 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 	private static final CumulativeAverage AVG_TOTAL_BATCH_SIZE = new CumulativeAverage(1);
 	private static final CumulativeAverage AVG_PER_INDEX_BATCH_SIZE = new CumulativeAverage(1);
 
-	private static final JsonCharArray OPERATION_CHAR_ARRAY = new JsonCharArray();
-	private static final JsonCharArray DOCUMENT_CHAR_ARRAY = new JsonCharArray();
+	private static final ThreadLocalCharArray OPERATION_CHAR_ARRAY = new ThreadLocalCharArray();
+	private static final ThreadLocalCharArray DOCUMENT_CHAR_ARRAY = new ThreadLocalCharArray();
 	public static final int MINIMUM_BULK_SIZE = 250;
 	
 	@Autowired
