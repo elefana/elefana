@@ -23,6 +23,7 @@ import com.elefana.api.node.NodeStats;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -34,6 +35,8 @@ public class JsonUtils {
 	public static final ObjectMapper OBJECT_MAPPER = new ObjectMapper() {
 		{
 			configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+			configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+			configure(DeserializationFeature.FAIL_ON_IGNORED_PROPERTIES, false);
 
 			final SimpleModule simpleModule = new SimpleModule();
 			simpleModule.addDeserializer(BulkResponse.class, new BulkResponseDecoder());

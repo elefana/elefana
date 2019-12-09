@@ -110,7 +110,7 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 		try {
 			SqlRowSet rowSet = jdbcTemplate.queryForRowSet("SELECT * FROM elefana_index_template");
 			while (rowSet.next()) {
-				IndexTemplate indexTemplate = new IndexTemplate();
+				final IndexTemplate indexTemplate = new IndexTemplate();
 				indexTemplate.setTemplate(rowSet.getString("_index_pattern"));
 				indexTemplate.setStorage(JsonUtils.fromJsonString(rowSet.getString("_storage"), IndexStorageSettings.class));
 				indexTemplate.setMappings(JsonUtils.fromJsonString(rowSet.getString("_mappings"), Map.class));
@@ -147,7 +147,7 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 			throw new NoSuchTemplateException(templateId);
 		}
 		try {
-			IndexTemplate result = new IndexTemplate();
+			final IndexTemplate result = new IndexTemplate();
 
 			if(fetchSource) {
 				result.setTemplate(rowSet.getString("_index_pattern"));
@@ -173,7 +173,7 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 			return null;
 		}
 		for(int i = 1; i < indices.size(); i++) {
-			IndexTemplate nextIndexTemplate = getIndexTemplateForIndex(indices.get(i));
+			final IndexTemplate nextIndexTemplate = getIndexTemplateForIndex(indices.get(i));
 			if(nextIndexTemplate == null) {
 				return null;
 			}
@@ -219,7 +219,7 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 			indexToTemplateNullCache.put(index, index);
 			return null;
 		}
-		IndexTemplate result = getIndexTemplate(templateId, true);
+		final IndexTemplate result = getIndexTemplate(templateId, true);
 		if (result != null) {
 			templateIdToTemplateCache.put(templateId, result);
 			indexToTemplateIdCache.put(index, templateId);
