@@ -124,10 +124,12 @@ public interface IndexUtils {
 	}
 
 	public static void flattenJson(DocumentSourceProvider sourceProvider) throws IOException {
-		final NoAllocStringReplace str = NoAllocStringReplace.allocate(sourceProvider.getDocument(), sourceProvider.getDocumentLength());
-		str.replaceAndEscapeUnicode(EscapeUtils.PSQL_ESCAPE_SEARCH, EscapeUtils.PSQL_ESCAPE_REPLACE);
-		sourceProvider.setDocument(str.getCharArray(), str.getContentLength());
-		str.dispose();
+		{
+			final NoAllocStringReplace str = NoAllocStringReplace.allocate(sourceProvider.getDocument(), sourceProvider.getDocumentLength());
+			str.replaceAndEscapeUnicode(EscapeUtils.PSQL_ESCAPE_SEARCH, EscapeUtils.PSQL_ESCAPE_REPLACE);
+			sourceProvider.setDocument(str.getCharArray(), str.getContentLength());
+			str.dispose();
+		}
 
 		final StringBuilder result = POOLED_STRING_BUILDER.get();
 
@@ -137,8 +139,7 @@ public interface IndexUtils {
 		result.append('{');
 		flattenJsonObject(jsonParser, result, "");
 		result.append('}');
-
-		str.dispose();
+		
 		jsonParser.close();
 
 		final char [] charArrayResult;
