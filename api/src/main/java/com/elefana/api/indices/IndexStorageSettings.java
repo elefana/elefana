@@ -21,13 +21,13 @@ import java.util.Objects;
 
 public class IndexStorageSettings {
 	@JsonProperty("distribution")
-	private DistributionMode distributionMode;
+	private DistributionMode distributionMode = DistributionMode.HASH;
 	@JsonProperty("time_bucket")
-	private IndexTimeBucket indexTimeBucket;
+	private IndexTimeBucket indexTimeBucket = IndexTimeBucket.MINUTE;
 	@JsonProperty("timestamp_path")
-	private String timestampPath;
+	private String timestampPath = null;
 	@JsonProperty("index_generation")
-	private IndexGenerationSettings indexGenerationSettings;
+	private IndexGenerationSettings indexGenerationSettings = new IndexGenerationSettings();
 	@JsonProperty("field_stats_disabled")
 	private boolean fieldStatsDisabled = false;
 	@JsonProperty("mapping_disabled")
@@ -38,9 +38,6 @@ public class IndexStorageSettings {
 	private boolean ginEnabled = false;
 
 	public DistributionMode getDistributionMode() {
-		if(distributionMode == null) {
-			distributionMode = DistributionMode.HASH;
-		}
 		return distributionMode;
 	}
 
@@ -49,9 +46,6 @@ public class IndexStorageSettings {
 	}
 
 	public IndexTimeBucket getIndexTimeBucket() {
-		if(indexTimeBucket == null) {
-			indexTimeBucket = IndexTimeBucket.MINUTE;
-		}
 		return indexTimeBucket;
 	}
 
@@ -68,9 +62,6 @@ public class IndexStorageSettings {
 	}
 
 	public IndexGenerationSettings getIndexGenerationSettings() {
-		if(indexGenerationSettings == null) {
-			indexGenerationSettings = new IndexGenerationSettings();
-		}
 		return indexGenerationSettings;
 	}
 
@@ -129,5 +120,19 @@ public class IndexStorageSettings {
 	public int hashCode() {
 		return Objects.hash(distributionMode, indexTimeBucket, timestampPath, indexGenerationSettings,
 				fieldStatsDisabled, mappingDisabled, brinEnabled, ginEnabled);
+	}
+
+	@Override
+	public String toString() {
+		return "IndexStorageSettings{" +
+				"distributionMode=" + distributionMode +
+				", indexTimeBucket=" + indexTimeBucket +
+				", timestampPath='" + timestampPath + '\'' +
+				", indexGenerationSettings=" + indexGenerationSettings +
+				", fieldStatsDisabled=" + fieldStatsDisabled +
+				", mappingDisabled=" + mappingDisabled +
+				", brinEnabled=" + brinEnabled +
+				", ginEnabled=" + ginEnabled +
+				'}';
 	}
 }

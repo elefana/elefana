@@ -38,8 +38,8 @@ public class JsonUtils {
 			final SimpleModule simpleModule = new SimpleModule();
 			simpleModule.addDeserializer(BulkResponse.class, new BulkResponseDecoder());
 			simpleModule.addDeserializer(GetFieldMappingsResponse.class, new GetFieldMappingsResponseDecoder());
-			simpleModule.addDeserializer(GetIndexTemplateForIndexResponse.class, new GetIndexTemplateForIndexResponseDecoder());
 			simpleModule.addDeserializer(GetIndexTemplateResponse.class, new GetIndexTemplateResponseDecoder());
+			simpleModule.addDeserializer(GetIndexTemplateForIndexResponse.class, new GetIndexTemplateForIndexResponseDecoder());
 			simpleModule.addDeserializer(NodeStats.class, new NodeStatsDecoder());
 			registerModule(simpleModule);
 		}

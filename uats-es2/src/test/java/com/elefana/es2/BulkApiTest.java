@@ -117,6 +117,10 @@ public class BulkApiTest {
 			.put("/_template/bulkIndexingTimeSeries")
 		.then()
 			.statusCode(200);
+
+		try {
+			Thread.sleep(500);
+		} catch (Exception e) {}
 		
 		given()
 			.request()

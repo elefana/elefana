@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2018 Viridian Software Limited
+ * Copyright 2019 Viridian Software Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,43 +15,40 @@
  ******************************************************************************/
 package com.elefana.api.document;
 
-import com.elefana.api.indices.GetIndexTemplateForIndexResponse;
-import com.elefana.api.indices.IndexTemplate;
+import com.elefana.api.indices.*;
 import com.elefana.api.json.JsonUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.HashMap;
 
-
-public class GetIndexTemplateForIndexResponseTest {
+public class GetIndexTemplateResponseTest {
 
 	@Test
 	public void testEncodeDecode() {
 		final String index = "logs-01-01-1970";
 		final String templateId = "template1";
-		
+
 		final IndexTemplate indexTemplate = new IndexTemplate();
 		indexTemplate.setMappings(new HashMap<String, Object>());
-		indexTemplate.getStorage().setTimestampPath("timestamp");
-		
-		final GetIndexTemplateForIndexResponse expected = new GetIndexTemplateForIndexResponse(index, templateId);
+
+		final GetIndexTemplateResponse expected = new GetIndexTemplateResponse(templateId);
 		expected.setIndexTemplate(indexTemplate);
-		
+
 		final String json = expected.toJsonString();
-		final GetIndexTemplateForIndexResponse result = JsonUtils.fromJsonString(json, GetIndexTemplateForIndexResponse.class);
+		System.out.println(json);
+		final GetIndexTemplateResponse result = JsonUtils.fromJsonString(json, GetIndexTemplateResponse.class);
 		Assert.assertEquals(expected.toJsonString(), result.toJsonString());
 		Assert.assertEquals(expected.getIndexTemplate(), result.getIndexTemplate());
+		Assert.assertEquals(expected.getIndexTemplate().getStorage(), result.getIndexTemplate().getStorage());
 	}
-	
+
 	@Test
-	public void testEncodeDecodeNoIndexTemplate() {
-		final String index = "logs-01-01-1970";
-		
-		final GetIndexTemplateForIndexResponse expected = new GetIndexTemplateForIndexResponse(index, null);
-		
-		final String json = expected.toJsonString();
-		final GetIndexTemplateForIndexResponse result = JsonUtils.fromJsonString(json, GetIndexTemplateForIndexResponse.class);
-		Assert.assertEquals(expected, result);
+	public void testDecodeWithNoStorageSettings() {
+		final String json = "{\"templateA\":{\"settings\":{\"number_of_shards\":1},\"template\":\"f25aa8b9-2df6-456d-949e-b17558d6554d\",\"storage\":{\"distribution\":\"HASH\",\"time_bucket\":\"MINUTE\",\"timestamp_path\":null,\"index_generation\":{\"mode\":\"ALL\",\"preset_index_fields\":[],\"index_delay_seconds\":0},\"field_stats_disabled\":false,\"mapping_disabled\":false,\"brin_enabled\":false,\"gin_enabled\":false},\"mappings\":{\"test\":{\"_source\":{\"enabled\":false},\"properties\":{\"nonDocField\":{\"type\":\"date\"}}}}}}";
+		final GetIndexTemplateResponse result = JsonUtils.fromJsonString(json, GetIndexTemplateResponse.class);
+		result.setTemplateId("templateA");
+		Assert.assertEquals("f25aa8b9-2df6-456d-949e-b17558d6554d", result.getIndexTemplate().getTemplate());
+		Assert.assertNull(result.getIndexTemplate().getStorage().getTimestampPath());
 	}
 }

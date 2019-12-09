@@ -45,20 +45,27 @@ public class GetIndexTemplateResponse extends ApiResponse {
 	}
 
 	public IndexTemplate getIndexTemplate() {
-		if(templateId == null) {
+		if(getTemplateId() == null) {
 			return null;
 		}
-		return templates.get(templateId);
+		return templates.get(getTemplateId());
 	}
 
 	public void setIndexTemplate(IndexTemplate indexTemplate) {
-		if(templateId == null) {
+		if(indexTemplate == null) {
+			templates.clear();
 			return;
+		}
+		if(templateId == null) {
+			templateId = indexTemplate.getTemplate();
 		}
 		templates.put(templateId, indexTemplate);
 	}
 
 	public String getTemplateId() {
+		if(templateId == null && templates.size() > 0) {
+			templateId = templates.keySet().stream().findFirst().get();
+		}
 		return templateId;
 	}
 

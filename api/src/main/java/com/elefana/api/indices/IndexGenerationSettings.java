@@ -25,7 +25,7 @@ public class IndexGenerationSettings {
 	@JsonProperty("mode")
 	private IndexGenerationMode mode = IndexGenerationMode.ALL;
 	@JsonProperty("preset_index_fields")
-	private List<String> presetIndexFields;
+	private List<String> presetIndexFields = new ArrayList<String>(1);
 	@JsonProperty("index_delay_seconds")
 	private long indexDelaySeconds;
 
@@ -41,9 +41,6 @@ public class IndexGenerationSettings {
 	}
 
 	public List<String> getPresetIndexFields() {
-		if(presetIndexFields == null) {
-			presetIndexFields = new ArrayList<String>();
-		}
 		return presetIndexFields;
 	}
 
@@ -73,5 +70,14 @@ public class IndexGenerationSettings {
 	@Override
 	public int hashCode() {
 		return Objects.hash(mode, presetIndexFields, indexDelaySeconds);
+	}
+
+	@Override
+	public String toString() {
+		return "IndexGenerationSettings{" +
+				"mode=" + mode +
+				", presetIndexFields=" + presetIndexFields +
+				", indexDelaySeconds=" + indexDelaySeconds +
+				'}';
 	}
 }
