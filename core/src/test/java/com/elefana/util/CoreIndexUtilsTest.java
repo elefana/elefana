@@ -23,6 +23,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.elefana.api.indices.GetIndexTemplateForIndexRequest;
+import com.elefana.api.indices.GetIndexTemplateForIndexResponse;
+import com.elefana.api.indices.IndexTemplate;
+import com.elefana.indices.IndexTemplateService;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -36,11 +40,20 @@ public class CoreIndexUtilsTest {
 	private final CoreIndexUtils indexUtils = new CoreIndexUtils();
 
 	private JdbcTemplate jdbcTemplate;
+	private IndexTemplateService indexTemplateService;
+
+	private GetIndexTemplateForIndexRequest indexTemplateForIndexRequest;
+	private GetIndexTemplateForIndexResponse indexTemplateForIndexResponse;
 
 	@Before
 	public void setUp() {
 		jdbcTemplate = mock(JdbcTemplate.class);
+		indexTemplateService = mock(IndexTemplateService.class);
+		indexTemplateForIndexRequest = mock(GetIndexTemplateForIndexRequest.class);
+		indexTemplateForIndexResponse = mock(GetIndexTemplateForIndexResponse.class);
+
 		indexUtils.setJdbcTemplate(jdbcTemplate);
+		indexUtils.setIndexTemplateService(indexTemplateService);
 	}
 
 	@After
@@ -93,5 +106,23 @@ public class CoreIndexUtilsTest {
 		final List<String> todaysMessageLogs = indexUtils.listIndicesForIndexPatternFromDatabase(todayMessageLogsPattern);
 		Assert.assertEquals(2, todaysMessageLogs.size());
 		Assert.assertEquals(false, todaysMessageLogs.contains("message-logs-2018-03-15t23:00:00"));
+	}
+
+	@Test
+	public void testGetTimestamp() throws ElefanaException {
+		final String index = "message-logs";
+		final long expectedTimestamp = 5634653566534L;
+		final String json = "{\"timestamp\":" + expectedTimestamp +"}";
+		final char [] jsonCharArray = json.toCharArray();
+
+		final IndexTemplate indexTemplate = new IndexTemplate();
+		indexTemplate.getStorage().setTimestampPath("timestamp");
+
+		when(indexTemplateService.prepareGetIndexTemplateForIndex(index)).thenReturn(indexTemplateForIndexRequest);
+		when(indexTemplateForIndexRequest.get()).thenReturn(indexTemplateForIndexResponse);
+		when(indexTemplateForIndexResponse.getIndexTemplate()).thenReturn(indexTemplate);
+
+		final long result = indexUtils.getTimestamp(index, jsonCharArray, jsonCharArray.length);
+		Assert.assertEquals(expectedTimestamp, result);
 	}
 }

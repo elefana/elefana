@@ -292,7 +292,7 @@ public class CoreIndexUtils implements IndexUtils {
 			jsonPathCache.put(timestampPath, path);
 		}
 		final JsonNode json = JsonUtils.extractJsonNode(document, documentLength, path);
-		if (!json.isNumber()) {
+		if (json == null || !json.isNumber()) {
 			return System.currentTimeMillis();
 		}
 		return json.asLong();
@@ -711,5 +711,9 @@ public class CoreIndexUtils implements IndexUtils {
 
 	public void setJdbcTemplate(JdbcTemplate jdbcTemplate) {
 		this.jdbcTemplate = jdbcTemplate;
+	}
+
+	public void setIndexTemplateService(IndexTemplateService indexTemplateService) {
+		this.indexTemplateService = indexTemplateService;
 	}
 }

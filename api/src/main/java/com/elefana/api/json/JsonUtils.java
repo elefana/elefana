@@ -49,6 +49,7 @@ public class JsonUtils {
 	};
 	public static final JsonFactory JSON_FACTORY = new JsonFactory() {
 		{
+			setCodec(OBJECT_MAPPER);
 			enable(JsonFactory.Feature.USE_THREAD_LOCAL_FOR_BUFFER_RECYCLING);
 
 			enable(JsonParser.Feature.ALLOW_SINGLE_QUOTES);
