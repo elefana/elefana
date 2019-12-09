@@ -101,11 +101,15 @@ public class CoreFieldStatsJob extends FieldStatsJob {
                 processAny(JsonUtils.extractJsonNode(document.getArray(), document.getLength()), "");
                 document.release();
 
-                updateIndexMaxDocs(indexName);
                 loadUnloadManager.someoneWroteToIndex(indexName);
             } catch(Exception e) {
                 LOGGER.error("Exception in Analyse Job", e);
             }
+        }
+        try {
+            updateIndexMaxDocs(indexName, docIndex + 1);
+        } catch(Exception e) {
+            LOGGER.error("Exception in Analyse Job", e);
         }
 
         release();
@@ -197,8 +201,8 @@ public class CoreFieldStatsJob extends FieldStatsJob {
         fieldStats.updateFieldIsInDocument();
     }
 
-    private void updateIndexMaxDocs(String indexName) {
-        state.getIndex(indexName).incrementMaxDocuments();
+    private void updateIndexMaxDocs(String indexName, int amount) {
+        state.getIndex(indexName).incrementMaxDocuments(amount);
     }
 
     public int getTotalDocuments() {

@@ -20,7 +20,11 @@ import java.util.concurrent.locks.Lock;
 
 public interface Index {
     public long getMaxDocuments();
-    public void incrementMaxDocuments();
+    public default void incrementMaxDocuments() {
+        incrementMaxDocuments(1);
+    }
+
+    public void incrementMaxDocuments(int amount);
     public Index merge(Index other);
 
     void mergeAndModifySelf(Index other);
