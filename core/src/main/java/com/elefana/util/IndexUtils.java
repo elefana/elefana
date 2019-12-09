@@ -105,8 +105,6 @@ public interface IndexUtils {
 		return true;
 	}
 
-	public static final CumulativeAverage FLATTEN_JSON_CAPACITY = new CumulativeAverage(32);
-
 	public static String flattenJson(String json) throws IOException {
 		final NoAllocStringReplace str = NoAllocStringReplace.allocate(json);
 		str.replaceAndEscapeUnicode(EscapeUtils.PSQL_ESCAPE_SEARCH, EscapeUtils.PSQL_ESCAPE_REPLACE);
@@ -122,13 +120,35 @@ public interface IndexUtils {
 
 		str.dispose();
 		jsonParser.close();
-
-		FLATTEN_JSON_CAPACITY.add(result.length());
 		return result.toString();
 	}
 
 	public static void flattenJson(DocumentSourceProvider sourceProvider) throws IOException {
+		final NoAllocStringReplace str = NoAllocStringReplace.allocate(sourceProvider.getDocument(), sourceProvider.getDocumentLength());
+		str.replaceAndEscapeUnicode(EscapeUtils.PSQL_ESCAPE_SEARCH, EscapeUtils.PSQL_ESCAPE_REPLACE);
+		sourceProvider.setDocument(str.getCharArray(), str.getContentLength());
+		str.dispose();
 
+		final StringBuilder result = POOLED_STRING_BUILDER.get();
+
+		final JsonParser jsonParser = JsonUtils.JSON_FACTORY.createParser(sourceProvider.getDocument(), 0, sourceProvider.getDocumentLength());
+		jsonParser.nextToken();
+
+		result.append('{');
+		flattenJsonObject(jsonParser, result, "");
+		result.append('}');
+
+		str.dispose();
+		jsonParser.close();
+
+		final char [] charArrayResult;
+		if(sourceProvider.getDocument().length < result.length()) {
+			charArrayResult = new char[result.length()];
+		} else {
+			charArrayResult = sourceProvider.getDocument();
+		}
+		result.getChars(0, result.length(), charArrayResult, 0);
+		sourceProvider.setDocument(charArrayResult, charArrayResult.length);
 	}
 
 	public static boolean flattenJsonObject(final JsonParser jsonParser, StringBuilder stringBuilder, CharSequence prefix) throws IOException {

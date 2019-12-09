@@ -146,7 +146,6 @@ public abstract class BulkIndexTask implements Callable<List<BulkItemResponse>> 
 							- (indexOperation.getTimestamp() % ONE_DAY_IN_MILLIS);
 
 
-					final String escapedJson;
 					if(flatten) {
 						final Timer.Context flattenTime = flattenTimer.time();
 						IndexUtils.flattenJson(indexOperation);
