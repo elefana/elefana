@@ -67,6 +67,8 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 	private static final String OPERATION_INDEX = "index";
 	private static final String NEW_LINE = "\\}(\\s)*\n";
 	private static final Pattern NEW_LINE_PATTERN = Pattern.compile(NEW_LINE);
+	private static final AtomicInteger MAX_TOTAL_BATCH_SIZE = new AtomicInteger(250);
+	private static final AtomicInteger MAX_PER_INDEX_BATCH_SIZE = new AtomicInteger(250);
 
 	private static final JsonCharArray OPERATION_CHAR_ARRAY = new JsonCharArray();
 	private static final JsonCharArray DOCUMENT_CHAR_ARRAY = new JsonCharArray();
@@ -202,14 +204,13 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 		final Timer.Context totalTimer = bulkIngestTotalTimer.time();
 
 		final Matcher matcher = NEW_LINE_PATTERN.matcher(requestBody);
-		final int responseCapacity = matcher.groupCount() / 2;
-		bulkOperationsBatchSize.mark(responseCapacity);
 
-		final BulkResponse bulkApiResponse = new BulkResponse(responseCapacity + 1);
+		final BulkResponse bulkApiResponse = new BulkResponse(MAX_TOTAL_BATCH_SIZE.get() + 1);
 		bulkApiResponse.setErrors(false);
 
 		final Map<String, List<BulkIndexOperation>> indexOperations = new HashMap<String, List<BulkIndexOperation>>();
 
+		int batchCount = 0;
 		final Timer.Context serializationTimer = bulkIngestSerializationTimer.time();
 		try {
 			int operationLineStartIndex = 0;
@@ -266,9 +267,10 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 						}
 
 						if (!indexOperations.containsKey(indexOperation.getIndex())) {
-							indexOperations.put(indexOperation.getIndex(), new ArrayList<BulkIndexOperation>(responseCapacity + 1));
+							indexOperations.put(indexOperation.getIndex(), new ArrayList<BulkIndexOperation>(MAX_PER_INDEX_BATCH_SIZE.get() + 1));
 						}
 						indexOperations.get(indexOperation.getIndex()).add(indexOperation);
+						batchCount++;
 						break;
 					default:
 						bulkApiResponse.setErrors(true);
@@ -286,7 +288,13 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 			serializationTimer.stop();
 		}
 
+		MAX_TOTAL_BATCH_SIZE.set(Math.max(batchCount, MAX_TOTAL_BATCH_SIZE.get()));
+		bulkOperationsBatchSize.mark(batchCount);
+
 		for (String index : indexOperations.keySet()) {
+			if(indexOperations.get(index) != null) {
+				MAX_PER_INDEX_BATCH_SIZE.set(Math.max(indexOperations.get(index).size(), MAX_PER_INDEX_BATCH_SIZE.get()));
+			}
 			indexUtils.ensureIndexExists(index);
 
 			if(nodeSettingsService.isUsingCitus()) {
