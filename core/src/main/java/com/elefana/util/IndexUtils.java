@@ -148,7 +148,7 @@ public interface IndexUtils {
 			charArrayResult = sourceProvider.getDocument();
 		}
 		result.getChars(0, result.length(), charArrayResult, 0);
-		sourceProvider.setDocument(charArrayResult, charArrayResult.length);
+		sourceProvider.setDocument(charArrayResult, result.length());
 	}
 
 	public static boolean flattenJsonObject(final JsonParser jsonParser, StringBuilder stringBuilder, CharSequence prefix) throws IOException {
