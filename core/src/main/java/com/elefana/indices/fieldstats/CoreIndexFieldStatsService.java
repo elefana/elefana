@@ -68,7 +68,7 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
     @Autowired
     protected IndexUtils indexUtils;
 
-    protected ExecutorService workerExecutorService, requestExecutorService;
+    protected ExecutorService requestExecutorService;
     protected State state;
     protected LoadUnloadManager loadUnloadManager;
 
@@ -81,13 +81,6 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
             loadUnloadManager = new LoadUnloadManager(jdbcTemplate, state, indexTtlMinutes);
         }
 
-        final int totalIngestThreads = environment.getProperty("elefana.service.bulk.ingest.threads", Integer.class,
-                Math.max(2, Runtime.getRuntime().availableProcessors() / 2));
-        final int totalProcessingThreads = (nodeSettingsService.getBulkParallelisation() * totalIngestThreads) + 1;
-
-        final int workerThreadNumber = environment.getProperty("elefana.service.fieldStats.workerThreads", Integer.class, totalProcessingThreads);
-        workerExecutorService = Executors.newFixedThreadPool(workerThreadNumber, new NamedThreadFactory("fieldStatsService-statsWorker"));
-
         final int requestThreadNumber = environment.getProperty("elefana.service.fieldStats.requestThreads", Integer.class, 2);
         requestExecutorService = Executors.newFixedThreadPool(requestThreadNumber, new NamedThreadFactory("fieldStatsService-requestExecutor"));
     }
@@ -95,11 +88,9 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
     @PreDestroy
     public void preDestroy() {
         requestExecutorService.shutdown();
-        workerExecutorService.shutdown();
 
         try {
             requestExecutorService.awaitTermination(120, TimeUnit.SECONDS);
-            workerExecutorService.awaitTermination(120, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
         }
 
@@ -238,22 +229,21 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
             if(fieldStatsJob == null) {
                 fieldStatsJob = CoreFieldStatsJob.allocate(state, loadUnloadManager, operation.getIndex());
             } else if(!fieldStatsJob.getIndexName().equals(operation.getIndex())) {
-                workerExecutorService.submit(fieldStatsJob);
+                fieldStatsJob.run();
                 fieldStatsJob = CoreFieldStatsJob.allocate(state, loadUnloadManager, operation.getIndex());
             }
 
             fieldStatsJob.addDocument(operation);
-            operation.release();
         }
 
         if(fieldStatsJob != null) {
-            workerExecutorService.submit(fieldStatsJob);
+            fieldStatsJob.run();
         }
     }
 
     @Override
     public void deleteIndex(String index) {
-        workerExecutorService.submit(new CoreFieldStatsRemoveIndexJob(state, loadUnloadManager, index));
+        new CoreFieldStatsRemoveIndexJob(state, loadUnloadManager, index).run();
     }
 
     @Override
@@ -263,7 +253,7 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
         }
         final CoreFieldStatsJob fieldStatsJob = CoreFieldStatsJob.allocate(state, loadUnloadManager, index);
         fieldStatsJob.addDocument(document);
-        workerExecutorService.submit(fieldStatsJob);
+        fieldStatsJob.run();
     }
 
     @Override

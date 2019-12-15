@@ -50,7 +50,7 @@ public class CoreFieldStatsJob extends FieldStatsJob {
 
     private static JsonFactory jsonFactory = new JsonFactory().setCodec(new ObjectMapper());
 
-    private final List<PooledSimpleString> documents = new ArrayList<PooledSimpleString>(AVG_BATCH_SIZE.avg());
+    private final List<DocumentSourceProvider> documents = new ArrayList<DocumentSourceProvider>(AVG_BATCH_SIZE.avg());
     private final Set<String> alreadyRegistered = new HashSet<>();
 
     private CoreFieldStatsJob(State state, LoadUnloadManager loadUnloadManager, String indexName) {
@@ -83,11 +83,11 @@ public class CoreFieldStatsJob extends FieldStatsJob {
     }
 
     public void addDocument(BulkIndexOperation bulkIndexOperation) {
-        documents.add(PooledSimpleString.copyOf(bulkIndexOperation.getDocument(), bulkIndexOperation.getDocumentLength()));
+        documents.add(bulkIndexOperation);
     }
 
     public void addDocument(String document) {
-        documents.add(PooledSimpleString.copyOf(document));
+        documents.add(new SingleDocumentSourceProvider(document));
     }
 
     @Override
@@ -97,9 +97,9 @@ public class CoreFieldStatsJob extends FieldStatsJob {
         for(docIndex = 0; docIndex < documents.size(); docIndex++) {
             try {
                 alreadyRegistered.clear();
-                final PooledSimpleString document = documents.get(docIndex);
-                processAny(JsonUtils.extractJsonNode(document.getArray(), document.getLength()), "");
-                document.release();
+                final DocumentSourceProvider document = documents.get(docIndex);
+                processAny(JsonUtils.extractJsonNode(document.getDocument(), document.getDocumentLength()), "");
+                document.dispose();
 
                 loadUnloadManager.someoneWroteToIndex(indexName);
             } catch(Exception e) {
@@ -107,7 +107,7 @@ public class CoreFieldStatsJob extends FieldStatsJob {
             }
         }
         try {
-            updateIndexMaxDocs(indexName, docIndex + 1);
+            updateIndexMaxDocs(indexName, docIndex);
         } catch(Exception e) {
             LOGGER.error("Exception in Analyse Job", e);
         }

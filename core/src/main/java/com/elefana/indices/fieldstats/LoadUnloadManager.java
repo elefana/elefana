@@ -192,7 +192,7 @@ public class LoadUnloadManager {
             lastIndexUse.remove(index);
             jdbcTemplate.update("DELETE FROM elefana_field_stats_index WHERE _indexname = ?", index);
             jdbcTemplate.update("DELETE FROM elefana_field_stats_fieldstats WHERE _indexname = ?", index);
-            jdbcTemplate.update("DELETE FROM elefana_field_stats_field field WHERE (SELECT count(_fieldname) FROM elefana_field_stats_fieldsta\n" +
+            jdbcTemplate.update("DELETE FROM elefana_field_stats_field field WHERE (SELECT count(_fieldname) FROM elefana_field_stats_fieldstats\n" +
                     "ts WHERE _fieldname = field._fieldname ) = 0");
         } finally {
             loadUnloadLock.unlock();

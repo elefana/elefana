@@ -229,13 +229,17 @@ public class NoAllocStringReplaceTest {
 
     @Test
     public void testAllocateWithInsufficientSpace() {
-        NoAllocStringReplace str = NoAllocStringReplace.allocate(new String(new char[256 * 2]));
+        final int originalArraySize = 1024;
+
+        NoAllocStringReplace str = NoAllocStringReplace.allocate(new String(new char[originalArraySize]));
         final char [] originalCharArray = str.getCharArray();
-        Assert.assertEquals(1024, originalCharArray.length);
+        Assert.assertEquals(originalArraySize + 1, originalCharArray.length);
 
         str.replaceAndEscapeUnicode(new String[] { "" + (char) 0 }, new String[] { "xNewx" });
         String ret = str.disposeWithResult();
 
-        Assert.assertNotEquals(originalCharArray.length, str.getCharArray().length);
+        final char [] resultCharArray = str.getCharArray();
+        Assert.assertNotEquals(originalCharArray.length, resultCharArray.length);
+        Assert.assertTrue(resultCharArray.length > originalCharArray.length + 1);
     }
 }
