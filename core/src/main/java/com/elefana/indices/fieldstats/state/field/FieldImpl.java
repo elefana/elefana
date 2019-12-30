@@ -25,8 +25,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @ThreadSafe
 public class FieldImpl implements Field {
-    private Map<String, FieldStats> fieldStats = new ConcurrentHashMap<>();
-    protected Class type;
+    protected final Map<String, FieldStats> fieldStats = new ConcurrentHashMap<>();
+    protected final Class type;
 
     public FieldImpl(Class type) {
         this.type = type;
