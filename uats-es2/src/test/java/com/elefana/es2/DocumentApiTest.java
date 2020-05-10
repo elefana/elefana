@@ -129,6 +129,10 @@ public class DocumentApiTest extends DocumentedTest {
 		final String message = "This is a test";
 		indexWithId(id, message, System.currentTimeMillis());
 
+		try {
+			Thread.sleep(500);
+		} catch (Exception e) {}
+
 		given().when().delete("/" + INDEX)
 				.then()
 				.statusCode(200);
@@ -340,6 +344,10 @@ public class DocumentApiTest extends DocumentedTest {
 		final String message2 = "This is message 2";
 		indexWithId(id1, message1, System.currentTimeMillis());
 		indexWithId(id2, message2, System.currentTimeMillis());
+
+		try {
+			Thread.sleep(500);
+		} catch (Exception e) {}
 
 		final long startTime = System.currentTimeMillis();
 		int lastResultCount = 0;

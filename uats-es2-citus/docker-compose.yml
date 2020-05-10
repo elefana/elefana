@@ -1,18 +1,41 @@
-version: '2.1'
+version: '3'
 
 services:
   master:
-    container_name: "elefana-uats-es2-citus-master"
-    image: 'citusdata/citus:9.1.0'
+    container_name: "${COMPOSE_PROJECT_NAME:-citus}_master"
+    image: 'citusdata/citus:9.3.0'
     ports: ["${MASTER_EXTERNAL_PORT:-5435}:5432"]
     labels: ['com.citusdata.role=Master']
+    environment: &AUTH
+      POSTGRES_USER: "${POSTGRES_USER:-postgres}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-postgres}"
+      PGUSER: "${POSTGRES_USER:-postgres}"
+      PGPASSWORD: "${POSTGRES_PASSWORD:-postgres}"
+      POSTGRES_HOST_AUTH_METHOD: "${POSTGRES_HOST_AUTH_METHOD:-trust}"
+    networks:
+      - ef-network
   worker:
-    container_name: "elefana-uats-es2-citus-worker"
-    image: 'citusdata/citus:9.1.0'
+    image: 'citusdata/citus:9.3.0'
     labels: ['com.citusdata.role=Worker']
-    depends_on: { manager: { condition: service_healthy } }
+    depends_on: [ manager ]
+    environment: *AUTH
+    command: "/wait-for-manager.sh"
+    volumes:
+      - healthcheck-volume:/healthcheck
+    networks:
+      - ef-network
   manager:
-    container_name: "elefana-uats-es2-citus-manager"
-    image: 'citusdata/membership-manager:0.2.0'
-    volumes: ['/var/run/docker.sock:/var/run/docker.sock']
-    depends_on: { master: { condition: service_healthy } }
+    container_name: "${COMPOSE_PROJECT_NAME:-citus}_manager"
+    image: 'citusdata/membership-manager:0.3.0'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - healthcheck-volume:/healthcheck
+    depends_on: [ master ]
+    environment: *AUTH
+    networks:
+      - ef-network
+networks:
+  ef-network:
+    driver: bridge
+volumes:
+  healthcheck-volume:

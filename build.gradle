@@ -3,7 +3,7 @@ import org.apache.tools.ant.taskdefs.condition.Os
 buildscript {
 	ext {
 		asciiDoctorVersion = '1.5.7'
-		dockerComposeVersion = '0.8.12'
+		dockerComposeVersion = '0.10.11'
 		dockerRunVersion = '0.17.2'
 		jmhVersion = '0.4.8'
 		nexusStagingVersion = '0.9.0'
@@ -46,14 +46,14 @@ subprojects {
 		commonsValidatorVersion = '1.6'
 		esCompatVersion = '1.0.1'
 		esQueryStringVersion = '1.0.3'
-		guavaVersion = '28.0-jre'
+		guavaVersion = '28.2-jre'
 		hikariVersion = '3.3.1'
-		jacksonVersion = '2.9.10'
+		jacksonVersion = '2.10.4'
 		jodaVersion = '2.9.9'
 		jsoniterVersion = '0.9.21'
-		metricsVersion = '4.0.3'
+		metricsVersion = '4.1.7'
 		nativesLoaderVersion = '1.0.0'
-		nettyVersion = '4.1.43.Final'
+		nettyVersion = '4.1.49.Final'
 		oshiVersion = '4.0.0'
 		jnaVersion = '5.4.0'
 		restAssuredVersion = '3.1.1'
@@ -195,6 +195,7 @@ project(":" + rootProject.name + "-api") {
 	description = 'Elefana API classes'
 	
 	dependencies {
+		compile "com.fasterxml.jackson.core:jackson-core:$jacksonVersion"
 		compile "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
 		compile "io.netty:netty-codec-http:$nettyVersion"
 		
@@ -297,10 +298,11 @@ project(":" + rootProject.name + "-uats-es2") {
 	
 	dockerRun {
 		name rootProject.name + "-uats-es2"
-		image 'postgres:11'
+		image 'postgres:12.2'
 		daemonize true
 		clean true
 		ports '5433:5432'
+		env 'POSTGRES_PASSWORD': 'postgres'
 	}
 
 	dependencies {
@@ -332,7 +334,10 @@ project(":" + rootProject.name + "-uats-es2-citus") {
 	ext['snippetsDir'] = file('build/generated-snippets')
 
 	dockerCompose {
+		projectName = 'citus'
 		forceRecreate = true
+		captureContainersOutput = false
+		buildBeforeUp = true
 		environment.put 'COMPOSE_CONVERT_WINDOWS_PATHS', (Os.isFamily(Os.FAMILY_WINDOWS) ? '1' : '0' )
 	}
 	
