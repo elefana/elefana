@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2019 Viridian Software Limited
+ * Copyright 2020 Viridian Software Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,18 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-
 package com.elefana.indices.fieldstats;
 
-public interface LoadUnloadManager {
+public class NoopLoadUnloadManager implements LoadUnloadManager {
 
-    public void shutdown();
+	@Override
+	public void shutdown() {
+	}
 
-    public void someoneWroteToIndex(String indexName);
+	@Override
+	public void someoneWroteToIndex(String indexName) {
+	}
 
-    public void ensureIndicesLoaded(String indexPattern);
+	@Override
+	public void ensureIndicesLoaded(String indexPattern) {
+	}
 
-    public void deleteIndex(String index);
+	@Override
+	public void deleteIndex(String index) {
+	}
 
-    public void unloadAll();
+	@Override
+	public void unloadAll() {
+	}
 }

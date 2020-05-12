@@ -17,6 +17,7 @@
 package com.elefana.indices.fieldstats.state;
 
 import com.elefana.indices.fieldstats.LoadUnloadManager;
+import com.elefana.indices.fieldstats.MasterLoadUnloadManager;
 import com.elefana.indices.fieldstats.state.field.ElefanaWrongFieldStatsTypeException;
 import com.elefana.indices.fieldstats.state.index.Index;
 import com.elefana.indices.fieldstats.state.index.IndexComponent;
@@ -34,7 +35,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
-public class LoadUnloadManagerTest {
+public class MasterLoadUnloadManagerTest {
 
     private static final String TEST_INDEX = "testIndex";
     private static final String TEST_INDEX_TWO = "otherIndex";
@@ -61,7 +62,7 @@ public class LoadUnloadManagerTest {
         when(testState.getIndex(eq(TEST_INDEX))).thenReturn(a);
         when(testState.getIndex(eq(TEST_INDEX_TWO))).thenReturn(b);
 
-        loadUnloadManager = new LoadUnloadManager(jdbcTemplate, testState, 10);
+        loadUnloadManager = new MasterLoadUnloadManager(jdbcTemplate, testState, 10);
     }
 
     @Test
