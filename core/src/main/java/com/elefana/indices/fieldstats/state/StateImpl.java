@@ -79,6 +79,7 @@ public class StateImpl implements State{
             field.deleteIndexFieldStats(indexName);
         });
         getIndex(indexName).delete();
+        indexMap.remove(indexName);
     }
 
     @Override
@@ -247,6 +248,13 @@ public class StateImpl implements State{
                 .stream()
                 .filter(i -> matches(indexPattern, i))
                 .collect(Collectors.toList());
+        indexLock.readLock().unlock();
+        return result;
+    }
+
+    public boolean isIndexLoaded(String index) {
+        indexLock.readLock().lock();
+        final boolean result = indexMap.containsKey(index);
         indexLock.readLock().unlock();
         return result;
     }

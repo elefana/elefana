@@ -20,6 +20,7 @@ import com.elefana.api.cluster.*;
 import com.elefana.cluster.ClusterService;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
+import com.elefana.util.NamedThreadFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,7 +59,7 @@ public class PsqlClusterService implements ClusterService, RequestExecutor {
 	@PostConstruct
 	public void postConstruct() {
 		final int totalThreads = environment.getProperty("elefana.service.cluster.threads", Integer.class, 2);
-		executorService = Executors.newFixedThreadPool(totalThreads);
+		executorService = Executors.newFixedThreadPool(totalThreads, new NamedThreadFactory("elefana-clusterService-requestExecutor"));
 		
 		clusterInfoResponse.getVersion().setBuildSnapshot(false);
 		clusterInfoResponse.getVersion().setLuceneVersion("N/A");

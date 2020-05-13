@@ -28,6 +28,7 @@ import com.elefana.indices.V5FieldMapper;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
 import com.elefana.util.IndexUtils;
+import com.elefana.util.NamedThreadFactory;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import org.postgresql.util.PGobject;
@@ -101,7 +102,7 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 		mappingQueue = new IndexMappingQueue(jdbcTemplate, taskScheduler, environment.getProperty("elefana.service.field.queue.io.interval", Long.class, TimeUnit.MINUTES.toMillis(15L)));
 
 		final int totalThreads = environment.getProperty("elefana.service.field.threads", Integer.class, 2);
-		executorService = Executors.newFixedThreadPool(totalThreads);
+		executorService = Executors.newFixedThreadPool(totalThreads, new NamedThreadFactory("elefana-fieldMappingService-requestExecutor"));
 
 		mappingScheduledTask = taskScheduler.scheduleAtFixedRate(new Runnable() {
 			@Override

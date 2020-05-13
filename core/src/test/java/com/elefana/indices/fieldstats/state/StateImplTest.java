@@ -38,11 +38,11 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 
-public class StateTest {
+public class StateImplTest {
 
     private static final String TEST_INDEX = "bank";
 
-    private State testState;
+    private StateImpl testState;
     private LoadUnloadManager loadUnloadManager;
 
     private String testDocument;
@@ -250,12 +250,13 @@ public class StateTest {
 
         Assert.assertEquals(1, testState.getIndex(TEST_INDEX).getMaxDocuments());
         Assert.assertEquals(1, testState.getFieldStats("bool", TEST_INDEX).getDocumentCount());
+
+        testState.deleteIndex(TEST_INDEX);
+        Assert.assertFalse(testState.isIndexLoaded(TEST_INDEX));
     }
 
     @Test
     public void testLoadIndex() throws ElefanaWrongFieldStatsTypeException {
-        //submitDocumentNTimes(20, testDocument, TEST_INDEX);
-
         IndexComponent insert = new IndexComponent(TEST_INDEX, 10);
         insert.fields.put("string", new FieldComponent("hello", "there", 9, 9*2, -1, String.class));
 
@@ -338,6 +339,7 @@ public class StateTest {
         Assert.assertEquals(10*2, string.sumDocFreq);
         Assert.assertEquals("hello", string.minValue);
         Assert.assertEquals("there", string.maxValue);
+        Assert.assertFalse(testState.isIndexLoaded(TEST_INDEX));
     }
 
     @Test(timeout=30000)

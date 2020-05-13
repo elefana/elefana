@@ -32,6 +32,7 @@ import com.elefana.node.NodeSettingsService;
 import com.elefana.search.*;
 import com.elefana.table.TableGarbageCollector;
 import com.elefana.util.IndexUtils;
+import com.elefana.util.NamedThreadFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -92,9 +93,9 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 				Runtime.getRuntime().availableProcessors());
 		final int totalAggregationThreads = environment.getProperty("elefana.service.search.aggregation.threads",
 				Integer.class, Runtime.getRuntime().availableProcessors());
-		searchCountExecutorService = Executors.newFixedThreadPool(totalRequestThreads);
-		searchHitsExecutorService = Executors.newFixedThreadPool(totalHitsThreads);
-		searchAggregationsExecutorService = Executors.newFixedThreadPool(totalAggregationThreads);
+		searchCountExecutorService = Executors.newFixedThreadPool(totalRequestThreads, new NamedThreadFactory("elefana-searchService-countExecutor"));
+		searchHitsExecutorService = Executors.newFixedThreadPool(totalHitsThreads, new NamedThreadFactory("elefana-searchService-hitsExecutor"));
+		searchAggregationsExecutorService = Executors.newFixedThreadPool(totalAggregationThreads, new NamedThreadFactory("elefana-searchService-aggregationsExecutor"));
 
 		searchHitsTime = metricRegistry.histogram(MetricRegistry.name("search", "hits", "time"));
 		searchHitsSize = metricRegistry.histogram(MetricRegistry.name("search", "hits", "size"));

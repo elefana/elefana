@@ -93,8 +93,8 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
         }
 
         if (nodeSettingsService.isMasterNode()) {
-            loadUnloadManager.shutdown();
             loadUnloadManager.unloadAll();
+            loadUnloadManager.shutdown();
         }
     }
 

@@ -21,6 +21,7 @@ import com.elefana.api.node.NodesStatsResponse;
 import com.elefana.node.NodeStatsService;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.node.NodesService;
+import com.elefana.util.NamedThreadFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
@@ -45,7 +46,7 @@ public class PsqlNodesService implements NodesService, RequestExecutor {
 	@PostConstruct
 	public void postConstruct() {
 		final int totalThreads = environment.getProperty("elefana.service.node.threads", Integer.class, 2);
-		executorService = Executors.newFixedThreadPool(totalThreads);
+		executorService = Executors.newFixedThreadPool(totalThreads, new NamedThreadFactory("elefana-nodesService-requestExecutor"));
 		
 		clusterName = environment.getRequiredProperty("elefana.cluster.name");
 	}

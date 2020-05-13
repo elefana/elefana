@@ -17,6 +17,7 @@ package com.elefana.table;
 
 import com.elefana.node.NodeStatsService;
 import com.elefana.util.IndexUtils;
+import com.elefana.util.NamedThreadFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,7 +40,7 @@ public class TableGarbageCollector implements Runnable {
 	private static final long GC_TIME_MILLIS = 1000L;
 	
 	private final Queue<String> tableDeletionQueue = new ConcurrentLinkedQueue<String>();
-	private final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
+	private final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1, new NamedThreadFactory("elefana-table-garbage-collector"));
 	
 	@Autowired
 	private IndexUtils indexUtils;

@@ -30,6 +30,7 @@ import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
 import com.elefana.util.EscapeUtils;
 import com.elefana.util.IndexUtils;
+import com.elefana.util.NamedThreadFactory;
 import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,7 +82,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 	public void postConstruct() {
 		final int totalThreads = environment.getProperty("elefana.service.document.threads", Integer.class,
 				Runtime.getRuntime().availableProcessors());
-		executorService = Executors.newFixedThreadPool(totalThreads);
+		executorService = Executors.newFixedThreadPool(totalThreads, new NamedThreadFactory("elefana-documentService-requestExecutor"));
 	}
 
 	@PreDestroy

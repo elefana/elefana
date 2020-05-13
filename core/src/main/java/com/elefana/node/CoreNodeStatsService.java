@@ -25,6 +25,7 @@ import com.elefana.node.v2.V2ProcessStats;
 import com.elefana.node.v5.V5JvmStats;
 import com.elefana.node.v5.V5OsStats;
 import com.elefana.node.v5.V5ProcessStats;
+import com.elefana.util.NamedThreadFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,7 +52,7 @@ public class CoreNodeStatsService implements NodeStatsService {
 
 	public static final String[] ALL_INFO = new String[] { KEY_OS, KEY_PROCESS, KEY_JVM };
 
-	private final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
+	private final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1, new NamedThreadFactory("elefana-nodesStatsService-statsExecutor"));
 
 	@Autowired
 	protected Environment environment;

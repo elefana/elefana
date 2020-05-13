@@ -22,6 +22,7 @@ import com.elefana.indices.fieldstats.state.StateImpl;
 import com.elefana.indices.fieldstats.state.field.ElefanaWrongFieldStatsTypeException;
 import com.elefana.indices.fieldstats.state.field.FieldComponent;
 import com.elefana.indices.fieldstats.state.index.IndexComponent;
+import com.elefana.util.NamedThreadFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -47,7 +48,7 @@ public class MasterLoadUnloadManager implements LoadUnloadManager {
 	private final long indexTtl;
 
 	private Map<String, Long> lastIndexUse = new ConcurrentHashMap<>();
-	private ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+	private ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("elefana-fieldStats-loadUnloadManager"));
 
 	public MasterLoadUnloadManager(JdbcTemplate jdbcTemplate, State state, long ttlMinutes) {
 		this.jdbcTemplate = jdbcTemplate;
