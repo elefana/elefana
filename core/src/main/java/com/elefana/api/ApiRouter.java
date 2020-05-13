@@ -211,6 +211,7 @@ public class ApiRouter {
 	}
 
 	private ApiRequest<?> routeToFieldMappingApi(HttpMethod method, String url, Map<String, String> getParams, String[] urlComponents, String requestBody) throws ElefanaException {
+		LOGGER.info("ROUTED TO FIELD MAPPING API " + url);
 		if (isGetMethod(method)) {
 			switch (urlComponents.length) {
 			case 1:
@@ -285,18 +286,21 @@ public class ApiRouter {
 			}
 			}
 		} else if (isPostMethod(method)) {
+			LOGGER.info("IS POST " + url);
 			switch (urlComponents.length) {
-			    case 1:
-			        switch (urlComponents[0].toLowerCase()) {
-                        case "_field_stats":
-                            String clusterLevel = getParams.getOrDefault("level", "cluster");
-                            return indexFieldStatsService.prepareGetFieldStatsPost("*", requestBody, !clusterLevel.equals("indices"));
-                    }
+			case 1:
+				switch (urlComponents[0].toLowerCase()) {
+				case "_field_stats":
+					String clusterLevel = getParams.getOrDefault("level", "cluster");
+					return indexFieldStatsService.prepareGetFieldStatsPost("*", requestBody, !clusterLevel.equals("indices"));
+				}
+				break;
 			case 2: {
 				// INDICES/_mapping or INDICES/_field_caps
 				final String indexPattern = urlDecode(urlComponents[0]);
 				switch (urlComponents[1].toLowerCase()) {
 				case "_field_stats":
+					LOGGER.info("ROUTE TO PREPARE");
 				    String clusterLevel = getParams.getOrDefault("level", "cluster");
 					return indexFieldStatsService.prepareGetFieldStatsPost(indexPattern, requestBody, !clusterLevel.equals("indices"));
 				case "_refresh":
