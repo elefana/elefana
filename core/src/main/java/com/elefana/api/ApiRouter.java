@@ -96,8 +96,6 @@ public class ApiRouter {
 			return routeToBulkApi(method, url, getParams, urlComponents, requestBody);
 		case "_cluster":
 			return routeToClusterApi(method, url, getParams, urlComponents, requestBody);
-		case "_mapping":
-			return routeToFieldMappingApi(method, url, getParams, urlComponents, requestBody);
 		case "_mget":
 			return routeToDocumentApi(method, url, getParams, urlComponents, requestBody);
 		case "_msearch":
@@ -108,6 +106,7 @@ public class ApiRouter {
 			return routeToSearchApi(method, url, getParams, urlComponents, requestBody);
 		case "_template":
 			return routeToIndexTemplateApi(method, url, getParams, urlComponents, requestBody);
+		case "_mapping":
         case "_field_stats":
             return routeToFieldMappingApi(method, url, getParams, urlComponents, requestBody);
 		}
@@ -117,6 +116,7 @@ public class ApiRouter {
 			switch (urlComponents[1].toLowerCase()) {
 			case "_template":
 				return routeToIndexTemplateApi(method, url, getParams, urlComponents, requestBody);
+			case "_field_stats":
 			case "_field_names":
 			case "_field_caps":
 			case "_mapping":
