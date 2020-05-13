@@ -191,9 +191,11 @@ public class StateImpl implements State{
     @Override
     @Nullable
     public FieldStats getFieldStats(String fieldName, Collection<String> indices) {
+        LOGGER.info("Pre-lock get states");
         indexLock.readLock().lock();
         final Field field = fieldMap.get(fieldName);
         indexLock.readLock().unlock();
+        LOGGER.info("Post-lock get states");
         if(field == null) {
             return null;
         } else {

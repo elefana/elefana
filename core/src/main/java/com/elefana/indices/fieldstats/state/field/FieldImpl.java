@@ -16,6 +16,9 @@
 
 package com.elefana.indices.fieldstats.state.field;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
@@ -25,6 +28,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @ThreadSafe
 public class FieldImpl implements Field {
+    private static final Logger LOGGER = LoggerFactory.getLogger(FieldImpl.class);
+
     protected final Map<String, FieldStats> fieldStats = new ConcurrentHashMap<>();
     protected final Class type;
 
@@ -52,6 +57,7 @@ public class FieldImpl implements Field {
 
         FieldStats acc = FieldComponent.getFieldStats(type);
         for(String s : indices) {
+            LOGGER.info("Get stats for " + s);
             FieldStats fs = fieldStats.get(s);
             if(fs == null) {
                 return null;
