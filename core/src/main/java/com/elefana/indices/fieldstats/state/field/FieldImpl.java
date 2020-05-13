@@ -57,7 +57,6 @@ public class FieldImpl implements Field {
 
         FieldStats acc = FieldComponent.getFieldStats(type);
         for(String s : indices) {
-            LOGGER.info("Get stats for " + s);
             FieldStats fs = fieldStats.get(s);
             if(fs == null) {
                 return null;

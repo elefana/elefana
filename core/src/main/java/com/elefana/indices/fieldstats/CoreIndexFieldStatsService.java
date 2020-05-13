@@ -126,7 +126,6 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
                 throw new NoSuchApiException(HttpMethod.POST, "No fields specified in request body");
             }
 
-            LOGGER.info("Received request");
             return new RealtimeGetFieldStatsRequest(this, indexPattern, fields, clusterLevel);
         } catch (Exception e) {
             throw new NoSuchApiException(HttpMethod.POST, "Invalid request body");
@@ -139,7 +138,6 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
 
         return new RealtimeGetFieldStatsRequest(this, indexPattern, fields, clusterLevel);
     }
-
 
     @Override
     public GetFieldStatsResponse getFieldStats(String indexPattern, List<String> fields, boolean clusterLevel) {
@@ -199,7 +197,6 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
         final Map<String, Object> wrappingMap = new HashMap<>();
         final Map<String, Object> fieldsMap = new HashMap<>();
         for (String field : fields) {
-            LOGGER.info("Get " + field);
             FieldStats fs = state.getFieldStats(field, indices);
             if (fs == null) {
                 continue;
