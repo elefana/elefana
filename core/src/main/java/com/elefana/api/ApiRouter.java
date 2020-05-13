@@ -167,6 +167,7 @@ public class ApiRouter {
 
 	private ApiRequest<?> routeToBulkApi(HttpMethod method, String url, Map<String, String> getParams, String[] urlComponents, String requestBody)
 			throws ElefanaException {
+		LOGGER.info("ROUTED TO BULK API " + url);
 		switch (urlComponents[0].toLowerCase()) {
 		case "_bulk":
 			if(urlComponents.length == 2) {
@@ -185,6 +186,7 @@ public class ApiRouter {
 
 	private ApiRequest<?> routeToClusterApi(HttpMethod method, String url, Map<String, String> getParams, String[] urlComponents, String requestBody)
 			throws ElefanaException {
+		LOGGER.info("ROUTED TO CLUSTER API " + url);
 		switch (urlComponents.length) {
 		case 1:
 			return clusterService.prepareClusterInfo();
@@ -318,6 +320,7 @@ public class ApiRouter {
 
 	private ApiRequest<?> routeToDocumentApi(HttpMethod method, String url, Map<String, String> getParams, String[] urlComponents, String requestBody)
 			throws ElefanaException {
+		LOGGER.info("ROUTED TO DOCUMENT API " + url);
 		switch (urlComponents.length) {
 		case 1:
 			switch (urlComponents[0].toLowerCase()) {
@@ -411,6 +414,7 @@ public class ApiRouter {
 
 	private ApiRequest<?> routeToSearchApi(HttpMethod method, String url, Map<String, String> getParams, String[] urlComponents, String requestBody)
 			throws ElefanaException {
+		LOGGER.info("ROUTED TO SEARCH API " + url);
 		switch (urlComponents.length) {
 		case 1:
 			// _search
@@ -450,6 +454,7 @@ public class ApiRouter {
 
 	private ApiRequest<?> routeToNodeApi(HttpMethod method, String url, Map<String, String> getParams, String[] urlComponents, String requestBody)
 			throws ElefanaException {
+		LOGGER.info("ROUTED TO NODE API " + url);
 		switch (urlComponents.length) {
 		case 2:
 			switch (urlComponents[1]){
@@ -505,6 +510,7 @@ public class ApiRouter {
 
 	private ApiRequest<?> routeToIndexTemplateApi(HttpMethod method, String url, Map<String, String> getParams, String[] urlComponents,
                                                   String requestBody) throws ElefanaException {
+		LOGGER.info("ROUTED TO INDEX TEMPLATE API " + url);
 		switch (urlComponents.length) {
 		case 2:
 			switch(urlComponents[0].toLowerCase()) {
