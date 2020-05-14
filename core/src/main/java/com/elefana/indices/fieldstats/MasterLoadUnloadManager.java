@@ -109,6 +109,14 @@ public class MasterLoadUnloadManager implements LoadUnloadManager {
 		lastIndexUse.compute(indexName, (name, timestamp) -> System.currentTimeMillis());
 	}
 
+	@Override
+	public boolean isIndexLoaded(String indexName) {
+		loadUnloadLock.readLock().lock();
+		boolean result = !missingIndices.contains(indexName);
+		loadUnloadLock.readLock().unlock();
+		return result;
+	}
+
 	public void ensureIndicesLoaded(String indexPattern) {
 		loadUnloadLock.readLock().lock();
 		try {

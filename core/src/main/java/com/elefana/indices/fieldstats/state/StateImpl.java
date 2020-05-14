@@ -260,11 +260,15 @@ public class StateImpl implements State{
     }
 
     public static boolean matches(String pattern, String index) {
-        String[] singleIndices = pattern.split(",");
-        for(String singleIndexPattern : singleIndices) {
-            boolean matches = index.matches(singleIndexPattern.replaceAll("\\*", "\\.*"));
-            if(matches) {
-                return true;
+        if(pattern.contains(",")) {
+            return index.matches(pattern.replaceAll("\\*", "\\.*"));
+        } else {
+            String[] singleIndices = pattern.split(",");
+            for(String singleIndexPattern : singleIndices) {
+                boolean matches = index.matches(singleIndexPattern.replaceAll("\\*", "\\.*"));
+                if(matches) {
+                    return true;
+                }
             }
         }
         return false;

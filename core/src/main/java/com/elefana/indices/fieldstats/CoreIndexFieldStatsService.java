@@ -222,6 +222,7 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
     @Override
     public void submitDocuments(List<BulkIndexOperation> documents, int from, int size) {
         CoreFieldStatsJob fieldStatsJob = null;
+
         for (int i = from; i < from + size && i < documents.size(); i++) {
             BulkIndexOperation operation = documents.get(i);
 
@@ -231,9 +232,12 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
             }
 
             if(fieldStatsJob == null) {
+                ensureIndicesLoaded(operation.getIndex());
                 fieldStatsJob = CoreFieldStatsJob.allocate(state, loadUnloadManager, operation.getIndex());
             } else if(!fieldStatsJob.getIndexName().equals(operation.getIndex())) {
                 fieldStatsJob.run();
+
+                ensureIndicesLoaded(operation.getIndex());
                 fieldStatsJob = CoreFieldStatsJob.allocate(state, loadUnloadManager, operation.getIndex());
             }
 
@@ -255,6 +259,7 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
         if (isStatsDisabled(index)) {
             return;
         }
+        ensureIndicesLoaded(index);
         final CoreFieldStatsJob fieldStatsJob = CoreFieldStatsJob.allocate(state, loadUnloadManager, index);
         fieldStatsJob.addDocument(document);
         fieldStatsJob.run();

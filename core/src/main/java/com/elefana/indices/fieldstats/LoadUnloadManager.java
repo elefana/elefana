@@ -18,13 +18,15 @@ package com.elefana.indices.fieldstats;
 
 public interface LoadUnloadManager {
 
-    public void shutdown();
-
     public void someoneWroteToIndex(String indexName);
+
+    public boolean isIndexLoaded(String indexName);
 
     public void ensureIndicesLoaded(String indexPattern);
 
     public void deleteIndex(String index);
 
     public void unloadAll();
+
+    public void shutdown();
 }

@@ -26,6 +26,11 @@ public class NoopLoadUnloadManager implements LoadUnloadManager {
 	}
 
 	@Override
+	public boolean isIndexLoaded(String indexName) {
+		return true;
+	}
+
+	@Override
 	public void ensureIndicesLoaded(String indexPattern) {
 	}
 
