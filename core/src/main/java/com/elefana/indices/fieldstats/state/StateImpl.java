@@ -252,6 +252,13 @@ public class StateImpl implements State{
         return result;
     }
 
+    @Override
+    public <T> void ensureFieldExists(String fieldName, Class<T> fieldClass) {
+        indexLock.readLock().lock();
+        fieldMap.computeIfAbsent(fieldName, key -> createFieldImplementation(fieldName, fieldClass));
+        indexLock.readLock().unlock();
+    }
+
     public boolean isIndexLoaded(String index) {
         indexLock.readLock().lock();
         final boolean result = indexMap.containsKey(index);

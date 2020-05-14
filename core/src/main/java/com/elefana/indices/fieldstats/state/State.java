@@ -41,6 +41,8 @@ public interface State {
     Index getIndex(Collection<String> indices);
     List<String> compileIndexPattern(String indexPattern);
 
+    <T> void ensureFieldExists(String fieldName, Class<T> fieldClass);
+
     //Fields
     @Nonnull
     <T> FieldStats<T> getFieldStatsTypeChecked(String fieldName, Class<T> tClass, String indices) throws ElefanaWrongFieldStatsTypeException;
