@@ -268,11 +268,19 @@ public class StateImpl implements State{
 
     public static boolean matches(String pattern, String index) {
         if(pattern.contains(",")) {
-            return index.matches(pattern.replaceAll("\\*", "\\.*"));
+            pattern = pattern.replace(".", "\\.");
+            pattern = pattern.replace("-", "\\-");
+            pattern = pattern.replace("*", "(.*)");
+            pattern = "^" + pattern + "$";
+            return index.matches(pattern);
         } else {
             String[] singleIndices = pattern.split(",");
             for(String singleIndexPattern : singleIndices) {
-                boolean matches = index.matches(singleIndexPattern.replaceAll("\\*", "\\.*"));
+                singleIndexPattern = singleIndexPattern.replace(".", "\\.");
+                singleIndexPattern = singleIndexPattern.replace("-", "\\-");
+                singleIndexPattern = singleIndexPattern.replace("*", "(.*)");
+                singleIndexPattern = "^" + singleIndexPattern + "$";
+                boolean matches = index.matches(singleIndexPattern);
                 if(matches) {
                     return true;
                 }
