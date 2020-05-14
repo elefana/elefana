@@ -32,6 +32,7 @@ import org.mockito.stubbing.Answer;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
 
 import static org.mockito.ArgumentMatchers.anyString;
@@ -347,12 +348,17 @@ public class StateImplTest {
         final String index = TEST_INDEX + "2";
 
         List<Thread> threadList = new ArrayList<>();
+        final CountDownLatch countDownLatch = new CountDownLatch(60);
         for( int i = 0; i < 50; i++) {
-            threadList.add(new Thread(() -> submitDocumentNTimes(100, testDocument, index)));
+            threadList.add(new Thread(() -> {
+                countDownLatch.countDown();
+                submitDocumentNTimes(100, testDocument, index);
+            }));
         }
         for(int i = 0; i < 10; i++) {
             threadList.add(new Thread(() -> {
                 try {
+                    countDownLatch.countDown();
                     IndexComponent c = testState.unload(index);
                     testState.load(c);
                 } catch (Exception e) {

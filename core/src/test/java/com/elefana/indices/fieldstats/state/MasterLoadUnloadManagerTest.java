@@ -30,6 +30,7 @@ import org.springframework.jdbc.core.RowMapper;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -68,8 +69,10 @@ public class MasterLoadUnloadManagerTest {
     @Test
     public void testConcurrent() throws ElefanaWrongFieldStatsTypeException {
         List<Thread> threads = new ArrayList<>();
+        final CountDownLatch countDownLatch = new CountDownLatch(5);
         for(int i = 0; i < 5; i++){
             threads.add(new Thread(() -> {
+                countDownLatch.countDown();
                 loadUnloadManager.ensureIndicesLoaded(TEST_INDEX);
             }));
         }
@@ -88,13 +91,16 @@ public class MasterLoadUnloadManagerTest {
     @Test
     public void testConcurrentMultipleIndices() throws ElefanaWrongFieldStatsTypeException {
         List<Thread> threads = new ArrayList<>();
+        final CountDownLatch countDownLatch = new CountDownLatch(10);
         for(int i = 0; i < 5; i++){
             threads.add(new Thread(() -> {
+                countDownLatch.countDown();
                 loadUnloadManager.ensureIndicesLoaded(TEST_INDEX);
             }));
         }
         for(int i = 0; i < 5; i++){
             threads.add(new Thread(() -> {
+                countDownLatch.countDown();
                 loadUnloadManager.ensureIndicesLoaded(TEST_INDEX_TWO);
             }));
         }
