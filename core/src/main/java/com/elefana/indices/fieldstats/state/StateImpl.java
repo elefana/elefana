@@ -195,7 +195,6 @@ public class StateImpl implements State{
         final Field field = fieldMap.get(fieldName);
         indexLock.readLock().unlock();
         if(field == null) {
-            LOGGER.info("null field name");
             return null;
         } else {
             return field.getIndexFieldStats(indices);
@@ -209,7 +208,6 @@ public class StateImpl implements State{
         final Field field = fieldMap.get(fieldName);
         indexLock.readLock().unlock();
         if(field == null) {
-            LOGGER.info("null field name");
             return null;
         } else {
             return field.getIndexFieldStats(index);

@@ -59,7 +59,6 @@ public class FieldImpl implements Field {
         for(String s : indices) {
             FieldStats fs = fieldStats.get(s);
             if(fs == null) {
-                LOGGER.info("null field stats for " + s);
                 return null;
             }
             acc = acc.merge(fs);

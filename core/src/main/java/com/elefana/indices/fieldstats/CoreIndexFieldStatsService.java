@@ -144,9 +144,6 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
         GetFieldStatsResponse response = new GetFieldStatsResponse();
         ensureIndicesLoaded(indexPattern);
         List<String> indices = state.compileIndexPattern(indexPattern);
-        for(String index : indices) {
-            System.out.println("MATCHED " + index);
-        }
 
         setResponseShardInfo(response);
 
