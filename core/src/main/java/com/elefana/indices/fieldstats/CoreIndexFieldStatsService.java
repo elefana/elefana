@@ -144,6 +144,9 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
         GetFieldStatsResponse response = new GetFieldStatsResponse();
         ensureIndicesLoaded(indexPattern);
         List<String> indices = state.compileIndexPattern(indexPattern);
+        for(String index : indices) {
+            System.out.println("MATCHED " + index);
+        }
 
         setResponseShardInfo(response);
 
@@ -170,7 +173,6 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
         final GetFieldNamesResponse response = new GetFieldNamesResponse();
         ensureIndicesLoaded(indexPattern);
         List<String> indices = state.compileIndexPattern(indexPattern);
-        LOGGER.info(indices.size() + " indices matched");
 
         for (String index : indices) {
             state.getFieldNames(response.getFieldNames(), index);

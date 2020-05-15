@@ -67,6 +67,38 @@ public class StateImplTest {
     }
 
     @Test
+    public void testMatches() {
+        Assert.assertTrue(StateImpl.matches("*", "messages-logs-2020.05.15"));
+        Assert.assertTrue(StateImpl.matches("messages-logs-*", "messages-logs-2020.05.15"));
+        Assert.assertTrue(StateImpl.matches("messages-logs-2020.05*", "messages-logs-2020.05.15"));
+        Assert.assertTrue(StateImpl.matches("messages-logs-2020.05.14,messages-logs-2020.05.15", "messages-logs-2020.05.15"));
+
+        Assert.assertFalse(StateImpl.matches("messages-log-*", "messages-logs-2020.05.15"));
+        Assert.assertFalse(StateImpl.matches("messages-logs-2020.04*", "messages-logs-2020.05.15"));
+        Assert.assertFalse(StateImpl.matches("messages-logs-2020.04.14,messages-logs-2020.04.15", "messages-logs-2020.05.15"));
+    }
+
+    @Test
+    public void testCompileIndexPattern() {
+        testState.getIndex("messages-logs-2020.05.14");
+        testState.getIndex("messages-logs-2020.05.15");
+        testState.getIndex("messages-logs-2020.05.16");
+        testState.getIndex("messages-logs-2020.05.17");
+
+        List<String> result = testState.compileIndexPattern("messages-logs*");
+        Assert.assertEquals(4, result.size());
+        Assert.assertTrue(result.contains("messages-logs-2020.05.14"));
+        Assert.assertTrue(result.contains("messages-logs-2020.05.15"));
+        Assert.assertTrue(result.contains("messages-logs-2020.05.16"));
+        Assert.assertTrue(result.contains("messages-logs-2020.05.17"));
+
+        result = testState.compileIndexPattern("messages-logs-2020.05.14,messages-logs-2020.05.15");
+        Assert.assertEquals(2, result.size());
+        Assert.assertTrue(result.contains("messages-logs-2020.05.14"));
+        Assert.assertTrue(result.contains("messages-logs-2020.05.15"));
+    }
+
+    @Test
     public void testSubmitDocument() {
         CoreFieldStatsJob job = CoreFieldStatsJob.allocate(testState, loadUnloadManager, TEST_INDEX);
         job.addDocument(testDocument);

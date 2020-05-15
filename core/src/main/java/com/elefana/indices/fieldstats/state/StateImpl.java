@@ -269,7 +269,7 @@ public class StateImpl implements State{
     }
 
     public static boolean matches(String pattern, String index) {
-        if(pattern.contains(",")) {
+        if(!pattern.contains(",")) {
             pattern = pattern.replace(".", "\\.");
             pattern = pattern.replace("-", "\\-");
             pattern = pattern.replace("*", "(.*)");

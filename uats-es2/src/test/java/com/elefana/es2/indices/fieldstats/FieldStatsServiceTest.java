@@ -72,12 +72,12 @@ public class FieldStatsServiceTest {
         submitDocumentNTimes(totalEmptyFieldDocuments, testDocumentNoBool, index, type);
         submitDocumentNTimes(totalDocuments - totalEmptyFieldDocuments, testDocument, index, type);
 
-        getFieldStats(index, "string", false)
+        getFieldStats(index, index,"string", false)
                 .body("_shards.successful", equalTo(1))
                 .body("indices." + index + ".fields.string.max_doc", equalTo(totalDocuments))
                 .body("indices." + index + ".fields.string.doc_count", equalTo(totalDocuments));
 
-        getFieldStats(index, "bool", false)
+        getFieldStats(index, index,"bool", false)
                 .body("_shards.successful", equalTo(1))
                 .body("indices." + index + ".fields.bool.max_doc", equalTo(totalDocuments))
                 .body("indices." + index + ".fields.bool.doc_count", equalTo(totalEmptyFieldDocuments))
@@ -103,7 +103,7 @@ public class FieldStatsServiceTest {
                 .statusCode(200);
         submitDocumentNTimes(documentsAfterDelete, testDocument, index, type);
 
-        getFieldStats(index, "string", false)
+        getFieldStats(index,  index,"string", false)
                 .body("_shards.successful", equalTo(1))
                 .body("indices." + index + ".fields.string.max_doc", equalTo(documentsAfterDelete))
                 .body("indices." + index + ".fields.string.doc_count", equalTo(documentsAfterDelete))
@@ -130,13 +130,48 @@ public class FieldStatsServiceTest {
 
         waitForBulkIngest(totalDocuments, index);
 
-        ValidatableResponse response = getFieldStats(index, "string", false)
+        ValidatableResponse response = getFieldStats(index, index,"string", false);
+        while(response.extract().jsonPath().getInt("indices." + index + ".fields.string.max_doc") != totalDocuments) {
+            try {
+                Thread.sleep(1000);
+            } catch (Exception e) {}
+            response = getFieldStats(index, index, "string", false).log().all();
+        }
+
+        response.body("_shards.successful", equalTo(1))
+                .body("indices." + index + ".fields.string.max_doc", equalTo(totalDocuments))
+                .body("indices." + index + ".fields.string.doc_count", equalTo(totalDocuments))
+                .body("indices." + index + ".fields.string.sum_doc_freq", equalTo(totalDocuments * 2));
+    }
+
+    @Test(timeout=60000)
+    public void testBulkIngestPatternMatch() {
+        final int totalDocuments = PsqlBulkIngestService.MINIMUM_BULK_SIZE + RANDOM.nextInt(PsqlBulkIngestService.MINIMUM_BULK_SIZE);
+        final String index = "logs-" + UUID.randomUUID().toString();
+        final String pattern = index.substring(0, index.length() - 2) + "*";
+        final String type = "test";
+
+        TestUtils.disableMappingForIndex(index);
+
+        given()
+                .request()
+                .body(generateBulkRequest(index, type, testDocument, totalDocuments))
+                .when()
+                .post("/_bulk")
+                .then()
+                .statusCode(200)
+                .body("errors", equalTo(false))
+                .body("items.size()", equalTo(totalDocuments));
+
+        waitForBulkIngest(totalDocuments, index);
+
+        ValidatableResponse response = getFieldStats(pattern, index, "string", false)
                 .log().all();
         while(response.extract().jsonPath().getInt("indices." + index + ".fields.string.max_doc") != totalDocuments) {
             try {
                 Thread.sleep(1000);
             } catch (Exception e) {}
-            response = getFieldStats(index, "string", false).log().all();
+            response = getFieldStats(pattern, index, "string", false).log().all();
         }
 
         response.body("_shards.successful", equalTo(1))
@@ -193,12 +228,12 @@ public class FieldStatsServiceTest {
         }
     }
 
-    private ValidatableResponse getFieldStats(String index, String field, boolean clusterLevel) {
+    private ValidatableResponse getFieldStats(String pattern, String index, String field, boolean clusterLevel) {
         ValidatableResponse validatableResponse = given()
                 .request()
                 .body("{\"fields\":[\"" + field + "\"]}")
                 .when()
-                .post("/" + index + "/_field_stats?level=" + (clusterLevel ? "cluster" : "indices"))
+                .post("/" + pattern + "/_field_stats?level=" + (clusterLevel ? "cluster" : "indices"))
                 .then()
                 .statusCode(200);
         Map jsonData = validatableResponse.extract().body().jsonPath().getMap("indices." + index);
@@ -210,7 +245,7 @@ public class FieldStatsServiceTest {
                     .request()
                     .body("{\"fields\":[\"" + field + "\"]}")
                     .when()
-                    .post("/" + index + "/_field_stats?level=" + (clusterLevel ? "cluster" : "indices"))
+                    .post("/" + pattern + "/_field_stats?level=" + (clusterLevel ? "cluster" : "indices"))
                     .then()
                     .statusCode(200);
             jsonData = validatableResponse.extract().body().jsonPath().getMap("indices." + index);
