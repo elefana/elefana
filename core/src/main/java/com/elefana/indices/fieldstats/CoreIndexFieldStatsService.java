@@ -170,6 +170,7 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
         final GetFieldNamesResponse response = new GetFieldNamesResponse();
         ensureIndicesLoaded(indexPattern);
         List<String> indices = state.compileIndexPattern(indexPattern);
+        LOGGER.info(indices.size() + " indices matched");
 
         for (String index : indices) {
             state.getFieldNames(response.getFieldNames(), index);
