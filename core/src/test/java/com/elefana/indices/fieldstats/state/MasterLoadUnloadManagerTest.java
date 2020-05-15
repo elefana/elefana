@@ -63,7 +63,7 @@ public class MasterLoadUnloadManagerTest {
         when(testState.getIndex(eq(TEST_INDEX))).thenReturn(a);
         when(testState.getIndex(eq(TEST_INDEX_TWO))).thenReturn(b);
 
-        loadUnloadManager = new MasterLoadUnloadManager(jdbcTemplate, testState, 10, 5);
+        loadUnloadManager = new MasterLoadUnloadManager(jdbcTemplate, testState, true,10, 5);
     }
 
     @Test
