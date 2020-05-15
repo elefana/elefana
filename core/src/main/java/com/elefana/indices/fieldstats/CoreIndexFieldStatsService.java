@@ -105,7 +105,7 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
 
     protected LoadUnloadManager createLoadUnloadManager(boolean master, long indexTtlMinutes, long indexSnapshotMinutes) {
         if(master) {
-            return new MasterLoadUnloadManager(jdbcTemplate, state, indexTtlMinutes, indexSnapshotMinutes);
+            return new MasterLoadUnloadManager(jdbcTemplate, state, master, indexTtlMinutes, indexSnapshotMinutes);
         }
         return new NoopLoadUnloadManager();
     }
