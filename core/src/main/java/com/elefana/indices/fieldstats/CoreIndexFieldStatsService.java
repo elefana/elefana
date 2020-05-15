@@ -81,7 +81,7 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
         loadUnloadManager = createLoadUnloadManager(nodeSettingsService.isMasterNode(), indexTtlMinutes, indexSnapshotMinutes);
 
         final int requestThreadNumber = environment.getProperty("elefana.service.fieldStats.requestThreads", Integer.class, 2);
-        requestExecutorService = Executors.newFixedThreadPool(requestThreadNumber, new NamedThreadFactory("fieldStatsService-requestExecutor"));
+        requestExecutorService = Executors.newFixedThreadPool(requestThreadNumber, new NamedThreadFactory("elefana-fieldStatsService-requestExecutor"));
     }
 
     @PreDestroy

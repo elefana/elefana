@@ -235,29 +235,29 @@ public class MasterLoadUnloadManager implements LoadUnloadManager {
 		loadUnloadLock.writeLock().lock();
 		if(missingIndices.contains(indexName)){
 			loadUnloadLock.writeLock().unlock();
-			// the database can only store one IndexComponent
-			throw new IllegalLoadingOperation();
+			return;
 		}
 
 		try {
 			IndexComponent indexComponent = state.unload(indexName);
-
 			missingIndices.add(indexName);
 
-			long timestamp = System.currentTimeMillis();
-			jdbcTemplate.update("INSERT INTO elefana_field_stats_index(_indexname, _maxdocs, _timestamp) VALUES (?, ?, ?) ON CONFLICT (_indexname) DO UPDATE SET " +
-					"_maxdocs = excluded._maxdocs, _timestamp = excluded._timestamp", indexComponent.name, indexComponent.maxDocs, timestamp);
+			if(indexComponent != null) {
+				long timestamp = System.currentTimeMillis();
+				jdbcTemplate.update("INSERT INTO elefana_field_stats_index(_indexname, _maxdocs, _timestamp) VALUES (?, ?, ?) ON CONFLICT (_indexname) DO UPDATE SET " +
+						"_maxdocs = excluded._maxdocs, _timestamp = excluded._timestamp", indexComponent.name, indexComponent.maxDocs, timestamp);
 
-			indexComponent.fields.forEach((k, v) -> {
-				jdbcTemplate.update(
-						"INSERT INTO elefana_field_stats_fieldstats(_fieldname, _indexname, _doccount, _sumdocfreq, _sumtotaltermfreq, _minvalue, _maxvalue) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT ON CONSTRAINT _fieldstats_pk DO UPDATE SET _minvalue = excluded._minvalue, _maxvalue = excluded._maxvalue, _doccount = excluded._doccount, _sumdocfreq = excluded._sumdocfreq, _sumtotaltermfreq = excluded._sumtotaltermfreq",
-						k, indexComponent.name, v.docCount, v.sumDocFreq, v.sumTotalTermFreq, v.minValue, v.maxValue
-				);
-				jdbcTemplate.update(
-						"INSERT INTO elefana_field_stats_field (_fieldname, _type) VALUES (?, ?) ON CONFLICT (_fieldname) DO UPDATE SET _type = excluded._type",
-						k, v.type.getName()
-				);
-			});
+				indexComponent.fields.forEach((k, v) -> {
+					jdbcTemplate.update(
+							"INSERT INTO elefana_field_stats_fieldstats(_fieldname, _indexname, _doccount, _sumdocfreq, _sumtotaltermfreq, _minvalue, _maxvalue) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT ON CONSTRAINT _fieldstats_pk DO UPDATE SET _minvalue = excluded._minvalue, _maxvalue = excluded._maxvalue, _doccount = excluded._doccount, _sumdocfreq = excluded._sumdocfreq, _sumtotaltermfreq = excluded._sumtotaltermfreq",
+							k, indexComponent.name, v.docCount, v.sumDocFreq, v.sumTotalTermFreq, v.minValue, v.maxValue
+					);
+					jdbcTemplate.update(
+							"INSERT INTO elefana_field_stats_field (_fieldname, _type) VALUES (?, ?) ON CONFLICT (_fieldname) DO UPDATE SET _type = excluded._type",
+							k, v.type.getName()
+					);
+				});
+			}
 		} finally {
 			loadUnloadLock.writeLock().unlock();
 		}

@@ -205,6 +205,7 @@ project(":" + rootProject.name + "-api") {
 
 project(":" + rootProject.name + "-core") {
 	apply plugin: "me.champeau.gradle.jmh"
+	apply plugin: "jacoco"
 
 	description = 'Elastic HTTP API for PostgreSQL'
 	
@@ -253,6 +254,19 @@ project(":" + rootProject.name + "-core") {
 		threads = 4
 		include = ['Psql']
 		jvmArgs = ['-Djmh.separateClasspathJAR=true', '-Xmx1024m']
+	}
+
+	jacocoTestReport {
+		group = "Reporting"
+		reports {
+			xml.enabled true
+			csv.enabled false
+			html.destination file("${buildDir}/reports/coverage")
+		}
+	}
+
+	test {
+		finalizedBy jacocoTestReport // report is always generated after tests run
 	}
 
 	task copyToRelease(type: Copy, dependsOn: bootJar) {

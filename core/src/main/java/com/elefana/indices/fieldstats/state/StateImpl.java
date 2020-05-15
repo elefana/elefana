@@ -70,15 +70,22 @@ public class StateImpl implements State{
     @Override
     public void deleteIndex(String name) {
         indexLock.writeLock().lock();
-        deleteLockedIndex(name);
-        indexLock.writeLock().unlock();
+        try {
+            deleteLockedIndex(name);
+        } finally {
+            indexLock.writeLock().unlock();
+        }
     }
 
     private void deleteLockedIndex(String indexName) {
+        if(!indexMap.containsKey(indexName)) {
+            return;
+        }
+        final Index index = getIndex(indexName);
         fieldMap.forEach((fieldName, field) -> {
             field.deleteIndexFieldStats(indexName);
         });
-        getIndex(indexName).delete();
+        index.delete();
         indexMap.remove(indexName);
     }
 
@@ -119,20 +126,28 @@ public class StateImpl implements State{
     public IndexComponent unload(String indexName) {
         indexLock.writeLock().lock();
 
-        Index index = getIndex(indexName);
-        IndexComponent indexComponent = new IndexComponent(indexName, index.getMaxDocuments());
+        if(!indexMap.containsKey(indexName)) {
+            indexLock.writeLock().unlock();
+            return null;
+        }
 
-        fieldMap.forEach((name, field) -> {
-            if(field.hasIndexFieldStats(indexName)) {
-                FieldStats fieldStats = field.getIndexFieldStats(indexName);
-                FieldComponent fieldComponent = FieldComponent.getFieldComponent(fieldStats, field.getFieldType());
-                indexComponent.fields.put(name, fieldComponent);
-            }
-        });
+        final IndexComponent indexComponent;
+        try {
+            final Index index = getIndex(indexName);
+            indexComponent = new IndexComponent(indexName, index.getMaxDocuments());
 
-        deleteLockedIndex(indexName);
+            fieldMap.forEach((name, field) -> {
+                if(field.hasIndexFieldStats(indexName)) {
+                    FieldStats fieldStats = field.getIndexFieldStats(indexName);
+                    FieldComponent fieldComponent = FieldComponent.getFieldComponent(fieldStats, field.getFieldType());
+                    indexComponent.fields.put(name, fieldComponent);
+                }
+            });
 
-        indexLock.writeLock().unlock();
+            deleteLockedIndex(indexName);
+        } finally {
+            indexLock.writeLock().unlock();
+        }
         return indexComponent;
     }
 
@@ -140,17 +155,26 @@ public class StateImpl implements State{
     public IndexComponent snapshot(String indexName) {
         indexLock.writeLock().lock();
 
-        Index index = getIndex(indexName);
-        IndexComponent indexComponent = new IndexComponent(indexName, index.getMaxDocuments());
+        if(!indexMap.containsKey(indexName)) {
+            indexLock.writeLock().unlock();
+            return null;
+        }
 
-        fieldMap.forEach((name, field) -> {
-            if(field.hasIndexFieldStats(indexName)) {
-                FieldStats fieldStats = field.getIndexFieldStats(indexName);
-                FieldComponent fieldComponent = FieldComponent.getFieldComponent(fieldStats, field.getFieldType());
-                indexComponent.fields.put(name, fieldComponent);
-            }
-        });
-        indexLock.writeLock().unlock();
+        final IndexComponent indexComponent;
+        try {
+            Index index = getIndex(indexName);
+            indexComponent = new IndexComponent(indexName, index.getMaxDocuments());
+
+            fieldMap.forEach((name, field) -> {
+                if(field.hasIndexFieldStats(indexName)) {
+                    FieldStats fieldStats = field.getIndexFieldStats(indexName);
+                    FieldComponent fieldComponent = FieldComponent.getFieldComponent(fieldStats, field.getFieldType());
+                    indexComponent.fields.put(name, fieldComponent);
+                }
+            });
+        } finally {
+            indexLock.writeLock().unlock();
+        }
         return indexComponent;
     }
 
