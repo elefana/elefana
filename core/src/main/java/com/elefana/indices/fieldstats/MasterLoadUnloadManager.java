@@ -56,13 +56,27 @@ public class MasterLoadUnloadManager implements LoadUnloadManager {
 	private Map<String, Long> lastIndexUse = new ConcurrentHashMap<>();
 	private ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("elefana-fieldStats-loadUnloadManager"));
 
-	public MasterLoadUnloadManager(JdbcTemplate jdbcTemplate, State state, long ttlMinutes) {
+	public MasterLoadUnloadManager(JdbcTemplate jdbcTemplate, State state, long ttlMinutes, long snapshotMinutes) {
 		this.jdbcTemplate = jdbcTemplate;
 		this.state = state;
 		this.indexTtl = ttlMinutes * 60 * 1000;
 
 		missingIndices.addAll(jdbcTemplate.queryForList("SELECT _indexname FROM elefana_field_stats_index", String.class));
 		scheduledExecutorService.scheduleAtFixedRate(this::unloadUnusedIndices, 0L, Math.max(ttlMinutes / 2, 1), TimeUnit.MINUTES);
+		scheduledExecutorService.scheduleAtFixedRate(this::snapshot, 0L, Math.max(snapshotMinutes, 1), TimeUnit.MINUTES);
+	}
+
+	private void snapshot() {
+		List<String> indices = state.compileIndexPattern("*");
+		indices.forEach(index -> {
+			loadUnloadLock.readLock().lock();
+			if(missingIndices.contains(index)){
+				loadUnloadLock.readLock().unlock();
+			} else {
+				loadUnloadLock.readLock().unlock();
+				snapshotIndex(index);
+			}
+		});
 	}
 
 	private void unloadUnusedIndices() {
@@ -188,6 +202,33 @@ public class MasterLoadUnloadManager implements LoadUnloadManager {
 		}
 	}
 
+	private void snapshotIndex(String indexName) {
+		loadUnloadLock.writeLock().lock();
+		if(missingIndices.contains(indexName)) {
+			loadUnloadLock.writeLock().unlock();
+			return;
+		}
+		try {
+			IndexComponent indexComponent = state.snapshot(indexName);
+			long timestamp = System.currentTimeMillis();
+			jdbcTemplate.update("INSERT INTO elefana_field_stats_index(_indexname, _maxdocs, _timestamp) VALUES (?, ?, ?) ON CONFLICT (_indexname) DO UPDATE SET " +
+					"_maxdocs = excluded._maxdocs, _timestamp = excluded._timestamp", indexComponent.name, indexComponent.maxDocs, timestamp);
+
+			indexComponent.fields.forEach((k, v) -> {
+				jdbcTemplate.update(
+						"INSERT INTO elefana_field_stats_fieldstats(_fieldname, _indexname, _doccount, _sumdocfreq, _sumtotaltermfreq, _minvalue, _maxvalue) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT ON CONSTRAINT _fieldstats_pk DO UPDATE SET _minvalue = excluded._minvalue, _maxvalue = excluded._maxvalue, _doccount = excluded._doccount, _sumdocfreq = excluded._sumdocfreq, _sumtotaltermfreq = excluded._sumtotaltermfreq",
+						k, indexComponent.name, v.docCount, v.sumDocFreq, v.sumTotalTermFreq, v.minValue, v.maxValue
+				);
+				jdbcTemplate.update(
+						"INSERT INTO elefana_field_stats_field (_fieldname, _type) VALUES (?, ?) ON CONFLICT (_fieldname) DO UPDATE SET _type = excluded._type",
+						k, v.type.getName()
+				);
+			});
+		} finally {
+			loadUnloadLock.writeLock().unlock();
+		}
+	}
+
 	private void unloadIndex(String indexName) {
 		loadUnloadLock.writeLock().lock();
 		if(missingIndices.contains(indexName)){
@@ -196,25 +237,28 @@ public class MasterLoadUnloadManager implements LoadUnloadManager {
 			throw new IllegalLoadingOperation();
 		}
 
-		IndexComponent indexComponent = state.unload(indexName);
+		try {
+			IndexComponent indexComponent = state.unload(indexName);
 
-		missingIndices.add(indexName);
+			missingIndices.add(indexName);
 
-		long timestamp = System.currentTimeMillis();
-		jdbcTemplate.update("INSERT INTO elefana_field_stats_index(_indexname, _maxdocs, _timestamp) VALUES (?, ?, ?) ON CONFLICT (_indexname) DO UPDATE SET " +
-				"_maxdocs = excluded._maxdocs, _timestamp = excluded._timestamp", indexComponent.name, indexComponent.maxDocs, timestamp);
+			long timestamp = System.currentTimeMillis();
+			jdbcTemplate.update("INSERT INTO elefana_field_stats_index(_indexname, _maxdocs, _timestamp) VALUES (?, ?, ?) ON CONFLICT (_indexname) DO UPDATE SET " +
+					"_maxdocs = excluded._maxdocs, _timestamp = excluded._timestamp", indexComponent.name, indexComponent.maxDocs, timestamp);
 
-		indexComponent.fields.forEach((k, v) -> {
-			jdbcTemplate.update(
-					"INSERT INTO elefana_field_stats_fieldstats(_fieldname, _indexname, _doccount, _sumdocfreq, _sumtotaltermfreq, _minvalue, _maxvalue) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT ON CONSTRAINT _fieldstats_pk DO UPDATE SET _minvalue = excluded._minvalue, _maxvalue = excluded._maxvalue, _doccount = excluded._doccount, _sumdocfreq = excluded._sumdocfreq, _sumtotaltermfreq = excluded._sumtotaltermfreq",
-					k, indexComponent.name, v.docCount, v.sumDocFreq, v.sumTotalTermFreq, v.minValue, v.maxValue
-			);
-			jdbcTemplate.update(
-					"INSERT INTO elefana_field_stats_field (_fieldname, _type) VALUES (?, ?) ON CONFLICT (_fieldname) DO UPDATE SET _type = excluded._type",
-					k, v.type.getName()
-			);
-		});
-		loadUnloadLock.writeLock().unlock();
+			indexComponent.fields.forEach((k, v) -> {
+				jdbcTemplate.update(
+						"INSERT INTO elefana_field_stats_fieldstats(_fieldname, _indexname, _doccount, _sumdocfreq, _sumtotaltermfreq, _minvalue, _maxvalue) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT ON CONSTRAINT _fieldstats_pk DO UPDATE SET _minvalue = excluded._minvalue, _maxvalue = excluded._maxvalue, _doccount = excluded._doccount, _sumdocfreq = excluded._sumdocfreq, _sumtotaltermfreq = excluded._sumtotaltermfreq",
+						k, indexComponent.name, v.docCount, v.sumDocFreq, v.sumTotalTermFreq, v.minValue, v.maxValue
+				);
+				jdbcTemplate.update(
+						"INSERT INTO elefana_field_stats_field (_fieldname, _type) VALUES (?, ?) ON CONFLICT (_fieldname) DO UPDATE SET _type = excluded._type",
+						k, v.type.getName()
+				);
+			});
+		} finally {
+			loadUnloadLock.writeLock().unlock();
+		}
 	}
 
 	public void deleteIndex(String index) {

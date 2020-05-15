@@ -137,6 +137,24 @@ public class StateImpl implements State{
     }
 
     @Override
+    public IndexComponent snapshot(String indexName) {
+        indexLock.writeLock().lock();
+
+        Index index = getIndex(indexName);
+        IndexComponent indexComponent = new IndexComponent(indexName, index.getMaxDocuments());
+
+        fieldMap.forEach((name, field) -> {
+            if(field.hasIndexFieldStats(indexName)) {
+                FieldStats fieldStats = field.getIndexFieldStats(indexName);
+                FieldComponent fieldComponent = FieldComponent.getFieldComponent(fieldStats, field.getFieldType());
+                indexComponent.fields.put(name, fieldComponent);
+            }
+        });
+        indexLock.writeLock().unlock();
+        return indexComponent;
+    }
+
+    @Override
     public Index getIndex(String indexName) {
         indexLock.readLock().lock();
         while(!indexMap.containsKey(indexName)) {

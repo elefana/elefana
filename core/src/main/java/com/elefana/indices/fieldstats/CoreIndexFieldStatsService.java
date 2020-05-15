@@ -77,7 +77,8 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
         state = createState(environment);
 
         long indexTtlMinutes = environment.getProperty("elefana.service.fieldStats.cache.ttlMinutes", Integer.class, 10);
-        loadUnloadManager = createLoadUnloadManager(nodeSettingsService.isMasterNode(), indexTtlMinutes);
+        long indexSnapshotMinutes = environment.getProperty("elefana.service.fieldStats.cache.snapshotMinutes", Integer.class, 5);
+        loadUnloadManager = createLoadUnloadManager(nodeSettingsService.isMasterNode(), indexTtlMinutes, indexSnapshotMinutes);
 
         final int requestThreadNumber = environment.getProperty("elefana.service.fieldStats.requestThreads", Integer.class, 2);
         requestExecutorService = Executors.newFixedThreadPool(requestThreadNumber, new NamedThreadFactory("fieldStatsService-requestExecutor"));
@@ -102,9 +103,9 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
         return new StateImpl(environment);
     }
 
-    protected LoadUnloadManager createLoadUnloadManager(boolean master, long indexTtlMinutes) {
+    protected LoadUnloadManager createLoadUnloadManager(boolean master, long indexTtlMinutes, long indexSnapshotMinutes) {
         if(master) {
-            return new MasterLoadUnloadManager(jdbcTemplate, state, indexTtlMinutes);
+            return new MasterLoadUnloadManager(jdbcTemplate, state, indexTtlMinutes, indexSnapshotMinutes);
         }
         return new NoopLoadUnloadManager();
     }
