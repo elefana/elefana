@@ -373,6 +373,7 @@ public class StateImplTest {
         Assert.assertEquals("hello", string.minValue);
         Assert.assertEquals("there", string.maxValue);
         Assert.assertFalse(testState.isIndexLoaded(TEST_INDEX));
+        Assert.assertFalse(testState.isIndexFieldsLoaded(TEST_INDEX));
     }
 
     @Test(timeout=30000)

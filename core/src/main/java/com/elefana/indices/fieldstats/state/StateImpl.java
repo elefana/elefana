@@ -308,6 +308,15 @@ public class StateImpl implements State{
         return result;
     }
 
+    public boolean isIndexFieldsLoaded(String index) {
+        for(Field field : fieldMap.values()) {
+            if(field.hasIndexFieldStats(index)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static boolean matches(String pattern, String index) {
         if(!pattern.contains(",")) {
             pattern = pattern.replace(".", "\\.");
