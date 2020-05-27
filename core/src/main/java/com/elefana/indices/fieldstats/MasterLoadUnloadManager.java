@@ -296,4 +296,11 @@ public class MasterLoadUnloadManager implements LoadUnloadManager {
 			}
 		});
 	}
+
+	public boolean isMissingIndex(String index) {
+		loadUnloadLock.readLock().lock();
+		final boolean result = missingIndices.contains(index);
+		loadUnloadLock.readLock().unlock();
+		return result;
+	}
 }

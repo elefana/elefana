@@ -23,6 +23,7 @@ import com.elefana.indices.fieldstats.state.index.Index;
 import com.elefana.indices.fieldstats.state.index.IndexComponent;
 import com.elefana.indices.fieldstats.state.index.IndexImpl;
 import com.google.common.collect.ImmutableList;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -86,6 +87,7 @@ public class MasterLoadUnloadManagerTest {
         });
 
         verify(testState, times(1)).load(any());
+        Assert.assertTrue(loadUnloadManager.isIndexLoaded(TEST_INDEX));
     }
 
     @Test
@@ -116,6 +118,8 @@ public class MasterLoadUnloadManagerTest {
         verify(testState, times(1)).load(argThat(ic -> ic.name.equals(TEST_INDEX)));
 
         verify(testState, times(1)).load(argThat(ic -> ic.name.equals(TEST_INDEX_TWO)));
+        Assert.assertTrue(loadUnloadManager.isIndexLoaded(TEST_INDEX));
+        Assert.assertTrue(loadUnloadManager.isIndexLoaded(TEST_INDEX_TWO));
     }
 
     @Test
