@@ -266,6 +266,9 @@ public class CoreIndexUtils implements IndexUtils {
 			jsonPathCache.put(timestampPath, path);
 		}
 		final JsonNode json = JsonUtils.extractJsonNode(document, path);
+		if (json == null) {
+			return System.currentTimeMillis();
+		}
 		if (!json.isNumber()) {
 			return System.currentTimeMillis();
 		}
