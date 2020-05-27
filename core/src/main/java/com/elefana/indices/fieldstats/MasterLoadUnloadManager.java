@@ -205,9 +205,9 @@ public class MasterLoadUnloadManager implements LoadUnloadManager {
 	}
 
 	private void snapshotIndex(String indexName) {
-		loadUnloadLock.writeLock().lock();
+		loadUnloadLock.readLock().lock();
 		if(missingIndices.contains(indexName)) {
-			loadUnloadLock.writeLock().unlock();
+			loadUnloadLock.readLock().unlock();
 			return;
 		}
 		try {
@@ -227,7 +227,7 @@ public class MasterLoadUnloadManager implements LoadUnloadManager {
 				);
 			});
 		} finally {
-			loadUnloadLock.writeLock().unlock();
+			loadUnloadLock.readLock().unlock();
 		}
 	}
 
@@ -238,29 +238,32 @@ public class MasterLoadUnloadManager implements LoadUnloadManager {
 			return;
 		}
 
+		final IndexComponent indexComponent;
 		try {
-			IndexComponent indexComponent = state.unload(indexName);
+			indexComponent = state.unload(indexName);
 			missingIndices.add(indexName);
-
-			if(indexComponent != null) {
-				long timestamp = System.currentTimeMillis();
-				jdbcTemplate.update("INSERT INTO elefana_field_stats_index(_indexname, _maxdocs, _timestamp) VALUES (?, ?, ?) ON CONFLICT (_indexname) DO UPDATE SET " +
-						"_maxdocs = excluded._maxdocs, _timestamp = excluded._timestamp", indexComponent.name, indexComponent.maxDocs, timestamp);
-
-				indexComponent.fields.forEach((k, v) -> {
-					jdbcTemplate.update(
-							"INSERT INTO elefana_field_stats_fieldstats(_fieldname, _indexname, _doccount, _sumdocfreq, _sumtotaltermfreq, _minvalue, _maxvalue) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT ON CONSTRAINT _fieldstats_pk DO UPDATE SET _minvalue = excluded._minvalue, _maxvalue = excluded._maxvalue, _doccount = excluded._doccount, _sumdocfreq = excluded._sumdocfreq, _sumtotaltermfreq = excluded._sumtotaltermfreq",
-							k, indexComponent.name, v.docCount, v.sumDocFreq, v.sumTotalTermFreq, v.minValue, v.maxValue
-					);
-					jdbcTemplate.update(
-							"INSERT INTO elefana_field_stats_field (_fieldname, _type) VALUES (?, ?) ON CONFLICT (_fieldname) DO UPDATE SET _type = excluded._type",
-							k, v.type.getName()
-					);
-				});
-			}
 		} finally {
 			loadUnloadLock.writeLock().unlock();
 		}
+
+		if(indexComponent == null) {
+			return;
+		}
+
+		long timestamp = System.currentTimeMillis();
+		jdbcTemplate.update("INSERT INTO elefana_field_stats_index(_indexname, _maxdocs, _timestamp) VALUES (?, ?, ?) ON CONFLICT (_indexname) DO UPDATE SET " +
+				"_maxdocs = excluded._maxdocs, _timestamp = excluded._timestamp", indexComponent.name, indexComponent.maxDocs, timestamp);
+
+		indexComponent.fields.forEach((k, v) -> {
+			jdbcTemplate.update(
+					"INSERT INTO elefana_field_stats_fieldstats(_fieldname, _indexname, _doccount, _sumdocfreq, _sumtotaltermfreq, _minvalue, _maxvalue) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT ON CONSTRAINT _fieldstats_pk DO UPDATE SET _minvalue = excluded._minvalue, _maxvalue = excluded._maxvalue, _doccount = excluded._doccount, _sumdocfreq = excluded._sumdocfreq, _sumtotaltermfreq = excluded._sumtotaltermfreq",
+					k, indexComponent.name, v.docCount, v.sumDocFreq, v.sumTotalTermFreq, v.minValue, v.maxValue
+			);
+			jdbcTemplate.update(
+					"INSERT INTO elefana_field_stats_field (_fieldname, _type) VALUES (?, ?) ON CONFLICT (_fieldname) DO UPDATE SET _type = excluded._type",
+					k, v.type.getName()
+			);
+		});
 	}
 
 	public void deleteIndex(String index) {
@@ -269,13 +272,14 @@ public class MasterLoadUnloadManager implements LoadUnloadManager {
 			state.deleteIndex(index);
 			missingIndices.remove(index);
 			lastIndexUse.remove(index);
-			jdbcTemplate.update("DELETE FROM elefana_field_stats_index WHERE _indexname = ?", index);
-			jdbcTemplate.update("DELETE FROM elefana_field_stats_fieldstats WHERE _indexname = ?", index);
-			jdbcTemplate.update("DELETE FROM elefana_field_stats_field field WHERE (SELECT count(_fieldname) FROM elefana_field_stats_fieldstats\n" +
-					"ts WHERE _fieldname = field._fieldname ) = 0");
 		} finally {
 			loadUnloadLock.writeLock().unlock();
 		}
+
+		jdbcTemplate.update("DELETE FROM elefana_field_stats_index WHERE _indexname = ?", index);
+		jdbcTemplate.update("DELETE FROM elefana_field_stats_fieldstats WHERE _indexname = ?", index);
+		jdbcTemplate.update("DELETE FROM elefana_field_stats_field field WHERE (SELECT count(_fieldname) FROM elefana_field_stats_fieldstats\n" +
+				"ts WHERE _fieldname = field._fieldname ) = 0");
 	}
 
 	public void unloadAll() {
