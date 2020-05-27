@@ -76,7 +76,7 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
     public void postConstruct() {
         state = createState(environment);
 
-        long indexTtlMinutes = environment.getProperty("elefana.service.fieldStats.cache.ttlMinutes", Integer.class, 10);
+        long indexTtlMinutes = environment.getProperty("elefana.service.fieldStats.cache.ttlMinutes", Integer.class, 60);
         long indexSnapshotMinutes = environment.getProperty("elefana.service.fieldStats.cache.snapshotMinutes", Integer.class, 5);
         loadUnloadManager = createLoadUnloadManager(nodeSettingsService.isMasterNode(), indexTtlMinutes, indexSnapshotMinutes);
 
