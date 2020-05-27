@@ -393,6 +393,9 @@ public class StateImplTest {
                 try {
                     countDownLatch.countDown();
                     IndexComponent c = testState.unload(index);
+                    if(c == null) {
+                        return;
+                    }
                     testState.load(c);
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -418,6 +421,7 @@ public class StateImplTest {
             try {
                 Thread.sleep(100);
             } catch (Exception e) {}
+            System.out.println(result.getDocumentCount() + " " + expectedDocCount);
         }
         Assert.assertEquals(expectedDocCount, result.getDocumentCount());
         Assert.assertEquals(expectedSumDocFrequency, result.getSumDocumentFrequency());

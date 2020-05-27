@@ -45,7 +45,7 @@ public class StateImpl implements State{
     private final Map<String, Index> indexMap = new HashMap<>();
     private final Map<String, Field> fieldMap = new ConcurrentHashMap<>();
 
-    private final ReadWriteLock indexLock = new ReentrantReadWriteLock();
+    private final ReadWriteLock indexMapLock = new ReentrantReadWriteLock();
     private Cache<String, Set<String>> fieldNamesCache;
 
     public StateImpl(Environment environment) {
@@ -69,29 +69,33 @@ public class StateImpl implements State{
 
     @Override
     public void deleteIndex(String name) {
-        indexLock.writeLock().lock();
-        try {
-            deleteLockedIndex(name);
-        } finally {
-            indexLock.writeLock().unlock();
-        }
-    }
-
-    private void deleteLockedIndex(String indexName) {
-        if(!indexMap.containsKey(indexName)) {
+        if(!isIndexLoaded(name)) {
             return;
         }
-        final Index index = getIndex(indexName);
-        fieldMap.forEach((fieldName, field) -> {
-            field.deleteIndexFieldStats(indexName);
-        });
-        index.delete();
-        indexMap.remove(indexName);
+        final Index index = getIndex(name, false);
+        if(index == null) {
+            return;
+        }
+        deleteLockedIndex(name, index);
+    }
+
+    private void deleteLockedIndex(final String indexName, final Index index) {
+        indexMapLock.writeLock().lock();
+
+        try {
+            fieldMap.forEach((fieldName, field) -> {
+                field.deleteIndexFieldStats(indexName);
+            });
+            index.delete();
+            indexMap.remove(indexName);
+        } finally {
+            indexMapLock.writeLock().unlock();
+        }
     }
 
     @Override
     public void load(IndexComponent indexComponent) throws ElefanaWrongFieldStatsTypeException {
-        indexLock.writeLock().lock();
+        indexMapLock.writeLock().lock();
         try {
             indexMap.compute(indexComponent.name, (name, index) -> {
                 if (index == null) {
@@ -118,45 +122,47 @@ public class StateImpl implements State{
                 });
             });
         } finally {
-            indexLock.writeLock().unlock();
+            indexMapLock.writeLock().unlock();
         }
     }
 
     @Override
     public IndexComponent unload(String indexName) {
-        indexLock.writeLock().lock();
-
+        indexMapLock.writeLock().lock();
         if(!indexMap.containsKey(indexName)) {
-            indexLock.writeLock().unlock();
+            indexMapLock.writeLock().unlock();
             return null;
         }
-
         final IndexComponent indexComponent;
+
         try {
-            final Index index = getIndex(indexName);
+            final Index index = getIndex(indexName, false);
             indexComponent = new IndexComponent(indexName, index.getMaxDocuments());
 
             fieldMap.forEach((name, field) -> {
-                if(field.hasIndexFieldStats(indexName)) {
-                    FieldStats fieldStats = field.getIndexFieldStats(indexName);
-                    FieldComponent fieldComponent = FieldComponent.getFieldComponent(fieldStats, field.getFieldType());
-                    indexComponent.fields.put(name, fieldComponent);
+                if(!field.hasIndexFieldStats(indexName)) {
+                    return;
                 }
+                FieldStats fieldStats = field.getIndexFieldStats(indexName);
+                if(fieldStats == null) {
+                    return;
+                }
+                FieldComponent fieldComponent = FieldComponent.getFieldComponent(fieldStats, field.getFieldType());
+                indexComponent.fields.put(name, fieldComponent);
             });
-
-            deleteLockedIndex(indexName);
+            deleteLockedIndex(indexName, index);
         } finally {
-            indexLock.writeLock().unlock();
+            indexMapLock.writeLock().unlock();
         }
         return indexComponent;
     }
 
     @Override
     public IndexComponent snapshot(String indexName) {
-        indexLock.writeLock().lock();
+        indexMapLock.readLock().lock();
 
         if(!indexMap.containsKey(indexName)) {
-            indexLock.writeLock().unlock();
+            indexMapLock.readLock().unlock();
             return null;
         }
 
@@ -166,34 +172,47 @@ public class StateImpl implements State{
             indexComponent = new IndexComponent(indexName, index.getMaxDocuments());
 
             fieldMap.forEach((name, field) -> {
-                if(field.hasIndexFieldStats(indexName)) {
-                    FieldStats fieldStats = field.getIndexFieldStats(indexName);
-                    FieldComponent fieldComponent = FieldComponent.getFieldComponent(fieldStats, field.getFieldType());
-                    indexComponent.fields.put(name, fieldComponent);
+                if(!field.hasIndexFieldStats(indexName)) {
+                    return;
                 }
+                FieldStats fieldStats = field.getIndexFieldStats(indexName);
+                if(fieldStats == null) {
+                    return;
+                }
+                FieldComponent fieldComponent = FieldComponent.getFieldComponent(fieldStats, field.getFieldType());
+                indexComponent.fields.put(name, fieldComponent);
             });
         } finally {
-            indexLock.writeLock().unlock();
+            indexMapLock.readLock().unlock();
         }
         return indexComponent;
     }
 
     @Override
     public Index getIndex(String indexName) {
-        indexLock.readLock().lock();
+        return getIndex(indexName, true);
+    }
+
+    private Index getIndex(String indexName, boolean createIfNonExistant) {
+        indexMapLock.readLock().lock();
         while(!indexMap.containsKey(indexName)) {
-            indexLock.readLock().unlock();
-            indexLock.writeLock().lock();
+            indexMapLock.readLock().unlock();
+
+            if(!createIfNonExistant) {
+                return null;
+            }
+
+            indexMapLock.writeLock().lock();
 
             if(!indexMap.containsKey(indexName)) {
                 indexMap.put(indexName, createIndexImplementation(indexName));
             }
 
-            indexLock.writeLock().unlock();
-            indexLock.readLock().lock();
+            indexMapLock.writeLock().unlock();
+            indexMapLock.readLock().lock();
         }
         final Index result = indexMap.get(indexName);
-        indexLock.readLock().unlock();
+        indexMapLock.readLock().unlock();
         return result;
     }
 
@@ -211,14 +230,12 @@ public class StateImpl implements State{
     @Override
     @Nonnull
     public <T> FieldStats<T> getFieldStatsTypeChecked(String fieldName, Class<T> tClass, String index) throws ElefanaWrongFieldStatsTypeException {
-        indexLock.readLock().lock();
+        indexMapLock.readLock().lock();
         Field field = fieldMap.computeIfAbsent(fieldName, key -> createFieldImplementation(fieldName, tClass));
-        indexLock.readLock().unlock();
+        indexMapLock.readLock().unlock();
 
         if(!field.hasIndexFieldStats(index)) {
-            indexLock.readLock().lock();
 	        fieldNamesCache.invalidate(index);
-            indexLock.readLock().unlock();
         }
 
         if(tClass.equals(field.getFieldType())) {
@@ -233,9 +250,7 @@ public class StateImpl implements State{
     @Override
     @Nullable
     public FieldStats getFieldStats(String fieldName, Collection<String> indices) {
-        indexLock.readLock().lock();
         final Field field = fieldMap.get(fieldName);
-        indexLock.readLock().unlock();
         if(field == null) {
             return null;
         } else {
@@ -246,9 +261,7 @@ public class StateImpl implements State{
     @Override
     @Nullable
     public FieldStats getFieldStats(String fieldName, String index) {
-        indexLock.readLock().lock();
         final Field field = fieldMap.get(fieldName);
-        indexLock.readLock().unlock();
         if(field == null) {
             return null;
         } else {
@@ -258,7 +271,6 @@ public class StateImpl implements State{
 
     @Override
     public void getFieldNames(Set<String> result, String index) {
-        indexLock.readLock().lock();
         try {
             result.addAll(fieldNamesCache.get(index, new Callable<Set<String>>() {
                 @Override
@@ -277,34 +289,32 @@ public class StateImpl implements State{
             }));
         } catch (ExecutionException e) {
             LOGGER.error(e.getMessage(), e);
-        } finally {
-            indexLock.readLock().unlock();
         }
     }
 
     @Override
     public List<String> compileIndexPattern(String indexPattern) {
-        indexLock.readLock().lock();
+        indexMapLock.readLock().lock();
         final List<String> result = indexMap
                 .keySet()
                 .stream()
                 .filter(i -> matches(indexPattern, i))
                 .collect(Collectors.toList());
-        indexLock.readLock().unlock();
+        indexMapLock.readLock().unlock();
         return result;
     }
 
     @Override
     public <T> void ensureFieldExists(String fieldName, Class<T> fieldClass) {
-        indexLock.readLock().lock();
+        indexMapLock.readLock().lock();
         fieldMap.computeIfAbsent(fieldName, key -> createFieldImplementation(fieldName, fieldClass));
-        indexLock.readLock().unlock();
+        indexMapLock.readLock().unlock();
     }
 
     public boolean isIndexLoaded(String index) {
-        indexLock.readLock().lock();
+        indexMapLock.readLock().lock();
         final boolean result = indexMap.containsKey(index);
-        indexLock.readLock().unlock();
+        indexMapLock.readLock().unlock();
         return result;
     }
 
