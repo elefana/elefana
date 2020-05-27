@@ -52,14 +52,15 @@ public class FieldImpl implements Field {
     @Override
     @Nullable
     public FieldStats getIndexFieldStats(Collection<String> indices) {
-        if(indices.isEmpty())
+        if(indices.isEmpty()) {
             return null;
+        }
 
         FieldStats acc = FieldComponent.getFieldStats(type);
         for(String s : indices) {
             FieldStats fs = fieldStats.get(s);
             if(fs == null) {
-                return null;
+                continue;
             }
             acc = acc.merge(fs);
         }
