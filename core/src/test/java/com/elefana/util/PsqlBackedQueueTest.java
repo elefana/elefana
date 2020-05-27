@@ -27,7 +27,12 @@ import static org.mockito.Mockito.*;
 import java.sql.SQLException;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class PsqlBackedQueueTest{
 	private static final long IO_INTERVAL = 1000L;
@@ -39,8 +44,8 @@ public class PsqlBackedQueueTest{
 
 	private TestQueue queue;
 
-	private int head = 0;
-	private int tail = 0;
+	private final AtomicInteger head = new AtomicInteger(0);
+	private final AtomicInteger tail = new AtomicInteger(0);
 
 	@Before
 	public void setUp() throws SQLException {
@@ -338,22 +343,71 @@ public class PsqlBackedQueueTest{
 		pull(MAX_CAPACITY);
 	}
 
+	@Test
+	public void testQueueConcurrency() {
+		final int totalThreads = 4;
+		final Thread[] threads = new Thread[totalThreads];
+		final CountDownLatch latch = new CountDownLatch(totalThreads);
+		final Set<Integer> results = new ConcurrentSkipListSet<Integer>();
+
+		for(int i = 0; i < totalThreads; i++) {
+			if(i % 2 == 0) {
+				threads[i] = new Thread(() -> {
+					latch.countDown();
+					push(MAX_CAPACITY);
+				});
+			} else {
+				threads[i] = new Thread(() -> {
+					latch.countDown();
+					pull(results, HALF_CAPACITY);
+				});
+			}
+		}
+
+		for(int i = 0; i < totalThreads; i++) {
+			threads[i].start();
+		}
+		for(int i = 0; i < totalThreads; i++) {
+			try {
+				threads[i].join();
+			} catch (InterruptedException e) {}
+		}
+
+		queue.run();
+		Assert.assertEquals(MAX_CAPACITY, results.size());
+		Assert.assertEquals(MAX_CAPACITY, queue.database.size());
+	}
+
 	private void push(int entries) {
 		for(int i = 0; i < entries; i++) {
-			queue.offer(String.valueOf(tail));
-			tail++;
+			queue.offer(String.valueOf(tail.incrementAndGet()));
+		}
+	}
+
+	private void pull(Set<Integer> results , int entries) {
+		for(int i = 0; i < entries; i++) {
+			while(queue.peek() == null) {
+				try {
+					Thread.sleep(10L);
+				} catch (Exception e) {}
+			}
+			results.add(Integer.valueOf(queue.poll()));
 		}
 	}
 
 	private void pull(int entries) {
 		for(int i = 0; i < entries; i++) {
-			Assert.assertEquals(String.valueOf(head), queue.poll());
-			head++;
+			while(queue.peek() == null) {
+				try {
+					Thread.sleep(10L);
+				} catch (Exception e) {}
+			}
+			Assert.assertEquals(String.valueOf(head.incrementAndGet()), queue.poll());
 		}
 	}
 
 	private class TestQueue extends PsqlBackedQueue<String> {
-		private final LinkedList<String> database = new LinkedList<String>();
+		private final CopyOnWriteArrayList<String> database = new CopyOnWriteArrayList<String>();
 
 		public TestQueue(JdbcTemplate jdbcTemplate, TaskScheduler taskScheduler, long ioIntervalMillis, int maxCapacity) throws SQLException {
 			super(jdbcTemplate, taskScheduler, ioIntervalMillis, maxCapacity);
@@ -367,7 +421,7 @@ public class PsqlBackedQueueTest{
 			System.out.println("DEBUG: Fetch from database. From: " + from + ", Limit: " + limit);
 			for(int i = from; i < from + limit && i < database.size(); i++) {
 				results.add(database.get(i));
-				System.out.println("DEBUG: Fetch into queue cursor " + i + " = " + database.get(i));
+				System.out.println("DEBUG: Cursor " + i + " = Value " + database.get(i));
 			}
 		}
 
@@ -375,16 +429,16 @@ public class PsqlBackedQueueTest{
 		public void removeFromDatabase(JdbcTemplate jdbcTemplate, int size) throws SQLException {
 			System.out.println("DEBUG: Remove " + size + " from database");
 			for(int i = 0; i < size; i++) {
-				System.out.println("DEBUG: Remove " + database.poll());
+				System.out.println("DEBUG: Remove value " + database.remove(0));
 			}
 		}
 
 		@Override
 		public void appendToDatabase(JdbcTemplate jdbcTemplate, List<String> elements) throws SQLException {
-			System.out.println("DEBUG: Append " + elements.size() + " to database");
+			System.out.println("DEBUG: Append " + elements.size() + " elements to database");
 			for(String element : elements) {
-				database.offer(element);
-				System.out.println("DEBUG: Append into database " + element + " " + databaseCursor);
+				database.add(element);
+				System.out.println("DEBUG: Append into database value " + element + ", cursor " + databaseCursor);
 			}
 		}
 
@@ -393,7 +447,7 @@ public class PsqlBackedQueueTest{
 		}
 
 		public void addToDatabase(String element) {
-			database.offer(element);
+			database.add(element);
 		}
 
 		public boolean isDatabaseEmpty() {
