@@ -130,6 +130,11 @@ public class FieldComponent {
                 public Long getMaximumValue() {
                     return Long.parseLong(maxValue);
                 }
+
+                @Override
+                public Class<Long> getFieldClass() {
+                    return Long.class;
+                }
             };
         }
         if (type.equals(Double.class)) {
@@ -142,6 +147,11 @@ public class FieldComponent {
                 @Override
                 public Double getMaximumValue() {
                     return Double.parseDouble(maxValue);
+                }
+
+                @Override
+                public Class<Double> getFieldClass() {
+                    return Double.class;
                 }
             };
         }
@@ -156,6 +166,11 @@ public class FieldComponent {
                 public Date getMaximumValue() {
                     return Date.from(Instant.parse(maxValue));
                 }
+
+                @Override
+                public Class<Date> getFieldClass() {
+                    return Date.class;
+                }
             };
         }
         if (type.equals(String.class)) {
@@ -169,6 +184,11 @@ public class FieldComponent {
                 public String getMaximumValue() {
                     return maxValue;
                 }
+
+                @Override
+                public Class<String> getFieldClass() {
+                    return String.class;
+                }
             };
         }
         if (type.equals(Boolean.class)) {
@@ -181,6 +201,11 @@ public class FieldComponent {
                 @Override
                 public Boolean getMaximumValue() {
                     return Boolean.parseBoolean(maxValue);
+                }
+
+                @Override
+                public Class<Boolean> getFieldClass() {
+                    return Boolean.class;
                 }
             };
         }

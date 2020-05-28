@@ -42,11 +42,11 @@ import java.util.stream.Collectors;
 public class StateImpl implements State{
     private static final Logger LOGGER = LoggerFactory.getLogger(StateImpl.class);
 
-    private final Map<String, Index> indexMap = new HashMap<>();
-    private final Map<String, Field> fieldMap = new ConcurrentHashMap<>();
+    protected final Map<String, Index> indexMap = new HashMap<>();
+    protected final Map<String, Field> fieldMap = new ConcurrentHashMap<>();
 
-    private final ReadWriteLock indexMapLock = new ReentrantReadWriteLock();
-    private Cache<String, Set<String>> fieldNamesCache;
+    protected final ReadWriteLock indexMapLock = new ReentrantReadWriteLock();
+    protected Cache<String, Set<String>> fieldNamesCache;
 
     public StateImpl(Environment environment) {
         if(environment != null) {
@@ -227,6 +227,35 @@ public class StateImpl implements State{
         return acc;
     }
 
+    public void upgradeFieldToString(String fieldName) {
+        indexMapLock.writeLock().lock();
+        try {
+            Field field = fieldMap.get(fieldName);
+
+            final Map<String, FieldComponent> oldFieldStats = new HashMap<String, FieldComponent>();
+            for(String oldIndex : indexMap.keySet()) {
+                final FieldStats oldFieldStat = field.getIndexFieldStats(oldIndex);
+                if(oldFieldStat == null) {
+                    continue;
+                }
+                FieldComponent fieldComponent = FieldComponent.getFieldComponent(oldFieldStat, field.getFieldType());
+                oldFieldStats.put(oldIndex, fieldComponent);
+                field.deleteIndexFieldStats(oldIndex);
+            }
+
+            fieldMap.compute(fieldName, (key, value) -> {
+                final Field newField = createFieldImplementation(key, String.class);
+                for(String index : oldFieldStats.keySet()) {
+                    newField.load(index, oldFieldStats.get(index));
+                }
+                return newField;
+            });
+
+        } finally {
+            indexMapLock.writeLock().unlock();
+        }
+    }
+
     @Override
     @Nonnull
     public <T> FieldStats<T> getFieldStatsTypeChecked(String fieldName, Class<T> tClass, String index) throws ElefanaWrongFieldStatsTypeException {
@@ -239,6 +268,22 @@ public class StateImpl implements State{
         }
 
         if(tClass.equals(field.getFieldType())) {
+            return (FieldStats<T>) field.getIndexFieldStats(index);
+        }
+        if(tClass.equals(String.class) && field.getFieldType().equals(Long.class)) {
+            upgradeFieldToString(fieldName);
+
+            indexMapLock.readLock().lock();
+            field = fieldMap.computeIfAbsent(fieldName, key -> createFieldImplementation(fieldName, tClass));
+            indexMapLock.readLock().unlock();
+            return (FieldStats<T>) field.getIndexFieldStats(index);
+        }
+        if(tClass.equals(String.class) && field.getFieldType().equals(Double.class)) {
+            upgradeFieldToString(fieldName);
+
+            indexMapLock.readLock().lock();
+            field = fieldMap.computeIfAbsent(fieldName, key -> createFieldImplementation(fieldName, tClass));
+            indexMapLock.readLock().unlock();
             return (FieldStats<T>) field.getIndexFieldStats(index);
         }
         if((tClass.equals(Long.class) || tClass.equals(Double.class)) && field.getFieldType().equals(String.class)) {

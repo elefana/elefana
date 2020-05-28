@@ -116,8 +116,16 @@ public abstract class FieldStatsImpl<T> implements FieldStats<T> {
         this.docCount.add(other.getDocumentCount());
         this.sumDocFrequency.accumulate(other.getSumDocumentFrequency());
         this.sumTotalTermFrequency.accumulate(other.getSumTotalTermFrequency());
-        this.updateMax(other.getMaximumValue());
-        this.updateMin(other.getMinimumValue());
+        if(other.getFieldClass().equals(getFieldClass())) {
+            this.updateMax(other.getMaximumValue());
+            this.updateMin(other.getMinimumValue());
+        } else if(getFieldClass().equals(String.class) && other.getFieldClass().equals(Long.class)) {
+            this.updateMax((T) String.valueOf(other.getMaximumValue()));
+            this.updateMin((T) String.valueOf(other.getMinimumValue()));
+        } else if(getFieldClass().equals(String.class) && other.getFieldClass().equals(Double.class)) {
+            this.updateMax((T) String.valueOf(other.getMaximumValue()));
+            this.updateMin((T) String.valueOf(other.getMinimumValue()));
+        }
     }
 
     @Override

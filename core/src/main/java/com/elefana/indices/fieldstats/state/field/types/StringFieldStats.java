@@ -56,6 +56,11 @@ public class StringFieldStats extends ComparableFieldStats<String> {
     }
 
     @Override
+    public Class<String> getFieldClass() {
+        return String.class;
+    }
+
+    @Override
     protected long getDocFrequencyAddend(String value) {
         int count = 0;
         int pos = 0;

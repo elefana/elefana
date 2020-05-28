@@ -37,4 +37,9 @@ public class BooleanFieldStats extends ComparableFieldStats<Boolean> {
     protected FieldStatsImpl<Boolean> instance() {
         return new BooleanFieldStats();
     }
+
+    @Override
+    public Class<Boolean> getFieldClass() {
+        return Boolean.class;
+    }
 }

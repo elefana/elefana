@@ -17,6 +17,7 @@
 package com.elefana.indices.fieldstats.state;
 
 import com.elefana.indices.fieldstats.state.field.ElefanaWrongFieldStatsTypeException;
+import com.elefana.indices.fieldstats.state.field.Field;
 import com.elefana.indices.fieldstats.state.field.FieldStats;
 import com.elefana.indices.fieldstats.state.index.Index;
 import com.elefana.indices.fieldstats.state.index.IndexComponent;
@@ -43,6 +44,7 @@ public interface State {
     List<String> compileIndexPattern(String indexPattern);
 
     <T> void ensureFieldExists(String fieldName, Class<T> fieldClass);
+    void upgradeFieldToString(String fieldName);
 
     //Fields
     @Nonnull

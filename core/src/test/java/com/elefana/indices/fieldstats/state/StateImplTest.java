@@ -430,4 +430,34 @@ public class StateImplTest {
 
         assertIndexMaxDocEquals(50*100, index);
     }
+
+    @Test
+    public void testFieldUpgradeFromLongToString() throws ElefanaWrongFieldStatsTypeException {
+        final String index = "test_index_1";
+        final String fieldName = "long";
+        final String stringDocument = "{ \"bool\": false, \"string\": \"Hello there\", \"long\": \"upgrade\", \"double\": 2.4, \"obj\": { \"bic\": \"EASYATW1\", \"iban\": \"AT12 4321\" }, \"list\": [3,4,5,6,6,4,4,2] } ";
+
+        testState.ensureFieldExists(fieldName, Long.class);
+        submitDocumentNTimes(10, testDocument, index);
+        submitDocumentNTimes(1, stringDocument, index);
+        submitDocumentNTimes(10, testDocument, index);
+
+        final FieldStats<String> result = testState.getFieldStatsTypeChecked(fieldName, String.class, index);
+        Assert.assertEquals(21, result.getDocumentCount());
+    }
+
+    @Test
+    public void testFieldUpgradeFromDoubleToString() throws ElefanaWrongFieldStatsTypeException {
+        final String index = "test_index_2";
+        final String fieldName = "double";
+        final String stringDocument = "{ \"bool\": false, \"string\": \"Hello there\", \"long\": 23, \"double\": \"upgrade\", \"obj\": { \"bic\": \"EASYATW1\", \"iban\": \"AT12 4321\" }, \"list\": [3,4,5,6,6,4,4,2] } ";
+
+        testState.ensureFieldExists(fieldName, Double.class);
+        submitDocumentNTimes(10, testDocument, index);
+        submitDocumentNTimes(1, stringDocument, index);
+        submitDocumentNTimes(10, testDocument, index);
+
+        final FieldStats<String> result = testState.getFieldStatsTypeChecked(fieldName, String.class, index);
+        Assert.assertEquals(21, result.getDocumentCount());
+    }
 }

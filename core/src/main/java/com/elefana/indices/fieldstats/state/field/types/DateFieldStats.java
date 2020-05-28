@@ -38,4 +38,9 @@ public class DateFieldStats extends ComparableFieldStats<Date> {
     protected FieldStatsImpl<Date> instance() {
         return new DateFieldStats();
     }
+
+    @Override
+    public Class<Date> getFieldClass() {
+        return Date.class;
+    }
 }

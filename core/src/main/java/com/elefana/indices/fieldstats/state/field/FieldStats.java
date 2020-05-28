@@ -50,4 +50,6 @@ public interface FieldStats<T> {
     void mergeAndModifySelf(FieldStats<T> other);
 
     void delete();
+
+    Class<T> getFieldClass();
 }

@@ -48,6 +48,11 @@ public class DoubleFieldStats extends FieldStatsImpl<Double> {
     }
 
     @Override
+    public Class<Double> getFieldClass() {
+        return Double.class;
+    }
+
+    @Override
     public Double getMinimumValue() {
         return minValue.get();
     }

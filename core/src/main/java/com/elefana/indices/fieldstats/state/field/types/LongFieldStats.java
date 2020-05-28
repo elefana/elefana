@@ -47,6 +47,11 @@ public class LongFieldStats extends FieldStatsImpl<Long> {
     }
 
     @Override
+    public Class<Long> getFieldClass() {
+        return Long.class;
+    }
+
+    @Override
     public Long getMinimumValue() {
         return minValue.get();
     }
