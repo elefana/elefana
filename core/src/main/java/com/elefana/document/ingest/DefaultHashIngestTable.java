@@ -255,7 +255,7 @@ public class DefaultHashIngestTable implements HashIngestTable {
 				}
 			}
 		}
-		throw new ElefanaException(HttpResponseStatus.INTERNAL_SERVER_ERROR, "Unable to lock ingest table for index '" + index + "'");
+		throw new ElefanaException(HttpResponseStatus.TOO_MANY_REQUESTS, "Unable to lock ingest table for index '" + index + "'");
 	}
 
 	public int lockWrittenTable() throws ElefanaException {
