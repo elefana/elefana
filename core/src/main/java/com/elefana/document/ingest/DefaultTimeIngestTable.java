@@ -199,7 +199,7 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 		final ResultSet resultSet = createTableStatement.executeQuery();
 		if(resultSet.next()) {
 			shardIds[arrayIndex] = timeBucket.getShardOffset(resultSet.getLong("_timestamp"));
-			lastUsageTimestamp.set(Math.max(resultSet.getLong("_timestamp"), lastUsageTimestamp.get()));
+			lastUsageTimestamp.set(System.currentTimeMillis());
 			dataMarker[arrayIndex] = true;
 		}
 		createTableStatement.close();
