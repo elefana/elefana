@@ -57,6 +57,7 @@ subprojects {
 		oshiVersion = '4.0.0'
 		jnaVersion = '5.4.0'
 		restAssuredVersion = '3.1.1'
+		sentryVersion = '1.7.30'
 		stringSearchVersion = '2.2.0'
 		uuidGeneratorVersion = '3.1.5'
 		zeroAllocationHashingVersion = '0.8'
@@ -232,6 +233,7 @@ project(":" + rootProject.name + "-core") {
 		compile "commons-validator:commons-validator:$commonsValidatorVersion"
 		compile "net.openhft:zero-allocation-hashing:$zeroAllocationHashingVersion"
 		compile "com.google.guava:guava:$guavaVersion"
+		compile "io.sentry:sentry-logback:$sentryVersion"
 		compile('org.postgresql:postgresql')
 
 		compile "io.netty:netty-transport-native-epoll:$nettyVersion:linux-x86_64"
