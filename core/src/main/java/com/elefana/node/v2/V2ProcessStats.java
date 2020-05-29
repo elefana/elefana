@@ -15,6 +15,8 @@
  ******************************************************************************/
 package com.elefana.node.v2;
 
+import com.codahale.metrics.Histogram;
+import com.codahale.metrics.MetricRegistry;
 import com.elefana.node.ProcessStats;
 import oshi.SystemInfo;
 import oshi.software.os.OSProcess;
@@ -28,6 +30,13 @@ public class V2ProcessStats extends ProcessStats {
 
 	private OperatingSystem operatingSystem = new SystemInfo().getOperatingSystem();
 	private long maxOpenFileDescriptors = -1;
+
+	private final Histogram histogramCpuPercent, histogramOpenDescriptors;
+
+	public V2ProcessStats(MetricRegistry metricRegistry) {
+		histogramCpuPercent = metricRegistry.histogram(MetricRegistry.name("process", "cpu", "usage", "percent"));
+		histogramOpenDescriptors = metricRegistry.histogram(MetricRegistry.name("process", "descriptors", "open"));
+	}
 
 	@Override
 	protected void generateCurrentStats(Map<String, Object> result) {
@@ -49,6 +58,7 @@ public class V2ProcessStats extends ProcessStats {
 	private void updateFileHandles(Map<String, Object> result, OSProcess osProcess) {
 		long openFileDescriptors = osProcess.getOpenFiles();
 		maxOpenFileDescriptors = Math.max(maxOpenFileDescriptors, openFileDescriptors);
+		histogramOpenDescriptors.update(openFileDescriptors);
 
 		result.put("open_file_descriptors", openFileDescriptors);
 		result.put("max_file_descriptors", maxOpenFileDescriptors);
@@ -59,6 +69,7 @@ public class V2ProcessStats extends ProcessStats {
 
 		long cpuPercent = Math.round(osProcess.calculateCpuPercent());
 		long cpuTime = osProcess.getKernelTime() + osProcess.getUserTime();
+		histogramCpuPercent.update(cpuPercent);
 
 		cpu.put("percent", cpuPercent);
 		cpu.put("total_in_millis", cpuTime);

@@ -15,6 +15,8 @@
  ******************************************************************************/
 package com.elefana.node.v2;
 
+import com.codahale.metrics.Histogram;
+import com.codahale.metrics.MetricRegistry;
 import com.elefana.node.OsStats;
 import oshi.SystemInfo;
 import oshi.hardware.CentralProcessor;
@@ -36,6 +38,14 @@ public class V2OsStats extends OsStats {
 	private GlobalMemory memory = hardware.getMemory();
 	private VirtualMemory virtualMemory = memory.getVirtualMemory();
 
+	private final Histogram histogramCpuLoad, histogramUsedMemoryPercent, histogramUsedSwapPercent;
+
+	public V2OsStats(MetricRegistry metricRegistry) {
+		histogramCpuLoad = metricRegistry.histogram(MetricRegistry.name("os", "cpu", "load", "percent"));
+		histogramUsedMemoryPercent = metricRegistry.histogram(MetricRegistry.name("os", "memory", "used", "percent"));
+		histogramUsedSwapPercent = metricRegistry.histogram(MetricRegistry.name("os", "swap", "used", "percent"));
+	}
+
 	@Override
 	protected void generateCurrentStats(Map<String, Object> result) {
 		result.clear();
@@ -55,6 +65,7 @@ public class V2OsStats extends OsStats {
 		double cpuLoad = measureCpuCurrentLoad();
 
 		long roundedCpuLoad = Math.round(cpuLoad * 100);
+		histogramCpuLoad.update(roundedCpuLoad);
 		osStatsObj.put("cpu_percent", rectifyMeasure(roundedCpuLoad));
 	}
 
@@ -101,6 +112,8 @@ public class V2OsStats extends OsStats {
 		memMap.put("used_percent", usedPercent);
 
 		osStatsObj.put("mem", memMap);
+
+		histogramUsedMemoryPercent.update(usedPercent);
 	}
 
 	private void updateSwap(Map<String, Object> osStatsObj) {
@@ -127,6 +140,9 @@ public class V2OsStats extends OsStats {
 		long totalSwap = virtualMemory.getSwapTotal();
 		long usedSwap = virtualMemory.getSwapUsed();
 		long freeSwap = totalSwap - usedSwap;
+		long usedPercent = Math.round(((double)usedSwap / totalSwap) * 100);
+		histogramUsedSwapPercent.update(usedPercent);
+
 		swapMap.put("free_in_bytes", freeSwap);
 	}
 

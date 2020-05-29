@@ -15,6 +15,7 @@
  ******************************************************************************/
 package com.elefana.node;
 
+import com.codahale.metrics.MetricRegistry;
 import com.elefana.api.json.EmptyJsonObject;
 import com.elefana.api.node.NodeStats;
 import com.elefana.api.node.v2.V2NodeStats;
@@ -60,6 +61,8 @@ public class CoreNodeStatsService implements NodeStatsService {
 	protected NodeSettingsService nodeSettingsService;
 	@Autowired
 	protected VersionInfoService versionInfoService;
+	@Autowired
+	protected MetricRegistry metricRegistry;
 
 	protected final Map<String, Object> nodeAttributes = new HashMap<String, Object>();
 	protected final Map<String, Object> httpAttributes = new HashMap<String, Object>();
@@ -90,9 +93,9 @@ public class CoreNodeStatsService implements NodeStatsService {
 			break;
 		case V_2_4_3:
 		default:
-			osStats = new V2OsStats();
-			processStats = new V2ProcessStats();
-			jvmStats = new V2JvmStats();
+			osStats = new V2OsStats(metricRegistry);
+			processStats = new V2ProcessStats(metricRegistry);
+			jvmStats = new V2JvmStats(metricRegistry);
 			break;
 		}
 

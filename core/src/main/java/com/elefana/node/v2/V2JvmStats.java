@@ -15,6 +15,10 @@
  ******************************************************************************/
 package com.elefana.node.v2;
 
+import com.codahale.metrics.Counter;
+import com.codahale.metrics.Gauge;
+import com.codahale.metrics.Histogram;
+import com.codahale.metrics.MetricRegistry;
 import com.elefana.node.JvmStats;
 import oshi.SystemInfo;
 
@@ -33,6 +37,22 @@ public class V2JvmStats extends JvmStats {
 	private MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
 	private List<BufferPoolMXBean> bufferPoolMXBeans = ManagementFactory.getPlatformMXBeans(BufferPoolMXBean.class);
 	private List<MemoryPoolMXBean> memoryPoolMXBeans = ManagementFactory.getMemoryPoolMXBeans();
+
+	private final Histogram histogramHeapUsed, histogramHeapMax, histogramNonHeapUsed;
+	private final Gauge<Integer> threadsCount;
+
+	public V2JvmStats(MetricRegistry metricRegistry) {
+		histogramHeapUsed = metricRegistry.histogram(MetricRegistry.name("jvm", "heap", "usedBytes"));
+		histogramHeapMax = metricRegistry.histogram(MetricRegistry.name("jvm", "heap", "maxBytes"));
+		histogramNonHeapUsed = metricRegistry.histogram(MetricRegistry.name("jvm", "nonheap", "usedBytes"));
+		threadsCount = metricRegistry.register(MetricRegistry.name("jvm", "threads"),
+				new Gauge<Integer>() {
+					@Override
+					public Integer getValue() {
+						return threadMXBean.getThreadCount();
+					}
+				});
+	}
 
 	@Override
 	protected void generateCurrentStats(Map<String, Object> result) {
@@ -91,6 +111,10 @@ public class V2JvmStats extends JvmStats {
 
 		long nonHeapUsed = memoryMXBean.getNonHeapMemoryUsage().getUsed();
 		long nonHeapCommited = memoryMXBean.getNonHeapMemoryUsage().getCommitted();
+
+		histogramHeapMax.update(heapMax);
+		histogramHeapUsed.update(heapUsed);
+		histogramNonHeapUsed.update(nonHeapUsed);
 
 		result.put("mem", generateMap(
 				getKVP("heap_used_in_bytes", heapUsed),
