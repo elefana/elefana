@@ -34,6 +34,11 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import java.sql.SQLException;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -136,7 +141,8 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 			lock.writeLock().unlock();
 		}
 
-		taskScheduler.scheduleAtFixedRate(this, ingestionTableExpiryMillis);
+		taskScheduler.scheduleAtFixedRate(this, Instant.now().plus(ingestionTableExpiryMillis, ChronoUnit.MILLIS),
+				Duration.ofMillis(ingestionTableExpiryMillis));
 	}
 
 	@Override
