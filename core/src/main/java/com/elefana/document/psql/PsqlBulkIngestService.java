@@ -43,6 +43,7 @@ import com.elefana.util.NamedThreadFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.module.SimpleModule;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -366,6 +367,19 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 	}
 
 	private void bulkItemResponse(BulkResponse bulkApiResponse, String index, List<BulkIndexTask> bulkIndexTasks ) {
+		boolean lockSuccess = true;
+		for(BulkIndexTask indexTask : bulkIndexTasks) {
+			lockSuccess &= indexTask.lockStagingTable();
+		}
+		if(!lockSuccess) {
+			for(BulkIndexTask indexTask : bulkIndexTasks) {
+				indexTask.unlockStagingTable();
+				if(indexTask.getResponseStatus().equals(HttpResponseStatus.TOO_MANY_REQUESTS)) {
+					bulkApiResponse.setStatusCode(HttpResponseStatus.TOO_MANY_REQUESTS.code());
+				}
+			}
+		}
+
 		List<Future<List<BulkItemResponse>>> results = null;
 		try {
 			results = bulkProcessingExecutorService.invokeAll(bulkIndexTasks);
@@ -378,6 +392,7 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 		boolean success = true;
 		for (int i = 0; i < results.size(); i++) {
 			final BulkIndexTask task = bulkIndexTasks.get(i);
+			task.unlockStagingTable();
 			try {
 				final List<BulkItemResponse> nextResult = results.get(i).get();
 				if (nextResult.isEmpty()) {

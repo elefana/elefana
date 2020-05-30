@@ -302,16 +302,22 @@ public class DefaultHashIngestTable implements HashIngestTable {
 		return dataMarker[index];
 	}
 
-	public void markData(int index) {
-		if(locks[index].getHoldCount() == 0) {
-			return;
+	@Override
+	public void markData(int index, boolean skipLockCheck) {
+		if(!skipLockCheck) {
+			if (locks[index].getHoldCount() == 0) {
+				return;
+			}
 		}
 		dataMarker[index] = true;
 	}
 
-	public void unmarkData(int index) {
-		if(locks[index].getHoldCount() == 0) {
-			return;
+	@Override
+	public void unmarkData(int index, boolean skipLockCheck) {
+		if(!skipLockCheck) {
+			if(locks[index].getHoldCount() == 0) {
+				return;
+			}
 		}
 		dataMarker[index] = false;
 	}
@@ -324,9 +330,12 @@ public class DefaultHashIngestTable implements HashIngestTable {
 		locks[index].unlock();
 	}
 
-	public String getIngestionTableName(int index) {
-		if(locks[index].getHoldCount() == 0) {
-			throw new RuntimeException("Cannot get ingestion table name without lock acquired");
+	@Override
+	public String getIngestionTableName(int index, boolean skipLockCheck) {
+		if(!skipLockCheck) {
+			if(locks[index].getHoldCount() == 0) {
+				throw new RuntimeException("Cannot get ingestion table name without lock acquired");
+			}
 		}
 		return tableNames[index];
 	}

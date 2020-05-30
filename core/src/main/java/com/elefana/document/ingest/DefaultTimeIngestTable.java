@@ -62,7 +62,7 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 	                              String index, IndexTimeBucket timeBucket, int bulkParallelisation, List<String> existingTableNames) throws SQLException {
 		super();
 		this.index = index;
-		this.capacity = (timeBucket.getIngestTableCapacity() * bulkParallelisation) + 1;
+		this.capacity = (timeBucket.getIngestTableCapacity() * bulkParallelisation) + (bulkParallelisation + 1);
 		this.jdbcTemplate = jdbcTemplate;
 
 		locks = new ReentrantLock[capacity];
@@ -328,16 +328,22 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 		return dataMarker[index];
 	}
 
-	public void markData(int index) {
-		if(locks[index].getHoldCount() == 0) {
-			return;
+	@Override
+	public void markData(int index, boolean skipLockCheck) {
+		if(!skipLockCheck) {
+			if(locks[index].getHoldCount() == 0) {
+				return;
+			}
 		}
 		dataMarker[index] = true;
 	}
 
-	public void unmarkData(int index) {
-		if(locks[index].getHoldCount() == 0) {
-			return;
+	@Override
+	public void unmarkData(int index, boolean skipLockCheck) {
+		if(!skipLockCheck) {
+			if(locks[index].getHoldCount() == 0) {
+				return;
+			}
 		}
 		shardIds[index] = -1;
 		dataMarker[index] = false;
@@ -351,9 +357,12 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 		locks[index].unlock();
 	}
 
-	public String getIngestionTableName(int index) {
-		if(locks[index].getHoldCount() == 0) {
-			throw new RuntimeException("Cannot get ingestion table name without lock acquired");
+	@Override
+	public String getIngestionTableName(int index, boolean skipLockCheck) {
+		if(!skipLockCheck) {
+			if(locks[index].getHoldCount() == 0) {
+				throw new RuntimeException("Cannot get ingestion table name without lock acquired");
+			}
 		}
 		return tableNames[index];
 	}

@@ -25,6 +25,7 @@ import com.elefana.document.ingest.IngestTable;
 import com.elefana.indices.fieldstats.IndexFieldStatsService;
 import com.elefana.util.EscapeUtils;
 import com.elefana.util.IndexUtils;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import org.postgresql.copy.CopyIn;
 import org.postgresql.copy.CopyManager;
 import org.postgresql.jdbc.PgConnection;
@@ -74,6 +75,9 @@ public abstract class BulkIndexTask implements Callable<List<BulkItemResponse>> 
 	protected final IndexFieldStatsService fieldStatsService;
 
 	protected volatile int totalFailed, totalSuccess;
+	protected volatile int stagingTableId = -1;
+	protected volatile boolean lockFailed = false;
+	protected volatile HttpResponseStatus responseStatus = HttpResponseStatus.OK;
 
 	public BulkIndexTask(JdbcTemplate jdbcTemplate, List<BulkIndexOperation> indexOperations,
 						 String index, IngestTable ingestTable, boolean flatten, int from, int size,
@@ -94,19 +98,15 @@ public abstract class BulkIndexTask implements Callable<List<BulkItemResponse>> 
 		this.fieldStatsService = fieldStatsService;
 	}
 
-	protected abstract int getStagingTableId() throws ElefanaException;
+	public abstract boolean lockStagingTable();
+
+	public abstract void unlockStagingTable();
 
 	@Override
 	public List<BulkItemResponse> call() {
 		final List<BulkItemResponse> results = new ArrayList<BulkItemResponse>(1);
-		Connection connection = null;
 
-		final int stagingTableId;
-		try {
-			stagingTableId = getStagingTableId();
-		} catch (Exception e) {
-			LOGGER.error(e.getMessage(), e);
-
+		if(lockFailed || stagingTableId == -1) {
 			for (int i = from; i < from + size && i < indexOperations.size(); i++) {
 				BulkIndexOperation indexOperation = indexOperations.get(i);
 				BulkItemResponse responseEntry = createEntry(i, "index", indexOperation.getIndex(),
@@ -119,10 +119,10 @@ public abstract class BulkIndexTask implements Callable<List<BulkItemResponse>> 
 			return results;
 		}
 
-		final String stagingTable = ingestTable.getIngestionTableName(stagingTableId);
-		boolean stagingTableUnlocked = false;
+		Connection connection = null;
 
 		try {
+			final String stagingTable = ingestTable.getIngestionTableName(stagingTableId, true);
 			connection = jdbcTemplate.getDataSource().getConnection();
 			connection.setAutoCommit(false);
 
@@ -185,9 +185,7 @@ public abstract class BulkIndexTask implements Callable<List<BulkItemResponse>> 
 				connection.commit();
 				psqlTime.stop();
 
-				ingestTable.markData(stagingTableId);
-				ingestTable.unlockTable(stagingTableId);
-				stagingTableUnlocked = true;
+				ingestTable.markData(stagingTableId, true);
 
 				try {
 					// index is the only supported bulk operation, therefore always submit the document
@@ -253,9 +251,6 @@ public abstract class BulkIndexTask implements Callable<List<BulkItemResponse>> 
 			} catch (SQLException e) {
 			}
 		}
-		if(!stagingTableUnlocked) {
-			ingestTable.unlockTable(stagingTableId);
-		}
 		return results;
 	}
 
@@ -289,5 +284,13 @@ public abstract class BulkIndexTask implements Callable<List<BulkItemResponse>> 
 
 	public int getTotalSuccess() {
 		return totalSuccess;
+	}
+
+	public boolean isLockFailed() {
+		return lockFailed;
+	}
+
+	public HttpResponseStatus getResponseStatus() {
+		return responseStatus;
 	}
 }

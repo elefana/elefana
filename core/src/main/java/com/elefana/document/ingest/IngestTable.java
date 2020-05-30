@@ -24,13 +24,25 @@ public interface IngestTable {
 
 	public boolean isDataMarked(int index);
 
-	public void markData(int index);
+	public default void markData(int index) {
+		markData(index, false);
+	}
 
-	public void unmarkData(int index);
+	public default void unmarkData(int index) {
+		unmarkData(index, false);
+	}
+
+	public void markData(int index, boolean skipLockCheck);
+
+	public void unmarkData(int index, boolean skipLockCheck);
 
 	public void unlockTable(int index);
 
-	public String getIngestionTableName(int index);
+	public default String getIngestionTableName(int index) {
+		return getIngestionTableName(index, false);
+	}
+
+	public String getIngestionTableName(int index, boolean skipLockCheck);
 
 	public String getIndex();
 

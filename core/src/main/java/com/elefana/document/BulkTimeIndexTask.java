@@ -19,6 +19,7 @@ import com.codahale.metrics.Timer;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.document.ingest.TimeIngestTable;
 import com.elefana.indices.fieldstats.IndexFieldStatsService;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -45,7 +46,34 @@ public class BulkTimeIndexTask extends BulkIndexTask {
 	}
 
 	@Override
-	protected int getStagingTableId() throws ElefanaException {
-		return timeIngestTable.lockTable(shardOffset);
+	public boolean lockStagingTable() {
+		try {
+			stagingTableId = timeIngestTable.lockTable(shardOffset);
+			return true;
+		} catch (ElefanaException e) {
+			if(e.getStatusCode().equals(HttpResponseStatus.TOO_MANY_REQUESTS)) {
+				responseStatus = HttpResponseStatus.TOO_MANY_REQUESTS;
+			}
+			lockFailed = true;
+			stagingTableId = -1;
+			LOGGER.error(e.getMessage(), e);
+		}
+		return false;
+	}
+
+	@Override
+	public void unlockStagingTable() {
+		if(lockFailed) {
+			return;
+		}
+		if(stagingTableId == -1) {
+			return;
+		}
+		try {
+			ingestTable.unlockTable(stagingTableId);
+			stagingTableId = -1;
+		} catch (Exception e) {
+			LOGGER.error(e.getMessage(), e);
+		}
 	}
 }
