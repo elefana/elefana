@@ -28,6 +28,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -42,6 +43,7 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 	private final int [] shardIds;
 	private final boolean [] dataMarker;
 	private final AtomicLong lastUsageTimestamp = new AtomicLong();
+	private final AtomicBoolean pruned = new AtomicBoolean();
 
 	private final ThreadLocal<Integer> readIndex = new ThreadLocal<Integer>() {
 		@Override
@@ -164,6 +166,7 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 
 			if(atLeast1Entry) {
 				connection.close();
+				lastUsageTimestamp.set(System.currentTimeMillis());
 				unlockAll();
 				return false;
 			}
@@ -179,6 +182,7 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 			}
 
 			connection.close();
+			pruned.set(true);
 			return true;
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
@@ -289,6 +293,9 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 	}
 
 	public int lockWrittenTable(long timeout) throws ElefanaException {
+		if(pruned.get()) {
+			return -1;
+		}
 		final long timestamp = System.currentTimeMillis();
 		while(System.currentTimeMillis() - timestamp < timeout) {
 			for(int i = 0; i < locks.length; i++) {

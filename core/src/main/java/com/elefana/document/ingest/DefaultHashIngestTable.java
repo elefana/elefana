@@ -27,6 +27,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -51,6 +52,7 @@ public class DefaultHashIngestTable implements HashIngestTable {
 	};
 	private final boolean [] dataMarker;
 	private final AtomicLong lastUsageTimestamp = new AtomicLong();
+	private final AtomicBoolean pruned = new AtomicBoolean();
 
 	public DefaultHashIngestTable(JdbcTemplate jdbcTemplate, String [] tablespaces,
 	                              String index, int capacity, List<String> existingTableNames) throws SQLException {
@@ -138,6 +140,7 @@ public class DefaultHashIngestTable implements HashIngestTable {
 
 			if(atLeast1Entry) {
 				connection.close();
+				lastUsageTimestamp.set(System.currentTimeMillis());
 				unlockAll();
 				return false;
 			}
@@ -153,6 +156,7 @@ public class DefaultHashIngestTable implements HashIngestTable {
 			}
 
 			connection.close();
+			pruned.set(true);
 			return true;
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
@@ -263,6 +267,9 @@ public class DefaultHashIngestTable implements HashIngestTable {
 	}
 
 	public int lockWrittenTable(long timeoutNanos) throws ElefanaException {
+		if(pruned.get()) {
+			return -1;
+		}
 		final long timestamp = System.nanoTime();
 		while(System.nanoTime() - timestamp < timeoutNanos) {
 			for(int i = 0; i < locks.length; i++) {
