@@ -104,7 +104,12 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 
 		if(currentQueueSize < previousQueueSize) {
 			int delta = previousQueueSize - currentQueueSize;
-			removeFromDatabase(jdbcTemplate, delta);
+			try {
+				removeFromDatabase(jdbcTemplate, delta);
+			} catch (SQLException e) {
+				flushLock.unlock();
+				throw e;
+			}
 			databaseCursor -= delta;
 		}
 
@@ -115,7 +120,12 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 		writeQueueLock.writeLock().unlock();
 
 		if(flushQueue.size() > 0) {
-			appendToDatabase(jdbcTemplate, flushQueue);
+			try {
+				appendToDatabase(jdbcTemplate, flushQueue);
+			} catch (SQLException e) {
+				flushLock.unlock();
+				throw e;
+			}
 		}
 
 		if(currentQueueSize < maxCapacity) {
