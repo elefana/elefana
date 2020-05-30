@@ -15,6 +15,7 @@
  ******************************************************************************/
 package com.elefana.node.v2;
 
+import com.codahale.metrics.Gauge;
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.MetricRegistry;
 import com.elefana.node.ProcessStats;
@@ -31,11 +32,23 @@ public class V2ProcessStats extends ProcessStats {
 	private OperatingSystem operatingSystem = new SystemInfo().getOperatingSystem();
 	private long maxOpenFileDescriptors = -1;
 
-	private final Histogram histogramCpuPercent, histogramOpenDescriptors;
+	private final Gauge<Long> gaugeCpuPercent, gaugeOpenDescriptors;
 
 	public V2ProcessStats(MetricRegistry metricRegistry) {
-		histogramCpuPercent = metricRegistry.histogram(MetricRegistry.name("process", "cpu", "usage", "percent"));
-		histogramOpenDescriptors = metricRegistry.histogram(MetricRegistry.name("process", "descriptors", "open"));
+		gaugeCpuPercent = metricRegistry.register(MetricRegistry.name("process", "cpu", "usage", "percent"),
+				new Gauge<Long>() {
+					@Override
+					public Long getValue() {
+						return Math.round(getOsProcess().calculateCpuPercent());
+					}
+				});
+		gaugeOpenDescriptors = metricRegistry.register(MetricRegistry.name("process", "descriptors", "open"),
+				new Gauge<Long>() {
+					@Override
+					public Long getValue() {
+						return getOsProcess().getOpenFiles();
+					}
+				});
 	}
 
 	@Override
@@ -58,7 +71,6 @@ public class V2ProcessStats extends ProcessStats {
 	private void updateFileHandles(Map<String, Object> result, OSProcess osProcess) {
 		long openFileDescriptors = osProcess.getOpenFiles();
 		maxOpenFileDescriptors = Math.max(maxOpenFileDescriptors, openFileDescriptors);
-		histogramOpenDescriptors.update(openFileDescriptors);
 
 		result.put("open_file_descriptors", openFileDescriptors);
 		result.put("max_file_descriptors", maxOpenFileDescriptors);
@@ -69,7 +81,6 @@ public class V2ProcessStats extends ProcessStats {
 
 		long cpuPercent = Math.round(osProcess.calculateCpuPercent());
 		long cpuTime = osProcess.getKernelTime() + osProcess.getUserTime();
-		histogramCpuPercent.update(cpuPercent);
 
 		cpu.put("percent", cpuPercent);
 		cpu.put("total_in_millis", cpuTime);

@@ -15,15 +15,11 @@
  ******************************************************************************/
 package com.elefana.node.v2;
 
-import com.codahale.metrics.Counter;
 import com.codahale.metrics.Gauge;
-import com.codahale.metrics.Histogram;
 import com.codahale.metrics.MetricRegistry;
 import com.elefana.node.JvmStats;
-import oshi.SystemInfo;
 
 import java.lang.management.*;
-import java.security.Key;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -38,14 +34,32 @@ public class V2JvmStats extends JvmStats {
 	private List<BufferPoolMXBean> bufferPoolMXBeans = ManagementFactory.getPlatformMXBeans(BufferPoolMXBean.class);
 	private List<MemoryPoolMXBean> memoryPoolMXBeans = ManagementFactory.getMemoryPoolMXBeans();
 
-	private final Histogram histogramHeapUsed, histogramHeapMax, histogramNonHeapUsed;
-	private final Gauge<Integer> threadsCount;
+	private final Gauge<Long> gaugeHeapUsed, gaugeHeapMax, gaugeNonHeapUsed;
+	private final Gauge<Integer> gaugeThreadsCount;
 
 	public V2JvmStats(MetricRegistry metricRegistry) {
-		histogramHeapUsed = metricRegistry.histogram(MetricRegistry.name("jvm", "heap", "usedBytes"));
-		histogramHeapMax = metricRegistry.histogram(MetricRegistry.name("jvm", "heap", "maxBytes"));
-		histogramNonHeapUsed = metricRegistry.histogram(MetricRegistry.name("jvm", "nonheap", "usedBytes"));
-		threadsCount = metricRegistry.register(MetricRegistry.name("jvm", "threads"),
+		gaugeHeapUsed = metricRegistry.register(MetricRegistry.name("jvm", "heap", "usedBytes"),
+				new Gauge<Long>() {
+					@Override
+					public Long getValue() {
+						return memoryMXBean.getHeapMemoryUsage().getUsed();
+					}
+				});
+		gaugeHeapMax = metricRegistry.register(MetricRegistry.name("jvm", "heap", "maxBytes"),
+				new Gauge<Long>() {
+					@Override
+					public Long getValue() {
+						return memoryMXBean.getHeapMemoryUsage().getMax();
+					}
+				});
+		gaugeNonHeapUsed = metricRegistry.register(MetricRegistry.name("jvm", "nonheap", "usedBytes"),
+				new Gauge<Long>() {
+					@Override
+					public Long getValue() {
+						return memoryMXBean.getNonHeapMemoryUsage().getUsed();
+					}
+				});
+		gaugeThreadsCount = metricRegistry.register(MetricRegistry.name("jvm", "threads"),
 				new Gauge<Integer>() {
 					@Override
 					public Integer getValue() {
@@ -111,10 +125,6 @@ public class V2JvmStats extends JvmStats {
 
 		long nonHeapUsed = memoryMXBean.getNonHeapMemoryUsage().getUsed();
 		long nonHeapCommited = memoryMXBean.getNonHeapMemoryUsage().getCommitted();
-
-		histogramHeapMax.update(heapMax);
-		histogramHeapUsed.update(heapUsed);
-		histogramNonHeapUsed.update(nonHeapUsed);
 
 		result.put("mem", generateMap(
 				getKVP("heap_used_in_bytes", heapUsed),
