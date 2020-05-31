@@ -15,6 +15,7 @@
  ******************************************************************************/
 package com.elefana.document.psql;
 
+import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.indices.IndexTemplate;
@@ -74,8 +75,12 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 	protected int defaultCapacity;
 	protected long ingestionTableExpiryMillis;
 
+	private Counter ingestTableCounter;
+
 	@PostConstruct
 	public void postConstruct() throws ElefanaException {
+		ingestTableCounter = metricRegistry.counter(MetricRegistry.name("bulk", "ingest", "tables"));
+
 		ingestionTableExpiryMillis = environment.getProperty("elefana.service.bulk.ingest.tableExpiryMillis", Long.class, TimeUnit.HOURS.toMillis(6L));
 
 		tablespaces = environment.getProperty("elefana.service.bulk.tablespaces", "").split(",");
@@ -121,13 +126,16 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 						if(indexTemplate != null && indexTemplate.isTimeSeries()) {
 							final TimeIngestTable restoredTable = createTimeIngestTable(index, indexTemplate.getStorage().getIndexTimeBucket(), existingTablesForIndex);
 							indexToTimeIngestTable.put(index, restoredTable);
+							ingestTableCounter.inc(restoredTable.getCapacity());
 						} else {
 							final HashIngestTable restoredTable = createHashIngestTable(index, existingTablesForIndex);
 							indexToHashIngestTable.put(index, restoredTable);
+							ingestTableCounter.inc(restoredTable.getCapacity());
 						}
 					} else {
 						final HashIngestTable restoredTable = createHashIngestTable(index, existingTablesForIndex);
 						indexToHashIngestTable.put(index, restoredTable);
+						ingestTableCounter.inc(restoredTable.getCapacity());
 					}
 				} catch (ElefanaException e) {
 					exception.set(e);
@@ -163,6 +171,7 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 				if(hashIngestTable.prune()) {
 					lock.writeLock().lock();
 					indexToHashIngestTable.remove(key);
+					ingestTableCounter.dec(hashIngestTable.getCapacity());
 					lock.writeLock().unlock();
 				}
 
@@ -181,6 +190,7 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 				if(timeIngestTable.prune()) {
 					lock.writeLock().lock();
 					indexToTimeIngestTable.remove(key);
+					ingestTableCounter.dec(timeIngestTable.getCapacity());
 					lock.writeLock().unlock();
 				}
 
@@ -257,7 +267,7 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 		return result;
 	}
 
-	private <T> T getIngestTable(String index, Map<String, T> tables, boolean time) throws ElefanaException  {
+	private <T extends IngestTable> T getIngestTable(String index, Map<String, T> tables, boolean time) throws ElefanaException  {
 		lock.readLock().lock();
 		final T result = tables.get(index);
 		lock.readLock().unlock();
@@ -275,6 +285,7 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 					} else {
 						newTable = (T) createHashIngestTable(index, EMPTY_ARRAYLIST);
 					}
+					ingestTableCounter.inc(newTable.getCapacity());
 					tables.put(index, newTable);
 				} catch (ElefanaException e) {
 					lock.writeLock().unlock();
