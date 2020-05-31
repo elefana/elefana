@@ -275,6 +275,10 @@ public class DefaultHashIngestTable implements HashIngestTable {
 			for(int i = 0; i < locks.length; i++) {
 				int index = readIndex.get() % locks.length;
 				readIndex.set(index + 1);
+
+				if(pruned.get()) {
+					return -1;
+				}
 				try {
 					if(locks[index].tryLock()) {
 						if(!isDataMarked(index)) {
