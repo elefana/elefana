@@ -78,7 +78,7 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 			LOGGER.error(e.getMessage(), e);
 		}
 
-		taskScheduler.scheduleAtFixedRate(this, ioIntervalMillis);
+		taskScheduler.scheduleWithFixedDelay(this, ioIntervalMillis);
 	}
 
 	public abstract void fetchFromDatabase(JdbcTemplate jdbcTemplate, List<T> results, int from, int limit) throws SQLException;
