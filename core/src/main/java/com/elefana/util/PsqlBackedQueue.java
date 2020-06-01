@@ -68,12 +68,12 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 		flushQueue = new ArrayList<T>(maxCapacity + 2);
 
 		try {
-			fetchFromDatabase(0);
+			size.addAndGet(getDatabaseQueueSize(jdbcTemplate));
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
 		}
 		try {
-			size.set(getDatabaseQueueSize(jdbcTemplate));
+			fetchFromDatabase(0);
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
 		}
