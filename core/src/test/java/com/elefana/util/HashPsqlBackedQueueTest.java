@@ -367,6 +367,11 @@ public class HashPsqlBackedQueueTest {
 		}
 
 		@Override
+		public int getDatabaseQueueSize(JdbcTemplate jdbcTemplate) throws SQLException {
+			return database.size();
+		}
+
+		@Override
 		public void appendToDatabaseUnique(JdbcTemplate jdbcTemplate, List<String> elements) throws SQLException {
 			System.out.println("DEBUG: Append " + elements.size() + " to database");
 			for(String element : elements) {

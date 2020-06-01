@@ -73,8 +73,11 @@ public class PsqlBackedQueueTest{
 
 		queue.offer(expected);
 		queue.run();
+		Assert.assertEquals(1, queue.size());
 		Assert.assertEquals(expected, queue.peek());
+		Assert.assertEquals(1, queue.size());
 		Assert.assertEquals(expected, queue.poll());
+		Assert.assertEquals(0, queue.size());
 	}
 
 	@Test
@@ -84,20 +87,25 @@ public class PsqlBackedQueueTest{
 		queue.offer(expected);
 		queue.run();
 		queue.run();
+		Assert.assertEquals(1, queue.size());
 		Assert.assertEquals(expected, queue.peek());
+		Assert.assertEquals(1, queue.size());
 		Assert.assertEquals(expected, queue.poll());
+		Assert.assertEquals(0, queue.size());
 	}
 
 	@Test
 	public void testQueueTransferViaDatabase() {
 		push(MAX_CAPACITY);
 
+		Assert.assertEquals(MAX_CAPACITY, queue.size());
 		Assert.assertEquals(1, queue.queueSize());
 		Assert.assertEquals(9, queue.writeQueueSize());
 		Assert.assertEquals(1, queue.getTotalDatabaseEntries());
 
 		queue.run();
 
+		Assert.assertEquals(MAX_CAPACITY, queue.size());
 		Assert.assertEquals(MAX_CAPACITY, queue.queueSize());
 		Assert.assertEquals(0, queue.writeQueueSize());
 		Assert.assertEquals(MAX_CAPACITY, queue.getTotalDatabaseEntries());
@@ -108,11 +116,13 @@ public class PsqlBackedQueueTest{
 	@Test
 	public void testQueueTransferViaDatabasePushPullLoop() {
 		for(int i = 0; i < 5; i++) {
+			Assert.assertEquals((MAX_CAPACITY * i) - (i * HALF_CAPACITY), queue.size());
 			push(MAX_CAPACITY);
 			queue.run();
 			pull(HALF_CAPACITY);
 		}
 		for(int i = 0; i < 5; i++) {
+			Assert.assertEquals((MAX_CAPACITY * 5) - (5 * HALF_CAPACITY) - (i * HALF_CAPACITY), queue.size());
 			queue.run();
 			pull(HALF_CAPACITY);
 		}
@@ -121,6 +131,7 @@ public class PsqlBackedQueueTest{
 		Assert.assertEquals(0, queue.queueSize());
 		Assert.assertEquals(0, queue.writeQueueSize());
 		Assert.assertEquals(0, queue.getTotalDatabaseEntries());
+		Assert.assertEquals(0, queue.size());
 	}
 
 	@Test
@@ -440,6 +451,14 @@ public class PsqlBackedQueueTest{
 				database.add(element);
 				System.out.println("DEBUG: Append into database value " + element + ", cursor " + databaseCursor);
 			}
+		}
+
+		@Override
+		public int getDatabaseQueueSize(JdbcTemplate jdbcTemplate) throws SQLException {
+			if(database == null) {
+				return 0;
+			}
+			return database.size();
 		}
 
 		public boolean databaseContains(String element) {

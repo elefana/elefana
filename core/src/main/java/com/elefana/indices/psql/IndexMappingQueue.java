@@ -47,6 +47,15 @@ public class IndexMappingQueue extends HashPsqlBackedQueue<QueuedIndex> {
 	}
 
 	@Override
+	public int getDatabaseQueueSize(JdbcTemplate jdbcTemplate) throws SQLException {
+		final SqlRowSet rowSet = jdbcTemplate.queryForRowSet("SELECT COUNT(*) FROM elefana_index_field_mapping_queue");
+		if(rowSet.next()) {
+			return rowSet.getInt(1);
+		}
+		return 0;
+	}
+
+	@Override
 	public void removeFromDatabase(JdbcTemplate jdbcTemplate, int size) throws SQLException {
 		final String deleteQuery = "DELETE FROM elefana_index_field_mapping_queue WHERE _index IN (" +
 				"SELECT _index FROM elefana_index_field_mapping_queue ORDER BY _timestamp ASC LIMIT " + size + ")";

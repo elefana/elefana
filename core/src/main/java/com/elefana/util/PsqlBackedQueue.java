@@ -23,6 +23,7 @@ import org.springframework.scheduling.TaskScheduler;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -44,6 +45,7 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 	private final JdbcTemplate jdbcTemplate;
 	private final TaskScheduler taskScheduler;
 	private final AtomicBoolean dirty = new AtomicBoolean();
+	private final AtomicInteger size = new AtomicInteger();
 
 	protected int previousQueueSize = 0;
 	protected int databaseCursor = 0;
@@ -67,6 +69,11 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
 		}
+		try {
+			size.set(getDatabaseQueueSize(jdbcTemplate));
+		} catch (Exception e) {
+			LOGGER.error(e.getMessage(), e);
+		}
 
 		taskScheduler.scheduleAtFixedRate(this, ioIntervalMillis);
 	}
@@ -76,6 +83,8 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 	public abstract void removeFromDatabase(JdbcTemplate jdbcTemplate, int size) throws SQLException;
 
 	public abstract void appendToDatabase(JdbcTemplate jdbcTemplate, List<T> elements) throws SQLException;
+
+	public abstract int getDatabaseQueueSize(JdbcTemplate jdbcTemplate) throws SQLException;
 
 	protected void transferInMemory(T element) {
 		queue.add(element);
@@ -217,6 +226,7 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 		queueLock.writeLock().unlock();
 
 		if(result) {
+			size.decrementAndGet();
 			dirty.set(true);
 		}
 		return result;
@@ -242,6 +252,7 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 		writeQueueLock.writeLock().unlock();
 
 		if(result) {
+			size.addAndGet(c.size());
 			dirty.set(true);
 		}
 		if(previousQueueSize == 0 || writeQueueSize > maxCapacity) {
@@ -253,10 +264,12 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 	@Override
 	public boolean removeAll(Collection<?> c) {
 		queueLock.writeLock().lock();
+		final int previousSize = queue.size();
 		final boolean result = queue.removeAll(c);
 		queueLock.writeLock().unlock();
 
 		if(result) {
+			size.getAndAdd(queue.size() - previousSize);
 			dirty.set(true);
 		}
 		return result;
@@ -265,7 +278,9 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 	@Override
 	public boolean retainAll(Collection<?> c) {
 		queueLock.writeLock().lock();
+		final int previousSize = queue.size();
 		final boolean result = queue.retainAll(c);
+		size.getAndAdd(queue.size() - previousSize);
 		queueLock.writeLock().unlock();
 
 		if(result) {
@@ -279,6 +294,7 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 		queueLock.writeLock().lock();
 		boolean result = !queue.isEmpty();
 		queue.clear();
+		size.set(0);
 		queueLock.writeLock().unlock();
 
 		if(result) {
@@ -292,6 +308,7 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 		final int previousQueueSize = queue.size();
 		final boolean result = writeQueue.add(t);
 		final int writeQueueSize = writeQueue.size();
+		size.incrementAndGet();
 		writeQueueLock.writeLock().unlock();
 
 		if(result) {
@@ -320,6 +337,7 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 			result = null;
 		} else {
 			result = queue.remove(0);
+			size.decrementAndGet();
 		}
 		queueLock.writeLock().unlock();
 
@@ -353,17 +371,11 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 
 	@Override
 	public int size() {
-		queueLock.readLock().lock();
-		final int result = queue.size();
-		queueLock.readLock().unlock();
-		return result;
+		return size.get();
 	}
 
 	@Override
 	public boolean isEmpty() {
-		queueLock.readLock().lock();
-		final boolean result = queue.isEmpty();
-		queueLock.readLock().unlock();
-		return result;
+		return size.get() == 0L;
 	}
 }

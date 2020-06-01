@@ -55,6 +55,15 @@ public class CitusTimeShardRepairQueue extends HashPsqlBackedQueue<CitusTableTim
 	}
 
 	@Override
+	public int getDatabaseQueueSize(JdbcTemplate jdbcTemplate) throws SQLException {
+		final SqlRowSet rowSet = jdbcTemplate.queryForRowSet("SELECT COUNT(*) FROM elefana_time_series_repair_queue");
+		if(rowSet.next()) {
+			return rowSet.getInt(1);
+		}
+		return 0;
+	}
+
+	@Override
 	protected void appendToDatabaseUnique(JdbcTemplate jdbcTemplate, List<CitusTableTimestampSample> elements) throws SQLException {
 		Connection connection = jdbcTemplate.getDataSource().getConnection();
 
