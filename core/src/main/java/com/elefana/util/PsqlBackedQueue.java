@@ -45,7 +45,6 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 	private final JdbcTemplate jdbcTemplate;
 	private final TaskScheduler taskScheduler;
 
-	protected final AtomicBoolean dirty = new AtomicBoolean();
 	protected final AtomicInteger size = new AtomicInteger();
 
 	protected int previousQueueSize = 0;
@@ -166,12 +165,8 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 
 	@Override
 	public void run() {
-		if(!dirty.get()) {
-			return;
-		}
 		try {
 			syncToDatabase();
-			dirty.set(false);
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
 		}
@@ -219,7 +214,6 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 
 		if(result) {
 			size.decrementAndGet();
-			dirty.set(true);
 		}
 		return result;
 	}
@@ -245,7 +239,6 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 
 		if(result) {
 			size.addAndGet(c.size());
-			dirty.set(true);
 		}
 		if(previousQueueSize == 0 || writeQueueSize > maxCapacity) {
 			taskScheduler.scheduleWithFixedDelay(this, 10L);
@@ -262,7 +255,6 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 
 		if(result) {
 			size.getAndAdd(queue.size() - previousSize);
-			dirty.set(true);
 		}
 		return result;
 	}
@@ -274,10 +266,6 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 		final boolean result = queue.retainAll(c);
 		size.getAndAdd(queue.size() - previousSize);
 		queueLock.writeLock().unlock();
-
-		if(result) {
-			dirty.set(true);
-		}
 		return result;
 	}
 
@@ -288,10 +276,6 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 		queue.clear();
 		size.set(0);
 		queueLock.writeLock().unlock();
-
-		if(result) {
-			dirty.set(true);
-		}
 	}
 
 	@Override
@@ -304,7 +288,6 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 
 		if(result) {
 			size.incrementAndGet();
-			dirty.set(true);
 		}
 		if(previousQueueSize == 0 || writeQueueSize > maxCapacity) {
 			taskScheduler.scheduleWithFixedDelay(this, 10L);
@@ -332,10 +315,6 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 			size.decrementAndGet();
 		}
 		queueLock.writeLock().unlock();
-
-		if(result != null) {
-			dirty.set(true);
-		}
 		return result;
 	}
 
@@ -369,5 +348,19 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 	@Override
 	public boolean isEmpty() {
 		return size.get() == 0L;
+	}
+
+	public int memoryQueueSize() {
+		queueLock.readLock().lock();
+		final int result = queue.size();
+		queueLock.readLock().unlock();
+		return result;
+	}
+
+	public int writeQueueSize() {
+		writeQueueLock.readLock().lock();
+		final int result = writeQueue.size();
+		writeQueueLock.readLock().unlock();
+		return result;
 	}
 }

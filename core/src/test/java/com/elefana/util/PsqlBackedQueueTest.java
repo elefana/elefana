@@ -25,7 +25,6 @@ import org.springframework.scheduling.TaskScheduler;
 import static org.mockito.Mockito.*;
 
 import java.sql.SQLException;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
@@ -99,14 +98,14 @@ public class PsqlBackedQueueTest{
 		push(MAX_CAPACITY);
 
 		Assert.assertEquals(MAX_CAPACITY, queue.size());
-		Assert.assertEquals(1, queue.queueSize());
+		Assert.assertEquals(1, queue.memoryQueueSize());
 		Assert.assertEquals(9, queue.writeQueueSize());
 		Assert.assertEquals(1, queue.getTotalDatabaseEntries());
 
 		queue.run();
 
 		Assert.assertEquals(MAX_CAPACITY, queue.size());
-		Assert.assertEquals(MAX_CAPACITY, queue.queueSize());
+		Assert.assertEquals(MAX_CAPACITY, queue.memoryQueueSize());
 		Assert.assertEquals(0, queue.writeQueueSize());
 		Assert.assertEquals(MAX_CAPACITY, queue.getTotalDatabaseEntries());
 
@@ -125,9 +124,28 @@ public class PsqlBackedQueueTest{
 		queue.debug();
 
 		Assert.assertEquals(2, queue.database.size());
-		Assert.assertEquals(2, queue.queueSize());
+		Assert.assertEquals(2, queue.memoryQueueSize());
 		Assert.assertEquals(expected1, queue.poll());
-		Assert.assertEquals(1, queue.queueSize());
+		Assert.assertEquals(1, queue.memoryQueueSize());
+		Assert.assertEquals(expected2, queue.poll());
+		Assert.assertEquals(0, queue.size());
+	}
+
+	@Test
+	public void testPollFromDatabaseOnly() {
+		final String expected1 = "Test 1";
+		final String expected2 = "Test 2";
+		queue.addToDatabase(expected1);
+		queue.addToDatabase(expected2);
+
+		queue.debug();
+		queue.run();
+		queue.debug();
+
+		Assert.assertEquals(2, queue.database.size());
+		Assert.assertEquals(2, queue.memoryQueueSize());
+		Assert.assertEquals(expected1, queue.poll());
+		Assert.assertEquals(1, queue.memoryQueueSize());
 		Assert.assertEquals(expected2, queue.poll());
 		Assert.assertEquals(0, queue.size());
 	}
@@ -147,7 +165,7 @@ public class PsqlBackedQueueTest{
 		}
 		queue.run();
 
-		Assert.assertEquals(0, queue.queueSize());
+		Assert.assertEquals(0, queue.memoryQueueSize());
 		Assert.assertEquals(0, queue.writeQueueSize());
 		Assert.assertEquals(0, queue.getTotalDatabaseEntries());
 		Assert.assertEquals(0, queue.size());
@@ -187,14 +205,14 @@ public class PsqlBackedQueueTest{
 	public void testQueueTransferViaDatabaseDoubleRun() {
 		push(MAX_CAPACITY);
 
-		Assert.assertEquals(1, queue.queueSize());
+		Assert.assertEquals(1, queue.memoryQueueSize());
 		Assert.assertEquals(9, queue.writeQueueSize());
 		Assert.assertEquals(1, queue.getTotalDatabaseEntries());
 
 		queue.run();
 		queue.run();
 
-		Assert.assertEquals(MAX_CAPACITY, queue.queueSize());
+		Assert.assertEquals(MAX_CAPACITY, queue.memoryQueueSize());
 		Assert.assertEquals(0, queue.writeQueueSize());
 		Assert.assertEquals(MAX_CAPACITY, queue.getTotalDatabaseEntries());
 
@@ -205,7 +223,7 @@ public class PsqlBackedQueueTest{
 	public void testQueueTransferViaDatabaseSimpleOverCapacity() {
 		push(MAX_CAPACITY * 2);
 
-		Assert.assertEquals(10, queue.queueSize());
+		Assert.assertEquals(10, queue.memoryQueueSize());
 		Assert.assertEquals(8, queue.writeQueueSize());
 		Assert.assertEquals(12, queue.getTotalDatabaseEntries());
 
@@ -213,7 +231,7 @@ public class PsqlBackedQueueTest{
 		queue.run();
 
 		Assert.assertEquals(MAX_CAPACITY, queue.databaseCursor());
-		Assert.assertEquals(MAX_CAPACITY, queue.queueSize());
+		Assert.assertEquals(MAX_CAPACITY, queue.memoryQueueSize());
 		Assert.assertEquals(0, queue.writeQueueSize());
 		Assert.assertEquals(MAX_CAPACITY * 2, queue.getTotalDatabaseEntries());
 
@@ -234,14 +252,14 @@ public class PsqlBackedQueueTest{
 			queue.offer("Test " + i);
 		}
 
-		Assert.assertEquals(10, queue.queueSize());
+		Assert.assertEquals(10, queue.memoryQueueSize());
 		Assert.assertEquals(8, queue.writeQueueSize());
 		Assert.assertEquals(12, queue.getTotalDatabaseEntries());
 
 		queue.run();
 		queue.run();
 
-		Assert.assertEquals(MAX_CAPACITY, queue.queueSize());
+		Assert.assertEquals(MAX_CAPACITY, queue.memoryQueueSize());
 		Assert.assertEquals(0, queue.writeQueueSize());
 		Assert.assertEquals(MAX_CAPACITY * 2, queue.getTotalDatabaseEntries());
 	}
@@ -250,37 +268,37 @@ public class PsqlBackedQueueTest{
 	public void testQueueTransferViaDatabaseSimplePushPull() {
 		push(MAX_CAPACITY);
 
-		Assert.assertEquals(1, queue.queueSize());
+		Assert.assertEquals(1, queue.memoryQueueSize());
 		Assert.assertEquals(9, queue.writeQueueSize());
 		Assert.assertEquals(1, queue.getTotalDatabaseEntries());
 
 		queue.run();
 
-		Assert.assertEquals(MAX_CAPACITY, queue.queueSize());
+		Assert.assertEquals(MAX_CAPACITY, queue.memoryQueueSize());
 		Assert.assertEquals(0, queue.writeQueueSize());
 		Assert.assertEquals(MAX_CAPACITY, queue.getTotalDatabaseEntries());
 
 		pull(HALF_CAPACITY);
 
-		Assert.assertEquals(HALF_CAPACITY, queue.queueSize());
+		Assert.assertEquals(HALF_CAPACITY, queue.memoryQueueSize());
 		Assert.assertEquals(0, queue.writeQueueSize());
 		Assert.assertEquals(MAX_CAPACITY, queue.getTotalDatabaseEntries());
 
 		queue.run();
 
-		Assert.assertEquals(HALF_CAPACITY, queue.queueSize());
+		Assert.assertEquals(HALF_CAPACITY, queue.memoryQueueSize());
 		Assert.assertEquals(0, queue.writeQueueSize());
 		Assert.assertEquals(HALF_CAPACITY, queue.getTotalDatabaseEntries());
 
 		pull(HALF_CAPACITY);
 
-		Assert.assertEquals(0, queue.queueSize());
+		Assert.assertEquals(0, queue.memoryQueueSize());
 		Assert.assertEquals(0, queue.writeQueueSize());
 		Assert.assertEquals(HALF_CAPACITY, queue.getTotalDatabaseEntries());
 
 		queue.run();
 
-		Assert.assertEquals(0, queue.queueSize());
+		Assert.assertEquals(0, queue.memoryQueueSize());
 		Assert.assertEquals(0, queue.writeQueueSize());
 		Assert.assertEquals(0, queue.getTotalDatabaseEntries());
 	}
@@ -289,44 +307,44 @@ public class PsqlBackedQueueTest{
 	public void testQueueTransferViaDatabaseWriteQueueAtCapacity() {
 		push(MAX_CAPACITY);
 
-		Assert.assertEquals(1, queue.queueSize());
+		Assert.assertEquals(1, queue.memoryQueueSize());
 		Assert.assertEquals(9, queue.writeQueueSize());
 		Assert.assertEquals(false, queue.isDatabaseEmpty());
 		Assert.assertEquals(1, queue.getTotalDatabaseEntries());
 
 		queue.run();
 
-		Assert.assertEquals(MAX_CAPACITY, queue.queueSize());
+		Assert.assertEquals(MAX_CAPACITY, queue.memoryQueueSize());
 		Assert.assertEquals(0, queue.writeQueueSize());
 		Assert.assertEquals(false, queue.isDatabaseEmpty());
 		Assert.assertEquals(MAX_CAPACITY, queue.getTotalDatabaseEntries());
 
 		push(MAX_CAPACITY);
 
-		Assert.assertEquals(MAX_CAPACITY, queue.queueSize());
+		Assert.assertEquals(MAX_CAPACITY, queue.memoryQueueSize());
 		Assert.assertEquals(MAX_CAPACITY, queue.writeQueueSize());
 		queue.run();
-		Assert.assertEquals(MAX_CAPACITY, queue.queueSize());
+		Assert.assertEquals(MAX_CAPACITY, queue.memoryQueueSize());
 		Assert.assertEquals(0, queue.writeQueueSize());
 		Assert.assertEquals(MAX_CAPACITY * 2, queue.getTotalDatabaseEntries());
 
 		pull(HALF_CAPACITY);
 
-		Assert.assertEquals(HALF_CAPACITY, queue.queueSize());
+		Assert.assertEquals(HALF_CAPACITY, queue.memoryQueueSize());
 		Assert.assertEquals(0, queue.writeQueueSize());
 		Assert.assertEquals(MAX_CAPACITY * 2, queue.getTotalDatabaseEntries());
 		queue.run();
-		Assert.assertEquals(MAX_CAPACITY, queue.queueSize());
+		Assert.assertEquals(MAX_CAPACITY, queue.memoryQueueSize());
 		Assert.assertEquals(0, queue.writeQueueSize());
 		Assert.assertEquals(MAX_CAPACITY + HALF_CAPACITY, queue.getTotalDatabaseEntries());
 
 		pull(MAX_CAPACITY);
 
-		Assert.assertEquals(0, queue.queueSize());
+		Assert.assertEquals(0, queue.memoryQueueSize());
 		Assert.assertEquals(0, queue.writeQueueSize());
 		Assert.assertEquals(MAX_CAPACITY + HALF_CAPACITY, queue.getTotalDatabaseEntries());
 		queue.run();
-		Assert.assertEquals(5, queue.queueSize());
+		Assert.assertEquals(5, queue.memoryQueueSize());
 		Assert.assertEquals(0, queue.writeQueueSize());
 		Assert.assertEquals(HALF_CAPACITY, queue.getTotalDatabaseEntries());
 
@@ -337,35 +355,35 @@ public class PsqlBackedQueueTest{
 	public void testQueueTransferViaDatabaseWriteQueueOverCapacity() {
 		push(MAX_CAPACITY);
 
-		Assert.assertEquals(1, queue.queueSize());
+		Assert.assertEquals(1, queue.memoryQueueSize());
 		Assert.assertEquals(9, queue.writeQueueSize());
 		Assert.assertEquals(1, queue.getTotalDatabaseEntries());
 
 		queue.run();
 
-		Assert.assertEquals(MAX_CAPACITY, queue.queueSize());
+		Assert.assertEquals(MAX_CAPACITY, queue.memoryQueueSize());
 		Assert.assertEquals(0, queue.writeQueueSize());
 		Assert.assertEquals(MAX_CAPACITY, queue.getTotalDatabaseEntries());
 
 		push(MAX_CAPACITY * 2);
 		pull(HALF_CAPACITY);
 
-		Assert.assertEquals(HALF_CAPACITY, queue.queueSize());
+		Assert.assertEquals(HALF_CAPACITY, queue.memoryQueueSize());
 		Assert.assertEquals(9, queue.writeQueueSize());
 		queue.run();
-		Assert.assertEquals(MAX_CAPACITY, queue.queueSize());
+		Assert.assertEquals(MAX_CAPACITY, queue.memoryQueueSize());
 		Assert.assertEquals(0, queue.writeQueueSize());
 		Assert.assertEquals(HALF_CAPACITY + (MAX_CAPACITY * 2), queue.getTotalDatabaseEntries());
 
 		pull(HALF_CAPACITY);
 
-		Assert.assertEquals(HALF_CAPACITY, queue.queueSize());
+		Assert.assertEquals(HALF_CAPACITY, queue.memoryQueueSize());
 		Assert.assertEquals(0, queue.writeQueueSize());
 		Assert.assertEquals(HALF_CAPACITY + (MAX_CAPACITY * 2), queue.getTotalDatabaseEntries());
 
 		queue.debug();
 		queue.run();
-		Assert.assertEquals(MAX_CAPACITY, queue.queueSize());
+		Assert.assertEquals(MAX_CAPACITY, queue.memoryQueueSize());
 		Assert.assertEquals(0, queue.writeQueueSize());
 		Assert.assertEquals(MAX_CAPACITY * 2, queue.getTotalDatabaseEntries());
 
@@ -487,7 +505,6 @@ public class PsqlBackedQueueTest{
 		public void addToDatabase(String element) {
 			database.add(element);
 			size.incrementAndGet();
-			dirty.set(true);
 		}
 
 		public boolean isDatabaseEmpty() {
@@ -496,14 +513,6 @@ public class PsqlBackedQueueTest{
 
 		public int getTotalDatabaseEntries() {
 			return database.size();
-		}
-
-		public int queueSize() {
-			return queue.size();
-		}
-
-		public int writeQueueSize() {
-			return writeQueue.size();
 		}
 
 		public int databaseCursor() {
