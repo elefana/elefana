@@ -368,6 +368,9 @@ public class HashPsqlBackedQueueTest {
 
 		@Override
 		public int getDatabaseQueueSize(JdbcTemplate jdbcTemplate) throws SQLException {
+			if(database == null) {
+				return 0;
+			}
 			return database.size();
 		}
 
