@@ -363,4 +363,8 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 		writeQueueLock.readLock().unlock();
 		return result;
 	}
+
+	public int databaseCursor() {
+		return databaseCursor;
+	}
 }
