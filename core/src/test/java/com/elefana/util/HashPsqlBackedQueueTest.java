@@ -8,6 +8,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.TaskScheduler;
 
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ScheduledFuture;
@@ -34,8 +35,8 @@ public class HashPsqlBackedQueueTest {
 		jdbcTemplate = mock(JdbcTemplate.class);
 		taskScheduler = mock(TaskScheduler.class);
 
-		when(taskScheduler.scheduleAtFixedRate(any(Runnable.class), eq(IO_INTERVAL))).thenReturn(mock(ScheduledFuture.class));
-		when(taskScheduler.scheduleWithFixedDelay(any(Runnable.class), any(Long.class))).then(invocation -> {
+		when(taskScheduler.scheduleWithFixedDelay(any(Runnable.class), eq(IO_INTERVAL))).thenReturn(mock(ScheduledFuture.class));
+		when(taskScheduler.schedule(any(Runnable.class), any(Instant.class))).then(invocation -> {
 			Runnable runnable = (Runnable) invocation.getArgument(0);
 			runnable.run();
 			return null;
