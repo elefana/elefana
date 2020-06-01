@@ -248,8 +248,8 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 		queueLock.writeLock().unlock();
 
 		if(result) {
-			removedElements.addAndGet((previousSize - currentSize));
-			size.getAndAdd(queue.size() - previousSize);
+			removedElements.addAndGet(previousSize - currentSize);
+			size.getAndAdd(currentSize - previousSize);
 		}
 		return result;
 	}
@@ -309,20 +309,14 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 	public T poll() {
 		queueLock.writeLock().lock();
 		final T result;
-		final boolean removedValue;
 		if(queue.isEmpty()) {
 			result = null;
-			removedValue = false;
 		} else {
 			result = queue.remove(0);
-			removedValue = true;
 			size.decrementAndGet();
-		}
-		queueLock.writeLock().unlock();
-
-		if(removedValue) {
 			removedElements.incrementAndGet();
 		}
+		queueLock.writeLock().unlock();
 		return result;
 	}
 

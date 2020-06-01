@@ -454,7 +454,57 @@ public class PsqlBackedQueueTest{
 		queue.run();
 		Assert.assertEquals(MAX_CAPACITY, results.size());
 		Assert.assertEquals(MAX_CAPACITY, queue.database.size());
+		Assert.assertEquals(MAX_CAPACITY, queue.size());
 		queue.debug();
+	}
+
+	@Test
+	public void testQueueConcurrencyWithRun() {
+		final int totalThreads = 5;
+		final Thread[] threads = new Thread[totalThreads];
+		final CountDownLatch latch = new CountDownLatch(totalThreads);
+		final Set<Integer> results = new ConcurrentSkipListSet<Integer>();
+
+		for(int i = 0; i < totalThreads - 1; i++) {
+			if(i % 2 == 0) {
+				threads[i] = new Thread(() -> {
+					latch.countDown();
+					push(MAX_CAPACITY);
+				});
+			} else {
+				threads[i] = new Thread(() -> {
+					latch.countDown();
+					pull(results, HALF_CAPACITY);
+				});
+			}
+		}
+		threads[totalThreads - 1] = new Thread(() -> {
+			latch.countDown();
+			for(int i = 0; i < totalThreads * totalThreads; i++) {
+				queue.run();
+				if(i % totalThreads == 0) {
+					try {
+						Thread.sleep(1L);
+					} catch (Exception e) {
+					}
+				}
+			}
+		});
+
+		for(int i = 0; i < totalThreads; i++) {
+			threads[i].start();
+		}
+		for(int i = 0; i < totalThreads; i++) {
+			try {
+				threads[i].join();
+			} catch (InterruptedException e) {}
+		}
+
+		queue.run();
+		queue.debug();
+		Assert.assertEquals(MAX_CAPACITY, results.size());
+		Assert.assertEquals(MAX_CAPACITY, queue.database.size());
+		Assert.assertEquals(MAX_CAPACITY, queue.size());
 	}
 
 	private void push(int entries) {
