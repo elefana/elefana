@@ -248,7 +248,7 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 		queueLock.writeLock().unlock();
 
 		if(result) {
-			removedElements.addAndGet((currentSize - previousSize));
+			removedElements.addAndGet((previousSize - currentSize));
 			size.getAndAdd(queue.size() - previousSize);
 		}
 		return result;
