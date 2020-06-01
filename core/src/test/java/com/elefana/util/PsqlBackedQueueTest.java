@@ -25,6 +25,7 @@ import org.springframework.scheduling.TaskScheduler;
 import static org.mockito.Mockito.*;
 
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
@@ -52,7 +53,7 @@ public class PsqlBackedQueueTest{
 		taskScheduler = mock(TaskScheduler.class);
 
 		when(taskScheduler.scheduleAtFixedRate(any(Runnable.class), eq(IO_INTERVAL))).thenReturn(mock(ScheduledFuture.class));
-		when(taskScheduler.scheduleWithFixedDelay(any(Runnable.class), any(Long.class))).then(invocation -> {
+		when(taskScheduler.schedule(any(Runnable.class), any(Instant.class))).then(invocation -> {
 			Runnable runnable = (Runnable) invocation.getArgument(0);
 			runnable.run();
 			return null;
@@ -388,37 +389,44 @@ public class PsqlBackedQueueTest{
 		Assert.assertEquals(1, queue.memoryQueueSize());
 		Assert.assertEquals(9, queue.writeQueueSize());
 		Assert.assertEquals(1, queue.getTotalDatabaseEntries());
+		Assert.assertEquals(MAX_CAPACITY, queue.size());
 
 		queue.run();
 
 		Assert.assertEquals(MAX_CAPACITY, queue.memoryQueueSize());
 		Assert.assertEquals(0, queue.writeQueueSize());
 		Assert.assertEquals(MAX_CAPACITY, queue.getTotalDatabaseEntries());
+		Assert.assertEquals(MAX_CAPACITY, queue.size());
 
 		push(MAX_CAPACITY * 2);
 		pull(HALF_CAPACITY);
 
 		Assert.assertEquals(HALF_CAPACITY, queue.memoryQueueSize());
 		Assert.assertEquals(9, queue.writeQueueSize());
+		Assert.assertEquals((MAX_CAPACITY * 3) - HALF_CAPACITY, queue.size());
 		queue.run();
 		Assert.assertEquals(MAX_CAPACITY, queue.memoryQueueSize());
 		Assert.assertEquals(0, queue.writeQueueSize());
 		Assert.assertEquals(HALF_CAPACITY + (MAX_CAPACITY * 2), queue.getTotalDatabaseEntries());
+		Assert.assertEquals((MAX_CAPACITY * 3) - HALF_CAPACITY, queue.size());
 
 		pull(HALF_CAPACITY);
 
 		Assert.assertEquals(HALF_CAPACITY, queue.memoryQueueSize());
 		Assert.assertEquals(0, queue.writeQueueSize());
 		Assert.assertEquals(HALF_CAPACITY + (MAX_CAPACITY * 2), queue.getTotalDatabaseEntries());
+		Assert.assertEquals((MAX_CAPACITY * 3) - (HALF_CAPACITY * 2), queue.size());
 
 		queue.debug();
 		queue.run();
 		Assert.assertEquals(MAX_CAPACITY, queue.memoryQueueSize());
 		Assert.assertEquals(0, queue.writeQueueSize());
 		Assert.assertEquals(MAX_CAPACITY * 2, queue.getTotalDatabaseEntries());
+		Assert.assertEquals((MAX_CAPACITY * 3) - (HALF_CAPACITY * 2), queue.size());
 
 		queue.debug();
 		pull(MAX_CAPACITY);
+		Assert.assertEquals((MAX_CAPACITY * 3) - (HALF_CAPACITY * 2) - MAX_CAPACITY, queue.size());
 	}
 
 	@Test

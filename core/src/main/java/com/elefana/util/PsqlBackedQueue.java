@@ -21,6 +21,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.TaskScheduler;
 
 import java.sql.SQLException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.Temporal;
+import java.time.temporal.TemporalUnit;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -102,7 +106,7 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 
 	private void syncToDatabase() throws SQLException {
 		if(!flushLock.tryLock()) {
-			taskScheduler.scheduleWithFixedDelay(this, Math.max(10L, ioIntervalMillis / 10));
+			taskScheduler.schedule(this, Instant.now().plus(10L, ChronoUnit.MILLIS));
 			return;
 		}
 		final int removedElements = this.removedElements.get();
@@ -291,7 +295,7 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 			size.incrementAndGet();
 		}
 		if(previousQueueSize == 0 || writeQueueSize > maxCapacity) {
-			taskScheduler.scheduleWithFixedDelay(this, 10L);
+			taskScheduler.schedule(this, Instant.now().plus(10L, ChronoUnit.MILLIS));
 		}
 		return result;
 	}
