@@ -52,7 +52,7 @@ public class PsqlBackedQueueTest{
 		jdbcTemplate = mock(JdbcTemplate.class);
 		taskScheduler = mock(TaskScheduler.class);
 
-		when(taskScheduler.scheduleAtFixedRate(any(Runnable.class), eq(IO_INTERVAL))).thenReturn(mock(ScheduledFuture.class));
+		when(taskScheduler.scheduleWithFixedDelay(any(Runnable.class), eq(IO_INTERVAL))).thenReturn(mock(ScheduledFuture.class));
 		when(taskScheduler.schedule(any(Runnable.class), any(Instant.class))).then(invocation -> {
 			Runnable runnable = (Runnable) invocation.getArgument(0);
 			runnable.run();
