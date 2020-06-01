@@ -44,12 +44,12 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 
 	private final JdbcTemplate jdbcTemplate;
 	private final TaskScheduler taskScheduler;
-	private final AtomicBoolean dirty = new AtomicBoolean();
-	private final AtomicInteger size = new AtomicInteger();
+
+	protected final AtomicBoolean dirty = new AtomicBoolean();
+	protected final AtomicInteger size = new AtomicInteger();
 
 	protected int previousQueueSize = 0;
 	protected int databaseCursor = 0;
-	protected boolean writeQueueInMemory = true;
 
 	public PsqlBackedQueue(JdbcTemplate jdbcTemplate, TaskScheduler taskScheduler,
 	                       long ioIntervalMillis, int maxCapacity)
@@ -115,11 +115,11 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 			int delta = previousQueueSize - currentQueueSize;
 			try {
 				removeFromDatabase(jdbcTemplate, delta);
+				databaseCursor -= delta;
 			} catch (SQLException e) {
 				flushLock.unlock();
 				throw e;
 			}
-			databaseCursor -= delta;
 		}
 
 		writeQueueLock.writeLock().lock();
@@ -137,34 +137,26 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 			}
 		}
 
-		if(currentQueueSize < maxCapacity) {
-			if(!writeQueueInMemory || flushQueue.isEmpty()) {
-				//Next entries need to come from database
+		while(currentQueueSize < maxCapacity) {
+			final int startQueueSize = currentQueueSize;
+			if(flushQueue.size() > 0 && size.get() - flushQueue.size() < maxCapacity) {
+				//Next queued items are in memory
+				queueLock.writeLock().lock();
+				transferInMemory(flushQueue.remove(0));
+				currentQueueSize = queue.size();
+				queueLock.writeLock().unlock();
+
+				databaseCursor++;
+			} else {
+				//Next queued items are in database
 				queueLock.writeLock().lock();
 				fetchFromDatabase(databaseCursor);
 				currentQueueSize = queue.size();
 				queueLock.writeLock().unlock();
-
-				writeQueueInMemory = false;
-			} else {
-				//Entries are already in memory
-				while(currentQueueSize < maxCapacity) {
-					if(flushQueue.isEmpty()) {
-						break;
-					}
-
-					queueLock.writeLock().lock();
-					transferInMemory(flushQueue.remove(0));
-					currentQueueSize = queue.size();
-					queueLock.writeLock().unlock();
-
-					databaseCursor++;
-				}
-
-				writeQueueInMemory &= flushQueue.isEmpty();
 			}
-		} else if(flushQueue.size() > 0) {
-			writeQueueInMemory = false;
+			if(startQueueSize == currentQueueSize) {
+				break;
+			}
 		}
 
 		flushQueue.clear();
@@ -308,10 +300,10 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 		final int previousQueueSize = queue.size();
 		final boolean result = writeQueue.add(t);
 		final int writeQueueSize = writeQueue.size();
-		size.incrementAndGet();
 		writeQueueLock.writeLock().unlock();
 
 		if(result) {
+			size.incrementAndGet();
 			dirty.set(true);
 		}
 		if(previousQueueSize == 0 || writeQueueSize > maxCapacity) {

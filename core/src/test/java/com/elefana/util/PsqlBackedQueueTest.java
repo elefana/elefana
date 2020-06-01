@@ -114,6 +114,25 @@ public class PsqlBackedQueueTest{
 	}
 
 	@Test
+	public void testPollFromDatabase() {
+		final String expected1 = "Test 1";
+		final String expected2 = "Test 2";
+		queue.offer(expected1);
+		queue.addToDatabase(expected2);
+
+		queue.debug();
+		queue.run();
+		queue.debug();
+
+		Assert.assertEquals(2, queue.database.size());
+		Assert.assertEquals(2, queue.queueSize());
+		Assert.assertEquals(expected1, queue.poll());
+		Assert.assertEquals(1, queue.queueSize());
+		Assert.assertEquals(expected2, queue.poll());
+		Assert.assertEquals(0, queue.size());
+	}
+
+	@Test
 	public void testQueueTransferViaDatabasePushPullLoop() {
 		for(int i = 0; i < 5; i++) {
 			Assert.assertEquals((MAX_CAPACITY * i) - (i * HALF_CAPACITY), queue.size());
@@ -429,7 +448,7 @@ public class PsqlBackedQueueTest{
 			if(database == null) {
 				return;
 			}
-			System.out.println("DEBUG: Fetch from database. From: " + from + ", Limit: " + limit);
+			System.out.println("DEBUG: Fetch from database. From: " + from + ", Limit: " + limit + ", Database Size: " + database.size());
 			for(int i = from; i < from + limit && i < database.size(); i++) {
 				results.add(database.get(i));
 				System.out.println("DEBUG: Cursor " + i + " = Value " + database.get(i));
@@ -449,7 +468,7 @@ public class PsqlBackedQueueTest{
 			System.out.println("DEBUG: Append " + elements.size() + " elements to database");
 			for(String element : elements) {
 				database.add(element);
-				System.out.println("DEBUG: Append into database value " + element + ", cursor " + databaseCursor);
+				System.out.println("DEBUG: Append into database value " + element + ", cursor " + databaseCursor + ", Database Size: " + database.size());
 			}
 		}
 
@@ -467,6 +486,8 @@ public class PsqlBackedQueueTest{
 
 		public void addToDatabase(String element) {
 			database.add(element);
+			size.incrementAndGet();
+			dirty.set(true);
 		}
 
 		public boolean isDatabaseEmpty() {
@@ -495,7 +516,6 @@ public class PsqlBackedQueueTest{
 			System.out.println("Queue size: " + this.queue.size());
 			System.out.println("Write queue size: " + this.writeQueue.size());
 			System.out.println("Database Cursor: " + databaseCursor);
-			System.out.println("Write Queue Overflow: " + writeQueueInMemory);
 			System.out.println("--------------");
 		}
 	}

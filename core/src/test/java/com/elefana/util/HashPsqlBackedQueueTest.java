@@ -414,7 +414,6 @@ public class HashPsqlBackedQueueTest {
 			System.out.println("Queue size: " + this.queue.size());
 			System.out.println("Write queue size: " + this.writeQueue.size());
 			System.out.println("Database Cursor: " + databaseCursor);
-			System.out.println("Write Queue Overflow: " + writeQueueInMemory);
 			System.out.println("--------------");
 		}
 	}
