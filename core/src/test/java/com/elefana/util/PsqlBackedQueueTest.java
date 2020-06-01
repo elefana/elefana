@@ -113,6 +113,23 @@ public class PsqlBackedQueueTest{
 	}
 
 	@Test
+	public void testQueueRunEmptyQueue() {
+		for(int i = 0; i < 10; i++) {
+			queue.run();
+			Assert.assertEquals(0, queue.databaseCursor());
+		}
+	}
+
+	@Test
+	public void testQueuePollAndRunEmptyQueue() {
+		for(int i = 0; i < 10; i++) {
+			queue.poll();
+			queue.run();
+			Assert.assertEquals(0, queue.databaseCursor());
+		}
+	}
+
+	@Test
 	public void testPollFromDatabase() {
 		final String expected1 = "Test 1";
 		final String expected2 = "Test 2";
@@ -123,12 +140,16 @@ public class PsqlBackedQueueTest{
 		queue.run();
 		queue.debug();
 
+		Assert.assertEquals(2, queue.databaseCursor());
 		Assert.assertEquals(2, queue.database.size());
 		Assert.assertEquals(2, queue.memoryQueueSize());
 		Assert.assertEquals(expected1, queue.poll());
 		Assert.assertEquals(1, queue.memoryQueueSize());
 		Assert.assertEquals(expected2, queue.poll());
 		Assert.assertEquals(0, queue.size());
+
+		queue.run();
+		Assert.assertEquals(0, queue.databaseCursor());
 	}
 
 	@Test
@@ -189,15 +210,24 @@ public class PsqlBackedQueueTest{
 	public void testOverThenUnderCapacity() {
 		push(MAX_CAPACITY * 2);
 		queue.run();
+		Assert.assertEquals(MAX_CAPACITY, queue.databaseCursor());
+
 		pull(HALF_CAPACITY);
 		queue.run();
+		Assert.assertEquals(MAX_CAPACITY, queue.databaseCursor());
+
 		pull(HALF_CAPACITY);
 		queue.run();
+		Assert.assertEquals(MAX_CAPACITY, queue.databaseCursor());
+
 		pull(HALF_CAPACITY);
 		queue.run();
+		Assert.assertEquals(HALF_CAPACITY, queue.databaseCursor());
+
 		push(1);
 		queue.run();
 		pull(HALF_CAPACITY);
+		Assert.assertEquals(HALF_CAPACITY + 1, queue.databaseCursor());
 		pull(1);
 	}
 
@@ -424,6 +454,7 @@ public class PsqlBackedQueueTest{
 		queue.run();
 		Assert.assertEquals(MAX_CAPACITY, results.size());
 		Assert.assertEquals(MAX_CAPACITY, queue.database.size());
+		queue.debug();
 	}
 
 	private void push(int entries) {
@@ -434,12 +465,14 @@ public class PsqlBackedQueueTest{
 
 	private void pull(Set<Integer> results , int entries) {
 		for(int i = 0; i < entries; i++) {
-			while(queue.peek() == null) {
+			String result = queue.poll();
+			while(result == null) {
 				try {
 					Thread.sleep(10L);
 				} catch (Exception e) {}
+				result = queue.poll();
 			}
-			results.add(Integer.valueOf(queue.poll()));
+			results.add(Integer.valueOf(result));
 		}
 	}
 
@@ -515,8 +548,8 @@ public class PsqlBackedQueueTest{
 			return database.size();
 		}
 
-		public int databaseCursor() {
-			return databaseCursor;
+		public void setDatabaseCursor(int cursor) {
+			this.databaseCursor = cursor;
 		}
 
 		public void debug() {

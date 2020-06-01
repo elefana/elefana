@@ -89,26 +89,27 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 		queue.add(element);
 	}
 
-	private void fetchFromDatabase(int from) throws SQLException {
+	private int fetchFromDatabase(int from) throws SQLException {
 		try {
-			int previousSize = queue.size();
+			final int previousSize = queue.size();
 			fetchFromDatabase(jdbcTemplate, queue, from, maxCapacity - previousSize);
-			databaseCursor += queue.size() - previousSize;
-			previousQueueSize = queue.size();
+			final int diff = queue.size() - previousSize;
+			databaseCursor += diff;
+			return diff;
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
 		}
+		return 0;
 	}
 
 	private void syncToDatabase() throws SQLException {
-		queueLock.readLock().lock();
-		int currentQueueSize = queue.size();
-		queueLock.readLock().unlock();
-
 		if(!flushLock.tryLock()) {
 			taskScheduler.scheduleWithFixedDelay(this, Math.max(10L, ioIntervalMillis / 10));
 			return;
 		}
+		queueLock.readLock().lock();
+		int currentQueueSize = queue.size();
+		queueLock.readLock().unlock();
 
 		if(currentQueueSize < previousQueueSize) {
 			int delta = previousQueueSize - currentQueueSize;
@@ -136,27 +137,23 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 			}
 		}
 
+		queueLock.writeLock().lock();
 		while(currentQueueSize < maxCapacity) {
 			final int startQueueSize = currentQueueSize;
 			if(flushQueue.size() > 0 && size.get() - flushQueue.size() < maxCapacity) {
 				//Next queued items are in memory
-				queueLock.writeLock().lock();
 				transferInMemory(flushQueue.remove(0));
-				currentQueueSize = queue.size();
-				queueLock.writeLock().unlock();
-
+				currentQueueSize++;
 				databaseCursor++;
-			} else {
+			} else if(size.get() > 0) {
 				//Next queued items are in database
-				queueLock.writeLock().lock();
-				fetchFromDatabase(databaseCursor);
-				currentQueueSize = queue.size();
-				queueLock.writeLock().unlock();
+				currentQueueSize += fetchFromDatabase(databaseCursor);
 			}
 			if(startQueueSize == currentQueueSize) {
 				break;
 			}
 		}
+		queueLock.writeLock().unlock();
 
 		flushQueue.clear();
 		previousQueueSize = currentQueueSize;
