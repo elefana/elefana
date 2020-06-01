@@ -36,7 +36,6 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 	protected final long ioIntervalMillis;
 	protected final ReadWriteLock queueLock = new ReentrantReadWriteLock();
 	protected final ReadWriteLock writeQueueLock = new ReentrantReadWriteLock();
-	protected final ReadWriteLock removedElementsLock = new ReentrantReadWriteLock();
 	protected final Lock flushLock = new ReentrantLock();
 
 	protected final List<T> queue;
@@ -46,9 +45,9 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 	private final JdbcTemplate jdbcTemplate;
 	private final TaskScheduler taskScheduler;
 
+	protected final AtomicInteger removedElements = new AtomicInteger();
 	protected final AtomicInteger size = new AtomicInteger();
 
-	protected int removedElements = 0;
 	protected int databaseCursor = 0;
 
 	public PsqlBackedQueue(JdbcTemplate jdbcTemplate, TaskScheduler taskScheduler,
@@ -106,18 +105,14 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 			taskScheduler.scheduleWithFixedDelay(this, Math.max(10L, ioIntervalMillis / 10));
 			return;
 		}
-		removedElementsLock.readLock().lock();
-		final int removedElements = this.removedElements;
-		removedElementsLock.readLock().unlock();
+		final int removedElements = this.removedElements.get();
 
-		if(removedElements != 0) {
+		if(removedElements > 0) {
 			try {
 				removeFromDatabase(jdbcTemplate, removedElements);
 				databaseCursor -= removedElements;
 
-				removedElementsLock.writeLock().lock();
-				this.removedElements -= removedElements;
-				removedElementsLock.writeLock().unlock();
+				this.removedElements.addAndGet(-removedElements);
 			} catch (SQLException e) {
 				flushLock.unlock();
 				throw e;
@@ -210,9 +205,7 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 		queueLock.writeLock().unlock();
 
 		if(result) {
-			removedElementsLock.writeLock().lock();
-			this.removedElements++;
-			removedElementsLock.writeLock().unlock();
+			removedElements.incrementAndGet();
 			size.decrementAndGet();
 		}
 		return result;
@@ -255,9 +248,7 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 		queueLock.writeLock().unlock();
 
 		if(result) {
-			removedElementsLock.writeLock().lock();
-			this.removedElements += (currentSize - previousSize);
-			removedElementsLock.writeLock().unlock();
+			removedElements.addAndGet((currentSize - previousSize));
 			size.getAndAdd(queue.size() - previousSize);
 		}
 		return result;
@@ -273,9 +264,7 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 		size.getAndAdd(currentSize - previousSize);
 		queueLock.writeLock().unlock();
 
-		removedElementsLock.writeLock().lock();
-		this.removedElements += (currentSize - previousSize);
-		removedElementsLock.writeLock().unlock();
+		removedElements.addAndGet((currentSize - previousSize));
 		return result;
 	}
 
@@ -287,9 +276,7 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 		final int size = this.size.getAndSet(0);
 		queueLock.writeLock().unlock();
 
-		removedElementsLock.writeLock().lock();
-		this.removedElements += size;
-		removedElementsLock.writeLock().unlock();
+		removedElements.addAndGet(size);
 	}
 
 	@Override
@@ -334,9 +321,7 @@ public abstract class PsqlBackedQueue<T> implements Queue<T>, Runnable {
 		queueLock.writeLock().unlock();
 
 		if(removedValue) {
-			removedElementsLock.writeLock().lock();
-			this.removedElements++;
-			removedElementsLock.writeLock().unlock();
+			removedElements.incrementAndGet();
 		}
 		return result;
 	}
