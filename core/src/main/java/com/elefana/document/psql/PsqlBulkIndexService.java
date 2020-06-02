@@ -80,8 +80,8 @@ public class PsqlBulkIndexService implements Runnable {
 	protected final AtomicBoolean running = new AtomicBoolean(true);
 	protected ExecutorService executorService;
 
+	protected Meter bulkIndexMeter;
 	private Timer bulkIndexTimer;
-	private Meter bulkIndexMeter;
 	private Counter duplicateKeyCounter;
 
 	@PostConstruct
