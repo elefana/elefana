@@ -24,17 +24,19 @@ public interface IngestTable {
 
 	public boolean isDataMarked(int index);
 
-	public default void markData(int index) {
-		markData(index, false);
+	public default void markData(int index, int quantity) {
+		markData(index, quantity, false);
 	}
 
 	public default void unmarkData(int index) {
 		unmarkData(index, false);
 	}
 
-	public void markData(int index, boolean skipLockCheck);
+	public void markData(int index, int quantity, boolean skipLockCheck);
 
 	public void unmarkData(int index, boolean skipLockCheck);
+
+	public int getDataCount(int index);
 
 	public void unlockTable(int index);
 

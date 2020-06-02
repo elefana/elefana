@@ -41,7 +41,7 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 	private final ReentrantLock[] locks;
 	private final String [] tableNames;
 	private final int [] shardIds;
-	private final boolean [] dataMarker;
+	private final int [] dataMarker;
 	private final AtomicLong lastUsageTimestamp = new AtomicLong();
 	private final AtomicBoolean pruned = new AtomicBoolean();
 
@@ -68,7 +68,7 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 		locks = new ReentrantLock[capacity];
 		tableNames = new String[capacity];
 		shardIds = new int[capacity];
-		dataMarker = new boolean[capacity];
+		dataMarker = new int[capacity];
 
 		for(int i = 0; i < shardIds.length; i++) {
 			shardIds[i] = -1;
@@ -94,7 +94,7 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 
 				if(tableNames[i] == null) {
 					tableNames[i] = createAndStoreStagingTable(connection, tablespaces.length > 0 ? tablespaces[i % tablespaces.length] : null);
-					dataMarker[i] = false;
+					dataMarker[i] = 0;
 				} else {
 					restoreExistingTable(connection, timeBucket, i, tableNames[i]);
 				}
@@ -204,7 +204,7 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 		if(resultSet.next()) {
 			shardIds[arrayIndex] = timeBucket.getShardOffset(resultSet.getLong("_timestamp"));
 			lastUsageTimestamp.set(System.currentTimeMillis());
-			dataMarker[arrayIndex] = true;
+			dataMarker[arrayIndex] = 1;
 		}
 		createTableStatement.close();
 	}
@@ -328,17 +328,17 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 		if(locks[index].getHoldCount() == 0) {
 			throw new RuntimeException("Cannot check mark status without lock acquired");
 		}
-		return dataMarker[index];
+		return dataMarker[index]  > 0;
 	}
 
 	@Override
-	public void markData(int index, boolean skipLockCheck) {
+	public void markData(int index, int quantity, boolean skipLockCheck) {
 		if(!skipLockCheck) {
 			if(locks[index].getHoldCount() == 0) {
 				return;
 			}
 		}
-		dataMarker[index] = true;
+		dataMarker[index] += quantity;
 	}
 
 	@Override
@@ -349,7 +349,12 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 			}
 		}
 		shardIds[index] = -1;
-		dataMarker[index] = false;
+		dataMarker[index] = 0;
+	}
+
+	@Override
+	public int getDataCount(int index) {
+		return dataMarker[index];
 	}
 
 	public void unlockTable(int index) {

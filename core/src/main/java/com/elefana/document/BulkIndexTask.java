@@ -134,6 +134,7 @@ public abstract class BulkIndexTask implements Callable<List<BulkItemResponse>> 
 
 			try {
 				final Timer.Context psqlTime = psqlTimer.time();
+				int rowCount = 0;
 				for (int i = from; i < from + size && i < indexOperations.size(); i++) {
 					BulkIndexOperation indexOperation = indexOperations.get(i);
 					final long bucket1s = indexOperation.getTimestamp()
@@ -180,12 +181,13 @@ public abstract class BulkIndexTask implements Callable<List<BulkItemResponse>> 
 
 					final byte [] rowBytes = rowBuilder.toString().getBytes(CHARSET);
 					copyIn.writeToCopy(rowBytes, 0, rowBytes.length);
+					rowCount++;
 				}
 				copyIn.endCopy();
 				connection.commit();
 				psqlTime.stop();
 
-				ingestTable.markData(stagingTableId, true);
+				ingestTable.markData(stagingTableId, rowCount);
 
 				try {
 					// index is the only supported bulk operation, therefore always submit the document

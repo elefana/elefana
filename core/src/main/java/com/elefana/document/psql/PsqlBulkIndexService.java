@@ -16,6 +16,7 @@
 package com.elefana.document.psql;
 
 import com.codahale.metrics.Counter;
+import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import com.elefana.api.exception.ElefanaException;
@@ -80,12 +81,14 @@ public class PsqlBulkIndexService implements Runnable {
 	protected ExecutorService executorService;
 
 	private Timer bulkIndexTimer;
+	private Meter bulkIndexMeter;
 	private Counter duplicateKeyCounter;
 
 	@PostConstruct
 	public void postConstruct() {
 		duplicateKeyCounter = metricRegistry.counter(MetricRegistry.name("bulk", "key", "duplicates"));
 		bulkIndexTimer = metricRegistry.timer(MetricRegistry.name("bulk", "index", "duration", "total"));
+		bulkIndexMeter = metricRegistry.meter(MetricRegistry.name("bulk", "index", "rows"));
 
 		final int totalThreads = getTotalThreads();
 
@@ -269,6 +272,8 @@ public class PsqlBulkIndexService implements Runnable {
 					}
 				default:
 				case SUCCESS: {
+					bulkIndexMeter.mark(ingestTable.getDataCount(stagingTableId));
+
 					PreparedStatement dropTableStatement = connection.prepareStatement(
 							"TRUNCATE TABLE " + stagingTableName);
 					dropTableStatement.execute();

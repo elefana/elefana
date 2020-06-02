@@ -50,7 +50,7 @@ public class DefaultHashIngestTable implements HashIngestTable {
 			return (int) Thread.currentThread().getId() % tableNames.length;
 		}
 	};
-	private final boolean [] dataMarker;
+	private final int [] dataMarker;
 	private final AtomicLong lastUsageTimestamp = new AtomicLong();
 	private final AtomicBoolean pruned = new AtomicBoolean();
 
@@ -62,7 +62,7 @@ public class DefaultHashIngestTable implements HashIngestTable {
 
 		locks = new ReentrantLock[capacity];
 		tableNames = new String[capacity];
-		dataMarker = new boolean[capacity];
+		dataMarker = new int[capacity];
 
 		Connection connection = null;
 
@@ -81,7 +81,7 @@ public class DefaultHashIngestTable implements HashIngestTable {
 
 				if(tableNames[i] == null) {
 					tableNames[i] = createAndStoreStagingTable(connection, tablespaces.length > 0 ? tablespaces[i % tablespaces.length] : null);
-					dataMarker[i] = false;
+					dataMarker[i] = 0;
 				} else {
 					createStageTable(connection, tableNames[i], tablespaces.length > 0 ? tablespaces[i % tablespaces.length] : null);
 					dataMarker[i] = hasExistingData(connection, tableNames[i]);
@@ -208,14 +208,14 @@ public class DefaultHashIngestTable implements HashIngestTable {
 		preparedStatement.close();
 	}
 
-	private boolean hasExistingData(Connection connection, String tableName) throws SQLException {
+	private int hasExistingData(Connection connection, String tableName) throws SQLException {
 		final PreparedStatement queryStatement = connection.prepareStatement("SELECT _timestamp FROM " + tableName + " LIMIT 10");
 		final ResultSet resultSet = queryStatement.executeQuery();
-		boolean result = false;
+		int result = 0;
 		while(resultSet.next()) {
 			final long timestamp = resultSet.getLong("_timestamp");
 			if(timestamp > 0) {
-				result = true;
+				result = 1;
 				break;
 			}
 		}
@@ -303,17 +303,17 @@ public class DefaultHashIngestTable implements HashIngestTable {
 		if(locks[index].getHoldCount() == 0) {
 			throw new RuntimeException("Cannot check mark status without lock acquired");
 		}
-		return dataMarker[index];
+		return dataMarker[index] > 0;
 	}
 
 	@Override
-	public void markData(int index, boolean skipLockCheck) {
+	public void markData(int index, int quantity, boolean skipLockCheck) {
 		if(!skipLockCheck) {
 			if (locks[index].getHoldCount() == 0) {
 				return;
 			}
 		}
-		dataMarker[index] = true;
+		dataMarker[index] += quantity;
 	}
 
 	@Override
@@ -323,7 +323,12 @@ public class DefaultHashIngestTable implements HashIngestTable {
 				return;
 			}
 		}
-		dataMarker[index] = false;
+		dataMarker[index] = 0;
+	}
+
+	@Override
+	public int getDataCount(int index) {
+		return dataMarker[index];
 	}
 
 	public void unlockTable(int index) {

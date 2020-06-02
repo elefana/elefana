@@ -468,16 +468,29 @@ public class PsqlBackedQueueTest{
 
 	@Test
 	public void testQueueConcurrencyWithRun() {
-		final int totalThreads = 5;
+		final int totalThreads = 6;
 		final Thread[] threads = new Thread[totalThreads];
 		final CountDownLatch latch = new CountDownLatch(totalThreads);
 		final Set<Integer> results = new ConcurrentSkipListSet<Integer>();
 
-		for(int i = 0; i < totalThreads - 1; i++) {
-			if(i % 2 == 0) {
+		for(int i = 0; i < totalThreads; i++) {
+			if(i % 3 == 0) {
 				threads[i] = new Thread(() -> {
 					latch.countDown();
 					push(MAX_CAPACITY);
+				});
+			} else if(i % 3 == 1) {
+				threads[i] = new Thread(() -> {
+					latch.countDown();
+					for(int j = 0; j < totalThreads * totalThreads; j++) {
+						queue.run();
+						if(j % totalThreads == 0) {
+							try {
+								Thread.sleep(1L);
+							} catch (Exception e) {
+							}
+						}
+					}
 				});
 			} else {
 				threads[i] = new Thread(() -> {
@@ -486,18 +499,6 @@ public class PsqlBackedQueueTest{
 				});
 			}
 		}
-		threads[totalThreads - 1] = new Thread(() -> {
-			latch.countDown();
-			for(int i = 0; i < totalThreads * totalThreads; i++) {
-				queue.run();
-				if(i % totalThreads == 0) {
-					try {
-						Thread.sleep(1L);
-					} catch (Exception e) {
-					}
-				}
-			}
-		});
 
 		for(int i = 0; i < totalThreads; i++) {
 			threads[i].start();
