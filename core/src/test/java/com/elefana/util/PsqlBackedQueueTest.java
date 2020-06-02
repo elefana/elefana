@@ -28,10 +28,8 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class PsqlBackedQueueTest{
@@ -41,21 +39,28 @@ public class PsqlBackedQueueTest{
 
 	private JdbcTemplate jdbcTemplate;
 	private TaskScheduler taskScheduler;
+	private ExecutorService executorService;
 
 	private TestQueue queue;
 
+	private final AtomicBoolean useExecutor = new AtomicBoolean(false);
 	private final AtomicInteger head = new AtomicInteger(0);
 	private final AtomicInteger tail = new AtomicInteger(0);
 
 	@Before
 	public void setUp() throws SQLException {
+		executorService = Executors.newFixedThreadPool(2);
 		jdbcTemplate = mock(JdbcTemplate.class);
 		taskScheduler = mock(TaskScheduler.class);
 
 		when(taskScheduler.scheduleWithFixedDelay(any(Runnable.class), eq(IO_INTERVAL))).thenReturn(mock(ScheduledFuture.class));
 		when(taskScheduler.schedule(any(Runnable.class), any(Instant.class))).then(invocation -> {
 			Runnable runnable = (Runnable) invocation.getArgument(0);
-			runnable.run();
+			if(useExecutor.get()) {
+				executorService.submit(runnable);
+			} else {
+				runnable.run();
+			}
 			return null;
 		});
 
@@ -64,6 +69,7 @@ public class PsqlBackedQueueTest{
 
 	@After
 	public void teardown() {
+		executorService.shutdown();
 		validateMockitoUsage();
 	}
 
@@ -431,6 +437,8 @@ public class PsqlBackedQueueTest{
 
 	@Test
 	public void testQueueConcurrency() {
+		useExecutor.set(true);
+
 		final int totalThreads = 4;
 		final Thread[] threads = new Thread[totalThreads];
 		final CountDownLatch latch = new CountDownLatch(totalThreads);
