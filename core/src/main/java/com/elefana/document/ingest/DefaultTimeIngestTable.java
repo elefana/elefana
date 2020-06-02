@@ -199,14 +199,21 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 	}
 
 	private void restoreExistingTable(Connection connection, IndexTimeBucket timeBucket, int arrayIndex, String existingTableName) throws SQLException {
-		PreparedStatement createTableStatement = connection.prepareStatement("SELECT _timestamp FROM " + existingTableName + " LIMIT 1");
-		final ResultSet resultSet = createTableStatement.executeQuery();
-		if(resultSet.next()) {
-			shardIds[arrayIndex] = timeBucket.getShardOffset(resultSet.getLong("_timestamp"));
+		final PreparedStatement createTableStatement = connection.prepareStatement("SELECT _timestamp FROM " + existingTableName + " LIMIT 1");
+		final ResultSet createTableResultSet = createTableStatement.executeQuery();
+		if(createTableResultSet.next()) {
+			shardIds[arrayIndex] = timeBucket.getShardOffset(createTableResultSet.getLong("_timestamp"));
 			lastUsageTimestamp.set(System.currentTimeMillis());
 			dataMarker[arrayIndex] = 1;
 		}
 		createTableStatement.close();
+
+		final PreparedStatement countStatement = connection.prepareStatement("SELECT COUNT(*) FROM " + existingTableName);
+		final ResultSet countResultSet = createTableStatement.executeQuery();
+		if(countResultSet.next()) {
+			dataMarker[arrayIndex] = countResultSet.getInt(1);
+		}
+		countStatement.close();
 	}
 
 	private String createAndStoreStagingTable(Connection connection, String tablespace) throws SQLException {

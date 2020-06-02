@@ -209,18 +209,14 @@ public class DefaultHashIngestTable implements HashIngestTable {
 	}
 
 	private int hasExistingData(Connection connection, String tableName) throws SQLException {
-		final PreparedStatement queryStatement = connection.prepareStatement("SELECT _timestamp FROM " + tableName + " LIMIT 10");
-		final ResultSet resultSet = queryStatement.executeQuery();
+		final PreparedStatement timestampQueryStatement = connection.prepareStatement("SELECT COUNT(*) FROM " + tableName);
+		final ResultSet timestampResultSet = timestampQueryStatement.executeQuery();
 		int result = 0;
-		while(resultSet.next()) {
-			final long timestamp = resultSet.getLong("_timestamp");
-			if(timestamp > 0) {
-				result = 1;
-				break;
-			}
+		if(timestampResultSet.next()) {
+			result = timestampResultSet.getInt(1);
 		}
-		resultSet.close();
-		queryStatement.close();
+		timestampResultSet.close();
+		timestampQueryStatement.close();
 		return result;
 	}
 
