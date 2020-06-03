@@ -40,11 +40,11 @@ public class IndexStorageSettingsTest {
 
 	@Test
 	public void testDeserializationWithSomeFields() {
-		final String json ="{\"distribution\": \"TIME\", \"timestamp_path\": \"timestamp\", \"field_stats_disabled\": true}";
+		final String json ="{\"distribution\": \"TIME\", \"timestamp_path\": \"timestamp\", \"field_stats_enabled\": false}";
 		final IndexStorageSettings result = JsonUtils.fromJsonString(json, IndexStorageSettings.class);
 		Assert.assertEquals("timestamp", result.getTimestampPath());
 		Assert.assertEquals(DistributionMode.TIME, result.getDistributionMode());
-		Assert.assertEquals(true, result.isFieldStatsDisabled());
+		Assert.assertEquals(false, result.isFieldStatsEnabled());
 	}
 
 	@Test
@@ -53,6 +53,6 @@ public class IndexStorageSettingsTest {
 		final IndexStorageSettings result = JsonUtils.fromJsonString(json, IndexStorageSettings.class);
 		Assert.assertEquals("timestamp", result.getTimestampPath());
 		Assert.assertEquals(DistributionMode.TIME, result.getDistributionMode());
-		Assert.assertEquals(false, result.isFieldStatsDisabled());
+		Assert.assertEquals(true, result.isFieldStatsEnabled());
 	}
 }

@@ -433,20 +433,30 @@ public class CoreIndexUtils implements IndexUtils {
 			}
 
 			final boolean createPrimaryKey = !nodeSettingsService.isUsingCitus() || (nodeSettingsService.isUsingCitus() && !timeSeries);
-			if(createPrimaryKey) {
-				final String createPrimaryKeyQuery = "ALTER TABLE " + tableName + " ADD CONSTRAINT " + constraintName
-						+ " PRIMARY KEY (_id);";
-				LOGGER.info(createPrimaryKeyQuery);
-				preparedStatement = connection.prepareStatement(createPrimaryKeyQuery);
-				preparedStatement.execute();
-				preparedStatement.close();
+			final boolean createIdIndex;
+			if(indexTemplate != null && indexTemplate.getStorage() != null) {
+				createIdIndex = indexTemplate.getStorage().isIdEnabled();
 			} else {
-				final String hashIndexName = IndexUtils.HASH_INDEX_PREFIX + tableName + "_id";
-				final String createIdIndexQuery = "CREATE INDEX IF NOT EXISTS " + hashIndexName + " ON " + tableName + " USING HASH (_id);";
-				LOGGER.info(createIdIndexQuery);
-				preparedStatement = connection.prepareStatement(createIdIndexQuery);
-				preparedStatement.execute();
-				preparedStatement.close();
+				createIdIndex = true;
+			}
+			if(createPrimaryKey) {
+				if(createIdIndex) {
+					final String createPrimaryKeyQuery = "ALTER TABLE " + tableName + " ADD CONSTRAINT " + constraintName
+							+ " PRIMARY KEY (_id);";
+					LOGGER.info(createPrimaryKeyQuery);
+					preparedStatement = connection.prepareStatement(createPrimaryKeyQuery);
+					preparedStatement.execute();
+					preparedStatement.close();
+				}
+			} else {
+				if(createIdIndex) {
+					final String hashIndexName = IndexUtils.HASH_INDEX_PREFIX + tableName + "_id";
+					final String createIdIndexQuery = "CREATE INDEX IF NOT EXISTS " + hashIndexName + " ON " + tableName + " USING HASH (_id);";
+					LOGGER.info(createIdIndexQuery);
+					preparedStatement = connection.prepareStatement(createIdIndexQuery);
+					preparedStatement.execute();
+					preparedStatement.close();
+				}
 			}
 
 			final String createPartitionTrackingEntry = "INSERT INTO " + PARTITION_TRACKING_TABLE

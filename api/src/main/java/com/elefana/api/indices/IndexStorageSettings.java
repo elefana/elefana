@@ -28,14 +28,16 @@ public class IndexStorageSettings {
 	private String timestampPath = null;
 	@JsonProperty("index_generation")
 	private IndexGenerationSettings indexGenerationSettings = new IndexGenerationSettings();
-	@JsonProperty("field_stats_disabled")
-	private boolean fieldStatsDisabled = false;
-	@JsonProperty("mapping_disabled")
-	private boolean mappingDisabled = false;
+	@JsonProperty("field_stats_enabled")
+	private boolean fieldStatsEnabled = true;
+	@JsonProperty("mapping_enabled")
+	private boolean mappingEnabled = true;
 	@JsonProperty("brin_enabled")
 	private boolean brinEnabled = false;
 	@JsonProperty("gin_enabled")
 	private boolean ginEnabled = false;
+	@JsonProperty("id_enabled")
+	private boolean idEnabled = true;
 
 	public DistributionMode getDistributionMode() {
 		return distributionMode;
@@ -69,20 +71,20 @@ public class IndexStorageSettings {
 		this.indexGenerationSettings = indexGenerationSettings;
 	}
 
-	public boolean isFieldStatsDisabled() {
-		return fieldStatsDisabled;
+	public boolean isFieldStatsEnabled() {
+		return fieldStatsEnabled;
 	}
 
-	public void setFieldStatsDisabled(boolean fieldStatsDisabled) {
-		this.fieldStatsDisabled = fieldStatsDisabled;
+	public void setFieldStatsEnabled(boolean fieldStatsEnabled) {
+		this.fieldStatsEnabled = fieldStatsEnabled;
 	}
 
-	public boolean isMappingDisabled() {
-		return mappingDisabled;
+	public boolean isMappingEnabled() {
+		return mappingEnabled;
 	}
 
-	public void setMappingDisabled(boolean mappingDisabled) {
-		this.mappingDisabled = mappingDisabled;
+	public void setMappingEnabled(boolean mappingEnabled) {
+		this.mappingEnabled = mappingEnabled;
 	}
 
 	public boolean isBrinEnabled() {
@@ -101,15 +103,24 @@ public class IndexStorageSettings {
 		this.ginEnabled = ginEnabled;
 	}
 
+	public boolean isIdEnabled() {
+		return idEnabled;
+	}
+
+	public void setIdEnabled(boolean idEnabled) {
+		this.idEnabled = idEnabled;
+	}
+
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		IndexStorageSettings that = (IndexStorageSettings) o;
-		return fieldStatsDisabled == that.fieldStatsDisabled &&
-				mappingDisabled == that.mappingDisabled &&
+		return fieldStatsEnabled == that.fieldStatsEnabled &&
+				mappingEnabled == that.mappingEnabled &&
 				brinEnabled == that.brinEnabled &&
 				ginEnabled == that.ginEnabled &&
+				idEnabled == that.idEnabled &&
 				distributionMode == that.distributionMode &&
 				indexTimeBucket == that.indexTimeBucket &&
 				Objects.equals(timestampPath, that.timestampPath) &&
@@ -119,7 +130,7 @@ public class IndexStorageSettings {
 	@Override
 	public int hashCode() {
 		return Objects.hash(distributionMode, indexTimeBucket, timestampPath, indexGenerationSettings,
-				fieldStatsDisabled, mappingDisabled, brinEnabled, ginEnabled);
+				fieldStatsEnabled, mappingEnabled, brinEnabled, ginEnabled, idEnabled);
 	}
 
 	@Override
@@ -129,8 +140,8 @@ public class IndexStorageSettings {
 				", indexTimeBucket=" + indexTimeBucket +
 				", timestampPath='" + timestampPath + '\'' +
 				", indexGenerationSettings=" + indexGenerationSettings +
-				", fieldStatsDisabled=" + fieldStatsDisabled +
-				", mappingDisabled=" + mappingDisabled +
+				", fieldStatsDisabled=" + fieldStatsEnabled +
+				", mappingDisabled=" + mappingEnabled +
 				", brinEnabled=" + brinEnabled +
 				", ginEnabled=" + ginEnabled +
 				'}';

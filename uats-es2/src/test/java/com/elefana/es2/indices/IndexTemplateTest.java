@@ -21,6 +21,7 @@ import static org.hamcrest.Matchers.notNullValue;
 
 import java.util.UUID;
 
+import io.restassured.http.ContentType;
 import io.restassured.path.json.exception.JsonPathException;
 import io.restassured.response.ValidatableResponse;
 import org.junit.Assert;
@@ -92,6 +93,41 @@ public class IndexTemplateTest {
 			.statusCode(200)
 			.body("testIndexTemplate.template", equalTo(index))
 			.body("testIndexTemplate.storage.timestamp_path", equalTo("timeField"));
+	}
+
+	@Test
+	public void testIndexTemplateWithIdIndexDisabled() {
+		final String index = UUID.randomUUID().toString();
+		final String type = "test";
+
+		given()
+				.request()
+				.body("{\"template\": \"" + index + "\",\"storage\":{\"id_enabled\":false }}")
+				.when()
+				.put("/_template/testIndexTemplateIdDisabled")
+				.then()
+				.statusCode(200);
+
+		given().when().get("/_template/testIndexTemplateIdDisabled")
+				.then()
+				.log().all()
+				.statusCode(200)
+				.body("testIndexTemplateIdDisabled.template", equalTo(index))
+				.body("testIndexTemplateIdDisabled.storage.id_enabled", equalTo(false));
+
+		given()
+				.request()
+				.contentType(ContentType.JSON)
+				.body("{\"message\" : \"This is a message\",\"date\" : \"2017-01-14T14:12:12\"}")
+				.when()
+				.post("/" + index + "/" + type)
+				.then()
+				.statusCode(201)
+				.body("_index", equalTo(index))
+				.body("_type", equalTo(type))
+				.body("_id", notNullValue())
+				.body("_version", equalTo(1))
+				.body("created", equalTo(true));
 	}
 	
 	@Test
