@@ -187,7 +187,7 @@ public abstract class BulkIndexTask implements Callable<List<BulkItemResponse>> 
 				connection.commit();
 				psqlTime.stop();
 
-				ingestTable.markData(stagingTableId, rowCount);
+				ingestTable.markData(stagingTableId, rowCount, true);
 
 				try {
 					// index is the only supported bulk operation, therefore always submit the document

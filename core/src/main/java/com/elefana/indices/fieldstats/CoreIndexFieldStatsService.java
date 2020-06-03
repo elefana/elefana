@@ -280,7 +280,7 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
             if(indexTemplate.getStorage() == null) {
                 return false;
             }
-            return indexTemplate.getStorage().isFieldStatsDisabled();
+            return !indexTemplate.getStorage().isFieldStatsEnabled();
         } catch (Exception e) {
             return false;
         }

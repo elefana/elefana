@@ -47,13 +47,14 @@ import javax.annotation.PreDestroy;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Service
 @DependsOn("nodeSettingsService")
 public class PsqlIndexFieldMappingService implements IndexFieldMappingService, RequestExecutor {
 	private static final Logger LOGGER = LoggerFactory.getLogger(IndexFieldMappingService.class);
 
-	private long lastMapping = -1L;
+	private final AtomicLong lastMapping = new AtomicLong(-1L);
 
 	@Autowired
 	private Environment environment;
@@ -490,14 +491,18 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 		try {
 			while (!mappingQueue.isEmpty()) {
 				QueuedIndex nextIndex = mappingQueue.peek();
+				if(nextIndex == null) {
+					lastMapping.set(System.currentTimeMillis());
+					return;
+				}
 				if(nextIndex.getTimestamp() > System.currentTimeMillis()) {
-					lastMapping = System.currentTimeMillis();
+					lastMapping.set(System.currentTimeMillis());
 					return;
 				}
 				nextIndex = mappingQueue.poll();
 
 				final IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndex(nextIndex.getIndex());
-				if(indexTemplate != null && indexTemplate.getStorage() != null && indexTemplate.getStorage().isMappingDisabled()) {
+				if(indexTemplate != null && indexTemplate.getStorage() != null && !indexTemplate.getStorage().isMappingEnabled()) {
 					continue;
 				}
 
@@ -529,7 +534,7 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 				}
 				generateFieldCapabilitiesForIndex(nextIndex.getIndex());
 			}
-			lastMapping = System.currentTimeMillis();
+			lastMapping.set(System.currentTimeMillis());
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
 		}
