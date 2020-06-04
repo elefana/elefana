@@ -82,12 +82,13 @@ public class CitusShardMetadataMaintainer implements Runnable {
 	public void run() {
 		while(!timeShardRepairQueue.isEmpty()) {
 			try {
-				CitusTableTimestampSample tableTimestampSample = timeShardRepairQueue.peek();
+				CitusTableTimestampSample tableTimestampSample = timeShardRepairQueue.poll();
+				if(tableTimestampSample == null) {
+					continue;
+				}
 				if(hasNullShardIntervals(tableTimestampSample)) {
 					repairShardIntervals(tableTimestampSample);
 				}
-
-				timeShardRepairQueue.poll();
 			} catch (Exception e) {
 				LOGGER.error(e.getMessage(), e);
 				return;
