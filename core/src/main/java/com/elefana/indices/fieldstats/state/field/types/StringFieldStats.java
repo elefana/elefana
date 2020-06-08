@@ -17,6 +17,7 @@
 package com.elefana.indices.fieldstats.state.field.types;
 
 import com.elefana.indices.fieldstats.state.field.FieldStatsImpl;
+import com.elefana.util.NoAllocMinMaxWord;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.Arrays;
@@ -30,12 +31,9 @@ public class StringFieldStats extends ComparableFieldStats<String> {
     @Override
     public void updateMin(String value) {
         if(value != null){
-            List<String> words = Arrays.stream(value.split("\\W+")).map(String::toLowerCase).collect(Collectors.toList());
-            if(words.size() > 0) {
-                super.updateMin(Collections.min(words));
-            } else {
-                super.updateMin(value);
-            }
+            final NoAllocMinMaxWord minMaxWord = NoAllocMinMaxWord.allocate(value);
+            super.updateMin(minMaxWord.getMin(getMinimumValue()));
+            minMaxWord.dispose();
         } else {
             super.updateMin(value);
         }
@@ -44,12 +42,9 @@ public class StringFieldStats extends ComparableFieldStats<String> {
     @Override
     public void updateMax(String value) {
         if(value != null) {
-            List<String> words = Arrays.stream(value.split("\\W+")).map(String::toLowerCase).collect(Collectors.toList());
-            if(words.size() > 0) {
-                super.updateMax(Collections.max(words));
-            } else {
-                super.updateMax(value);
-            }
+            final NoAllocMinMaxWord minMaxWord = NoAllocMinMaxWord.allocate(value);
+            super.updateMax(minMaxWord.getMax(getMaximumValue()));
+            minMaxWord.dispose();
         } else {
             super.updateMax(value);
         }

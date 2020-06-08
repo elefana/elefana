@@ -45,17 +45,22 @@ public class StateImpl implements State{
     protected final Map<String, Index> indexMap = new HashMap<>();
     protected final Map<String, Field> fieldMap = new ConcurrentHashMap<>();
 
-    protected final ReadWriteLock indexMapLock = new ReentrantReadWriteLock();
+    protected final ReadWriteLock indexMapLock;
     protected Cache<String, Set<String>> fieldNamesCache;
 
     public StateImpl(Environment environment) {
+        this(environment, false);
+    }
+
+    public StateImpl(Environment environment, boolean fairLock) {
+        indexMapLock = new ReentrantReadWriteLock(fairLock);
         if(environment != null) {
             fieldNamesCache = CacheBuilder.newBuilder().
                     maximumSize(environment.getProperty("elefana.service.field.cache.names.expire.size", Integer.class, 250)).
-		            expireAfterAccess(environment.getProperty("elefana.service.field.cache.names.expire.time", Long.class, 500L), TimeUnit.SECONDS).
+                    expireAfterAccess(environment.getProperty("elefana.service.field.cache.names.expire.time", Long.class, 500L), TimeUnit.SECONDS).
                     build();
         } else {
-	        fieldNamesCache = CacheBuilder.newBuilder().maximumSize(10).expireAfterAccess(1L, TimeUnit.SECONDS).build();
+            fieldNamesCache = CacheBuilder.newBuilder().maximumSize(10).expireAfterAccess(1L, TimeUnit.SECONDS).build();
         }
     }
 

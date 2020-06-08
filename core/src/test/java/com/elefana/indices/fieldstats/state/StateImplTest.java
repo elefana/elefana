@@ -52,7 +52,7 @@ public class StateImplTest {
 
     @Before
     public void before() {
-        testState = new StateImpl(null);
+        testState = new StateImpl(null, true);
         loadUnloadManager = mock(LoadUnloadManager.class);
         doAnswer(new Answer() {
             @Override
@@ -140,7 +140,7 @@ public class StateImplTest {
         FieldStats string = testState.getFieldStatsTypeChecked("string", String.class, TEST_INDEX);
         Assert.assertEquals(20, string.getDocumentCount());
         Assert.assertEquals(40, string.getSumDocumentFrequency());
-        Assert.assertEquals("hello", string.getMinimumValue());
+        Assert.assertEquals("Hello", string.getMinimumValue());
         Assert.assertEquals("there", string.getMaximumValue());
     }
 
@@ -178,7 +178,7 @@ public class StateImplTest {
         FieldStats string = testState.getFieldStatsTypeChecked("string", String.class, TEST_INDEX);
         Assert.assertEquals(100, string.getDocumentCount());
         Assert.assertEquals(100 * 2, string.getSumDocumentFrequency());
-        Assert.assertEquals("hello", string.getMinimumValue());
+        Assert.assertEquals("Hello", string.getMinimumValue());
         Assert.assertEquals("there", string.getMaximumValue());
     }
 
@@ -194,7 +194,7 @@ public class StateImplTest {
         FieldStats string = testState.getFieldStatsTypeChecked("string", String.class, TEST_INDEX);
         Assert.assertEquals(100 * 100, string.getDocumentCount());
         Assert.assertEquals(100 * 100 * 2, string.getSumDocumentFrequency());
-        Assert.assertEquals("hello", string.getMinimumValue());
+        Assert.assertEquals("Hello", string.getMinimumValue());
         Assert.assertEquals("there", string.getMaximumValue());
     }
 
@@ -249,7 +249,7 @@ public class StateImplTest {
         FieldStats string = testState.getFieldStats("string", ImmutableList.of("first", "second"));
         Assert.assertEquals(docCount, string.getDocumentCount());
         Assert.assertEquals(docCount * 2, string.getSumDocumentFrequency());
-        Assert.assertEquals("hello", (String)string.getMinimumValue());
+        Assert.assertEquals("Hello", (String)string.getMinimumValue());
         Assert.assertEquals("there", (String)string.getMaximumValue());
     }
 
@@ -309,14 +309,14 @@ public class StateImplTest {
         submitDocumentNTimes(20, testDocument, TEST_INDEX);
 
         IndexComponent insert = new IndexComponent(TEST_INDEX, 10);
-        insert.fields.put("string", new FieldComponent("aa", "s", 9, 9*2, -1, String.class));
+        insert.fields.put("string", new FieldComponent("AA", "s", 9, 9*2, -1, String.class));
 
         testState.load(insert);
 
         FieldStats string = testState.getFieldStatsTypeChecked("string", String.class, TEST_INDEX);
         Assert.assertEquals(9 + 20, string.getDocumentCount());
         Assert.assertEquals(9*2 + 20*2, string.getSumDocumentFrequency());
-        Assert.assertEquals("aa", string.getMinimumValue());
+        Assert.assertEquals("AA", string.getMinimumValue());
         Assert.assertEquals("there", string.getMaximumValue());
 
         assertIndexMaxDocEquals(20 + 10, TEST_INDEX);
@@ -325,7 +325,7 @@ public class StateImplTest {
     @Test
     public void testLoadIndexConcurrent() throws ElefanaWrongFieldStatsTypeException {
         IndexComponent insert = new IndexComponent(TEST_INDEX, 10);
-        insert.fields.put("string", new FieldComponent("aa", "s", 9, 9*2, -1, String.class));
+        insert.fields.put("string", new FieldComponent("AA", "s", 9, 9*2, -1, String.class));
 
         List<Thread> threadList = new ArrayList<>();
         for( int i = 0; i < 50; i++) {
@@ -352,7 +352,7 @@ public class StateImplTest {
         FieldStats string = testState.getFieldStatsTypeChecked("string", String.class, TEST_INDEX);
         Assert.assertEquals(9*10 + 50*20, string.getDocumentCount());
         Assert.assertEquals(9*10*2 + 50*20*2, string.getSumDocumentFrequency());
-        Assert.assertEquals("aa", string.getMinimumValue());
+        Assert.assertEquals("AA", string.getMinimumValue());
         Assert.assertEquals("there", string.getMaximumValue());
 
         assertIndexMaxDocEquals(10*10 + 50*20, TEST_INDEX);
@@ -370,7 +370,7 @@ public class StateImplTest {
 
         Assert.assertEquals(10, string.docCount);
         Assert.assertEquals(10*2, string.sumDocFreq);
-        Assert.assertEquals("hello", string.minValue);
+        Assert.assertEquals("Hello", string.minValue);
         Assert.assertEquals("there", string.maxValue);
         Assert.assertFalse(testState.isIndexLoaded(TEST_INDEX));
         Assert.assertFalse(testState.isIndexFieldsLoaded(TEST_INDEX));
@@ -425,7 +425,7 @@ public class StateImplTest {
         }
         Assert.assertEquals(expectedDocCount, result.getDocumentCount());
         Assert.assertEquals(expectedSumDocFrequency, result.getSumDocumentFrequency());
-        Assert.assertEquals("hello", result.getMinimumValue());
+        Assert.assertEquals("Hello", result.getMinimumValue());
         Assert.assertEquals("there", result.getMaximumValue());
 
         assertIndexMaxDocEquals(50*100, index);
