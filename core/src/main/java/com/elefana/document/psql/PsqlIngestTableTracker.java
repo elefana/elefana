@@ -183,6 +183,7 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 					continue;
 				}
 				if(timestamp - timeIngestTable.getLastUsageTimestamp() < ingestionTableExpiryMillis) {
+					LOGGER.info(key + ", Last Time Used: " + timeIngestTable.getLastUsageTimestamp() + ", Now: " + timestamp);
 					continue;
 				}
 				lock.readLock().unlock();
