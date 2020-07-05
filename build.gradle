@@ -51,7 +51,7 @@ subprojects {
 		jacksonVersion = '2.10.4'
 		jodaVersion = '2.9.9'
 		jsoniterVersion = '0.9.21'
-		metricsVersion = '4.1.7'
+		metricsVersion = '4.1.9'
 		nativesLoaderVersion = '1.0.0'
 		nettyVersion = '4.1.49.Final'
 		oshiVersion = '4.0.0'

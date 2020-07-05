@@ -164,7 +164,7 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 					continue;
 				}
 				if(timestamp - hashIngestTable.getLastUsageTimestamp() < ingestionTableExpiryMillis) {
-					LOGGER.info(key + ", Last Time Used: " + hashIngestTable.getLastUsageTimestamp() + ", Now: " + timestamp + " (HASH TABLE)");
+					LOGGER.info(key + ", Last Time Used: " + hashIngestTable.getLastUsageTimestamp() + ", Now: " + timestamp + " (HASH TABLE) " + ingestTableCounter.getCount());
 					continue;
 				}
 				lock.readLock().unlock();
@@ -186,7 +186,7 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 					continue;
 				}
 				if(timestamp - timeIngestTable.getLastUsageTimestamp() < ingestionTableExpiryMillis) {
-					LOGGER.info(key + ", Last Time Used: " + timeIngestTable.getLastUsageTimestamp() + ", Now: " + timestamp);
+					LOGGER.info(key + ", Last Time Used: " + timeIngestTable.getLastUsageTimestamp() + ", Now: " + timestamp + " (TIME TABLE) " + ingestTableCounter.getCount());
 					continue;
 				}
 				lock.readLock().unlock();
