@@ -145,6 +145,12 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 
 	@Override
 	public boolean prune() {
+		for(int i = 0; i < locks.length; i++) {
+			if(isDataMarked(i)) {
+				LOGGER.info(index + " can't prune - data marked");
+				return false;
+			}
+		}
 		if(!tryLockAll()) {
 			return false;
 		}
