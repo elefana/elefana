@@ -28,6 +28,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -50,7 +51,7 @@ public class DefaultHashIngestTable implements HashIngestTable {
 			return (int) Thread.currentThread().getId() % tableNames.length;
 		}
 	};
-	private final int [] dataMarker;
+	private final AtomicInteger[] dataMarker;
 	private final AtomicLong lastUsageTimestamp = new AtomicLong();
 	private final AtomicBoolean pruned = new AtomicBoolean();
 
@@ -62,7 +63,7 @@ public class DefaultHashIngestTable implements HashIngestTable {
 
 		locks = new ReentrantLock[capacity];
 		tableNames = new String[capacity];
-		dataMarker = new int[capacity];
+		dataMarker = new AtomicInteger[capacity];
 
 		Connection connection = null;
 
@@ -79,12 +80,12 @@ public class DefaultHashIngestTable implements HashIngestTable {
 					connection = jdbcTemplate.getDataSource().getConnection();
 				}
 
+				dataMarker[i] = new AtomicInteger(0);
 				if(tableNames[i] == null) {
 					tableNames[i] = createAndStoreStagingTable(connection, tablespaces.length > 0 ? tablespaces[i % tablespaces.length] : null);
-					dataMarker[i] = 0;
 				} else {
 					createStageTable(connection, tableNames[i], tablespaces.length > 0 ? tablespaces[i % tablespaces.length] : null);
-					dataMarker[i] = hasExistingData(connection, tableNames[i]);
+					dataMarker[i].set(hasExistingData(connection, tableNames[i]));
 				}
 			}
 
@@ -276,6 +277,9 @@ public class DefaultHashIngestTable implements HashIngestTable {
 					return -1;
 				}
 				try {
+					if(!isDataMarked(index)) {
+						continue;
+					}
 					if(locks[index].tryLock()) {
 						if(!isDataMarked(index)) {
 							locks[index].unlock();
@@ -296,10 +300,7 @@ public class DefaultHashIngestTable implements HashIngestTable {
 	}
 
 	public boolean isDataMarked(int index) {
-		if(locks[index].getHoldCount() == 0) {
-			throw new RuntimeException("Cannot check mark status without lock acquired");
-		}
-		return dataMarker[index] > 0;
+		return dataMarker[index].get() > 0;
 	}
 
 	@Override
@@ -309,7 +310,7 @@ public class DefaultHashIngestTable implements HashIngestTable {
 				return;
 			}
 		}
-		dataMarker[index] += quantity;
+		dataMarker[index].addAndGet(quantity);
 	}
 
 	@Override
@@ -319,12 +320,12 @@ public class DefaultHashIngestTable implements HashIngestTable {
 				return;
 			}
 		}
-		dataMarker[index] = 0;
+		dataMarker[index].set(0);
 	}
 
 	@Override
 	public int getDataCount(int index) {
-		return dataMarker[index];
+		return dataMarker[index].get();
 	}
 
 	public void unlockTable(int index) {

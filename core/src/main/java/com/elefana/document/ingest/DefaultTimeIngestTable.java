@@ -29,6 +29,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -41,7 +42,7 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 	private final ReentrantLock[] locks;
 	private final String [] tableNames;
 	private final int [] shardIds;
-	private final int [] dataMarker;
+	private final AtomicInteger[] dataMarker;
 	private final AtomicLong lastUsageTimestamp = new AtomicLong();
 	private final AtomicBoolean pruned = new AtomicBoolean();
 
@@ -68,7 +69,7 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 		locks = new ReentrantLock[capacity];
 		tableNames = new String[capacity];
 		shardIds = new int[capacity];
-		dataMarker = new int[capacity];
+		dataMarker = new AtomicInteger[capacity];
 
 		for(int i = 0; i < shardIds.length; i++) {
 			shardIds[i] = -1;
@@ -92,9 +93,9 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 					connection = jdbcTemplate.getDataSource().getConnection();
 				}
 
+				dataMarker[i] = new AtomicInteger(0);
 				if(tableNames[i] == null) {
 					tableNames[i] = createAndStoreStagingTable(connection, tablespaces.length > 0 ? tablespaces[i % tablespaces.length] : null);
-					dataMarker[i] = 0;
 				} else {
 					restoreExistingTable(connection, timeBucket, i, tableNames[i]);
 				}
@@ -204,14 +205,13 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 		if(createTableResultSet.next()) {
 			shardIds[arrayIndex] = timeBucket.getShardOffset(createTableResultSet.getLong("_timestamp"));
 			lastUsageTimestamp.set(System.currentTimeMillis());
-			dataMarker[arrayIndex] = 1;
 		}
 		createTableStatement.close();
 
 		final PreparedStatement countStatement = connection.prepareStatement("SELECT COUNT(*) FROM " + existingTableName);
 		final ResultSet countResultSet = createTableStatement.executeQuery();
 		if(countResultSet.next()) {
-			dataMarker[arrayIndex] = countResultSet.getInt(1);
+			dataMarker[arrayIndex].set(countResultSet.getInt(1));
 		}
 		countStatement.close();
 	}
@@ -312,6 +312,9 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 					return -1;
 				}
 				try {
+					if(!isDataMarked(index)) {
+						continue;
+					}
 					if(locks[index].tryLock()) {
 						if(!isDataMarked(index)) {
 							locks[index].unlock();
@@ -332,10 +335,7 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 	}
 
 	public boolean isDataMarked(int index) {
-		if(locks[index].getHoldCount() == 0) {
-			throw new RuntimeException("Cannot check mark status without lock acquired");
-		}
-		return dataMarker[index]  > 0;
+		return dataMarker[index].get()  > 0;
 	}
 
 	@Override
@@ -345,7 +345,7 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 				return;
 			}
 		}
-		dataMarker[index] += quantity;
+		dataMarker[index].addAndGet(quantity);
 	}
 
 	@Override
@@ -356,12 +356,12 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 			}
 		}
 		shardIds[index] = -1;
-		dataMarker[index] = 0;
+		dataMarker[index].set(0);
 	}
 
 	@Override
 	public int getDataCount(int index) {
-		return dataMarker[index];
+		return dataMarker[index].get();
 	}
 
 	public void unlockTable(int index) {
