@@ -164,15 +164,18 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 					continue;
 				}
 				if(timestamp - hashIngestTable.getLastUsageTimestamp() < ingestionTableExpiryMillis) {
+					LOGGER.info(key + ", Last Time Used: " + hashIngestTable.getLastUsageTimestamp() + ", Now: " + timestamp + " (HASH TABLE)");
 					continue;
 				}
 				lock.readLock().unlock();
 
 				if(hashIngestTable.prune()) {
+					LOGGER.info(key + " pre-pruned " + ingestTableCounter.getCount());
 					lock.writeLock().lock();
 					indexToHashIngestTable.remove(key);
 					ingestTableCounter.dec(hashIngestTable.getCapacity());
 					lock.writeLock().unlock();
+					LOGGER.info(key + " pruned " + ingestTableCounter.getCount());
 				}
 
 				lock.readLock().lock();
@@ -189,10 +192,13 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 				lock.readLock().unlock();
 
 				if(timeIngestTable.prune()) {
+					LOGGER.info(key + " pre-pruned " + ingestTableCounter.getCount());
 					lock.writeLock().lock();
 					indexToTimeIngestTable.remove(key);
 					ingestTableCounter.dec(timeIngestTable.getCapacity());
 					lock.writeLock().unlock();
+
+					LOGGER.info(key + " pruned " + ingestTableCounter.getCount());
 				}
 
 				lock.readLock().lock();
