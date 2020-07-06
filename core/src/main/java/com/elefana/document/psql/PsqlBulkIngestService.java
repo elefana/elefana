@@ -325,6 +325,9 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 			throws ElefanaException {
 		final IndexTimeBucket indexTimeBucket = indexTemplate.getStorage().getIndexTimeBucket();
 		final TimeIngestTable timeIngestTable = ingestTableTracker.getTimeIngestTable(index);
+		if(timeIngestTable == null) {
+			throw new ElefanaException(HttpResponseStatus.INTERNAL_SERVER_ERROR, "Could not get time ingest table for index " + index);
+		}
 		final int operationSize = Math.max(MINIMUM_BULK_SIZE, indexOperations.size() / nodeSettingsService.getBulkParallelisation());
 
 		final Map<Integer, List<BulkIndexOperation>> operationsByShard = new HashMap<Integer, List<BulkIndexOperation>>();
@@ -353,6 +356,9 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 	private void bulkIndexHash(BulkResponse bulkApiResponse, String index, List<BulkIndexOperation> indexOperations)
 			throws ElefanaException {
 		final HashIngestTable hashIngestTable = ingestTableTracker.getHashIngestTable(index);
+		if(hashIngestTable == null) {
+			throw new ElefanaException(HttpResponseStatus.INTERNAL_SERVER_ERROR, "Could not get hash ingest table for index " + index);
+		}
 		final int operationSize = Math.max(MINIMUM_BULK_SIZE, indexOperations.size() / nodeSettingsService.getBulkParallelisation());
 		
 		final List<BulkIndexTask> bulkHashIndexTasks = new ArrayList<BulkIndexTask>();

@@ -67,7 +67,6 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 	@Autowired
 	protected MetricRegistry metricRegistry;
 
-	protected final ReadWriteLock lock = new ReentrantReadWriteLock();
 	protected final Map<String, HashIngestTable> indexToHashIngestTable = new ConcurrentHashMap<String, HashIngestTable>();
 	protected final Map<String, TimeIngestTable> indexToTimeIngestTable = new ConcurrentHashMap<String, TimeIngestTable>();
 
@@ -97,8 +96,6 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 
 		final List<Map<String, Object>> existingTables = jdbcTemplate.queryForList("SELECT * FROM elefana_bulk_tables");
 		if(!existingTables.isEmpty()) {
-			lock.writeLock().lock();
-
 			final Map<String, List<String>> existingTablesByIndex = new HashMap<String, List<String>>();
 			for(Map<String, Object> row : existingTables) {
 				final String index = (String) row.get("_index");
@@ -145,8 +142,6 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 			if(exception.get() != null) {
 				throw exception.get();
 			}
-
-			lock.writeLock().unlock();
 		}
 
 		taskScheduler.scheduleAtFixedRate(this, Instant.now().plus(ingestionTableExpiryMillis, ChronoUnit.MILLIS),
@@ -156,7 +151,6 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 	@Override
 	public void run() {
 		final long timestamp = System.currentTimeMillis();
-		lock.readLock().lock();
 		try {
 			for(String key : indexToHashIngestTable.keySet()) {
 				final HashIngestTable hashIngestTable = indexToHashIngestTable.get(key);
@@ -167,18 +161,15 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 					LOGGER.info(key + ", Last Time Used: " + hashIngestTable.getLastUsageTimestamp() + ", Now: " + timestamp + " (HASH TABLE) " + (timestamp - hashIngestTable.getLastUsageTimestamp()) + " " + ingestTableCounter.getCount());
 					continue;
 				}
-				lock.readLock().unlock();
 
-				if(hashIngestTable.prune()) {
-					LOGGER.info(key + " pre-pruned " + ingestTableCounter.getCount());
-					lock.writeLock().lock();
-					indexToHashIngestTable.remove(key);
-					ingestTableCounter.dec(hashIngestTable.getCapacity());
-					lock.writeLock().unlock();
-					LOGGER.info(key + " pruned " + ingestTableCounter.getCount());
+				if(!hashIngestTable.prune()) {
+					continue;
 				}
 
-				lock.readLock().lock();
+				LOGGER.info(key + " pre-pruned " + ingestTableCounter.getCount());
+				indexToHashIngestTable.remove(key);
+				ingestTableCounter.dec(hashIngestTable.getCapacity());
+				LOGGER.info(key + " pruned " + ingestTableCounter.getCount());
 			}
 			for(String key : indexToTimeIngestTable.keySet()) {
 				final TimeIngestTable timeIngestTable = indexToTimeIngestTable.get(key);
@@ -189,24 +180,19 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 					LOGGER.info(key + ", Last Time Used: " + timeIngestTable.getLastUsageTimestamp() + ", Now: " + timestamp + " (TIME TABLE) " + (timestamp - timeIngestTable.getLastUsageTimestamp()) + " " + ingestTableCounter.getCount());
 					continue;
 				}
-				lock.readLock().unlock();
 
-				if(timeIngestTable.prune()) {
-					LOGGER.info(key + " pre-pruned " + ingestTableCounter.getCount());
-					lock.writeLock().lock();
-					indexToTimeIngestTable.remove(key);
-					ingestTableCounter.dec(timeIngestTable.getCapacity());
-					lock.writeLock().unlock();
-
-					LOGGER.info(key + " pruned " + ingestTableCounter.getCount());
+				if(!timeIngestTable.prune()) {
+					continue;
 				}
 
-				lock.readLock().lock();
+				LOGGER.info(key + " pre-pruned " + ingestTableCounter.getCount());
+				indexToTimeIngestTable.remove(key);
+				ingestTableCounter.dec(timeIngestTable.getCapacity());
+				LOGGER.info(key + " pruned " + ingestTableCounter.getCount());
 			}
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
 		}
-		lock.readLock().unlock();
 	}
 
 	protected TimeIngestTable createTimeIngestTable(String index, List<String> existingTables) throws ElefanaException {
@@ -236,15 +222,11 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 	}
 
 	public void getHashIngestTables(Queue<HashIngestTable> result) {
-		lock.readLock().lock();
 		result.addAll(indexToHashIngestTable.values());
-		lock.readLock().unlock();
 	}
 
 	public void getTimeIngestTables(Queue<TimeIngestTable> result) {
-		lock.readLock().lock();
 		result.addAll(indexToTimeIngestTable.values());
-		lock.readLock().unlock();
 	}
 
 	public HashIngestTable getHashIngestTable(String index) throws ElefanaException {
@@ -259,51 +241,35 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 	@Override
 	public int getTotalIngestTables() {
 		int result = 0;
-		lock.readLock().lock();
 		try {
-			for(String index: indexToHashIngestTable.keySet()) {
-				result += indexToHashIngestTable.get(index).getCapacity();
+			for(HashIngestTable hashIngestTable: indexToHashIngestTable.values()) {
+				result += hashIngestTable.getCapacity();
 			}
-			for(String index: indexToTimeIngestTable.keySet()) {
-				result += indexToTimeIngestTable.get(index).getCapacity();
+			for(TimeIngestTable timeIngestTable: indexToTimeIngestTable.values()) {
+				result += timeIngestTable.getCapacity();
 			}
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
 		}
-		lock.readLock().unlock();
 		return result;
 	}
 
 	private <T extends IngestTable> T getIngestTable(String index, Map<String, T> tables, boolean time) throws ElefanaException  {
-		lock.readLock().lock();
-		final T result = tables.get(index);
-		lock.readLock().unlock();
-
-		if(result == null) {
-			lock.writeLock().lock();
-
-			final T newTable;
-			if(tables.containsKey(index)) {
-				newTable = tables.get(index);
-			} else {
-				try {
-					if(nodeSettingsService.isUsingCitus() && time) {
-						newTable = (T) createTimeIngestTable(index, EMPTY_ARRAYLIST);
-					} else {
-						newTable = (T) createHashIngestTable(index, EMPTY_ARRAYLIST);
-					}
-					ingestTableCounter.inc(newTable.getCapacity());
-					tables.put(index, newTable);
-				} catch (ElefanaException e) {
-					lock.writeLock().unlock();
-					throw e;
+		return tables.computeIfAbsent(index, key -> {
+			try {
+				final T newTable;
+				if(nodeSettingsService.isUsingCitus() && time) {
+					newTable = (T) createTimeIngestTable(index, EMPTY_ARRAYLIST);
+				} else {
+					newTable = (T) createHashIngestTable(index, EMPTY_ARRAYLIST);
 				}
+				ingestTableCounter.inc(newTable.getCapacity());
+				return newTable;
+			} catch (ElefanaException e) {
+				LOGGER.error(e.getMessage(), e);
 			}
-
-			lock.writeLock().unlock();
-			return newTable;
-		}
-		return result;
+			return null;
+		});
 	}
 
 	private boolean isEmptyTablespaceList(String[] tablespaces) {
