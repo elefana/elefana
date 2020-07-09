@@ -21,6 +21,7 @@ import static org.hamcrest.Matchers.equalTo;
 import java.util.UUID;
 
 import com.elefana.TestUtils;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -37,18 +38,11 @@ public class RegexpQueryTest extends AbstractQueryTest {
 
 	@Test
 	public void testRegexpQuery() {
-		final String index = UUID.randomUUID().toString();
-		final String type = "test";
-
-		TestUtils.disableMappingAndStatsForIndex(index);
-		
-		generatePhraseDocuments(index, type);
-		
 		given()
 			.request()
 			.body("{\"query\": {\"regexp\":{\"message\": \".*lazy.*\"}}}")
 		.when()
-			.post("/" + index + "/_search")
+			.post("/" + PHRASE_INDEX + "/_search")
 		.then()
 			.statusCode(200)
 			.body("hits.total", equalTo(3));
@@ -57,7 +51,7 @@ public class RegexpQueryTest extends AbstractQueryTest {
 			.request()
 			.body("{\"query\": {\"regexp\":{\"message\": \"the.*\"}}}")
 		.when()
-			.post("/" + index + "/_search")
+			.post("/" + PHRASE_INDEX + "/_search")
 		.then()
 			.statusCode(200)
 			.body("hits.total", equalTo(0));
@@ -66,7 +60,7 @@ public class RegexpQueryTest extends AbstractQueryTest {
 			.request()
 			.body("{\"query\": {\"regexp\":{\"message\": \"[Tt]he.*\"}}}")
 		.when()
-			.post("/" + index + "/_search")
+			.post("/" + PHRASE_INDEX + "/_search")
 		.then()
 			.statusCode(200)
 			.body("hits.total", equalTo(10));

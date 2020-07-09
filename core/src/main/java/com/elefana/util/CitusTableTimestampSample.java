@@ -15,17 +15,38 @@
  ******************************************************************************/
 package com.elefana.util;
 
+import net.openhft.chronicle.bytes.BytesIn;
+import net.openhft.chronicle.bytes.BytesMarshallable;
+import net.openhft.chronicle.bytes.BytesOut;
+import net.openhft.chronicle.core.io.IORuntimeException;
+
 import java.util.Objects;
 
-public class CitusTableTimestampSample implements Comparable<CitusTableTimestampSample> {
-	private final String indexName;
-	private final String tableName;
-	private final long timestampSample;
+public class CitusTableTimestampSample extends UniqueSelfDescribingMarshallable implements Comparable<CitusTableTimestampSample>, BytesMarshallable {
+	private String indexName;
+	private String tableName;
+	private long timestampSample;
+
+	public CitusTableTimestampSample() {}
 
 	public CitusTableTimestampSample(String indexName, String tableName, long timestampSample) {
 		this.indexName = indexName;
 		this.tableName = tableName;
 		this.timestampSample = timestampSample;
+	}
+
+	@Override
+	public void writeMarshallable(BytesOut bytes) {
+		bytes.writeUtf8(indexName);
+		bytes.writeUtf8(tableName);
+		bytes.writeLong(timestampSample);
+	}
+
+	@Override
+	public void readMarshallable(BytesIn bytes) throws IORuntimeException {
+		indexName = bytes.readUtf8();
+		tableName = bytes.readUtf8();
+		timestampSample = bytes.readLong();
 	}
 
 	public String getIndexName() {
@@ -56,5 +77,10 @@ public class CitusTableTimestampSample implements Comparable<CitusTableTimestamp
 	@Override
 	public int hashCode() {
 		return Objects.hash(tableName);
+	}
+
+	@Override
+	public String getKey() {
+		return tableName;
 	}
 }

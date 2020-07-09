@@ -15,15 +15,34 @@
  ******************************************************************************/
 package com.elefana.indices.psql;
 
+import com.elefana.util.UniqueSelfDescribingMarshallable;
+import net.openhft.chronicle.bytes.BytesIn;
+import net.openhft.chronicle.bytes.BytesOut;
+import net.openhft.chronicle.core.io.IORuntimeException;
+
 import java.util.Objects;
 
-public class QueuedIndex implements Comparable<QueuedIndex> {
-	private final String index;
-	private final long timestamp;
+public class QueuedIndex extends UniqueSelfDescribingMarshallable implements Comparable<QueuedIndex> {
+	private String index;
+	private long timestamp;
+
+	public QueuedIndex() {}
 
 	public QueuedIndex(String index, long timestamp) {
 		this.index = index;
 		this.timestamp = timestamp;
+	}
+
+	@Override
+	public void writeMarshallable(BytesOut bytes) {
+		bytes.writeUtf8(index);
+		bytes.writeLong(timestamp);
+	}
+
+	@Override
+	public void readMarshallable(BytesIn bytes) throws IORuntimeException {
+		index = bytes.readUtf8();
+		timestamp = bytes.readLong();
 	}
 
 	public String getIndex() {
@@ -50,5 +69,10 @@ public class QueuedIndex implements Comparable<QueuedIndex> {
 	@Override
 	public int compareTo(QueuedIndex o) {
 		return index.compareTo(o.index);
+	}
+
+	@Override
+	public String getKey() {
+		return index;
 	}
 }

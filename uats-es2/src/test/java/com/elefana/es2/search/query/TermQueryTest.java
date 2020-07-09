@@ -21,6 +21,7 @@ import static org.hamcrest.Matchers.equalTo;
 import java.util.UUID;
 
 import com.elefana.TestUtils;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -37,18 +38,11 @@ public class TermQueryTest extends AbstractQueryTest {
 
 	@Test
 	public void testMatchTermQuery() {
-		final String index = UUID.randomUUID().toString();
-		final String type = "test";
-
-		TestUtils.disableMappingAndStatsForIndex(index);
-		
-		generateTermDocuments(DOCUMENT_QUANTITY, index, type);
-		
 		given()
 			.request()
 			.body("{\"query\":{\"term\":{\"message\":\"This is sample message 1\"}}}")
 		.when()
-			.post("/" + index + "/_search")
+			.post("/" + TERM_INDEX + "/_search")
 		.then()
 			.statusCode(200)
 			.body("hits.total", equalTo(1));

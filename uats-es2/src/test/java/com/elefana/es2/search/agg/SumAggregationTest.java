@@ -21,6 +21,7 @@ import static org.hamcrest.Matchers.equalTo;
 import java.util.UUID;
 
 import com.elefana.TestUtils;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -34,7 +35,7 @@ import com.elefana.ElefanaApplication;
 @SpringBootTest(classes = { ElefanaApplication.class })
 @TestPropertySource(locations = "classpath:es2.properties")
 public class SumAggregationTest extends AbstractAggregationTest {
-	
+
 	@Test
 	public void testSumAggregation() {
 		int expectedSum = 0;
@@ -42,19 +43,12 @@ public class SumAggregationTest extends AbstractAggregationTest {
 			expectedSum += DOCUMENT_VALUES[i];
 		}
 		
-		final String index = UUID.randomUUID().toString();
-		final String type = "test";
-
-		TestUtils.disableMappingAndStatsForIndex(index);
-		
-		generateDocuments(index, type);
-		
 		given()
 			.request()
 			.body("{\"query\":{\"match_all\":{}}, \"size\":" + DOCUMENT_QUANTITY 
 					+ ", \"aggs\" : {\"aggs_result\" : { \"sum\" : { \"field\" : \"value\" }}}}")
 		.when()
-			.post("/" + index + "/_search")
+			.post("/" + INDEX_A + "/_search")
 		.then()
 			.statusCode(200)
 			.body("hits.total", equalTo(DOCUMENT_QUANTITY))
@@ -69,19 +63,12 @@ public class SumAggregationTest extends AbstractAggregationTest {
 		}
 		expectedSum *= 2;
 		
-		final String indexA = "msumaggtestA";
-		final String indexB = "msumaggtestB";
-		final String type = "test";
-		
-		generateDocuments(indexA, type);
-		generateDocuments(indexB, type);
-		
 		given()
 		.request()
 		.body("{\"query\":{\"match_all\":{}}, \"size\":" + (DOCUMENT_QUANTITY * 2)
 				+ ", \"aggs\" : {\"aggs_result\" : { \"sum\" : { \"field\" : \"value\" }}}}")
 		.when()
-			.post("/" + indexA + "," + indexB + "/_search")
+			.post("/" + INDEX_A + "," + INDEX_B + "/_search")
 		.then()
 			.statusCode(200)
 			.log().all()

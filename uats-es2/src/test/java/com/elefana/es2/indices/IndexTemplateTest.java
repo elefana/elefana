@@ -115,6 +115,10 @@ public class IndexTemplateTest {
 				.body("testIndexTemplateIdDisabled.template", equalTo(index))
 				.body("testIndexTemplateIdDisabled.storage.id_enabled", equalTo(false));
 
+		try {
+			Thread.sleep(100);
+		} catch (Exception e) {}
+
 		given()
 				.request()
 				.contentType(ContentType.JSON)

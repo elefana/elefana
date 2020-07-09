@@ -16,12 +16,18 @@
 package com.elefana.table;
 
 import com.elefana.api.indices.IndexGenerationMode;
+import net.openhft.chronicle.bytes.BytesIn;
+import net.openhft.chronicle.bytes.BytesOut;
+import net.openhft.chronicle.core.io.IORuntimeException;
+import net.openhft.chronicle.wire.SelfDescribingMarshallable;
 
-public class TableIndexDelay {
-	private final String tableName;
-	private final long indexTimestamp;
-	private final IndexGenerationMode mode;
-	private final boolean ginEnabled, brinEnabled;
+public class TableIndexDelay extends SelfDescribingMarshallable {
+	private String tableName;
+	private long indexTimestamp;
+	private IndexGenerationMode mode;
+	private boolean ginEnabled, brinEnabled;
+
+	public TableIndexDelay() {}
 
 	public TableIndexDelay(String tableName, long indexTimestamp, IndexGenerationMode mode, boolean ginEnabled, boolean brinEnabled) {
 		this.tableName = tableName;
@@ -29,6 +35,24 @@ public class TableIndexDelay {
 		this.mode = mode;
 		this.ginEnabled = ginEnabled;
 		this.brinEnabled = brinEnabled;
+	}
+
+	@Override
+	public void writeMarshallable(BytesOut bytes) {
+		bytes.writeUtf8(tableName);
+		bytes.writeLong(indexTimestamp);
+		bytes.writeInt(mode.ordinal());
+		bytes.writeBoolean(ginEnabled);
+		bytes.writeBoolean(brinEnabled);
+	}
+
+	@Override
+	public void readMarshallable(BytesIn bytes) throws IORuntimeException {
+		tableName = bytes.readUtf8();
+		indexTimestamp = bytes.readLong();
+		mode = IndexGenerationMode.values()[bytes.readInt()];
+		ginEnabled = bytes.readBoolean();
+		brinEnabled = bytes.readBoolean();
 	}
 
 	public String getTableName() {

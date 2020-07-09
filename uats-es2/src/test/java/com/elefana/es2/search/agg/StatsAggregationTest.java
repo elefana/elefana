@@ -22,6 +22,7 @@ import java.util.UUID;
 
 import com.elefana.TestUtils;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -37,7 +38,7 @@ import io.restassured.response.ValidatableResponse;
 @SpringBootTest(classes = { ElefanaApplication.class })
 @TestPropertySource(locations = "classpath:es2.properties")
 public class StatsAggregationTest extends AbstractAggregationTest {
-	
+
 	@Test
 	public void testStatsAggregation() {
 		float average = 0.0f;
@@ -57,20 +58,13 @@ public class StatsAggregationTest extends AbstractAggregationTest {
 			}
 		}
 		average /= DOCUMENT_VALUES.length;
-
-		final String index = UUID.randomUUID().toString();
-		final String type = "test";
-
-		TestUtils.disableMappingAndStatsForIndex(index);
-		
-		generateDocuments(index, type);
 		
 		ValidatableResponse response = given()
 			.request()
 			.body("{\"query\":{\"match_all\":{}}, \"size\":" + DOCUMENT_QUANTITY 
 					+ ", \"aggs\" : {\"aggs_result\" : { \"stats\" : { \"field\" : \"value\" }}}}")
 		.when()
-			.post("/" + index + "/_search")
+			.post("/" + INDEX_A + "/_search")
 		.then()
 			.statusCode(200)
 			.body("hits.total", equalTo(DOCUMENT_QUANTITY))

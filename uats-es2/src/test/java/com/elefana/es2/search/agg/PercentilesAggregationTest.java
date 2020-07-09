@@ -24,6 +24,7 @@ import com.elefana.TestUtils;
 import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 import org.apache.commons.math3.stat.descriptive.rank.Percentile.EstimationType;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -55,19 +56,12 @@ public class PercentilesAggregationTest extends AbstractAggregationTest {
 			expectedPercentiles[i] = percentile.evaluate();
 		}
 		
-		final String index = UUID.randomUUID().toString();
-		final String type = "test";
-
-		TestUtils.disableMappingAndStatsForIndex(index);
-		
-		generateDocuments(index, type);
-		
 		ValidatableResponse response = given()
 			.request()
 			.body("{\"query\":{\"match_all\":{}}, \"size\":" + DOCUMENT_QUANTITY 
 					+ ", \"aggs\" : {\"aggs_result\" : { \"percentiles\" : { \"field\" : \"value\" }}}}")
 		.when()
-			.post("/" + index + "/_search")
+			.post("/" + INDEX_A + "/_search")
 		.then()
 			.statusCode(200)
 			.log().all()

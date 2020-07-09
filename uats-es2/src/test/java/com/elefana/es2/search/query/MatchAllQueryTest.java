@@ -21,6 +21,7 @@ import static org.hamcrest.Matchers.equalTo;
 import java.util.UUID;
 
 import com.elefana.TestUtils;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -37,13 +38,6 @@ public class MatchAllQueryTest extends AbstractQueryTest {
 
 	@Test
 	public void testDefaultToMatchAllQuery() {
-		final String index = UUID.randomUUID().toString();
-		final String type = "test";
-
-		TestUtils.disableMappingAndStatsForIndex(index);
-		
-		generateTermDocuments(DOCUMENT_QUANTITY, index, type);
-		
 		given().when()
 			.post("/_search")
 		.then()
@@ -53,13 +47,6 @@ public class MatchAllQueryTest extends AbstractQueryTest {
 	
 	@Test
 	public void testDefaultToMatchAllQueryWithGet() {
-		final String index = UUID.randomUUID().toString();
-		final String type = "test";
-
-		TestUtils.disableMappingAndStatsForIndex(index);
-		
-		generateTermDocuments(DOCUMENT_QUANTITY, index, type);
-		
 		given().when()
 			.get("/_search")
 		.then()
@@ -69,18 +56,11 @@ public class MatchAllQueryTest extends AbstractQueryTest {
 	
 	@Test
 	public void testMatchAllQuery() {
-		final String index = UUID.randomUUID().toString();
-		final String type = "test";
-
-		TestUtils.disableMappingAndStatsForIndex(index);
-		
-		generateTermDocuments(DOCUMENT_QUANTITY, index, type);
-		
 		given()
 			.request()
 			.body("{\"query\":{\"match_all\":{}}, \"size\":10}")
 		.when()
-			.post("/" + index + "/" + type + "/_search")
+			.post("/" + TERM_INDEX + "/" + TYPE + "/_search")
 		.then()
 			.log().all()
 			.statusCode(200)
@@ -91,7 +71,7 @@ public class MatchAllQueryTest extends AbstractQueryTest {
 			.request()
 			.body("{\"query\":{\"match_all\":{}}, \"size\":100}")
 		.when()
-			.post("/" + index + "/" + type + "/_search")
+			.post("/" + TERM_INDEX + "/" + TYPE + "/_search")
 		.then()
 			.statusCode(200)
 			.body("hits.total", equalTo(DOCUMENT_QUANTITY))

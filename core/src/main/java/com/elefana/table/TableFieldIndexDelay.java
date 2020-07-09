@@ -16,9 +16,16 @@
 package com.elefana.table;
 
 import com.elefana.api.indices.IndexGenerationMode;
+import net.openhft.chronicle.bytes.BytesIn;
+import net.openhft.chronicle.bytes.BytesOut;
+import net.openhft.chronicle.core.io.IORuntimeException;
 
 public class TableFieldIndexDelay extends TableIndexDelay {
-	private final String fieldName;
+	private String fieldName;
+
+	public TableFieldIndexDelay() {
+		super();
+	}
 
 	public TableFieldIndexDelay(String tableName, String fieldName, long indexTimestamp, IndexGenerationMode mode) {
 		super(tableName, indexTimestamp, mode, true, true);
@@ -27,5 +34,17 @@ public class TableFieldIndexDelay extends TableIndexDelay {
 
 	public String getFieldName() {
 		return fieldName;
+	}
+
+	@Override
+	public void writeMarshallable(BytesOut bytes) {
+		super.writeMarshallable(bytes);
+		bytes.writeUtf8(fieldName);
+	}
+
+	@Override
+	public void readMarshallable(BytesIn bytes) throws IORuntimeException {
+		super.readMarshallable(bytes);
+		fieldName = bytes.readUtf8();
 	}
 }

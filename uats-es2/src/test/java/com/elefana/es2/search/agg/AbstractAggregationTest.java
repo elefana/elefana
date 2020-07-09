@@ -18,24 +18,58 @@ package com.elefana.es2.search.agg;
 import static io.restassured.RestAssured.given;
 
 import java.util.Random;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
+import com.elefana.TestUtils;
+import io.restassured.response.ValidatableResponse;
 import org.junit.Before;
 
 import io.restassured.RestAssured;
+import org.junit.BeforeClass;
 
 public class AbstractAggregationTest {
 	protected static final int RANDOM_SEED = 963845658;
 	protected static final int DOCUMENT_QUANTITY = 100;
 	protected static final int [] DOCUMENT_VALUES = generateValues();
+	protected static final long INIT_TIMEOUT = 20000L;
 	protected static final long TIMEOUT = 120000L;
+
+	protected static final String INDEX_A = UUID.randomUUID().toString();
+	protected static final String INDEX_B = UUID.randomUUID().toString();
+	protected static final String TYPE = "test";
+
+	private static final Lock INITIALISE_LOCK = new ReentrantLock();
+	private static boolean DATASET_INITIALISED = false;
+
+	protected static void initialiseDataSet() {
+		INITIALISE_LOCK.lock();
+		if(DATASET_INITIALISED) {
+			INITIALISE_LOCK.unlock();
+			return;
+		}
+		try {
+			RestAssured.baseURI = "http://localhost:9201";
+			TestUtils.waitForElefanaToStart();
+			TestUtils.disableMappingAndStatsForIndex(INDEX_A);
+			TestUtils.disableMappingAndStatsForIndex(INDEX_B);
+			generateDocuments(INDEX_A, TYPE);
+			generateDocuments(INDEX_B, TYPE);
+			DATASET_INITIALISED = true;
+		} finally {
+			INITIALISE_LOCK.unlock();
+		}
+	}
 	
 	@Before
 	public void setup() {
+		initialiseDataSet();
 		RestAssured.baseURI = "http://localhost:9201";
 	}
 
-	protected void generateDocuments(String index, String type) {
+	private static void generateDocuments(String index, String type) {
 		long timestamp = System.currentTimeMillis() - 1L - (TimeUnit.DAYS.toMillis(DOCUMENT_QUANTITY));
 		for(int i = 0; i < DOCUMENT_QUANTITY; i++) {
 			given()
@@ -49,7 +83,7 @@ public class AbstractAggregationTest {
 		}
 	}
 	
-	protected static int [] generateValues() {
+	private static int [] generateValues() {
 		int [] result = new int[DOCUMENT_QUANTITY];
 		Random random = new Random(RANDOM_SEED);
 		for(int i = 0; i < result.length; i++) {

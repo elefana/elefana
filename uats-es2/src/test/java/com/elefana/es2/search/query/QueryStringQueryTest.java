@@ -21,6 +21,7 @@ import static org.hamcrest.Matchers.equalTo;
 import java.util.UUID;
 
 import com.elefana.TestUtils;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -38,18 +39,11 @@ public class QueryStringQueryTest extends AbstractQueryTest {
 
 	@Test
 	public void testBasicQueryString() {
-		final String index = UUID.randomUUID().toString();
-		final String type = "test";
-
-		TestUtils.disableMappingAndStatsForIndex(index);
-		
-		generatePhraseDocuments(index, type);
-		
 		given()
 			.request()
 			.body("{\"query\":{\"query_string\":{\"default_field\":\"message\",\"query\":\"fox\"}}}")
 		.when()
-			.post("/" + index + "/_search")
+			.post("/" + PHRASE_INDEX + "/_search")
 		.then()
 			.statusCode(200)
 			.body("hits.total", equalTo(6));
@@ -57,18 +51,11 @@ public class QueryStringQueryTest extends AbstractQueryTest {
 	
 	@Test
 	public void testBasicQueryStringNoDefaultField() {
-		final String index = UUID.randomUUID().toString();
-		final String type = "test";
-
-		TestUtils.disableMappingAndStatsForIndex(index);
-		
-		generatePhraseDocuments(index, type);
-		
 		given()
 			.request()
 			.body("{\"query\":{\"query_string\":{\"query\":\"message:fox\"}}}")
 		.when()
-			.post("/" + index + "/_search")
+			.post("/" + PHRASE_INDEX + "/_search")
 		.then()
 			.statusCode(200)
 			.body("hits.total", equalTo(6));
@@ -76,16 +63,11 @@ public class QueryStringQueryTest extends AbstractQueryTest {
 	
 	@Test
 	public void testBasicQueryStringNoDefaultFieldWithWildcard() {
-		final String index = UUID.randomUUID().toString();
-		final String type = "test";
-		
-		generatePhraseDocuments(index, type);
-		
 		given()
 			.request()
 			.body("{\"query\":{\"query_string\":{\"analyze_wildcard\":true,\"query\":\"*\"}}}")
 		.when()
-			.post("/" + index + "/_search")
+			.post("/" + PHRASE_INDEX + "/_search")
 		.then()
 			.statusCode(200)
 			.body("hits.total", equalTo(13));
@@ -93,16 +75,11 @@ public class QueryStringQueryTest extends AbstractQueryTest {
 	
 	@Test
 	public void testPhraseQueryString() {
-		final String index = UUID.randomUUID().toString();
-		final String type = "test";
-		
-		generatePhraseDocuments(index, type);
-		
 		given()
 			.request()
 			.body("{\"query\":{\"query_string\":{\"default_field\":\"message\",\"query\":\"\\\"fox jumps\\\"\" }}}")
 		.when()
-			.post("/" + index + "/_search")
+			.post("/" + PHRASE_INDEX + "/_search")
 		.then()
 			.statusCode(200)
 			.body("hits.total", equalTo(4));
@@ -110,16 +87,11 @@ public class QueryStringQueryTest extends AbstractQueryTest {
 	
 	@Test
 	public void testWildcardQueryString() {
-		final String index = UUID.randomUUID().toString();
-		final String type = "test";
-		
-		generatePhraseDocuments(index, type);
-		
 		given()
 			.request()
 			.body("{\"query\":{\"query_string\":{\"default_field\":\"status\",\"query\":\"f*ling\"}}}")
 		.when()
-			.post("/" + index + "/_search")
+			.post("/" + PHRASE_INDEX + "/_search")
 		.then()
 			.statusCode(200)
 			.body("hits.total", equalTo(2));
@@ -128,7 +100,7 @@ public class QueryStringQueryTest extends AbstractQueryTest {
 			.request()
 			.body("{\"query\":{\"query_string\":{\"default_field\":\"status\",\"query\":\"f??ling\"}}}")
 		.when()
-			.post("/" + index + "/_search")
+			.post("/" + PHRASE_INDEX + "/_search")
 		.then()
 			.statusCode(200)
 			.body("hits.total", equalTo(2));
@@ -137,7 +109,7 @@ public class QueryStringQueryTest extends AbstractQueryTest {
 			.request()
 			.body("{\"query\":{\"query_string\":{\"default_field\":\"status\",\"query\":\"f?ling\"}}}")
 		.when()
-			.post("/" + index + "/_search")
+			.post("/" + PHRASE_INDEX + "/_search")
 		.then()
 			.statusCode(200)
 			.body("hits.total", equalTo(0));
@@ -145,16 +117,11 @@ public class QueryStringQueryTest extends AbstractQueryTest {
 	
 	@Test
 	public void testMultiFieldQueryString() {
-		final String index = UUID.randomUUID().toString();
-		final String type = "test";
-		
-		generatePhraseDocuments(index, type);
-		
 		given()
 			.request()
 			.body("{\"size\":100,\"query\":{\"query_string\":{\"fields\":[\"status\",\"message\"],\"query\":\"f*ling the\"}}}")
 		.when()
-			.post("/" + index + "/_search")
+			.post("/" + PHRASE_INDEX + "/_search")
 		.then()
 			.statusCode(200)
 			.body("hits.total", equalTo(12));
@@ -162,16 +129,11 @@ public class QueryStringQueryTest extends AbstractQueryTest {
 	
 	@Test
 	public void testInternalDefaultOperatorQueryString() {
-		final String index = UUID.randomUUID().toString();
-		final String type = "test";
-		
-		generatePhraseDocuments(index, type);
-		
 		given()
 			.request()
 			.body("{\"query\":{\"query_string\":{\"default_field\":\"message\",\"query\":\"(fox jumps)\"}}}")
 		.when()
-			.post("/" + index + "/_search")
+			.post("/" + PHRASE_INDEX + "/_search")
 		.then()
 			.statusCode(200)
 			.body("hits.total", equalTo(7));
@@ -180,7 +142,7 @@ public class QueryStringQueryTest extends AbstractQueryTest {
 			.request()
 			.body("{\"query\":{\"query_string\":{\"default_field\":\"message\",\"query\":\"fox jumps\"}}}")
 		.when()
-			.post("/" + index + "/_search")
+			.post("/" + PHRASE_INDEX + "/_search")
 		.then()
 			.statusCode(200)
 			.body("hits.total", equalTo(7));
@@ -188,16 +150,11 @@ public class QueryStringQueryTest extends AbstractQueryTest {
 	
 	@Test
 	public void testSpecifiedDefaultOperatorQueryString() {
-		final String index = UUID.randomUUID().toString();
-		final String type = "test";
-		
-		generatePhraseDocuments(index, type);
-		
 		given()
 			.request()
 			.body("{\"query\":{\"query_string\":{\"default_operator\":\"and\",\"default_field\":\"message\",\"query\":\"(fox jumps)\"}}}")
 		.when()
-			.post("/" + index + "/_search")
+			.post("/" + PHRASE_INDEX + "/_search")
 		.then()
 			.statusCode(200)
 			.body("hits.total", equalTo(4));
@@ -206,7 +163,7 @@ public class QueryStringQueryTest extends AbstractQueryTest {
 			.request()
 			.body("{\"query\":{\"query_string\":{\"default_operator\":\"or\",\"default_field\":\"message\",\"query\":\"(fox jumps)\"}}}")
 		.when()
-			.post("/" + index + "/_search")
+			.post("/" + PHRASE_INDEX + "/_search")
 		.then()
 			.statusCode(200)
 			.body("hits.total", equalTo(7));

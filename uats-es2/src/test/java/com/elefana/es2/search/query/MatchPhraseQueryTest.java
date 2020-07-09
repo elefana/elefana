@@ -21,6 +21,7 @@ import static org.hamcrest.Matchers.equalTo;
 import java.util.UUID;
 
 import com.elefana.TestUtils;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -34,21 +35,14 @@ import com.elefana.ElefanaApplication;
 @SpringBootTest(classes = { ElefanaApplication.class })
 @TestPropertySource(locations = "classpath:es2.properties")
 public class MatchPhraseQueryTest extends AbstractQueryTest {
-	
+
 	@Test
 	public void testMatchPhraseQuery() {
-		final String index = UUID.randomUUID().toString();
-		final String type = "test";
-
-		TestUtils.disableMappingAndStatsForIndex(index);
-		
-		generatePhraseDocuments(index, type);
-		
 		given()
 			.request()
 			.body("{\"query\":{\"match_phrase\":{\"message\":\"quick brown\"}}}")
 		.when()
-			.post("/" + index + "/_search")
+			.post("/" + PHRASE_INDEX + "/_search")
 		.then()
 			.statusCode(200)
 			.body("hits.total", equalTo(2));
@@ -57,7 +51,7 @@ public class MatchPhraseQueryTest extends AbstractQueryTest {
 			.request()
 			.body("{\"query\":{\"match_phrase\":{\"message\":\"the lazy\"}}}")
 		.when()
-			.post("/" + index + "/_search")
+			.post("/" + PHRASE_INDEX + "/_search")
 		.then()
 			.statusCode(200)
 			.body("hits.total", equalTo(3));

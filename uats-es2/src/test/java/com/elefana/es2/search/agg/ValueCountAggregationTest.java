@@ -21,6 +21,7 @@ import static org.hamcrest.Matchers.equalTo;
 import java.util.UUID;
 
 import com.elefana.TestUtils;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -34,22 +35,15 @@ import com.elefana.ElefanaApplication;
 @SpringBootTest(classes = { ElefanaApplication.class })
 @TestPropertySource(locations = "classpath:es2.properties")
 public class ValueCountAggregationTest extends AbstractAggregationTest {
-	
+
 	@Test
 	public void testValueCountAggregation() {
-		final String index = UUID.randomUUID().toString();
-		final String type = "test";
-
-		TestUtils.disableMappingAndStatsForIndex(index);
-		
-		generateDocuments(index, type);
-		
 		given()
 			.request()
 			.body("{\"query\":{\"match_all\":{}}, \"size\":" + DOCUMENT_QUANTITY 
 					+ ", \"aggs\" : {\"aggs_result\" : { \"value_count\" : { \"field\" : \"value\" }}}}")
 		.when()
-			.post("/" + index + "/_search")
+			.post("/" + INDEX_A + "/_search")
 		.then()
 			.statusCode(200)
 			.body("hits.total", equalTo(DOCUMENT_QUANTITY))

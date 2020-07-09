@@ -34,3 +34,12 @@ Gemfile.lock
 uats-es2-citus/src/test/java
 uats-es5-citus/src/test/java
 *.tmp
+
+uats-es2/maps
+uats-es2/queues
+uats-es5/maps
+uats-es5/queues
+uats-es2-citus/maps
+uats-es2-citus/queues
+uats-es5-citus/maps
+uats-es5-citus/queues
