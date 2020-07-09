@@ -23,6 +23,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import com.elefana.TestUtils;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -44,19 +45,12 @@ public class CardinalityAggregationTest extends AbstractAggregationTest {
 			cardinality.add(DOCUMENT_VALUES[i]);
 		}
 		
-		final String index = UUID.randomUUID().toString();
-		final String type = "test";
-
-		TestUtils.disableMappingAndStatsForIndex(index);
-
-		generateDocuments(index, type);
-		
 		given()
 			.request()
 			.body("{\"query\":{\"match_all\":{}}, \"size\":" + DOCUMENT_QUANTITY 
 					+ ", \"aggs\" : {\"aggs_result\" : { \"cardinality\" : { \"field\" : \"value\" }}}}")
 		.when()
-			.post("/" + index + "/_search")
+			.post("/" + INDEX_A + "/_search")
 		.then()
 			.statusCode(200)
 			.body("hits.total", equalTo(DOCUMENT_QUANTITY))

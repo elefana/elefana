@@ -17,19 +17,56 @@ package com.elefana.es2.search.query;
 
 import static io.restassured.RestAssured.given;
 
+import com.elefana.TestUtils;
+import io.restassured.response.ValidatableResponse;
 import org.junit.Before;
 
 import io.restassured.RestAssured;
 
+import java.util.UUID;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
 public class AbstractQueryTest {
 	protected static final int DOCUMENT_QUANTITY = 100;
+
+	protected static final String RANGE_INDEX = UUID.randomUUID().toString();
+	protected static final String PHRASE_INDEX = UUID.randomUUID().toString();
+	protected static final String TERM_INDEX = UUID.randomUUID().toString();
+	protected static final String TYPE = "test";
+	protected static final long INIT_TIMEOUT = 20000L;
+
+	private static final Lock INITIALISE_LOCK = new ReentrantLock();
+	private static boolean DATASET_INITIALISED = false;
+
+	protected static void initialiseDataSet() {
+		INITIALISE_LOCK.lock();
+		if(DATASET_INITIALISED) {
+			INITIALISE_LOCK.unlock();
+			return;
+		}
+		try {
+			RestAssured.baseURI = "http://localhost:9201";
+			TestUtils.waitForElefanaToStart();
+			TestUtils.disableMappingAndStatsForIndex(RANGE_INDEX);
+			TestUtils.disableMappingAndStatsForIndex(PHRASE_INDEX);
+			TestUtils.disableMappingAndStatsForIndex(TERM_INDEX);
+			generateRangeDocuments(RANGE_INDEX, TYPE);
+			generatePhraseDocuments(PHRASE_INDEX, TYPE);
+			generateTermDocuments(DOCUMENT_QUANTITY, TERM_INDEX, TYPE);
+			DATASET_INITIALISED = true;
+		} finally {
+			INITIALISE_LOCK.unlock();
+		}
+	}
 	
 	@Before
 	public void setup() {
+		initialiseDataSet();
 		RestAssured.baseURI = "http://localhost:9201";
 	}
 	
-	protected void generateRangeDocuments(String index, String type) {
+	private static void generateRangeDocuments(String index, String type) {
 		indexDocument(index, type, "{\"value\": 0}");
 		indexDocument(index, type, "{\"value\": 1}");
 		indexDocument(index, type, "{\"value\": 2}");
@@ -41,8 +78,8 @@ public class AbstractQueryTest {
 		indexDocument(index, type, "{\"value\": 8}");
 		indexDocument(index, type, "{\"value\": 9}");
 	}
-	
-	protected void generatePhraseDocuments(String index, String type) {
+
+	private static void generatePhraseDocuments(String index, String type) {
 		indexDocument(index, type, "{\"message\": \"The quick brown fox jumps over the lazy dog\"}");
 		indexDocument(index, type, "{\"message\": \"The quick brown fox\"}");
 		indexDocument(index, type, "{\"message\": \"The fox jumps over the lazy dog\"}");
@@ -58,14 +95,14 @@ public class AbstractQueryTest {
 		indexDocument(index, type, "{\"status\": \"failing\"}");
 		indexDocument(index, type, "{\"status\": \"fueling\"}");
 	}
-	
-	protected void generateTermDocuments(int quantity, String index, String type) {
+
+	private static void generateTermDocuments(int quantity, String index, String type) {
 		for(int i = 0; i < quantity; i++) {
 			indexDocument(index, type, "{\"message\" : \"This is sample message " + i + "\",\"date\" : \"2009-11-15T14:12:12\"}");
 		}
 	}
-	
-	private void indexDocument(String index, String type, String document) {
+
+	private static void indexDocument(String index, String type, String document) {
 		given()
 			.request()
 			.body(document)

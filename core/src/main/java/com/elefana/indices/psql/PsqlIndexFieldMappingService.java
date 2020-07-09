@@ -27,6 +27,8 @@ import com.elefana.indices.V2FieldMapper;
 import com.elefana.indices.V5FieldMapper;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
+import com.elefana.util.CitusTableTimestampSample;
+import com.elefana.util.HashDiskBackedQueue;
 import com.elefana.util.IndexUtils;
 import com.elefana.util.NamedThreadFactory;
 import com.google.common.cache.Cache;
@@ -45,6 +47,7 @@ import org.springframework.stereotype.Service;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
@@ -53,6 +56,12 @@ import java.util.concurrent.atomic.AtomicLong;
 @DependsOn("nodeSettingsService")
 public class PsqlIndexFieldMappingService implements IndexFieldMappingService, RequestExecutor {
 	private static final Logger LOGGER = LoggerFactory.getLogger(IndexFieldMappingService.class);
+
+	private static final String MAPPING_QUEUE_ID = "index-field-mapping-queue";
+	private static final int MAPPING_EXPECTED_ENTRIES = 10_000;
+	private static final String MAPPING_AVERAGE_KEY = "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz";
+	private static final QueuedIndex MAPPING_AVERAGE_VALUE = new QueuedIndex(
+			MAPPING_AVERAGE_KEY, System.currentTimeMillis());
 
 	private final AtomicLong lastMapping = new AtomicLong(-1L);
 
@@ -71,7 +80,7 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 	@Autowired
 	private IndexUtils indexUtils;
 
-	private IndexMappingQueue mappingQueue;
+	private HashDiskBackedQueue<QueuedIndex> mappingQueue;
 
 	private ExecutorService executorService;
 	private ScheduledFuture<?> mappingScheduledTask;
@@ -94,13 +103,18 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 		}
 
 		fieldNamesCache = CacheBuilder.newBuilder().
+				expireAfterWrite(Duration.ofHours(environment.getProperty("elefana.service.field.cache.names.expire.hours", Integer.class, 1))).
 				maximumSize(environment.getProperty("elefana.service.field.cache.names.expire.size", Integer.class, 250)).
 				build();
 		typesByIndexCache = CacheBuilder.newBuilder().
+				expireAfterWrite(Duration.ofHours(environment.getProperty("elefana.service.field.cache.types.expire.hours", Integer.class, 1))).
 				maximumSize(environment.getProperty("elefana.service.field.cache.types.expire.size", Integer.class, 250)).
 				build();
 
-		mappingQueue = new IndexMappingQueue(jdbcTemplate, taskScheduler, environment.getProperty("elefana.service.field.queue.io.interval", Long.class, TimeUnit.MINUTES.toMillis(15L)));
+		mappingQueue = new HashDiskBackedQueue(MAPPING_QUEUE_ID,
+				nodeSettingsService.getDataDirectory(), QueuedIndex.class,
+				MAPPING_EXPECTED_ENTRIES,
+				MAPPING_AVERAGE_KEY, MAPPING_AVERAGE_VALUE);
 
 		final int totalThreads = environment.getProperty("elefana.service.field.threads", Integer.class, 2);
 		executorService = Executors.newFixedThreadPool(totalThreads, new NamedThreadFactory("elefana-fieldMappingService-requestExecutor"));
@@ -489,9 +503,9 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 
 	private void generateMappingsForQueuedTables() {
 		try {
+			final QueuedIndex nextIndex = new QueuedIndex();
 			while (!mappingQueue.isEmpty()) {
-				QueuedIndex nextIndex = mappingQueue.peek();
-				if(nextIndex == null) {
+				if(!mappingQueue.peek(nextIndex)) {
 					lastMapping.set(System.currentTimeMillis());
 					return;
 				}
@@ -499,14 +513,20 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 					lastMapping.set(System.currentTimeMillis());
 					return;
 				}
-				nextIndex = mappingQueue.poll();
+				if(!mappingQueue.poll(nextIndex)) {
+					lastMapping.set(System.currentTimeMillis());
+					return;
+				}
+
+				LOGGER.info("Generating mappings for " + nextIndex.getIndex());
+
+				final Map<String, Object> mapping = getIndexTypeMappings(nextIndex.getIndex());
 
 				final IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndex(nextIndex.getIndex());
 				if(indexTemplate != null && indexTemplate.getStorage() != null && !indexTemplate.getStorage().isMappingEnabled()) {
+					generateEmptyMappingsForTypes(indexTemplate, mapping, nextIndex.getIndex());
 					continue;
 				}
-
-				Map<String, Object> mapping = getIndexTypeMappings(nextIndex.getIndex());
 
 				if (mapping.isEmpty()) {
 					SqlRowSet rowSet = getSampleDocuments(nextIndex.getIndex());
@@ -538,6 +558,30 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
 		}
+	}
+
+	private void generateEmptyMappingsForTypes(IndexTemplate indexTemplate, Map<String, Object> mapping, String index) throws Exception {
+		if(mapping.size() != 0) {
+			return;
+		}
+		SqlRowSet rowSet = getSampleDocuments(index);
+		while (rowSet.next()) {
+			final String type = rowSet.getString("_type");
+
+			Map<String, Object> typeMappings = (Map) mapping.get(type);
+			if (typeMappings != null) {
+				continue;
+			}
+			if (indexTemplate != null) {
+				typeMappings = fieldMapper.convertIndexTemplateToMappings(indexTemplate, type);
+			}
+			if (typeMappings == null) {
+				typeMappings = new HashMap<String, Object>();
+			}
+			mapping.put(type, typeMappings);
+			saveMappings(index, type, typeMappings);
+		}
+		typesByIndexCache.invalidate(index);
 	}
 
 	private int generateMappingsForAllTypes(IndexTemplate indexTemplate, Map<String, Object> mapping, String index,

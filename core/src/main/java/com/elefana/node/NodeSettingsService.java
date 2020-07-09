@@ -24,6 +24,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
+import java.io.File;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
@@ -82,6 +83,8 @@ public class NodeSettingsService {
 	private long garbageCollectionInterval;
 	private int brinPagesPerRange;
 
+	private File dataDirectory;
+
 	@PostConstruct
 	public void postConstruct() {
 		nodeName = environment.getRequiredProperty("elefana.node.name");
@@ -89,6 +92,8 @@ public class NodeSettingsService {
 
 		clusterName = environment.getRequiredProperty("elefana.cluster.name");
 		clusterId = DigestUtils.md5Hex(clusterName);
+
+		dataDirectory = new File(environment.getProperty("elefana.data.directory", "."));
 
 		httpEnabled = environment.getProperty("elefana.http.enabled", Boolean.class, true);
 		if (httpEnabled) {
@@ -380,5 +385,9 @@ public class NodeSettingsService {
 
 	public String[] getRoles() {
 		return roles;
+	}
+
+	public File getDataDirectory() {
+		return dataDirectory;
 	}
 }

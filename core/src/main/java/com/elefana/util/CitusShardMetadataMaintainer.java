@@ -41,6 +41,13 @@ public class CitusShardMetadataMaintainer implements Runnable {
 	private static final Logger LOGGER = LoggerFactory.getLogger(CitusShardMetadataMaintainer.class);
 	private static final long DEFAULT_SCHEDULE_MILLIS = TimeUnit.HOURS.toMillis(1);
 
+	private static final String TIME_SHARD_REPAIR_QUEUE_ID = "time-shard-repair-queue";
+	private static final int TIME_SHARD_REPAIR_EXPECTED_ENTRIES = 100_000;
+	private static final String TIME_SHARD_REPAIR_AVERAGE_KEY = "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz";
+	private static final CitusTableTimestampSample TIME_SHARD_REPAIR_AVERAGE_VALUE =
+			new CitusTableTimestampSample(TIME_SHARD_REPAIR_AVERAGE_KEY, TIME_SHARD_REPAIR_AVERAGE_KEY,
+					System.currentTimeMillis());
+
 	@Autowired
 	private Environment environment;
 	@Autowired
@@ -52,14 +59,17 @@ public class CitusShardMetadataMaintainer implements Runnable {
 	@Autowired
 	protected IndexTemplateService indexTemplateService;
 
-	private CitusTimeShardRepairQueue timeShardRepairQueue;
+	private HashDiskBackedQueue<CitusTableTimestampSample> timeShardRepairQueue;
 
 	@PostConstruct
 	public void postConstruct() throws SQLException {
 		if(!nodeSettingsService.isMasterNode()) {
 			return;
 		}
-		timeShardRepairQueue = new CitusTimeShardRepairQueue(jdbcTemplate, taskScheduler);
+		timeShardRepairQueue = new HashDiskBackedQueue<CitusTableTimestampSample>(TIME_SHARD_REPAIR_QUEUE_ID,
+				nodeSettingsService.getDataDirectory(), CitusTableTimestampSample.class,
+				TIME_SHARD_REPAIR_EXPECTED_ENTRIES,
+				TIME_SHARD_REPAIR_AVERAGE_KEY, TIME_SHARD_REPAIR_AVERAGE_VALUE);
 		taskScheduler.scheduleAtFixedRate(this,
 				environment.getProperty("elefana.citus.repair.interval", Long.class, DEFAULT_SCHEDULE_MILLIS));
 	}
@@ -80,10 +90,10 @@ public class CitusShardMetadataMaintainer implements Runnable {
 
 	@Override
 	public void run() {
+		final CitusTableTimestampSample tableTimestampSample = new CitusTableTimestampSample();
 		while(!timeShardRepairQueue.isEmpty()) {
 			try {
-				CitusTableTimestampSample tableTimestampSample = timeShardRepairQueue.poll();
-				if(tableTimestampSample == null) {
+				if(!timeShardRepairQueue.poll(tableTimestampSample)) {
 					continue;
 				}
 				if(hasNullShardIntervals(tableTimestampSample)) {

@@ -15,27 +15,58 @@
  ******************************************************************************/
 package com.elefana;
 
+import io.restassured.response.ValidatableResponse;
+import org.junit.Assert;
+
 import static io.restassured.RestAssured.given;
 
 public class TestUtils {
+	protected static final long INIT_TIMEOUT = 20000L;
+
+	public static void waitForElefanaToStart() {
+		final long startTime = System.currentTimeMillis();
+
+		int statusCode = 0;
+		while(statusCode != 200 && System.currentTimeMillis() - startTime < INIT_TIMEOUT) {
+			try {
+				ValidatableResponse response = given().request().when().get().then();
+				statusCode = response.extract().statusCode();
+			} catch (Exception e) {}
+		}
+		Assert.assertEquals(200, statusCode);
+	}
 
 	public static void disableMappingAndStatsForIndex(String index) {
-		given()
-				.request()
-				.body("{\"template\": \"" + index + "\",\"storage\": {\"field_stats_disabled\": true, \"mapping_disabled\": true}}")
-				.when()
-				.put("/_template/" + index)
-				.then()
-				.statusCode(200);
+		final long startTime = System.currentTimeMillis();
+
+		int statusCode = 0;
+		while(statusCode != 200 && System.currentTimeMillis() - startTime < INIT_TIMEOUT) {
+			try {
+				ValidatableResponse response = given()
+						.request()
+						.body("{\"template\": \"" + index + "\",\"storage\": {\"field_stats_disabled\": true, \"mapping_disabled\": true}}")
+						.when()
+						.put("/_template/" + index)
+						.then();
+				statusCode = response.extract().statusCode();
+			} catch (Exception e) {}
+		}
 	}
 
 	public static void disableMappingForIndex(String index) {
-		given()
-				.request()
-				.body("{\"template\": \"" + index + "\",\"storage\": {\"mapping_disabled\": true}}")
-				.when()
-				.put("/_template/" + index)
-				.then()
-				.statusCode(200);
+		final long startTime = System.currentTimeMillis();
+
+		int statusCode = 0;
+		while(statusCode != 200 && System.currentTimeMillis() - startTime < INIT_TIMEOUT) {
+			try {
+				ValidatableResponse response = given()
+						.request()
+						.body("{\"template\": \"" + index + "\",\"storage\": {\"mapping_disabled\": true}}")
+						.when()
+						.put("/_template/" + index)
+						.then();
+				statusCode = response.extract().statusCode();
+			} catch (Exception e) {}
+		}
 	}
 }

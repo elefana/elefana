@@ -22,8 +22,10 @@ import com.elefana.api.exception.DocumentAlreadyExistsException;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.ShardFailedException;
 import com.elefana.api.indices.DeleteIndexRequest;
+import com.elefana.api.indices.IndexTemplate;
 import com.elefana.api.json.JsonUtils;
 import com.elefana.document.DocumentService;
+import com.elefana.indices.IndexTemplateService;
 import com.elefana.indices.fieldstats.IndexFieldStatsService;
 import com.elefana.indices.psql.PsqlIndexFieldMappingService;
 import com.elefana.node.NodeSettingsService;
@@ -31,6 +33,7 @@ import com.elefana.node.VersionInfoService;
 import com.elefana.util.EscapeUtils;
 import com.elefana.util.IndexUtils;
 import com.elefana.util.NamedThreadFactory;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,6 +78,8 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 	private PsqlIndexFieldMappingService indexFieldMappingService;
 	@Autowired
 	private IndexFieldStatsService indexFieldStatsService;
+	@Autowired
+	private IndexTemplateService indexTemplateService;
 
 	private ExecutorService executorService;
 
@@ -303,6 +308,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 					}
 
 					try {
+						LOGGER.info(queryBuilder.toString());
 						SqlRowSet resultSet = jdbcTemplate.queryForRowSet(queryBuilder.toString());
 						while (resultSet.next()) {
 							GetResponse getResponse = new GetResponse();
@@ -564,35 +570,70 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 		}
 
 		final StringBuilder queryBuilder = new StringBuilder();
+		final boolean indexInfoLast;
 
 		if (nodeSettingsService.isUsingCitus()) {
-			queryBuilder.append("INSERT INTO ");
-			queryBuilder.append(indexUtils.getQueryTarget(index));
-			queryBuilder.append(" AS i");
-			queryBuilder.append(
-					" (_index, _type, _id, _timestamp, _bucket1s, _bucket1m, _bucket1h, _bucket1d, _source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+			final IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndex(index);
+			final boolean hasIdIndex;
+			if(indexTemplate != null && indexTemplate.getStorage() != null) {
+				hasIdIndex = indexTemplate.getStorage().isIdEnabled();
+			} else {
+				hasIdIndex = true;
+			}
 
-			switch (opType) {
-			case CREATE:
-				queryBuilder.append(" ON CONFLICT DO NOTHING");
-				break;
-			case UPDATE:
+			if(hasIdIndex) {
+				indexInfoLast = false;
+
+				queryBuilder.append("INSERT INTO ");
+				queryBuilder.append(indexUtils.getQueryTarget(index));
+				queryBuilder.append(" AS i");
 				queryBuilder.append(
-						" ON CONFLICT (_id) DO UPDATE SET _timestamp = EXCLUDED._timestamp, "
-						+ "_bucket1s = EXCLUDED._bucket1s, _bucket1m = EXCLUDED._bucket1m,"
-						+ " _bucket1h = EXCLUDED._bucket1h, _bucket1d = EXCLUDED._bucket1d, "
-						+ "_source = i._source || EXCLUDED._source");
-				break;
-			case OVERWRITE:
-			default:
-				queryBuilder.append(
-						" ON CONFLICT (_id) DO UPDATE SET _timestamp = EXCLUDED._timestamp, "
-						+ "_bucket1s = EXCLUDED._bucket1s, _bucket1m = EXCLUDED._bucket1m, "
-						+ "_bucket1h = EXCLUDED._bucket1h, _bucket1d = EXCLUDED._bucket1d, "
-						+ "_source = EXCLUDED._source");
-				break;
+						" (_index, _type, _id, _timestamp, _bucket1s, _bucket1m, _bucket1h, _bucket1d, _source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
+				switch (opType) {
+				case CREATE:
+					queryBuilder.append(" ON CONFLICT DO NOTHING");
+					break;
+				case UPDATE:
+					queryBuilder.append(
+							" ON CONFLICT (_id) DO UPDATE SET _timestamp = EXCLUDED._timestamp, "
+									+ "_bucket1s = EXCLUDED._bucket1s, _bucket1m = EXCLUDED._bucket1m,"
+									+ " _bucket1h = EXCLUDED._bucket1h, _bucket1d = EXCLUDED._bucket1d, "
+									+ "_source = i._source || EXCLUDED._source");
+					break;
+				case OVERWRITE:
+				default:
+					queryBuilder.append(
+							" ON CONFLICT (_id) DO UPDATE SET _timestamp = EXCLUDED._timestamp, "
+									+ "_bucket1s = EXCLUDED._bucket1s, _bucket1m = EXCLUDED._bucket1m, "
+									+ "_bucket1h = EXCLUDED._bucket1h, _bucket1d = EXCLUDED._bucket1d, "
+									+ "_source = EXCLUDED._source");
+					break;
+				}
+			} else {
+				switch (opType) {
+				case CREATE:
+					indexInfoLast = false;
+					queryBuilder.append("INSERT INTO ");
+					queryBuilder.append(indexUtils.getQueryTarget(index));
+					queryBuilder.append(" AS i");
+					queryBuilder.append(
+							" (_index, _type, _id, _timestamp, _bucket1s, _bucket1m, _bucket1h, _bucket1d, _source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+					break;
+				case UPDATE:
+					throw new ElefanaException(HttpResponseStatus.METHOD_NOT_ALLOWED, "UPDATE operation not supported on indices with IDs disabled");
+				case OVERWRITE:
+				default:
+					indexInfoLast = true;
+					queryBuilder.append("UPDATE ");
+					queryBuilder.append(indexUtils.getQueryTarget(index));
+					queryBuilder.append(" SET _timestamp = ?, _bucket1s = ?, _bucket1m = ?, _bucket1h = ?, _bucket1d = ?, _source = ? WHERE _index = ? AND _type = ? AND _id = ?");
+					break;
+				}
 			}
 		} else {
+			indexInfoLast = false;
+
 			queryBuilder.append("SELECT ");
 			switch (opType) {
 			case CREATE:
@@ -613,15 +654,27 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 		try {
 			Connection connection = jdbcTemplate.getDataSource().getConnection();
 			PreparedStatement preparedStatement = connection.prepareStatement(queryBuilder.toString());
-			preparedStatement.setString(1, index);
-			preparedStatement.setString(2, type);
-			preparedStatement.setString(3, id);
-			preparedStatement.setLong(4, timestamp);
-			preparedStatement.setLong(5, bucket1s);
-			preparedStatement.setLong(6, bucket1m);
-			preparedStatement.setLong(7, bucket1h);
-			preparedStatement.setLong(8, bucket1d);
-			preparedStatement.setObject(9, jsonObject);
+			if(indexInfoLast) {
+				preparedStatement.setLong(1, timestamp);
+				preparedStatement.setLong(2, bucket1s);
+				preparedStatement.setLong(3, bucket1m);
+				preparedStatement.setLong(4, bucket1h);
+				preparedStatement.setLong(5, bucket1d);
+				preparedStatement.setObject(6, jsonObject);
+				preparedStatement.setString(7, index);
+				preparedStatement.setString(8, type);
+				preparedStatement.setString(9, id);
+			} else {
+				preparedStatement.setString(1, index);
+				preparedStatement.setString(2, type);
+				preparedStatement.setString(3, id);
+				preparedStatement.setLong(4, timestamp);
+				preparedStatement.setLong(5, bucket1s);
+				preparedStatement.setLong(6, bucket1m);
+				preparedStatement.setLong(7, bucket1h);
+				preparedStatement.setLong(8, bucket1d);
+				preparedStatement.setObject(9, jsonObject);
+			}
 
 			if (nodeSettingsService.isUsingCitus()) {
 				rows = preparedStatement.executeUpdate();

@@ -25,6 +25,7 @@ import java.util.UUID;
 
 import com.elefana.TestUtils;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -45,19 +46,12 @@ public class RangeQueryTest extends AbstractQueryTest {
 	@Test
 	public void testRangeQuery() {
 		final List<Integer> returnedValues = new ArrayList<Integer>();
-		
-		final String index = UUID.randomUUID().toString();
-		final String type = "test";
 
-		TestUtils.disableMappingAndStatsForIndex(index);
-		
-		generateRangeDocuments(index, type);
-		
 		ValidatableResponse response = given()
 			.request()
 			.body("{\"query\": {\"range\" : {\"value\" : {\"gte\" : 1,\"lte\" : 8}}}}")
 		.when()
-			.post("/" + index + "/_search")
+			.post("/" + RANGE_INDEX + "/_search")
 		.then()
 			.statusCode(200)
 			.log().all()
@@ -75,7 +69,7 @@ public class RangeQueryTest extends AbstractQueryTest {
 			.request()
 			.body("{\"query\": {\"range\" : {\"value\" : {\"gt\" : 1,\"lt\" : 8}}}}")
 		.when()
-			.post("/" + index + "/_search")
+			.post("/" + RANGE_INDEX + "/_search")
 		.then()
 			.statusCode(200)
 			.log().all()

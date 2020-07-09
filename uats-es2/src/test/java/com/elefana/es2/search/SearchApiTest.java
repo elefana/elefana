@@ -24,6 +24,7 @@ import java.util.UUID;
 
 import com.elefana.TestUtils;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -40,26 +41,23 @@ import io.restassured.response.ValidatableResponse;
 @SpringBootTest(classes = { ElefanaApplication.class })
 @TestPropertySource(locations = "classpath:es2.properties")
 public class SearchApiTest extends AbstractQueryTest {
-	
+
+	@BeforeClass
+	public static void beforeClass() {
+		initialiseDataSet();
+	}
+
 	@Test
 	public void testSort() {
-		final String index = UUID.randomUUID().toString();
-		final String type = "test";
-		final int totalDocuments = 10;
-
-		TestUtils.disableMappingAndStatsForIndex(index);
-		
-		generateRangeDocuments(index, type);
-		
 		ValidatableResponse response = given()
 				.request()
 				.body("{\"sort\": [{\"value\": \"desc\"}]}")
 			.when()
-				.post("/" + index + "/" + type + "/_search")
+				.post("/" + RANGE_INDEX + "/" + TYPE + "/_search")
 			.then()
 				.log().all()
 				.statusCode(200)
-				.body("hits.hits.size()", equalTo(totalDocuments));
+				.body("hits.hits.size()", equalTo(10));
 		
 		assertResponseDescending(response);
 		
@@ -67,11 +65,11 @@ public class SearchApiTest extends AbstractQueryTest {
 			.request()
 			.body("{\"query\":{\"match_all\":{}}, \"sort\": [{\"value\": \"desc\"}]}")
 		.when()
-			.post("/" + index + "/" + type + "/_search")
+			.post("/" + RANGE_INDEX + "/" + TYPE + "/_search")
 		.then()
 			.log().all()
 			.statusCode(200)
-			.body("hits.hits.size()", equalTo(totalDocuments));
+			.body("hits.hits.size()", equalTo(10));
 		
 		assertResponseDescending(response);
 		
@@ -79,11 +77,11 @@ public class SearchApiTest extends AbstractQueryTest {
 			.request()
 			.body("{\"query\":{\"match_all\":{}}, \"sort\": [{\"value\": {\"order\": \"desc\"}}]}")
 		.when()
-			.post("/" + index + "/" + type + "/_search")
+			.post("/" + RANGE_INDEX + "/" + TYPE + "/_search")
 		.then()
 			.log().all()
 			.statusCode(200)
-			.body("hits.hits.size()", equalTo(totalDocuments));
+			.body("hits.hits.size()", equalTo(10));
 		
 		assertResponseDescending(response);
 		
@@ -91,11 +89,11 @@ public class SearchApiTest extends AbstractQueryTest {
 				.request()
 				.body("{\"query\":{\"match_all\":{}}, \"sort\": [\"value\"]}")
 			.when()
-				.post("/" + index + "/" + type + "/_search")
+				.post("/" + RANGE_INDEX + "/" + TYPE + "/_search")
 			.then()
 				.log().all()
 				.statusCode(200)
-				.body("hits.hits.size()", equalTo(totalDocuments));
+				.body("hits.hits.size()", equalTo(10));
 		
 		assertResponseAscending(response);
 	}

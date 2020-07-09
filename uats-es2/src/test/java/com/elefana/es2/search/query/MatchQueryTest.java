@@ -21,6 +21,7 @@ import static org.hamcrest.Matchers.equalTo;
 import java.util.UUID;
 
 import com.elefana.TestUtils;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -37,18 +38,11 @@ public class MatchQueryTest extends AbstractQueryTest {
 
 	@Test
 	public void testMatchQuery() {
-		final String index = UUID.randomUUID().toString();
-		final String type = "test";
-
-		TestUtils.disableMappingAndStatsForIndex(index);
-		
-		generatePhraseDocuments(index, type);
-		
 		given()
 			.request()
 			.body("{\"query\":{\"match\":{\"message\":\"the\"}}}")
 		.when()
-			.post("/" + index + "/_search")
+			.post("/" + PHRASE_INDEX + "/_search")
 		.then()
 			.statusCode(200)
 			.body("hits.total", equalTo(10));
@@ -57,7 +51,7 @@ public class MatchQueryTest extends AbstractQueryTest {
 			.request()
 			.body("{\"query\":{\"match\":{\"message\":\"fox\"}}}")
 		.when()
-			.post("/" + index + "/_search")
+			.post("/" + PHRASE_INDEX + "/_search")
 		.then()
 			.statusCode(200)
 			.body("hits.total", equalTo(6));
@@ -66,7 +60,7 @@ public class MatchQueryTest extends AbstractQueryTest {
 			.request()
 			.body("{\"query\":{\"match\":{\"message\":\"fox dog\"}}}")
 		.when()
-			.post("/" + index + "/_search")
+			.post("/" + PHRASE_INDEX + "/_search")
 		.then()
 			.statusCode(200)
 			.body("hits.total", equalTo(9));

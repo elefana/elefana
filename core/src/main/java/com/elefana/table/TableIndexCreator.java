@@ -19,6 +19,7 @@ import com.elefana.api.indices.IndexGenerationMode;
 import com.elefana.api.indices.IndexStorageSettings;
 import com.elefana.node.NodeStatsService;
 import com.elefana.node.NodeSettingsService;
+import com.elefana.util.DiskBackedQueue;
 import com.elefana.util.IndexUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +40,9 @@ import java.util.concurrent.TimeUnit;
 public class TableIndexCreator implements Runnable {
 	private static final Logger LOGGER = LoggerFactory.getLogger(TableIndexCreator.class);
 
+	private static final String TABLE_INDEX_QUEUE_ID = "table-index-queue";
+	private static final String FIELD_INDEX_QUEUE_ID = "field-index-queue";
+
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 	@Autowired
@@ -48,8 +52,8 @@ public class TableIndexCreator implements Runnable {
 	@Autowired
 	private TaskScheduler taskScheduler;
 
-	private Queue<TableIndexDelay> tableIndexQueue;
-	private Queue<TableFieldIndexDelay> fieldIndexQueue;
+	private DiskBackedQueue<TableIndexDelay> tableIndexQueue;
+	private DiskBackedQueue<TableFieldIndexDelay> fieldIndexQueue;
 
 	public void initialise() throws SQLException {
 		if(!nodeStatsService.isMasterNode()) {
@@ -58,8 +62,10 @@ public class TableIndexCreator implements Runnable {
 		}
 		final long interval = nodeSettingsService.getMappingInterval();
 
-		tableIndexQueue = new TableIndexQueue(jdbcTemplate, taskScheduler, interval);
-		fieldIndexQueue = new TableFieldIndexQueue(jdbcTemplate, taskScheduler, interval);
+		tableIndexQueue = new DiskBackedQueue(TABLE_INDEX_QUEUE_ID,
+				nodeSettingsService.getDataDirectory(), TableIndexDelay.class);
+		fieldIndexQueue = new DiskBackedQueue(FIELD_INDEX_QUEUE_ID,
+				nodeSettingsService.getDataDirectory(), TableFieldIndexDelay.class);
 		taskScheduler.scheduleAtFixedRate(this, Math.max(1000, interval));
 	}
 
@@ -84,8 +90,11 @@ public class TableIndexCreator implements Runnable {
 			connection = jdbcTemplate.getDataSource().getConnection();
 		}
 
+		final TableIndexDelay tableIndexDelay = new TableIndexDelay();
 		while(!tableIndexQueue.isEmpty()) {
-			final TableIndexDelay tableIndexDelay = tableIndexQueue.poll();
+			if(!tableIndexQueue.poll(tableIndexDelay)) {
+				continue;
+			}
 			internalCreatePsqlTableIndices(connection, tableIndexDelay.getTableName(), tableIndexDelay.getMode(),
 					tableIndexDelay.isGinEnabled(), tableIndexDelay.isBrinEnabled());
 		}
@@ -97,8 +106,11 @@ public class TableIndexCreator implements Runnable {
 			connection = jdbcTemplate.getDataSource().getConnection();
 		}
 
+		final TableFieldIndexDelay fieldIndexDelay = new TableFieldIndexDelay();
 		while(!fieldIndexQueue.isEmpty()) {
-			final TableFieldIndexDelay fieldIndexDelay = fieldIndexQueue.poll();
+			if(!fieldIndexQueue.poll(fieldIndexDelay)) {
+				continue;
+			}
 			internalCreatePsqlFieldIndex(connection, fieldIndexDelay.getTableName(),
 					fieldIndexDelay.getFieldName(), fieldIndexDelay.getMode());
 		}

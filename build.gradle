@@ -40,6 +40,8 @@ subprojects {
 	targetCompatibility = 1.8
 
 	ext {
+		chronicleQueueVersion = '5.19.72'
+		chronicleMapVersion = '3.19.42'
 		commonsCodecVersion = '1.11'
 		commonsMathVersion = '3.6.1'
 		commonsTextVersion = '1.6'
@@ -232,6 +234,8 @@ project(":" + rootProject.name + "-core") {
 		compile "io.dropwizard.metrics:metrics-graphite:$metricsVersion"
 		compile "commons-validator:commons-validator:$commonsValidatorVersion"
 		compile "net.openhft:zero-allocation-hashing:$zeroAllocationHashingVersion"
+		compile "net.openhft:chronicle-queue:$chronicleQueueVersion"
+		compile "net.openhft:chronicle-map:$chronicleMapVersion"
 		compile "com.google.guava:guava:$guavaVersion"
 		compile "io.sentry:sentry-logback:$sentryVersion"
 		compile('org.postgresql:postgresql')

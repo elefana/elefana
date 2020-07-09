@@ -26,6 +26,7 @@ import com.elefana.TestUtils;
 import io.restassured.path.json.exception.JsonPathException;
 import io.restassured.response.ValidatableResponse;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -42,11 +43,6 @@ public class DateHistogramAggregationTest extends AbstractAggregationTest {
 
 	@Test
 	public void testDateHistogramAggregationByDays() {
-		final String index = UUID.randomUUID().toString();
-		final String type = "test";
-
-		generateDocuments(index, type);
-
 		final long startTime = System.currentTimeMillis();
 		List result = null;
 		while(System.currentTimeMillis() - startTime < TIMEOUT) {
@@ -55,7 +51,7 @@ public class DateHistogramAggregationTest extends AbstractAggregationTest {
 					.body("{\"query\":{\"match_all\":{}}, \"size\":" + DOCUMENT_QUANTITY
 							+ ", \"aggs\" : {\"aggs_result\" : { \"date_histogram\" : { \"field\" : \"timestamp\", \"interval\": \"day\" }}}}")
 					.when()
-					.post("/" + index + "/_search")
+					.post("/" + INDEX_A + "/_search")
 					.then()
 					.log().all();
 
@@ -84,11 +80,6 @@ public class DateHistogramAggregationTest extends AbstractAggregationTest {
 	
 	@Test
 	public void testDateHistogramAggregationByDaysWithSubAggregation() {
-		final String index = UUID.randomUUID().toString();
-		final String type = "test";
-
-		generateDocuments(index, type);
-
 		final long startTime = System.currentTimeMillis();
 		List result = null;
 		while(System.currentTimeMillis() - startTime < TIMEOUT) {
@@ -98,7 +89,7 @@ public class DateHistogramAggregationTest extends AbstractAggregationTest {
 							+ ", \"aggs\" : {\"aggs_result\" : { \"date_histogram\" : { \"field\" : \"timestamp\", \"interval\": \"day\" }, "
 							+ "\"aggregations\": {\"subaggs_result\" : { \"sum\" : { \"field\" : \"value\" }}}}}}")
 					.when()
-					.post("/" + index + "/_search")
+					.post("/" + INDEX_A + "/_search")
 					.then()
 					.log().all();
 
