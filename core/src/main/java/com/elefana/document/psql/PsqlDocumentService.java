@@ -448,7 +448,6 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 					queryBuilder.append("'");
 
 					try {
-						LOGGER.info(queryBuilder.toString());
 						rows += jdbcTemplate.update(queryBuilder.toString());
 						if(rows > 0) {
 							indexFieldMappingService.scheduleIndexForMappingAndStats(index);
@@ -624,10 +623,34 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 					throw new ElefanaException(HttpResponseStatus.METHOD_NOT_ALLOWED, "UPDATE operation not supported on indices with IDs disabled");
 				case OVERWRITE:
 				default:
-					indexInfoLast = true;
-					queryBuilder.append("UPDATE ");
-					queryBuilder.append(indexUtils.getQueryTarget(index));
-					queryBuilder.append(" SET _timestamp = ?, _bucket1s = ?, _bucket1m = ?, _bucket1h = ?, _bucket1d = ?, _source = ? WHERE _index = ? AND _type = ? AND _id = ?");
+					boolean exists = false;
+
+					try {
+						final GetRequest getRequest = new PsqlGetRequest(this, index, type, id);
+						getRequest.setFetchSource(false);
+						final GetResponse getResponse = get(getRequest);
+						if(getResponse.isFound()) {
+							exists = true;
+						} else {
+							exists = false;
+						}
+					} catch (Exception e) {
+						exists = false;
+					}
+
+					if(exists) {
+						indexInfoLast = true;
+						queryBuilder.append("UPDATE ");
+						queryBuilder.append(indexUtils.getQueryTarget(index));
+						queryBuilder.append(" SET _timestamp = ?, _bucket1s = ?, _bucket1m = ?, _bucket1h = ?, _bucket1d = ?, _source = ? WHERE _index = ? AND _type = ? AND _id = ?");
+					} else {
+						indexInfoLast = false;
+						queryBuilder.append("INSERT INTO ");
+						queryBuilder.append(indexUtils.getQueryTarget(index));
+						queryBuilder.append(" AS i");
+						queryBuilder.append(
+								" (_index, _type, _id, _timestamp, _bucket1s, _bucket1m, _bucket1h, _bucket1d, _source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+					}
 					break;
 				}
 			}

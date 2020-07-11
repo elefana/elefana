@@ -518,8 +518,6 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 					return;
 				}
 
-				LOGGER.info("Generating mappings for " + nextIndex.getIndex());
-
 				final Map<String, Object> mapping = getIndexTypeMappings(nextIndex.getIndex());
 
 				final IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndex(nextIndex.getIndex());
