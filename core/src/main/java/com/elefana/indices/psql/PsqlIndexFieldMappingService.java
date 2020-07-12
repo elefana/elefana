@@ -124,6 +124,7 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 			public void run() {
 				try {
 					generateMappingsForQueuedTables();
+					mappingQueue.prune();
 				} catch (Exception e) {
 					LOGGER.error(e.getMessage(), e);
 				}

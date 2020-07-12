@@ -83,6 +83,9 @@ public class TableIndexCreator implements Runnable {
 				connection.close();
 			} catch (Exception e) {}
 		}
+
+		tableIndexQueue.prune();
+		fieldIndexQueue.prune();
 	}
 
 	private Connection runTableIndexCreation(Connection connection) throws SQLException {

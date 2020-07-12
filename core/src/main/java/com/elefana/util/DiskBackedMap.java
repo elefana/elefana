@@ -5,6 +5,7 @@ package com.elefana.util;
 
 import net.openhft.chronicle.bytes.BytesMarshallable;
 import net.openhft.chronicle.map.ChronicleMap;
+import net.openhft.chronicle.map.ChronicleMapBuilder;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -41,20 +42,15 @@ public class DiskBackedMap<K, V> implements Map<K, V> {
 		}
 
 		try {
-			if(keyClass.equals(Integer.class)) {
-				chronicleMap = ChronicleMap.of(keyClass, valueClass)
-						.name(mapId)
-						.entries(expectedEntries)
-						.averageValue(averageValue)
-						.createOrRecoverPersistedTo(new File(mapsDirectory, mapId));
-			} else {
-				chronicleMap = ChronicleMap.of(keyClass, valueClass)
-						.name(mapId)
-						.entries(expectedEntries)
-						.averageKey(averageKey)
-						.averageValue(averageValue)
-						.createOrRecoverPersistedTo(new File(mapsDirectory, mapId));
+			ChronicleMapBuilder mapBuilder = ChronicleMap.of(keyClass, valueClass)
+					.name(mapId).entries(expectedEntries);
+			if(!keyClass.equals(Integer.class)) {
+				mapBuilder = mapBuilder.averageKey(averageKey);
 			}
+			if(!valueClass.equals(Integer.class)) {
+				mapBuilder = mapBuilder.averageValue(averageValue);
+			}
+			chronicleMap = mapBuilder.createOrRecoverPersistedTo(new File(mapsDirectory, mapId));
 		} catch (IOException e) {
 			LOGGER.error(e.getMessage(), e);
 		}
