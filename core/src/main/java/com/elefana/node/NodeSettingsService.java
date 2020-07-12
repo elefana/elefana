@@ -83,6 +83,8 @@ public class NodeSettingsService {
 	private long garbageCollectionInterval;
 	private int brinPagesPerRange;
 
+	private int bulkIngestThreads;
+
 	private File dataDirectory;
 
 	@PostConstruct
@@ -133,6 +135,9 @@ public class NodeSettingsService {
 		garbageCollectionInterval = environment.getRequiredProperty("elefana.gcInterval", Long.class);
 		brinPagesPerRange = Integer.parseInt(environment.getProperty("elefana.brinPagesPerRange", DEFAULT_BRIN_PAGES_PER_RANGE));
 		regenerateDuplicateIds = environment.getProperty("elefana.regenerateDuplicateIds", Boolean.class, false);
+
+		bulkIngestThreads = environment.getProperty("elefana.service.bulk.ingest.threads", Integer.class,
+				Runtime.getRuntime().availableProcessors());
 
 		masterNode = checkIfMasterNode();
 		dataNode = checkIfDataNode();
@@ -369,6 +374,10 @@ public class NodeSettingsService {
 
 	public boolean isRegenerateDuplicateIds() {
 		return regenerateDuplicateIds;
+	}
+
+	public int getBulkIngestThreads() {
+		return bulkIngestThreads;
 	}
 
 	public boolean isMasterNode() {

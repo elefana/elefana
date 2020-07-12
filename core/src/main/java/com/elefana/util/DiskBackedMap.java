@@ -16,7 +16,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
-public class DiskBackedMap<K, V extends BytesMarshallable> implements Map<K, V> {
+public class DiskBackedMap<K, V> implements Map<K, V> {
 	private static final Logger LOGGER = LoggerFactory.getLogger(DiskBackedMap.class);
 	private static final String MAPS_DIRECTORY = "maps";
 

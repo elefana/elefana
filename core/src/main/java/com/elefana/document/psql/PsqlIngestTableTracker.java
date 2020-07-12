@@ -87,8 +87,7 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 			tablespaces = DEFAULT_TABLESPACES;
 		}
 
-		final int totalIngestThreads = environment.getProperty("elefana.service.bulk.ingest.threads", Integer.class,
-				Runtime.getRuntime().availableProcessors());
+		final int totalIngestThreads = nodeSettingsService.getBulkIngestThreads();
 		final int totalProcessingThreads = (nodeSettingsService.getBulkParallelisation() * totalIngestThreads) + (nodeSettingsService.getBulkParallelisation() * 2);
 		final int totalIndexThreads = Math.max(4, environment.getProperty("elefana.service.bulk.index.threads",
 				Integer.class, Runtime.getRuntime().availableProcessors()));
