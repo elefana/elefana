@@ -20,6 +20,7 @@ import com.elefana.api.RequestExecutor;
 import com.elefana.api.exception.NoSuchApiException;
 import com.elefana.api.indices.*;
 import com.elefana.api.json.JsonUtils;
+import com.elefana.api.util.PooledStringBuilder;
 import com.elefana.document.BulkIndexOperation;
 import com.elefana.indices.IndexTemplateService;
 import com.elefana.indices.fieldstats.job.CoreFieldStatsJob;
@@ -115,7 +116,7 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
     }
 
     @Override
-    public GetFieldStatsRequest prepareGetFieldStatsPost(String indexPattern, String requestBody, boolean clusterLevel) throws NoSuchApiException {
+    public GetFieldStatsRequest prepareGetFieldStatsPost(String indexPattern, PooledStringBuilder requestBody, boolean clusterLevel) throws NoSuchApiException {
         try {
             List<String> fields = new ArrayList<>();
 
@@ -257,6 +258,17 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
 
     @Override
     public void submitDocument(String document, String index) {
+        if (isStatsDisabled(index)) {
+            return;
+        }
+        ensureIndicesLoaded(index);
+        final CoreFieldStatsJob fieldStatsJob = CoreFieldStatsJob.allocate(state, loadUnloadManager, index);
+        fieldStatsJob.addDocument(document);
+        fieldStatsJob.run();
+    }
+
+    @Override
+    public void submitDocument(PooledStringBuilder document, String index) {
         if (isStatsDisabled(index)) {
             return;
         }

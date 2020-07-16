@@ -13,10 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package com.elefana.util;
+package com.elefana.api.util;
+
+import io.netty.buffer.ByteBuf;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.Lock;
@@ -56,6 +61,12 @@ public class PooledStringBuilder implements Serializable, Appendable, CharSequen
 		if(result == null) {
 			return new PooledStringBuilder();
 		}
+		return result;
+	}
+
+	public static PooledStringBuilder allocate(String value) {
+		final PooledStringBuilder result = allocate();
+		result.append(value);
 		return result;
 	}
 
@@ -125,6 +136,39 @@ public class PooledStringBuilder implements Serializable, Appendable, CharSequen
 	public PooledStringBuilder append(PooledStringBuilder builder) {
 		backingBuilder.append(builder.toString());
 		return this;
+	}
+
+	public PooledStringBuilder append(ByteBuf byteBuf) {
+		while(byteBuf.readableBytes() >= 2) {
+			backingBuilder.append(byteBuf.readChar());
+		}
+		return this;
+	}
+
+	public PooledStringBuilder append(ByteBuf byteBuf, Charset charset) {
+		backingBuilder.append(byteBuf.toString(charset));
+		return this;
+	}
+
+	public PooledStringBuilder appendUrlDecode(ByteBuf byteBuf, String charset) {
+		try {
+			backingBuilder.append(URLDecoder.decode(byteBuf.toString(Charset.forName(charset)), charset));
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}
+		return this;
+	}
+
+	public void getChars(char[] dst) {
+		getChars(dst, 0);
+	}
+
+	public void getChars(char[] dst, int dstBegin) {
+		getChars(0, length(), dst, dstBegin);
+	}
+
+	public void getChars(int srcBegin, int srcEnd, char[] dst, int dstBegin) {
+		backingBuilder.getChars(srcBegin, srcEnd, dst, dstBegin);
 	}
 
 	@Override

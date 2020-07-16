@@ -17,18 +17,19 @@ package com.elefana.search;
 
 import com.elefana.api.search.MultiSearchRequest;
 import com.elefana.api.search.SearchRequest;
+import com.elefana.api.util.PooledStringBuilder;
 
 public interface SearchService {
 	
-	public MultiSearchRequest prepareMultiSearch(String requestBody);
+	public MultiSearchRequest prepareMultiSearch(PooledStringBuilder requestBody);
 	
-	public MultiSearchRequest prepareMultiSearch(String fallbackIndex, String requestBody);
+	public MultiSearchRequest prepareMultiSearch(String fallbackIndex, PooledStringBuilder requestBody);
 	
-	public MultiSearchRequest prepareMultiSearch(String fallbackIndex, String fallbackType, String requestBody);
+	public MultiSearchRequest prepareMultiSearch(String fallbackIndex, String fallbackType, PooledStringBuilder requestBody);
 
-	public SearchRequest prepareSearch(String requestBody);
+	public SearchRequest prepareSearch(PooledStringBuilder requestBody);
 
-	public SearchRequest prepareSearch(String indexPattern, String requestBody);
+	public SearchRequest prepareSearch(String indexPattern, PooledStringBuilder requestBody);
 
-	public SearchRequest prepareSearch(String indexPattern, String typesPattern, String requestBody);
+	public SearchRequest prepareSearch(String indexPattern, String typesPattern, PooledStringBuilder requestBody);
 }

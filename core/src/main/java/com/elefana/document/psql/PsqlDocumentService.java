@@ -24,6 +24,7 @@ import com.elefana.api.exception.ShardFailedException;
 import com.elefana.api.indices.DeleteIndexRequest;
 import com.elefana.api.indices.IndexTemplate;
 import com.elefana.api.json.JsonUtils;
+import com.elefana.api.util.PooledStringBuilder;
 import com.elefana.document.DocumentService;
 import com.elefana.indices.IndexTemplateService;
 import com.elefana.indices.fieldstats.IndexFieldStatsService;
@@ -117,19 +118,19 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 	}
 
 	@Override
-	public MultiGetRequest prepareMultiGet(String requestBody) {
+	public MultiGetRequest prepareMultiGet(PooledStringBuilder requestBody) {
 		return new PsqlMultiGetRequest(this, requestBody);
 	}
 
 	@Override
-	public MultiGetRequest prepareMultiGet(String indexPattern, String requestBody) {
+	public MultiGetRequest prepareMultiGet(String indexPattern, PooledStringBuilder requestBody) {
 		final MultiGetRequest result = new PsqlMultiGetRequest(this, requestBody);
 		result.setIndexPattern(indexPattern);
 		return result;
 	}
 
 	@Override
-	public MultiGetRequest prepareMultiGet(String indexPattern, String typePattern, String requestBody) {
+	public MultiGetRequest prepareMultiGet(String indexPattern, String typePattern, PooledStringBuilder requestBody) {
 		final MultiGetRequest result = new PsqlMultiGetRequest(this, requestBody);
 		result.setIndexPattern(indexPattern);
 		result.setTypePattern(typePattern);
@@ -137,7 +138,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 	}
 
 	@Override
-	public IndexRequest prepareIndex(String index, String type, String id, String document, IndexOpType opType) {
+	public IndexRequest prepareIndex(String index, String type, String id, PooledStringBuilder document, IndexOpType opType) {
 		final IndexRequest result = new PsqlIndexRequest(this);
 		result.setIndex(index);
 		result.setType(type);
@@ -520,13 +521,14 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 		return response;
 	}
 
-	public IndexResponse index(String index, String type, String id, String document, IndexOpType opType)
+	public IndexResponse index(String index, String type, String id, PooledStringBuilder doc, IndexOpType opType)
 			throws ElefanaException {
 		indexUtils.ensureIndexExists(index);
 
 		if (id == null) {
-			id = indexUtils.generateDocumentId(index, type, document);
+			id = indexUtils.generateDocumentId(index, type, doc);
 		}
+		String document = null;
 
 		switch (versionInfoService.getApiVersion()) {
 		case V_2_4_3:
@@ -537,11 +539,13 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 			case CREATE:
 			case OVERWRITE:
 			default:
+				document = doc.toString();
 				break;
 			}
 			break;
 		case V_5_5_2:
 		default:
+			document = doc.toString();
 			break;
 		}
 		if(nodeSettingsService.isFlattenJson()) {
@@ -715,7 +719,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 			preparedStatement.close();
 			connection.close();
 		} catch (Exception e) {
-			LOGGER.error(document);
+			LOGGER.error(document.toString());
 			LOGGER.error(e.getMessage(), e);
 			throw new ShardFailedException(e);
 		}

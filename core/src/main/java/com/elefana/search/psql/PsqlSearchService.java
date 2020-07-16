@@ -26,6 +26,7 @@ import com.elefana.api.search.MultiSearchRequest;
 import com.elefana.api.search.MultiSearchResponse;
 import com.elefana.api.search.SearchRequest;
 import com.elefana.api.search.SearchResponse;
+import com.elefana.api.util.PooledStringBuilder;
 import com.elefana.indices.psql.PsqlIndexFieldMappingService;
 import com.elefana.indices.psql.PsqlIndexTemplateService;
 import com.elefana.node.NodeSettingsService;
@@ -121,17 +122,18 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 		} catch (InterruptedException e) {}
 	}
 
-	public MultiSearchResponse multiSearch(String httpRequest) throws ElefanaException {
+	public MultiSearchResponse multiSearch(PooledStringBuilder httpRequest) throws ElefanaException {
 		return multiSearch(null, null, httpRequest);
 	}
 
-	public MultiSearchResponse multiSearch(String fallbackIndex, String httpRequest) throws ElefanaException {
+	public MultiSearchResponse multiSearch(String fallbackIndex, PooledStringBuilder httpRequest) throws ElefanaException {
 		return multiSearch(fallbackIndex, null, httpRequest);
 	}
 
-	public MultiSearchResponse multiSearch(String fallbackIndex, String fallbackType, String httpRequest)
+	public MultiSearchResponse multiSearch(String fallbackIndex, String fallbackType, PooledStringBuilder httpRequest)
 			throws ElefanaException {
-		String[] lines = httpRequest.split("\n");
+		final String request = httpRequest.toString();
+		String[] lines = request.split("\n");
 
 		final MultiSearchResponse result = new MultiSearchResponse();
 
@@ -161,15 +163,15 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 		return result;
 	}
 
-	public SearchResponse search(String httpRequest) throws ElefanaException {
+	public SearchResponse search(PooledStringBuilder httpRequest) throws ElefanaException {
 		return search(null, null, httpRequest);
 	}
 
-	public SearchResponse search(String indexPattern, String httpRequest) throws ElefanaException {
+	public SearchResponse search(String indexPattern, PooledStringBuilder httpRequest) throws ElefanaException {
 		return search(indexPattern, null, httpRequest);
 	}
 
-	public SearchResponse search(String indexPattern, String typesPattern, String httpRequest) throws ElefanaException {
+	public SearchResponse search(String indexPattern, String typesPattern, PooledStringBuilder httpRequest) throws ElefanaException {
 		List<String> indices = indexPattern == null || indexPattern.isEmpty() ? indexUtils.listIndices()
 				: indexUtils.listIndicesForIndexPattern(indexPattern);
 		final Set<String> types = new HashSet<String>();
@@ -179,6 +181,16 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 			}
 		}
 		return internalSearch(indices, types.toArray(EMPTY_TYPES_LIST), httpRequest);
+	}
+
+	private SearchResponse internalSearch(List<String> indices, String[] types, PooledStringBuilder httpRequest)
+			throws ElefanaException {
+		final long startTime = System.currentTimeMillis();
+		final RequestBodySearch requestBodySearch = new RequestBodySearch(httpRequest.toString());
+		if (!requestBodySearch.hasAggregations()) {
+			return searchWithoutAggregation(indices, types, requestBodySearch, startTime);
+		}
+		return searchWithAggregation(indices, types, requestBodySearch, startTime);
 	}
 
 	private SearchResponse internalSearch(List<String> indices, String[] types, String httpRequest)
@@ -395,19 +407,19 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 	}
 
 	@Override
-	public MultiSearchRequest prepareMultiSearch(String requestBody) {
+	public MultiSearchRequest prepareMultiSearch(PooledStringBuilder requestBody) {
 		return new PsqlMultiSearchRequest(this, requestBody);
 	}
 
 	@Override
-	public MultiSearchRequest prepareMultiSearch(String fallbackIndex, String requestBody) {
+	public MultiSearchRequest prepareMultiSearch(String fallbackIndex, PooledStringBuilder requestBody) {
 		MultiSearchRequest result = new PsqlMultiSearchRequest(this, requestBody);
 		result.setFallbackIndex(fallbackIndex);
 		return result;
 	}
 
 	@Override
-	public MultiSearchRequest prepareMultiSearch(String fallbackIndex, String fallbackType, String requestBody) {
+	public MultiSearchRequest prepareMultiSearch(String fallbackIndex, String fallbackType, PooledStringBuilder requestBody) {
 		MultiSearchRequest result = new PsqlMultiSearchRequest(this, requestBody);
 		result.setFallbackIndex(fallbackIndex);
 		result.setFallbackType(fallbackType);
@@ -415,19 +427,19 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 	}
 
 	@Override
-	public SearchRequest prepareSearch(String requestBody) {
+	public SearchRequest prepareSearch(PooledStringBuilder requestBody) {
 		return new PsqlSearchRequest(this, requestBody);
 	}
 
 	@Override
-	public SearchRequest prepareSearch(String indexPattern, String requestBody) {
+	public SearchRequest prepareSearch(String indexPattern, PooledStringBuilder requestBody) {
 		SearchRequest result = new PsqlSearchRequest(this, requestBody);
 		result.setIndexPattern(indexPattern);
 		return result;
 	}
 
 	@Override
-	public SearchRequest prepareSearch(String indexPattern, String typesPattern, String requestBody) {
+	public SearchRequest prepareSearch(String indexPattern, String typesPattern, PooledStringBuilder requestBody) {
 		SearchRequest result = new PsqlSearchRequest(this, requestBody);
 		result.setIndexPattern(indexPattern);
 		result.setTypePattern(typesPattern);

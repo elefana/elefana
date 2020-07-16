@@ -17,18 +17,19 @@ package com.elefana.api.search;
 
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
+import com.elefana.api.util.PooledStringBuilder;
 
 public abstract class SearchRequest extends ApiRequest<SearchResponse> {
-	private static final String DEFAULT_QUERY = "{\"query\":{\"match_all\": {}}}";
+	private static final PooledStringBuilder DEFAULT_QUERY = PooledStringBuilder.allocate("{\"query\":{\"match_all\": {}}}");
 	
 	protected String indexPattern, typePattern;
-	protected String requestBody;
+	protected PooledStringBuilder requestBody;
 	
 	public SearchRequest(RequestExecutor requestExecutor) {
 		this(requestExecutor, DEFAULT_QUERY);
 	}
 
-	public SearchRequest(RequestExecutor requestExecutor, String requestBody) {
+	public SearchRequest(RequestExecutor requestExecutor, PooledStringBuilder requestBody) {
 		super(requestExecutor);
 		this.requestBody = requestBody;
 	}
@@ -49,11 +50,11 @@ public abstract class SearchRequest extends ApiRequest<SearchResponse> {
 		this.typePattern = typePattern;
 	}
 
-	public String getRequestBody() {
+	public PooledStringBuilder getRequestBody() {
 		return requestBody;
 	}
 
-	public void setRequestBody(String requestBody) {
+	public void setRequestBody(PooledStringBuilder requestBody) {
 		this.requestBody = requestBody;
 	}
 

@@ -15,6 +15,7 @@
  ******************************************************************************/
 package com.elefana.util;
 
+import com.elefana.api.util.PooledStringBuilder;
 import com.elefana.indices.fieldstats.job.DocumentSourceProvider;
 
 import java.util.ArrayList;
@@ -31,6 +32,17 @@ public class NoAllocStringReplace {
 
 	private static final Lock LOCK = new ReentrantLock();
 	private static final List<NoAllocStringReplace> POOL = new ArrayList<NoAllocStringReplace>();
+
+	public static NoAllocStringReplace allocate(PooledStringBuilder value) {
+		LOCK.lock();
+		NoAllocStringReplace result = POOL.isEmpty() ? null : POOL.remove(0);
+		LOCK.unlock();
+		if(result == null) {
+			result = new NoAllocStringReplace();
+		}
+		result.set(value);
+		return result;
+	}
 
 	public static NoAllocStringReplace allocate(String value) {
 		LOCK.lock();
@@ -62,6 +74,14 @@ public class NoAllocStringReplace {
 	private NoAllocStringReplace() {
 		super();
 		str = new char[MAX_ARRAY_SIZE.get()];
+	}
+
+	public void set(PooledStringBuilder value) {
+		if(value.length() > str.length) {
+			str = new char[value.length() + 1];
+		}
+		length = value.length();
+		value.getChars(0, value.length(), str, 0);
 	}
 
 	public void set(String value) {

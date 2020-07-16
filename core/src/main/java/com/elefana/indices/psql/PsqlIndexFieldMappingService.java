@@ -21,6 +21,7 @@ import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.ShardFailedException;
 import com.elefana.api.indices.*;
 import com.elefana.api.json.JsonUtils;
+import com.elefana.api.util.PooledStringBuilder;
 import com.elefana.indices.FieldMapper;
 import com.elefana.indices.IndexFieldMappingService;
 import com.elefana.indices.V2FieldMapper;
@@ -245,8 +246,8 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 		return result;
 	}
 
-	public void putMapping(String index, String mappingBody) throws ElefanaException {
-		Map<String, Object> mappings = (Map<String, Object>) JsonUtils.fromJsonString(mappingBody, Map.class).get("mappings");
+	public void putMapping(String index, PooledStringBuilder mappingBody) throws ElefanaException {
+		Map<String, Object> mappings = (Map<String, Object>) JsonUtils.fromJsonString(mappingBody.toString(), Map.class).get("mappings");
 		if (mappings == null) {
 			return;
 		}
@@ -255,8 +256,8 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 		}
 	}
 
-	public void putMapping(String index, String type, String mappingBody) throws ElefanaException {
-		putIndexMapping(index, type, JsonUtils.fromJsonString(mappingBody, Map.class));
+	public void putMapping(String index, String type, PooledStringBuilder mappingBody) throws ElefanaException {
+		putIndexMapping(index, type, JsonUtils.fromJsonString(mappingBody.toString(), Map.class));
 	}
 
 	private void putIndexMapping(String index, String type, Map<String, Object> newMappings) throws ElefanaException {
@@ -779,14 +780,14 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 	}
 	
 	@Override
-	public PutFieldMappingRequest preparePutFieldMappings(String index, String mappings) {
+	public PutFieldMappingRequest preparePutFieldMappings(String index, PooledStringBuilder mappings) {
 		PsqlPutFieldMappingRequest result = new PsqlPutFieldMappingRequest(this, index);
 		result.setMappings(mappings);
 		return result;
 	}
 
 	@Override
-	public PutFieldMappingRequest preparePutFieldMappings(String index, String type, String mappings) {
+	public PutFieldMappingRequest preparePutFieldMappings(String index, String type, PooledStringBuilder mappings) {
 		PsqlPutFieldMappingRequest result = new PsqlPutFieldMappingRequest(this, index);
 		result.setType(type);
 		result.setMappings(mappings);

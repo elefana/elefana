@@ -23,6 +23,7 @@ import com.elefana.api.exception.NoSuchTemplateException;
 import com.elefana.api.exception.ShardFailedException;
 import com.elefana.api.indices.*;
 import com.elefana.api.json.JsonUtils;
+import com.elefana.api.util.PooledStringBuilder;
 import com.elefana.indices.IndexTemplateService;
 import com.elefana.util.NamedThreadFactory;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -87,7 +88,7 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 	}
 
 	@Override
-	public PutIndexTemplateRequest preparePutIndexTemplate(String templateId, String requestBody) {
+	public PutIndexTemplateRequest preparePutIndexTemplate(String templateId, PooledStringBuilder requestBody) {
 		return new PsqlPutIndexTemplateRequest(this, templateId, requestBody);
 	}
 	
@@ -255,7 +256,7 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 		return null;
 	}
 
-	public AckResponse putIndexTemplate(String templateId, String requestBody) throws ElefanaException {
+	public AckResponse putIndexTemplate(String templateId, PooledStringBuilder requestBody) throws ElefanaException {
 		final JsonNode templateData = JsonUtils.extractJsonNode(requestBody);
 		if (!templateData.has("template")) {
 			throw new BadRequestException();

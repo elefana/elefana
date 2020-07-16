@@ -24,6 +24,7 @@ import com.elefana.api.ApiRouter;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.NoSuchApiException;
 import com.elefana.api.exception.NoSuchDocumentException;
+import com.elefana.api.util.PooledStringBuilder;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -32,8 +33,6 @@ import io.netty.handler.codec.http.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URLDecoder;
 import java.nio.charset.Charset;
 
 /**
@@ -99,7 +98,7 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 
 	public HttpResponse route(FullHttpRequest httpRequest) {
 		final String uri = httpRequest.uri();
-		final String requestContent = getRequestBody(httpRequest);
+		final PooledStringBuilder requestContent = getRequestBody(httpRequest);
 		try {
 			httpRequests.mark();
 
@@ -116,18 +115,20 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 			return createResponse(httpRequest, HttpResponseStatus.NOT_FOUND, e.getMessage());
 		} catch (ElefanaException e) {
 			LOGGER.error(uri);
-			LOGGER.error(requestContent);
+			LOGGER.error(requestContent.toString());
 			LOGGER.error(e.getMessage(), e);
 			return createErrorResponse(httpRequest, e);
 		} catch (Exception e) {
 			LOGGER.error(uri);
-			LOGGER.error(requestContent);
+			LOGGER.error(requestContent.toString());
 			LOGGER.error(e.getMessage(), e);
 			if(e.getCause() instanceof ElefanaException) {
 				return createErrorResponse(httpRequest, (ElefanaException) e.getCause());
 			} else {
 				return createResponse(httpRequest, HttpResponseStatus.INTERNAL_SERVER_ERROR);
 			}
+		} finally {
+			requestContent.release();
 		}
 	}
 
@@ -157,15 +158,13 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 		return result;
 	}
 
-	private String getRequestBody(FullHttpRequest request) {
+	private PooledStringBuilder getRequestBody(FullHttpRequest request) {
 		if(httpRequestSize != null) {
 			httpRequestSize.update(request.content().readableBytes());
 		}
 		String charset = request.headers().contains("charset") ? request.headers().get("charset").toUpperCase() : "UTF-8";
-		String result = request.content().toString(Charset.forName(charset));
-//		for(Entry<String, String> header : request.headers().entries()) {
-//			LOGGER.info(header.getKey() + " " + header.getValue());
-//		}
+		PooledStringBuilder result = PooledStringBuilder.allocate();
+		result.append(request.content(), Charset.forName(charset));
 		
 		if(request.headers().contains("Content-Type")) {
 			String contentType = request.headers().get("Content-Type").toLowerCase();
@@ -175,11 +174,9 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 			
 			switch(contentType) {
 			case "application/x-www-form-urlencoded":
-				try {
-					result = URLDecoder.decode(result, charset);
-				} catch (UnsupportedEncodingException e) {
-					LOGGER.error(e.getMessage(), e);
-				}
+				result.release();
+				result = PooledStringBuilder.allocate();
+				result.appendUrlDecode(request.content(), charset);
 				break;
 			}
 		}

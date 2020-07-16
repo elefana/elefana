@@ -23,9 +23,7 @@ import com.elefana.indices.fieldstats.state.State;
 import com.elefana.indices.fieldstats.state.field.ElefanaWrongFieldStatsTypeException;
 import com.elefana.indices.fieldstats.state.field.FieldStats;
 import com.elefana.util.CumulativeAverage;
-import com.elefana.util.PooledCharArray;
-import com.elefana.util.PooledSimpleString;
-import com.elefana.util.PooledStringBuilder;
+import com.elefana.api.util.PooledStringBuilder;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.TreeNode;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -87,7 +85,11 @@ public class CoreFieldStatsJob extends FieldStatsJob {
     }
 
     public void addDocument(String document) {
-        documents.add(new SingleDocumentSourceProvider(document));
+        documents.add(SingleDocumentSourceProvider.allocate(document));
+    }
+
+    public void addDocument(PooledStringBuilder document) {
+        documents.add(SingleDocumentSourceProvider.allocate(document));
     }
 
     @Override

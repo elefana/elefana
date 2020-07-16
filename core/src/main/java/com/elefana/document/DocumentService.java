@@ -17,6 +17,7 @@ package com.elefana.document;
 
 import com.elefana.api.document.*;
 import com.elefana.api.indices.DeleteIndexRequest;
+import com.elefana.api.util.PooledStringBuilder;
 
 public interface DocumentService {
 
@@ -26,11 +27,11 @@ public interface DocumentService {
 
 	public DeleteIndexRequest prepareDeleteIndex(String indexPattern, String typePattern);
 
-	public MultiGetRequest prepareMultiGet(String requestBody);
+	public MultiGetRequest prepareMultiGet(PooledStringBuilder requestBody);
 
-	public MultiGetRequest prepareMultiGet(String indexPattern, String requestBody);
+	public MultiGetRequest prepareMultiGet(String indexPattern, PooledStringBuilder requestBody);
 
-	public MultiGetRequest prepareMultiGet(String indexPattern, String typePattern, String requestBody);
+	public MultiGetRequest prepareMultiGet(String indexPattern, String typePattern, PooledStringBuilder requestBody);
 
-	public IndexRequest prepareIndex(String index, String type, String id, String document, IndexOpType opType);
+	public IndexRequest prepareIndex(String index, String type, String id, PooledStringBuilder document, IndexOpType opType);
 }

@@ -17,13 +17,14 @@ package com.elefana.document.psql;
 
 import com.elefana.api.document.BulkRequest;
 import com.elefana.api.document.BulkResponse;
+import com.elefana.api.util.PooledStringBuilder;
 
 import java.util.concurrent.Callable;
 
 public class PsqlBulkRequest extends BulkRequest implements Callable<BulkResponse> {
 	private final PsqlBulkIngestService bulkIngestService;
 
-	public PsqlBulkRequest(PsqlBulkIngestService bulkIngestService, String requestBody) {
+	public PsqlBulkRequest(PsqlBulkIngestService bulkIngestService, PooledStringBuilder requestBody) {
 		super(bulkIngestService, requestBody);
 		this.bulkIngestService = bulkIngestService;
 	}

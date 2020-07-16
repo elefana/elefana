@@ -222,7 +222,8 @@ public class NoAllocStringReplaceTest {
 
     @Test(expected = NullPointerException.class)
     public void testNullString() {
-        NoAllocStringReplace str = NoAllocStringReplace.allocate(null);
+        final String string = null;
+        NoAllocStringReplace str = NoAllocStringReplace.allocate(string);
         str.replaceAndEscapeUnicode(new String[] { "b" }, new String[] { "xNewx" });
         String ret = str.disposeWithResult();
     }

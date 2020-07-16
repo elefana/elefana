@@ -17,13 +17,14 @@ package com.elefana.search.psql;
 
 import com.elefana.api.search.MultiSearchRequest;
 import com.elefana.api.search.MultiSearchResponse;
+import com.elefana.api.util.PooledStringBuilder;
 
 import java.util.concurrent.Callable;
 
 public class PsqlMultiSearchRequest extends MultiSearchRequest implements Callable<MultiSearchResponse> {
 	private final PsqlSearchService searchService;
 
-	public PsqlMultiSearchRequest(PsqlSearchService searchService, String requestBody) {
+	public PsqlMultiSearchRequest(PsqlSearchService searchService, PooledStringBuilder requestBody) {
 		super(searchService, requestBody);
 		this.searchService = searchService;
 	}

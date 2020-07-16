@@ -23,6 +23,7 @@ import com.elefana.api.indices.GetIndexTemplateForIndexResponse;
 import com.elefana.api.indices.IndexStorageSettings;
 import com.elefana.api.indices.IndexTemplate;
 import com.elefana.api.json.JsonUtils;
+import com.elefana.api.util.PooledStringBuilder;
 import com.elefana.indices.IndexTemplateService;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.table.TableIndexCreator;
@@ -162,7 +163,7 @@ public class CoreIndexUtils implements IndexUtils {
 	}
 
 	@Override
-	public String generateDocumentId(String index, String type, String source) {
+	public String generateDocumentId(String index, String type, CharSequence source) {
 		return uuidGenerator.generate().toString();
 	}
 
@@ -247,7 +248,36 @@ public class CoreIndexUtils implements IndexUtils {
 		return getPartitionTableForIndex(indexName);
 	}
 
+	@Override
 	public long getTimestamp(String index, String document) throws ElefanaException {
+		final GetIndexTemplateForIndexRequest indexTemplateForIndexRequest = indexTemplateService
+				.prepareGetIndexTemplateForIndex(index);
+		final GetIndexTemplateForIndexResponse indexTemplateForIndexResponse = indexTemplateForIndexRequest.get();
+		final IndexTemplate indexTemplate = indexTemplateForIndexResponse.getIndexTemplate();
+		if (indexTemplate == null) {
+			return System.currentTimeMillis();
+		}
+		String timestampPath = indexTemplate.getStorage().getTimestampPath();
+		if (timestampPath == null) {
+			return System.currentTimeMillis();
+		}
+
+		String[] path = jsonPathCache.get(timestampPath);
+		if (path == null) {
+			path = timestampPath.split("\\.");
+			jsonPathCache.put(timestampPath, path);
+		}
+		final JsonNode json = JsonUtils.extractJsonNode(document, path);
+		if (json == null) {
+			return System.currentTimeMillis();
+		}
+		if (!json.isNumber()) {
+			return System.currentTimeMillis();
+		}
+		return json.asLong();
+	}
+
+	public long getTimestamp(String index, PooledStringBuilder document) throws ElefanaException {
 		final GetIndexTemplateForIndexRequest indexTemplateForIndexRequest = indexTemplateService
 				.prepareGetIndexTemplateForIndex(index);
 		final GetIndexTemplateForIndexResponse indexTemplateForIndexResponse = indexTemplateForIndexRequest.get();

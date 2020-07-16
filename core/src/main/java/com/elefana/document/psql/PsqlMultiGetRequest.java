@@ -17,13 +17,14 @@ package com.elefana.document.psql;
 
 import com.elefana.api.document.MultiGetRequest;
 import com.elefana.api.document.MultiGetResponse;
+import com.elefana.api.util.PooledStringBuilder;
 
 import java.util.concurrent.Callable;
 
 public class PsqlMultiGetRequest extends MultiGetRequest implements Callable<MultiGetResponse> {
 	private final PsqlDocumentService documentService;
 	
-	public PsqlMultiGetRequest(PsqlDocumentService documentService, String requestBody) {
+	public PsqlMultiGetRequest(PsqlDocumentService documentService, PooledStringBuilder requestBody) {
 		super(documentService, requestBody);
 		this.documentService = documentService;
 	}

@@ -17,9 +17,11 @@ package com.elefana.api.document;
 
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
+import com.elefana.api.util.PooledStringBuilder;
 
 public abstract class IndexRequest extends ApiRequest<IndexResponse> {
-	private String index, type, id, source;
+	private String index, type, id;
+	private PooledStringBuilder source;
 	private IndexOpType opType = IndexOpType.OVERWRITE;
 	
 	public IndexRequest(RequestExecutor requestExecutor) {
@@ -59,11 +61,11 @@ public abstract class IndexRequest extends ApiRequest<IndexResponse> {
 		this.id = id;
 	}
 
-	public String getSource() {
+	public PooledStringBuilder getSource() {
 		return source;
 	}
 
-	public void setSource(String source) {
+	public void setSource(PooledStringBuilder source) {
 		if(source == null) {
 			return;
 		}

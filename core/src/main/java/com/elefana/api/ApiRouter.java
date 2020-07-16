@@ -19,6 +19,7 @@ import com.elefana.api.document.IndexOpType;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.NoSuchApiException;
 import com.elefana.api.exception.ShardFailedException;
+import com.elefana.api.util.PooledStringBuilder;
 import com.elefana.cluster.ClusterService;
 import com.elefana.document.BulkIngestService;
 import com.elefana.document.DocumentService;
@@ -62,7 +63,7 @@ public class ApiRouter {
 	@Autowired
 	private IndexFieldStatsService indexFieldStatsService;
 
-	public ApiRequest<?> route(HttpMethod method, String url, String requestBody) throws ElefanaException {
+	public ApiRequest<?> route(HttpMethod method, String url, PooledStringBuilder requestBody) throws ElefanaException {
 		if (url.length() == 1) {
 			return routeToRootUrl();
 		}
@@ -89,7 +90,7 @@ public class ApiRouter {
 		return clusterService.prepareClusterInfo();
 	}
 
-	private ApiRequest<?> routeToApi(HttpMethod method, String url, Map<String, String> getParams, String[] urlComponents, String requestBody)
+	private ApiRequest<?> routeToApi(HttpMethod method, String url, Map<String, String> getParams, String[] urlComponents, PooledStringBuilder requestBody)
 			throws ElefanaException {
 		switch (urlComponents[0].toLowerCase()) {
 		case "_bulk":
@@ -165,7 +166,7 @@ public class ApiRouter {
 		}
 	}
 
-	private ApiRequest<?> routeToBulkApi(HttpMethod method, String url, Map<String, String> getParams, String[] urlComponents, String requestBody)
+	private ApiRequest<?> routeToBulkApi(HttpMethod method, String url, Map<String, String> getParams, String[] urlComponents, PooledStringBuilder requestBody)
 			throws ElefanaException {
 		switch (urlComponents[0].toLowerCase()) {
 		case "_bulk":
@@ -183,7 +184,7 @@ public class ApiRouter {
 		throw new NoSuchApiException(method, url);
 	}
 
-	private ApiRequest<?> routeToClusterApi(HttpMethod method, String url, Map<String, String> getParams, String[] urlComponents, String requestBody)
+	private ApiRequest<?> routeToClusterApi(HttpMethod method, String url, Map<String, String> getParams, String[] urlComponents, PooledStringBuilder requestBody)
 			throws ElefanaException {
 		switch (urlComponents.length) {
 		case 1:
@@ -210,7 +211,7 @@ public class ApiRouter {
 		throw new NoSuchApiException(method, url);
 	}
 
-	private ApiRequest<?> routeToFieldMappingApi(HttpMethod method, String url, Map<String, String> getParams, String[] urlComponents, String requestBody) throws ElefanaException {
+	private ApiRequest<?> routeToFieldMappingApi(HttpMethod method, String url, Map<String, String> getParams, String[] urlComponents, PooledStringBuilder requestBody) throws ElefanaException {
 		if (isGetMethod(method)) {
 			switch (urlComponents.length) {
 			case 1:
@@ -313,7 +314,7 @@ public class ApiRouter {
 		throw new NoSuchApiException(method, url);
 	}
 
-	private ApiRequest<?> routeToDocumentApi(HttpMethod method, String url, Map<String, String> getParams, String[] urlComponents, String requestBody)
+	private ApiRequest<?> routeToDocumentApi(HttpMethod method, String url, Map<String, String> getParams, String[] urlComponents, PooledStringBuilder requestBody)
 			throws ElefanaException {
 		switch (urlComponents.length) {
 		case 1:
@@ -406,7 +407,7 @@ public class ApiRouter {
 		throw new NoSuchApiException(method, url);
 	}
 
-	private ApiRequest<?> routeToSearchApi(HttpMethod method, String url, Map<String, String> getParams, String[] urlComponents, String requestBody)
+	private ApiRequest<?> routeToSearchApi(HttpMethod method, String url, Map<String, String> getParams, String[] urlComponents, PooledStringBuilder requestBody)
 			throws ElefanaException {
 		switch (urlComponents.length) {
 		case 1:
@@ -445,7 +446,7 @@ public class ApiRouter {
 		throw new NoSuchApiException(method, url);
 	}
 
-	private ApiRequest<?> routeToNodeApi(HttpMethod method, String url, Map<String, String> getParams, String[] urlComponents, String requestBody)
+	private ApiRequest<?> routeToNodeApi(HttpMethod method, String url, Map<String, String> getParams, String[] urlComponents, PooledStringBuilder requestBody)
 			throws ElefanaException {
 		switch (urlComponents.length) {
 		case 2:
@@ -501,7 +502,7 @@ public class ApiRouter {
 	}
 
 	private ApiRequest<?> routeToIndexTemplateApi(HttpMethod method, String url, Map<String, String> getParams, String[] urlComponents,
-                                                  String requestBody) throws ElefanaException {
+                                                  PooledStringBuilder requestBody) throws ElefanaException {
 		switch (urlComponents.length) {
 		case 2:
 			switch(urlComponents[0].toLowerCase()) {

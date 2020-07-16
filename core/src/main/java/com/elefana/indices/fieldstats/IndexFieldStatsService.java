@@ -22,13 +22,14 @@ import com.elefana.api.indices.GetFieldNamesRequest;
 import com.elefana.api.indices.GetFieldNamesResponse;
 import com.elefana.api.indices.GetFieldStatsRequest;
 import com.elefana.api.indices.GetFieldStatsResponse;
+import com.elefana.api.util.PooledStringBuilder;
 import com.elefana.document.BulkIndexOperation;
 
 import java.util.List;
 
 public interface IndexFieldStatsService extends RequestExecutor {
 
-    public GetFieldStatsRequest prepareGetFieldStatsPost(String indexPattern, String requestBody, boolean clusterLevel) throws NoSuchApiException;
+    public GetFieldStatsRequest prepareGetFieldStatsPost(String indexPattern, PooledStringBuilder requestBody, boolean clusterLevel) throws NoSuchApiException;
 
     public GetFieldStatsRequest prepareGetFieldStatsGet(String indexPattern, String fieldGetParam, boolean clusterLevel);
 
@@ -41,6 +42,8 @@ public interface IndexFieldStatsService extends RequestExecutor {
     public GetFieldNamesResponse getFieldNames(String indexPattern, String typePattern);
 
     public void submitDocument(String document, String index);
+
+    public void submitDocument(PooledStringBuilder document, String index);
 
     public void submitDocuments(List<BulkIndexOperation> documents, int from, int size);
 

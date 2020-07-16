@@ -15,18 +15,42 @@
  ******************************************************************************/
 package com.elefana.indices.fieldstats.job;
 
+import com.elefana.api.util.PooledStringBuilder;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
 public class SingleDocumentSourceProvider implements DocumentSourceProvider {
+	private static final Lock LOCK = new ReentrantLock();
+	private static final List<SingleDocumentSourceProvider> POOL = new ArrayList<SingleDocumentSourceProvider>(32);
+
 	private char [] document;
 	private int documentLength;
 
-	public SingleDocumentSourceProvider(String document) {
-		this.document = document.toCharArray();
+	private void set(String document) {
+		if(this.document == null || this.document.length < document.length()) {
+			this.document = new char[document.length()];
+		}
+		document.getChars(0, document.length(), this.document, 0);
 		this.documentLength = document.length();
 	}
 
-	public SingleDocumentSourceProvider(char[] document, int documentLength) {
-		this.document = document;
+	private void set(PooledStringBuilder document) {
+		if(this.document == null || this.document.length < document.length()) {
+			this.document = new char[document.length()];
+		}
+		this.documentLength = document.length();
+		document.getChars(this.document);
+	}
+
+	private void set(char[] document, int documentLength) {
+		if(this.document == null || this.document.length < document.length) {
+			this.document = new char[document.length];
+		}
 		this.documentLength = documentLength;
+		System.arraycopy(document, 0, this.document, 0, documentLength);
 	}
 
 	@Override
@@ -57,6 +81,47 @@ public class SingleDocumentSourceProvider implements DocumentSourceProvider {
 
 	@Override
 	public void dispose() {
-		document = null;
+		LOCK.lock();
+		POOL.add(this);
+		LOCK.unlock();
+	}
+
+	public static SingleDocumentSourceProvider allocate(String document) {
+		final SingleDocumentSourceProvider result;
+		LOCK.lock();
+		if(POOL.isEmpty()) {
+			result = new SingleDocumentSourceProvider();
+		} else {
+			result = POOL.remove(0);
+		}
+		LOCK.unlock();
+		result.set(document);
+		return result;
+	}
+
+	public static SingleDocumentSourceProvider allocate(PooledStringBuilder document) {
+		final SingleDocumentSourceProvider result;
+		LOCK.lock();
+		if(POOL.isEmpty()) {
+			result = new SingleDocumentSourceProvider();
+		} else {
+			result = POOL.remove(0);
+		}
+		LOCK.unlock();
+		result.set(document);
+		return result;
+	}
+
+	public static SingleDocumentSourceProvider allocate(char[] document, int documentLength) {
+		final SingleDocumentSourceProvider result;
+		LOCK.lock();
+		if(POOL.isEmpty()) {
+			result = new SingleDocumentSourceProvider();
+		} else {
+			result = POOL.remove(0);
+		}
+		LOCK.unlock();
+		result.set(document, documentLength);
+		return result;
 	}
 }

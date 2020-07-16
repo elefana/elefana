@@ -1,7 +1,7 @@
 /**
  * Copyright 2018 Viridian Software Ltd.
  */
-package com.elefana.util;
+package com.elefana.api.util;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;

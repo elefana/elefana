@@ -17,6 +17,7 @@ package com.elefana.indices;
 
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.indices.*;
+import com.elefana.api.util.PooledStringBuilder;
 
 public interface IndexTemplateService {
 	
@@ -26,7 +27,7 @@ public interface IndexTemplateService {
 	
 	public GetIndexTemplateRequest prepareGetIndexTemplate(String templateId, boolean fetchSource);
 	
-	public PutIndexTemplateRequest preparePutIndexTemplate(String templateId, String requestBody);
+	public PutIndexTemplateRequest preparePutIndexTemplate(String templateId, PooledStringBuilder requestBody);
 
 	public IndexTemplate getIndexTemplateForIndex(String index)  throws ElefanaException;
 }

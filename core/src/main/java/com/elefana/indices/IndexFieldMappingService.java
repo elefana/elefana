@@ -16,6 +16,7 @@
 package com.elefana.indices;
 
 import com.elefana.api.indices.*;
+import com.elefana.api.util.PooledStringBuilder;
 
 public interface IndexFieldMappingService {
 	
@@ -27,9 +28,9 @@ public interface IndexFieldMappingService {
 	
 	public GetFieldMappingsRequest prepareGetFieldMappings(String indexPattern, String typePattern, String fieldPattern);
 	
-	public PutFieldMappingRequest preparePutFieldMappings(String index, String mappings);
+	public PutFieldMappingRequest preparePutFieldMappings(String index, PooledStringBuilder mappings);
 	
-	public PutFieldMappingRequest preparePutFieldMappings(String index, String type, String mappings);
+	public PutFieldMappingRequest preparePutFieldMappings(String index, String type, PooledStringBuilder mappings);
 	
 	public GetFieldCapabilitiesRequest prepareGetFieldCapabilities(String indexPattern);
 

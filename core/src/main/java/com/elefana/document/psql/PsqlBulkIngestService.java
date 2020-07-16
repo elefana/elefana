@@ -27,6 +27,7 @@ import com.elefana.api.indices.IndexTimeBucket;
 import com.elefana.api.json.JsonUtils;
 import com.elefana.api.json.V2BulkResponseEncoder;
 import com.elefana.api.json.V5BulkResponseEncoder;
+import com.elefana.api.util.PooledStringBuilder;
 import com.elefana.document.*;
 import com.elefana.document.ingest.HashIngestTable;
 import com.elefana.document.ingest.IngestTableTracker;
@@ -38,7 +39,7 @@ import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
 import com.elefana.util.CumulativeAverage;
 import com.elefana.util.IndexUtils;
-import com.elefana.util.ThreadLocalCharArray;
+import com.elefana.api.util.ThreadLocalCharArray;
 import com.elefana.util.NamedThreadFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
@@ -151,7 +152,7 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 	}
 
 	@Override
-	public BulkRequest prepareBulkRequest(String requestBody) {
+	public BulkRequest prepareBulkRequest(PooledStringBuilder requestBody) {
 		return new PsqlBulkRequest(this, requestBody);
 	}
 
@@ -201,7 +202,7 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 		return response;
 	}
 
-	public BulkResponse bulkOperations(String requestBody) throws ElefanaException {
+	public BulkResponse bulkOperations(PooledStringBuilder requestBody) throws ElefanaException {
 		final Timer.Context totalTimer = bulkIngestTotalTimer.time();
 
 		final Matcher matcher = NEW_LINE_PATTERN.matcher(requestBody);

@@ -17,10 +17,11 @@ package com.elefana.document;
 
 import com.elefana.api.document.BulkRequest;
 import com.elefana.api.document.BulkStatsRequest;
+import com.elefana.api.util.PooledStringBuilder;
 
 public interface BulkIngestService {
 
-	public BulkRequest prepareBulkRequest(String requestBody);
+	public BulkRequest prepareBulkRequest(PooledStringBuilder requestBody);
 
 	public BulkStatsRequest prepareBulkStatsRequest();
 }

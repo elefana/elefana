@@ -20,17 +20,18 @@ import java.util.List;
 
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
+import com.elefana.api.util.PooledStringBuilder;
 
 public abstract class MultiGetRequest extends ApiRequest<MultiGetResponse> {
 	private final List<GetRequest> getRequests = new ArrayList<GetRequest>(1);
 	protected String indexPattern, typePattern;
-	private String requestBody;
+	private PooledStringBuilder requestBody;
 	
 	public MultiGetRequest(RequestExecutor requestExecutor) {
 		super(requestExecutor);
 	}
 
-	public MultiGetRequest(RequestExecutor requestExecutor, String requestBody) {
+	public MultiGetRequest(RequestExecutor requestExecutor, PooledStringBuilder requestBody) {
 		super(requestExecutor);
 		this.requestBody = requestBody;
 	}
@@ -107,7 +108,7 @@ public abstract class MultiGetRequest extends ApiRequest<MultiGetResponse> {
 		return result.toString();
 	}
 
-	public void setRequestBody(String requestBody) {
+	public void setRequestBody(PooledStringBuilder requestBody) {
 		if(requestBody == null) {
 			return;
 		}

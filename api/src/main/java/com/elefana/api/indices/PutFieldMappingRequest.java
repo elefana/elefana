@@ -17,11 +17,12 @@ package com.elefana.api.indices;
 
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
+import com.elefana.api.util.PooledStringBuilder;
 
 public abstract class PutFieldMappingRequest extends ApiRequest<PutFieldMappingResponse> {
 	protected String index;
 	protected String type;
-	protected String mappings;
+	protected PooledStringBuilder mappings;
 	
 	public PutFieldMappingRequest(RequestExecutor requestExecutor, String index) {
 		super(requestExecutor);
@@ -50,11 +51,11 @@ public abstract class PutFieldMappingRequest extends ApiRequest<PutFieldMappingR
 		this.type = type;
 	}
 
-	public String getMappings() {
+	public PooledStringBuilder getMappings() {
 		return mappings;
 	}
 
-	public void setMappings(String mappings) {
+	public void setMappings(PooledStringBuilder mappings) {
 		if(mappings == null) {
 			return;
 		}

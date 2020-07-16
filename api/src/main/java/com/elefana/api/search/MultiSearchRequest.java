@@ -17,16 +17,13 @@ package com.elefana.api.search;
 
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
+import com.elefana.api.util.PooledStringBuilder;
 
 public abstract class MultiSearchRequest extends ApiRequest<MultiSearchResponse> {
 	protected String fallbackIndex, fallbackType;
-	protected String requestBody;
-	
-	public MultiSearchRequest(RequestExecutor requestExecutor) {
-		this(requestExecutor, "");
-	}
+	protected PooledStringBuilder requestBody;
 
-	public MultiSearchRequest(RequestExecutor requestExecutor, String requestBody) {
+	public MultiSearchRequest(RequestExecutor requestExecutor, PooledStringBuilder requestBody) {
 		super(requestExecutor);
 		this.requestBody = requestBody;
 	}
@@ -47,11 +44,11 @@ public abstract class MultiSearchRequest extends ApiRequest<MultiSearchResponse>
 		this.fallbackType = fallbackType;
 	}
 
-	public String getRequestBody() {
+	public PooledStringBuilder getRequestBody() {
 		return requestBody;
 	}
 
-	public void setRequestBody(String requestBody) {
+	public void setRequestBody(PooledStringBuilder requestBody) {
 		this.requestBody = requestBody;
 	}
 

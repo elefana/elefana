@@ -20,28 +20,23 @@ import java.util.concurrent.Callable;
 import com.elefana.api.AckResponse;
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
+import com.elefana.api.util.PooledStringBuilder;
 
 public abstract class PutIndexTemplateRequest extends ApiRequest<AckResponse> {
 	protected final String templateId;
-	protected String requestBody;
-	
-	public PutIndexTemplateRequest(RequestExecutor requestExecutor, String templateId) {
-		super(requestExecutor);
-		this.templateId = templateId;
-		this.requestBody = "{}";
-	}
+	protected PooledStringBuilder requestBody;
 
-	public PutIndexTemplateRequest(RequestExecutor requestExecutor, String templateId, String requestBody) {
+	public PutIndexTemplateRequest(RequestExecutor requestExecutor, String templateId, PooledStringBuilder requestBody) {
 		super(requestExecutor);
 		this.templateId = templateId;
 		this.requestBody = requestBody;
 	}
 
-	public String getRequestBody() {
+	public PooledStringBuilder getRequestBody() {
 		return requestBody;
 	}
 
-	public void setRequestBody(String requestBody) {
+	public void setRequestBody(PooledStringBuilder requestBody) {
 		if(requestBody == null) {
 			return;
 		}

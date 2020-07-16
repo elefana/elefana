@@ -17,24 +17,25 @@ package com.elefana.api.document;
 
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
+import com.elefana.api.util.PooledStringBuilder;
 
 public abstract class BulkRequest extends ApiRequest<BulkResponse> {
-	protected String requestBody;
+	protected PooledStringBuilder requestBody;
 	
 	public BulkRequest(RequestExecutor requestExecutor) {
 		super(requestExecutor);
 	}
 
-	public BulkRequest(RequestExecutor requestExecutor, String requestBody) {
+	public BulkRequest(RequestExecutor requestExecutor, PooledStringBuilder requestBody) {
 		super(requestExecutor);
 		this.requestBody = requestBody;
 	}
 
-	public String getRequestBody() {
+	public PooledStringBuilder getRequestBody() {
 		return requestBody;
 	}
 
-	public void setRequestBody(String requestBody) {
+	public void setRequestBody(PooledStringBuilder requestBody) {
 		if(requestBody == null) {
 			return;
 		}

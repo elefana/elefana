@@ -20,6 +20,8 @@ import com.elefana.api.indices.GetFieldMappingsResponse;
 import com.elefana.api.indices.GetIndexTemplateForIndexResponse;
 import com.elefana.api.indices.GetIndexTemplateResponse;
 import com.elefana.api.node.NodeStats;
+import com.elefana.api.util.PooledStringBuilder;
+import com.elefana.api.util.ThreadLocalCharArray;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -56,6 +58,7 @@ public class JsonUtils {
 			enable(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES);
 		}
 	};
+	private static final ThreadLocalCharArray CHAR_ARRAY = new ThreadLocalCharArray();
 
 	public static JsonNode extractJsonNode(String json, String... path) {
 		JsonNode result = null;
@@ -90,6 +93,17 @@ public class JsonUtils {
 				jsonParser.close();
 			} catch (IOException e) {}
 		}
+		return result;
+	}
+
+	public static JsonNode extractJsonNode(PooledStringBuilder str, String... path) {
+		char [] chars = CHAR_ARRAY.get();
+		if(chars.length < str.length()) {
+			chars = new char[str.length()];
+		}
+		str.getChars(chars);
+		final JsonNode result = extractJsonNode(chars, str.length(), path);
+		CHAR_ARRAY.set(chars);
 		return result;
 	}
 

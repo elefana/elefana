@@ -17,6 +17,7 @@ package com.elefana.util;
 
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.json.JsonUtils;
+import com.elefana.api.util.PooledStringBuilder;
 import com.elefana.indices.fieldstats.job.DocumentSourceProvider;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
@@ -44,7 +45,7 @@ public interface IndexUtils {
 
 	public static final char[] HEX_CHARS = "0123456789ABCDEF".toCharArray();
 
-	public String generateDocumentId(String index, String type, String source);
+	public String generateDocumentId(String index, String type, CharSequence source);
 
 	public String generateDocumentId(String index, String type, char [] document, int documentLength);
 
@@ -57,8 +58,10 @@ public interface IndexUtils {
 	public String getQueryTarget(Connection connection, String indexName) throws SQLException;
 
 	public String getQueryTarget(String indexName);
-	
+
 	public long getTimestamp(String index, String document) throws ElefanaException;
+
+	public long getTimestamp(String index, PooledStringBuilder document) throws ElefanaException;
 
 	public long getTimestamp(String index, char [] document, int documentLength) throws ElefanaException;
 
@@ -106,6 +109,24 @@ public interface IndexUtils {
 	}
 
 	public static String flattenJson(String json) throws IOException {
+		final NoAllocStringReplace str = NoAllocStringReplace.allocate(json);
+		str.replaceAndEscapeUnicode(EscapeUtils.PSQL_ESCAPE_SEARCH, EscapeUtils.PSQL_ESCAPE_REPLACE);
+
+		final StringBuilder result = POOLED_STRING_BUILDER.get();
+
+		final JsonParser jsonParser = JsonUtils.JSON_FACTORY.createParser(str.getCharArray(), 0, str.getContentLength());
+		jsonParser.nextToken();
+
+		result.append('{');
+		flattenJsonObject(jsonParser, result, "");
+		result.append('}');
+
+		str.dispose();
+		jsonParser.close();
+		return result.toString();
+	}
+
+	public static String flattenJson(PooledStringBuilder json) throws IOException {
 		final NoAllocStringReplace str = NoAllocStringReplace.allocate(json);
 		str.replaceAndEscapeUnicode(EscapeUtils.PSQL_ESCAPE_SEARCH, EscapeUtils.PSQL_ESCAPE_REPLACE);
 
