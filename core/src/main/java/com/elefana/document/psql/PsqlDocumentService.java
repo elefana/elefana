@@ -534,7 +534,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 		case V_2_4_3:
 			switch (opType) {
 			case UPDATE:
-				document = JsonUtils.extractJsonNode(document, "doc").toString();
+				document = JsonUtils.extractJsonNode(doc, "doc").toString();
 				break;
 			case CREATE:
 			case OVERWRITE:
