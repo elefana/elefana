@@ -171,6 +171,10 @@ public class PooledStringBuilder implements Serializable, Appendable, CharSequen
 		backingBuilder.getChars(srcBegin, srcEnd, dst, dstBegin);
 	}
 
+	public void setChar(int index, char c) {
+		backingBuilder.setCharAt(index, c);
+	}
+
 	@Override
 	public String toString() {
 		return backingBuilder.toString();
