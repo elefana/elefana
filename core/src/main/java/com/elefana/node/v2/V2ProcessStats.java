@@ -53,8 +53,6 @@ public class V2ProcessStats extends ProcessStats {
 
 	@Override
 	protected void generateCurrentStats(Map<String, Object> result) {
-		result.clear();
-
 		OSProcess osProcess = getOsProcess();
 
 		updateFileHandles(result, osProcess);
@@ -77,25 +75,40 @@ public class V2ProcessStats extends ProcessStats {
 	}
 
 	private void updateCpu(Map<String, Object> result, OSProcess osProcess) {
-		Map<String, Object> cpu = new HashMap<>();
+		result.compute("cpu", (k, v) -> {
+			final Map<String, Object> map;
+			if(v == null) {
+				map = new HashMap<String, Object>();
+			} else {
+				map = (HashMap<String, Object>) v;
+			}
 
-		long cpuPercent = Math.round(osProcess.calculateCpuPercent());
-		long cpuTime = osProcess.getKernelTime() + osProcess.getUserTime();
+			long cpuPercent = Math.round(osProcess.calculateCpuPercent());
+			long cpuTime = osProcess.getKernelTime() + osProcess.getUserTime();
 
-		cpu.put("percent", cpuPercent);
-		cpu.put("total_in_millis", cpuTime);
+			map.put("percent", cpuPercent);
+			map.put("total_in_millis", cpuTime);
 
-		result.put("cpu", cpu);
+			v = map;
+			return v;
+		});
 	}
 
 	private void updateMemory(Map<String, Object> result, OSProcess osProcess) {
-		Map<String, Object> mem = new HashMap<>();
+		result.compute("mem", (k, v) -> {
+			final Map<String, Object> map;
+			if(v == null) {
+				map = new HashMap<String, Object>();
+			} else {
+				map = (HashMap<String, Object>) v;
+			}
 
-		long totalVirtualMemory = osProcess.getVirtualSize();
+			long totalVirtualMemory = osProcess.getVirtualSize();
+			map.put("total_virtual_in_bytes", totalVirtualMemory);
 
-		mem.put("total_virtual_in_bytes", totalVirtualMemory);
-
-		result.put("mem", mem);
+			v = map;
+			return v;
+		});
 	}
 
 	private void updateTimestamp(Map<String, Object> result) {

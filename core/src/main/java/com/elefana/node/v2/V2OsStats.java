@@ -74,8 +74,6 @@ public class V2OsStats extends OsStats {
 
 	@Override
 	protected void generateCurrentStats(Map<String, Object> result) {
-		result.clear();
-
 		updateCpu(result);
 		updateMemory(result);
 		updateSwap(result);
@@ -119,34 +117,50 @@ public class V2OsStats extends OsStats {
 	}
 
 	private void updateMemory(Map<String, Object> osStatsObj) {
-		Map<String, Object> memMap = new HashMap<>();
+		osStatsObj.compute("mem", (k, v) -> {
+			final Map<String, Object> map;
+			if(v == null) {
+				map = new HashMap<String, Object>();
+			} else {
+				map = (HashMap<String, Object>) v;
+			}
 
-		long totalMemory = memory.getTotal();
-		memMap.put("total_in_bytes", totalMemory);
+			long totalMemory = memory.getTotal();
+			map.put("total_in_bytes", totalMemory);
 
-		long freeMemory = memory.getAvailable();
-		memMap.put("free_in_bytes", freeMemory);
+			long freeMemory = memory.getAvailable();
+			map.put("free_in_bytes", freeMemory);
 
-		long freePercent = Math.round(((double)freeMemory / totalMemory) * 100);
-		memMap.put("free_percent", freePercent);
+			long freePercent = Math.round(((double)freeMemory / totalMemory) * 100);
+			map.put("free_percent", freePercent);
 
-		long usedMemory = totalMemory - freeMemory;
-		memMap.put("used_in_bytes", usedMemory);
+			long usedMemory = totalMemory - freeMemory;
+			map.put("used_in_bytes", usedMemory);
 
-		long usedPercent = Math.round(((double)usedMemory / totalMemory) * 100);
-		memMap.put("used_percent", usedPercent);
+			long usedPercent = Math.round(((double)usedMemory / totalMemory) * 100);
+			map.put("used_percent", usedPercent);
 
-		osStatsObj.put("mem", memMap);
+			v = map;
+			return v;
+		});
 	}
 
 	private void updateSwap(Map<String, Object> osStatsObj) {
-		Map<String, Object> swapMap = new HashMap<>();
+		osStatsObj.compute("swap", (k, v) -> {
+			final Map<String, Object> map;
+			if(v == null) {
+				map = new HashMap<String, Object>();
+			} else {
+				map = (HashMap<String, Object>) v;
+			}
 
-		updateSwapTotal(swapMap);
-		updateSwapUsed(swapMap);
-		updateSwapFree(swapMap);
+			updateSwapTotal(map);
+			updateSwapUsed(map);
+			updateSwapFree(map);
 
-		osStatsObj.put("swap", swapMap);
+			v = map;
+			return v;
+		});
 	}
 
 	private void updateSwapTotal(Map<String, Object> swapMap) {
