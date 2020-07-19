@@ -21,7 +21,10 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.Lock;
@@ -31,6 +34,8 @@ public class PooledStringBuilder implements Serializable, Appendable, CharSequen
 	private static final int INITIAL_POOL_SIZE = 32;
 	private static final Lock LOCK = new ReentrantLock();
 	private static final List<PooledStringBuilder> POOL = new ArrayList<PooledStringBuilder>(INITIAL_POOL_SIZE + 1);
+
+	private static final ThreadLocalByteArray BYTE_ARRAY = new ThreadLocalByteArray();
 
 	static {
 		for(int i = 0; i < INITIAL_POOL_SIZE; i++) {
@@ -146,7 +151,19 @@ public class PooledStringBuilder implements Serializable, Appendable, CharSequen
 	}
 
 	public PooledStringBuilder append(ByteBuf byteBuf, Charset charset) {
-		backingBuilder.append(byteBuf.toString(charset));
+		byte [] bytes = BYTE_ARRAY.get();
+		final int length = byteBuf.writerIndex() - byteBuf.arrayOffset();
+		if(bytes.length < length) {
+			bytes = new byte[length];
+		}
+		System.arraycopy(byteBuf.array(), byteBuf.arrayOffset(), bytes, 0, length);
+		CharBuffer charBuffer = charset.decode(ByteBuffer.wrap(bytes, 0, length));
+		try {
+			append(charBuffer);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		BYTE_ARRAY.set(bytes);
 		return this;
 	}
 
