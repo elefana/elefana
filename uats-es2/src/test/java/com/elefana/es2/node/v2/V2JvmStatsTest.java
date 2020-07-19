@@ -119,7 +119,7 @@ public class V2JvmStatsTest {
     }
 
     private void checkJvmObjStaticProperties(Response response, String pathToJvmObj) {
-        response.then()
+        response.then().log().all()
                 .body(pathToJvmObj + ".timestamp", isIntegralNumber)
                 .body(pathToJvmObj + ".uptime_in_millis", isIntegralNumber)
                 .body(pathToJvmObj + ".mem.heap_used_in_bytes", isIntegralNumber)
@@ -144,7 +144,7 @@ public class V2JvmStatsTest {
     }
 
     private void checkIfMemoryPoolObjIsValid(Response response, String pathToMemPool) {
-        response.then()
+        response.then().log().all()
                 .body(pathToMemPool + ".used_in_bytes", isIntegralNumber)
                 .body(pathToMemPool + ".max_in_bytes", isIntegralNumber)
                 .body(pathToMemPool + ".peak_used_in_bytes", isIntegralNumber)

@@ -136,17 +136,10 @@ public class V2JvmStats extends JvmStats {
 			} else {
 				map = (HashMap<String, Object>) v;
 			}
-			final KeyValuePair currentLoadedCount = (KeyValuePair) map.computeIfAbsent("current_loaded_count",
-					s -> new KeyValuePair("current_loaded_count", currentLoadedClassCount));
-			currentLoadedCount.value = currentLoadedClassCount;
 
-			final KeyValuePair totalLoadedCount = (KeyValuePair) map.computeIfAbsent("total_loaded_count",
-					s -> new KeyValuePair("total_loaded_count", totalLoadedClassCount));
-			totalLoadedCount.value = totalLoadedClassCount;
-
-			final KeyValuePair totalUnloadedCount = (KeyValuePair) map.computeIfAbsent("total_unloaded_count",
-					s -> new KeyValuePair("total_loaded_count", unloadedClassCount));
-			totalUnloadedCount.value = unloadedClassCount;
+			map.put("current_loaded_count", currentLoadedClassCount);
+			map.put("total_loaded_count", totalLoadedClassCount);
+			map.put("total_unloaded_count", unloadedClassCount);
 
 			v = map;
 			return v;
@@ -169,29 +162,12 @@ public class V2JvmStats extends JvmStats {
 			} else {
 				map = (HashMap<String, Object>) v;
 			}
-			final KeyValuePair heapUsedInBytes = (KeyValuePair) map.computeIfAbsent("heap_used_in_bytes",
-					s -> new KeyValuePair("heap_used_in_bytes", heapUsed));
-			heapUsedInBytes.value = heapUsed;
-
-			final KeyValuePair heapUsedPercent = (KeyValuePair) map.computeIfAbsent("heap_used_percent",
-					s -> new KeyValuePair("heap_used_percent", heapPercent));
-			heapUsedPercent.value = heapUsed;
-
-			final KeyValuePair heapCommittedInBytes = (KeyValuePair) map.computeIfAbsent("heap_committed_in_bytes",
-					s -> new KeyValuePair("heap_committed_in_bytes", heapCommited));
-			heapCommittedInBytes.value = heapCommited;
-
-			final KeyValuePair heapMaxInBytes = (KeyValuePair) map.computeIfAbsent("heap_max_in_bytes",
-					s -> new KeyValuePair("heap_max_in_bytes", heapMax));
-			heapMaxInBytes.value = heapMax;
-
-			final KeyValuePair nonHeapUsedInBytes = (KeyValuePair) map.computeIfAbsent("non_heap_used_in_bytes",
-					s -> new KeyValuePair("non_heap_used_in_bytes", nonHeapUsed));
-			nonHeapUsedInBytes.value = nonHeapUsed;
-
-			final KeyValuePair nonHeapCommittedInBytes = (KeyValuePair) map.computeIfAbsent("non_heap_committed_in_bytes",
-					s -> new KeyValuePair("non_heap_committed_in_bytes", nonHeapCommited));
-			nonHeapCommittedInBytes.value = nonHeapCommited;
+			map.put("heap_used_in_bytes", heapUsed);
+			map.put("heap_used_percent", heapPercent);
+			map.put("heap_committed_in_bytes", heapCommited);
+			map.put("heap_max_in_bytes", heapMax);
+			map.put("non_heap_used_in_bytes", nonHeapUsed);
+			map.put("non_heap_committed_in_bytes", nonHeapCommited);
 
 			generateMap(map,
 					getKVPIterate("pools", memoryPoolMXBeans, MemoryPoolMXBean::getName, memoryPoolMXBean -> generateMap(
