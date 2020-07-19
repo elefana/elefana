@@ -79,6 +79,8 @@ public class CoreIndexUtils implements IndexUtils {
 	private final Lock tableCreationLock = new ReentrantLock();
 	private final LongHashFunction xxHash = LongHashFunction.xx();
 
+	private final Map<String, ThreadLocal<NoAllocTimestampExtractor>> timestampExtractorCache = new ConcurrentHashMap<String, ThreadLocal<NoAllocTimestampExtractor> >();
+
 	@Autowired
 	private Environment environment;
 	@Autowired
@@ -248,6 +250,17 @@ public class CoreIndexUtils implements IndexUtils {
 		return getPartitionTableForIndex(indexName);
 	}
 
+	private NoAllocTimestampExtractor getTimestampExtractor(final String key) {
+		return timestampExtractorCache.computeIfAbsent(key, s -> {
+			return new ThreadLocal<NoAllocTimestampExtractor>() {
+				@Override
+				protected NoAllocTimestampExtractor initialValue() {
+					return new NoAllocTimestampExtractor(key);
+				}
+			};
+		}).get();
+	}
+
 	@Override
 	public long getTimestamp(String index, String document) throws ElefanaException {
 		final GetIndexTemplateForIndexRequest indexTemplateForIndexRequest = indexTemplateService
@@ -262,19 +275,11 @@ public class CoreIndexUtils implements IndexUtils {
 			return System.currentTimeMillis();
 		}
 
-		String[] path = jsonPathCache.get(timestampPath);
-		if (path == null) {
-			path = timestampPath.split("\\.");
-			jsonPathCache.put(timestampPath, path);
-		}
-		final JsonNode json = JsonUtils.extractJsonNode(document, path);
-		if (json == null) {
-			return System.currentTimeMillis();
-		}
-		if (!json.isNumber()) {
-			return System.currentTimeMillis();
-		}
-		return json.asLong();
+		final NoAllocTimestampExtractor timestampExtractor = getTimestampExtractor(timestampPath);
+		final PooledStringBuilder str = PooledStringBuilder.allocate(document);
+		final long result = timestampExtractor.extract(str);
+		str.release();
+		return result;
 	}
 
 	public long getTimestamp(String index, PooledStringBuilder document) throws ElefanaException {
@@ -290,19 +295,9 @@ public class CoreIndexUtils implements IndexUtils {
 			return System.currentTimeMillis();
 		}
 
-		String[] path = jsonPathCache.get(timestampPath);
-		if (path == null) {
-			path = timestampPath.split("\\.");
-			jsonPathCache.put(timestampPath, path);
-		}
-		final JsonNode json = JsonUtils.extractJsonNode(document, path);
-		if (json == null) {
-			return System.currentTimeMillis();
-		}
-		if (!json.isNumber()) {
-			return System.currentTimeMillis();
-		}
-		return json.asLong();
+		final NoAllocTimestampExtractor timestampExtractor = getTimestampExtractor(timestampPath);
+		final long result = timestampExtractor.extract(document);
+		return result;
 	}
 
 	@Override
