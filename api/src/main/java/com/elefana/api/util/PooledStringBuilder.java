@@ -151,19 +151,12 @@ public class PooledStringBuilder implements Serializable, Appendable, CharSequen
 	}
 
 	public PooledStringBuilder append(ByteBuf byteBuf, Charset charset) {
-		byte [] bytes = BYTE_ARRAY.get();
-		final int length = byteBuf.writerIndex() - byteBuf.arrayOffset();
-		if(bytes.length < length) {
-			bytes = new byte[length];
-		}
-		System.arraycopy(byteBuf.array(), byteBuf.arrayOffset(), bytes, 0, length);
-		CharBuffer charBuffer = charset.decode(ByteBuffer.wrap(bytes, 0, length));
+		CharBuffer charBuffer = charset.decode(byteBuf.nioBuffer());
 		try {
 			append(charBuffer);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		BYTE_ARRAY.set(bytes);
 		return this;
 	}
 
