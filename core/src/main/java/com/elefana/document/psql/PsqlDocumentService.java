@@ -473,11 +473,15 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 		final String queryTarget = indexUtils.getQueryTarget(index);
 		final StringBuilder queryBuilder = new StringBuilder();
 
+		final boolean truncate;
+
 		if(nodeSettingsService.isUsingCitus()) {
 			if((type == null || type.isEmpty()) && (id == null || id.isEmpty())) {
+				truncate = true;
 				queryBuilder.append("TRUNCATE ");
 				queryBuilder.append(queryTarget);
 			} else {
+				truncate = false;
 				queryBuilder.append("DELETE FROM ");
 				queryBuilder.append(queryTarget);
 				queryBuilder.append(" WHERE ");
@@ -499,6 +503,8 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 				}
 			}
 		} else {
+			truncate = false;
+
 			queryBuilder.append("DELETE FROM ");
 			queryBuilder.append(queryTarget);
 			queryBuilder.append(" WHERE ");
@@ -534,7 +540,13 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 		response.setId(id);
 		try {
 			LOGGER.info(queryBuilder.toString());
-			int rows = jdbcTemplate.update(queryBuilder.toString());
+			int rows;
+			if(truncate) {
+				jdbcTemplate.execute(queryBuilder.toString());
+				rows = 1;
+			} else {
+				rows = jdbcTemplate.update(queryBuilder.toString());
+			}
 			if(rows == 0) {
 				response.setResult("not_found");
 			} else {
