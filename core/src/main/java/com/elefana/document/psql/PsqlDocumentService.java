@@ -471,13 +471,38 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 
 	public DeleteResponse delete(String index, String type, String id) {
 		final String queryTarget = indexUtils.getQueryTarget(index);
-
 		final StringBuilder queryBuilder = new StringBuilder();
-		queryBuilder.append("DELETE FROM ");
-		queryBuilder.append(queryTarget);
-		queryBuilder.append(" WHERE ");
 
-		if (!nodeSettingsService.isUsingCitus()) {
+		if(nodeSettingsService.isUsingCitus()) {
+			if((type == null || type.isEmpty()) && (id == null || id.isEmpty())) {
+				queryBuilder.append("TRUNCATE ");
+				queryBuilder.append(queryTarget);
+			} else {
+				queryBuilder.append("DELETE FROM ");
+				queryBuilder.append(queryTarget);
+				queryBuilder.append(" WHERE ");
+
+				if(type != null && !type.isEmpty()) {
+					queryBuilder.append("_type = '");
+					queryBuilder.append(type);
+					queryBuilder.append("'");
+
+					if (id != null && !id.isEmpty()) {
+						queryBuilder.append(" AND ");
+					}
+				}
+
+				if (id != null && !id.isEmpty()) {
+					queryBuilder.append("_id = '");
+					queryBuilder.append(id);
+					queryBuilder.append("'");
+				}
+			}
+		} else {
+			queryBuilder.append("DELETE FROM ");
+			queryBuilder.append(queryTarget);
+			queryBuilder.append(" WHERE ");
+
 			queryBuilder.append("_index = '");
 			queryBuilder.append(index);
 			queryBuilder.append("'");
@@ -485,22 +510,22 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 			if ((type != null &&  !type.isEmpty()) || (id != null && !id.isEmpty()) ) {
 				queryBuilder.append(" AND ");
 			}
-		}
 
-		if(type != null && !type.isEmpty()) {
-			queryBuilder.append("_type = '");
-			queryBuilder.append(type);
-			queryBuilder.append("'");
+			if(type != null && !type.isEmpty()) {
+				queryBuilder.append("_type = '");
+				queryBuilder.append(type);
+				queryBuilder.append("'");
+
+				if (id != null && !id.isEmpty()) {
+					queryBuilder.append(" AND ");
+				}
+			}
 
 			if (id != null && !id.isEmpty()) {
-				queryBuilder.append(" AND ");
+				queryBuilder.append("_id = '");
+				queryBuilder.append(id);
+				queryBuilder.append("'");
 			}
-		}
-
-		if (id != null && !id.isEmpty()) {
-			queryBuilder.append("_id = '");
-			queryBuilder.append(id);
-			queryBuilder.append("'");
 		}
 
 		final DeleteResponse response = new DeleteResponse();
