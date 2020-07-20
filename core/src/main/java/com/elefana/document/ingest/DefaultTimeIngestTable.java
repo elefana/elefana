@@ -17,6 +17,7 @@ package com.elefana.document.ingest;
 
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.indices.IndexTimeBucket;
+import com.elefana.api.util.ThreadLocalInteger;
 import com.elefana.util.IndexUtils;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import org.slf4j.Logger;
@@ -46,18 +47,8 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 	private final AtomicLong lastUsageTimestamp = new AtomicLong();
 	private final AtomicBoolean pruned = new AtomicBoolean();
 
-	private final ThreadLocal<Integer> readIndex = new ThreadLocal<Integer>() {
-		@Override
-		protected Integer initialValue() {
-			return (int) Thread.currentThread().getId() % capacity;
-		}
-	};
-	private final ThreadLocal<Integer> writeIndex = new ThreadLocal<Integer>() {
-		@Override
-		protected Integer initialValue() {
-			return (int) Thread.currentThread().getId() % capacity;
-		}
-	};
+	private final ThreadLocalInteger readIndex;
+	private final ThreadLocalInteger writeIndex;
 
 	public DefaultTimeIngestTable(JdbcTemplate jdbcTemplate, String [] tablespaces,
 	                              String index, IndexTimeBucket timeBucket, int bulkParallelisation, List<String> existingTableNames) throws SQLException {
@@ -70,6 +61,13 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 		tableNames = new String[capacity];
 		shardIds = new int[capacity];
 		dataMarker = new AtomicInteger[capacity];
+
+		readIndex = new ThreadLocalInteger(() -> {
+			return (int) Thread.currentThread().getId() % tableNames.length;
+		});
+		writeIndex = new ThreadLocalInteger(() -> {
+			return (int) Thread.currentThread().getId() % tableNames.length;
+		});
 
 		for(int i = 0; i < shardIds.length; i++) {
 			shardIds[i] = -1;
@@ -283,8 +281,7 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 		final long timestamp = System.currentTimeMillis();
 		while(System.currentTimeMillis() - timestamp < timeout) {
 			for(int i = 0; i < locks.length; i++) {
-				int index = writeIndex.get() % locks.length;
-				writeIndex.set(index + 1);
+				int index = writeIndex.incrementAndGet() % locks.length;
 				if(locks[index].tryLock()) {
 					if(shardIds[index] < 0) {
 						shardIds[index] = shardOffset;
@@ -312,8 +309,7 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 		final long timestamp = System.currentTimeMillis();
 		while(System.currentTimeMillis() - timestamp < timeout) {
 			for(int i = 0; i < locks.length; i++) {
-				int index = readIndex.get() % locks.length;
-				readIndex.set(index + 1);
+				int index = readIndex.incrementAndGet() % locks.length;
 				if(pruned.get()) {
 					return -1;
 				}

@@ -16,6 +16,7 @@
 package com.elefana.document.ingest;
 
 import com.elefana.api.exception.ElefanaException;
+import com.elefana.api.util.ThreadLocalInteger;
 import com.elefana.util.IndexUtils;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import org.slf4j.Logger;
@@ -39,18 +40,8 @@ public class DefaultHashIngestTable implements HashIngestTable {
 	private final String index;
 	private final ReentrantLock[] locks;
 	private final String [] tableNames;
-	private final ThreadLocal<Integer> readIndex = new ThreadLocal<Integer>() {
-		@Override
-		protected Integer initialValue() {
-			return (int) Thread.currentThread().getId() % tableNames.length;
-		}
-	};
-	private final ThreadLocal<Integer> writeIndex = new ThreadLocal<Integer>() {
-		@Override
-		protected Integer initialValue() {
-			return (int) Thread.currentThread().getId() % tableNames.length;
-		}
-	};
+	private final ThreadLocalInteger readIndex;
+	private final ThreadLocalInteger writeIndex;
 	private final AtomicInteger[] dataMarker;
 	private final AtomicLong lastUsageTimestamp = new AtomicLong();
 	private final AtomicBoolean pruned = new AtomicBoolean();
@@ -71,6 +62,12 @@ public class DefaultHashIngestTable implements HashIngestTable {
 			for(int i = 0; i < existingTableNames.size() && i < tableNames.length; i++) {
 				tableNames[i] = existingTableNames.get(i);
 			}
+			readIndex = new ThreadLocalInteger(() -> {
+				return (int) Thread.currentThread().getId() % tableNames.length;
+			});
+			writeIndex = new ThreadLocalInteger(() -> {
+				return (int) Thread.currentThread().getId() % tableNames.length;
+			});
 			lastUsageTimestamp.set(System.currentTimeMillis());
 
 			for(int i = 0; i < capacity; i++) {
@@ -254,8 +251,7 @@ public class DefaultHashIngestTable implements HashIngestTable {
 		final long timestamp = System.currentTimeMillis();
 		while(System.currentTimeMillis() - timestamp < timeoutMillis) {
 			for(int i = 0; i < locks.length; i++) {
-				int index = writeIndex.get() % locks.length;
-				writeIndex.set(index + 1);
+				int index = writeIndex.incrementAndGet() % locks.length;
 				if(locks[index].tryLock()) {
 					lastUsageTimestamp.set(System.currentTimeMillis());
 					return index;
@@ -276,8 +272,7 @@ public class DefaultHashIngestTable implements HashIngestTable {
 		final long timestamp = System.nanoTime();
 		while(System.nanoTime() - timestamp < timeoutNanos) {
 			for(int i = 0; i < locks.length; i++) {
-				int index = readIndex.get() % locks.length;
-				readIndex.set(index + 1);
+				int index = readIndex.incrementAndGet() % locks.length;
 
 				if(pruned.get()) {
 					return -1;
