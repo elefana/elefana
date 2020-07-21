@@ -35,7 +35,6 @@ public class NoAllocJsonReader {
 		}
 		State state = State.INIT;
 		while(readIndex < length) {
-			System.out.println(state);
 			switch(state) {
 			case INIT:
 				state = readObjectBegin(null, listener);
@@ -138,6 +137,10 @@ public class NoAllocJsonReader {
 					keyStart = readIndex + 1;
 					startChar = value[readIndex];
 				} else if(value[readIndex] == startChar) {
+					if(readIndex > 0 && value[readIndex - 1] == '\\') {
+						readIndex++;
+						continue;
+					}
 					if(!listener.onKey(value, keyStart, readIndex - keyStart)) {
 						return State.TERMINATE;
 					}
@@ -153,24 +156,43 @@ public class NoAllocJsonReader {
 
 	private State readValue(JsonReaderListener listener) {
 		int valueStart = readIndex;
+		int stringStart = -1, stringEnd = -1;
+		char stringStartChar = ' ';
+
 		while(readIndex < length) {
 			switch(value[readIndex]) {
 			case '{':
-				return State.OBJECT_BEGIN;
+				if(stringStart == -1) {
+					return State.OBJECT_BEGIN;
+				}
+				break;
 			case '[':
-				return State.ARRAY_BEGIN;
+				if(stringStart == -1) {
+					return State.ARRAY_BEGIN;
+				}
+				break;
 			case ':':
-				valueStart = readIndex + 1;
+				if(stringStart == -1) {
+					valueStart = readIndex + 1;
+				}
 				break;
 			case '}':
 				if(readIndex == valueStart) {
 					return State.OBJECT_END;
+				}
+				if(stringStart > -1 && stringEnd < 0) {
+					readIndex++;
+					continue;
 				}
 				if(!listener.onValue(value, valueStart, readIndex - valueStart)) {
 					return State.TERMINATE;
 				}
 				return isArray ? State.VALUE : State.KEY;
 			case ']':
+				if(stringStart > -1 && stringEnd < 0) {
+					readIndex++;
+					continue;
+				}
 				if(readIndex == valueStart) {
 					return State.ARRAY_END;
 				}
@@ -179,11 +201,28 @@ public class NoAllocJsonReader {
 				}
 				return isArray ? State.VALUE : State.KEY;
 			case ',':
+				if(stringStart > -1 && stringEnd < 0) {
+					readIndex++;
+					continue;
+				}
 				if(!listener.onValue(value, valueStart, readIndex - valueStart)) {
 					return State.TERMINATE;
 				}
 				readIndex++;
 				return isArray ? State.VALUE : State.KEY;
+			case '"':
+			case '\'':
+				if(stringStart == -1) {
+					stringStart = readIndex;
+					stringStartChar = value[readIndex];
+				} else if(value[readIndex] == stringStartChar) {
+					if(readIndex > 0 && value[readIndex - 1] == '\\') {
+						readIndex++;
+						continue;
+					}
+					stringEnd = readIndex;
+				}
+				break;
 			}
 			readIndex++;
 		}

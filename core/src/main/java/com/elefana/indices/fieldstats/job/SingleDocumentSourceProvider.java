@@ -29,6 +29,8 @@ public class SingleDocumentSourceProvider implements DocumentSourceProvider {
 	private char [] document;
 	private int documentLength;
 
+	private SingleDocumentSourceProvider() {}
+
 	private void set(String document) {
 		if(this.document == null || this.document.length < document.length()) {
 			this.document = new char[document.length()];
@@ -66,6 +68,16 @@ public class SingleDocumentSourceProvider implements DocumentSourceProvider {
 
 	@Override
 	public void setDocument(StringBuilder builder) {
+		if(this.document.length < builder.length()) {
+			this.document = new char[builder.length()];
+		}
+
+		builder.getChars(0, builder.length(), this.document, 0);
+		this.documentLength = builder.length();
+	}
+
+	@Override
+	public void setDocument(PooledStringBuilder builder) {
 		if(this.document.length < builder.length()) {
 			this.document = new char[builder.length()];
 		}

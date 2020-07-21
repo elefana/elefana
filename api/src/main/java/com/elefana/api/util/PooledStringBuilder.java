@@ -15,6 +15,7 @@
  ******************************************************************************/
 package com.elefana.api.util;
 
+import com.sun.jndi.ldap.pool.Pool;
 import io.netty.buffer.ByteBuf;
 
 import java.io.IOException;
@@ -120,6 +121,11 @@ public class PooledStringBuilder implements Serializable, Appendable, CharSequen
 
 	public PooledStringBuilder append(char[] str) {
 		backingBuilder.append(str);
+		return this;
+	}
+
+	public PooledStringBuilder append(char[] str, int offset, int length) {
+		backingBuilder.append(CharBuffer.wrap(str, offset, length));
 		return this;
 	}
 

@@ -15,6 +15,7 @@
  ******************************************************************************/
 package com.elefana.document;
 
+import com.elefana.api.util.PooledStringBuilder;
 import com.elefana.indices.fieldstats.job.DocumentSourceProvider;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.JsonParser;
@@ -123,6 +124,17 @@ public class BulkIndexOperation implements DocumentSourceProvider {
 
 	@Override
 	public void setDocument(StringBuilder builder) {
+		if(this.document.length < builder.length()) {
+			MAX_SOURCE_LENGTH.set(Math.max(builder.length(), MAX_SOURCE_LENGTH.get()));
+			this.document = new char[MAX_SOURCE_LENGTH.get()];
+		}
+
+		builder.getChars(0, builder.length(), this.document, 0);
+		this.documentLength = builder.length();
+	}
+
+	@Override
+	public void setDocument(PooledStringBuilder builder) {
 		if(this.document.length < builder.length()) {
 			MAX_SOURCE_LENGTH.set(Math.max(builder.length(), MAX_SOURCE_LENGTH.get()));
 			this.document = new char[MAX_SOURCE_LENGTH.get()];

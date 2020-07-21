@@ -15,12 +15,16 @@
  ******************************************************************************/
 package com.elefana.indices.fieldstats.job;
 
+import com.elefana.api.util.PooledStringBuilder;
+
 public interface DocumentSourceProvider {
 	public char [] getDocument();
 
 	public void setDocument(char [] document, int length);
 
 	public void setDocument(StringBuilder builder);
+
+	public void setDocument(PooledStringBuilder builder);
 
 	public int getDocumentLength();
 

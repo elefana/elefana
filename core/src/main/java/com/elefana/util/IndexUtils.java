@@ -108,61 +108,37 @@ public interface IndexUtils {
 		return true;
 	}
 
-	public static String flattenJson(String json) throws IOException {
-		final NoAllocStringReplace str = NoAllocStringReplace.allocate(json);
+	public static void flattenJson(PooledStringBuilder input, PooledStringBuilder output) throws IOException {
+		final NoAllocStringReplace str = NoAllocStringReplace.allocate(input);
 		str.replaceAndEscapeUnicode(EscapeUtils.PSQL_ESCAPE_SEARCH, EscapeUtils.PSQL_ESCAPE_REPLACE);
 
-		final StringBuilder result = POOLED_STRING_BUILDER.get();
-
-		final JsonParser jsonParser = JsonUtils.JSON_FACTORY.createParser(str.getCharArray(), 0, str.getContentLength());
-		jsonParser.nextToken();
-
-		result.append('{');
-		flattenJsonObject(jsonParser, result, "");
-		result.append('}');
-
+		final PooledStringBuilder tmpString = PooledStringBuilder.allocate();
+		tmpString.append(str.getCharArray(), 0, str.getContentLength());
 		str.dispose();
-		jsonParser.close();
-		return result.toString();
+
+		final NoAllocJsonFlatten jsonFlatten = POOLED_JSON_FLATTEN.get();
+		jsonFlatten.flatten(tmpString, output);
+		tmpString.release();
 	}
 
-	public static String flattenJson(PooledStringBuilder json) throws IOException {
-		final NoAllocStringReplace str = NoAllocStringReplace.allocate(json);
-		str.replaceAndEscapeUnicode(EscapeUtils.PSQL_ESCAPE_SEARCH, EscapeUtils.PSQL_ESCAPE_REPLACE);
+	public static String flattenJson(String json) throws IOException {
+		final PooledStringBuilder input = PooledStringBuilder.allocate(json);
+		final PooledStringBuilder output = PooledStringBuilder.allocate();
 
-		final StringBuilder result = POOLED_STRING_BUILDER.get();
-
-		final JsonParser jsonParser = JsonUtils.JSON_FACTORY.createParser(str.getCharArray(), 0, str.getContentLength());
-		jsonParser.nextToken();
-
-		result.append('{');
-		flattenJsonObject(jsonParser, result, "");
-		result.append('}');
-
-		str.dispose();
-		jsonParser.close();
-		return result.toString();
+		flattenJson(input, output);
+		input.release();
+		return output.toStringAndRelease();
 	}
 
 	public static void flattenJson(DocumentSourceProvider sourceProvider) throws IOException {
-		{
-			final NoAllocStringReplace str = NoAllocStringReplace.allocate(sourceProvider.getDocument(), sourceProvider.getDocumentLength());
-			str.replaceAndEscapeUnicode(EscapeUtils.PSQL_ESCAPE_SEARCH, EscapeUtils.PSQL_ESCAPE_REPLACE);
-			sourceProvider.setDocument(str.getCharArray(), str.getContentLength());
-			str.dispose();
-		}
+		final PooledStringBuilder input = PooledStringBuilder.allocate();
+		final PooledStringBuilder output = PooledStringBuilder.allocate();
 
-		final StringBuilder result = POOLED_STRING_BUILDER.get();
-
-		final JsonParser jsonParser = JsonUtils.JSON_FACTORY.createParser(sourceProvider.getDocument(), 0, sourceProvider.getDocumentLength());
-		jsonParser.nextToken();
-
-		result.append('{');
-		flattenJsonObject(jsonParser, result, "");
-		result.append('}');
-		
-		jsonParser.close();
-		sourceProvider.setDocument(result);
+		input.append(sourceProvider.getDocument(), 0, sourceProvider.getDocumentLength());
+		flattenJson(input, output);
+		sourceProvider.setDocument(output);
+		input.release();
+		output.release();
 	}
 
 	public static boolean flattenJsonObject(final JsonParser jsonParser, StringBuilder stringBuilder, CharSequence prefix) throws IOException {
@@ -420,6 +396,13 @@ public interface IndexUtils {
 			StringBuilder b = super.get();
 			b.setLength(0); // clear/reset the buffer
 			return b;
+		}
+	};
+
+	public static ThreadLocal<NoAllocJsonFlatten> POOLED_JSON_FLATTEN = new ThreadLocal<NoAllocJsonFlatten>() {
+		@Override
+		protected NoAllocJsonFlatten initialValue() {
+			return new NoAllocJsonFlatten();
 		}
 	};
 }
