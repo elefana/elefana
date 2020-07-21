@@ -15,8 +15,6 @@ public class NoAllocJsonReader {
 	private List<State> stateStack = new ArrayList<State>();
 	private int readIndex;
 
-	private boolean isArray = false;
-
 	private void init(PooledStringBuilder str) {
 		length = str.length();
 
@@ -37,10 +35,10 @@ public class NoAllocJsonReader {
 		while(readIndex < length) {
 			switch(state) {
 			case INIT:
-				state = readObjectBegin(null, listener);
+				state = readObjectBegin(listener);
 				break;
 			case OBJECT_BEGIN:
-				state = readObjectBegin(state, listener);
+				state = readObjectBegin(listener);
 				break;
 			case OBJECT_END:
 				state = readObjectEnd(listener);
@@ -65,22 +63,22 @@ public class NoAllocJsonReader {
 		listener.onReadEnd();
 	}
 
-	private State readObjectBegin(State previousState, JsonReaderListener listener) {
+	private State readObjectBegin(JsonReaderListener listener) {
 		while(readIndex < length) {
 			switch(value[readIndex]) {
 			case ',':
 				return State.KEY;
 			case ']':
 				return State.ARRAY_END;
+			case '}':
+				return State.OBJECT_END;
 			case '{':
 				if(!listener.onObjectBegin()) {
 					return State.TERMINATE;
 				}
 				readIndex++;
 
-				if(previousState != null) {
-					stateStack.add(previousState);
-				}
+				stateStack.add(State.OBJECT_BEGIN);
 				return State.KEY;
 			}
 			readIndex++;
@@ -187,7 +185,7 @@ public class NoAllocJsonReader {
 				if(!listener.onValue(value, valueStart, readIndex - valueStart)) {
 					return State.TERMINATE;
 				}
-				return isArray ? State.VALUE : State.KEY;
+				return isArray() ? State.VALUE : State.KEY;
 			case ']':
 				if(stringStart > -1 && stringEnd < 0) {
 					readIndex++;
@@ -199,7 +197,7 @@ public class NoAllocJsonReader {
 				if(!listener.onValue(value, valueStart, readIndex - valueStart)) {
 					return State.TERMINATE;
 				}
-				return isArray ? State.VALUE : State.KEY;
+				return isArray() ? State.VALUE : State.KEY;
 			case ',':
 				if(stringStart > -1 && stringEnd < 0) {
 					readIndex++;
@@ -209,7 +207,7 @@ public class NoAllocJsonReader {
 					return State.TERMINATE;
 				}
 				readIndex++;
-				return isArray ? State.VALUE : State.KEY;
+				return isArray() ? State.VALUE : State.KEY;
 			case '"':
 			case '\'':
 				if(stringStart == -1) {
@@ -237,7 +235,7 @@ public class NoAllocJsonReader {
 					return State.TERMINATE;
 				}
 				readIndex++;
-				isArray = true;
+				stateStack.add(State.ARRAY_BEGIN);
 				return State.VALUE;
 			}
 			readIndex++;
@@ -253,12 +251,22 @@ public class NoAllocJsonReader {
 					return State.TERMINATE;
 				}
 				readIndex++;
-				isArray = false;
+				if(stateStack.isEmpty()) {
+					return State.TERMINATE;
+				}
+				stateStack.remove(stateStack.size() - 1);
 				return State.KEY;
 			}
 			readIndex++;
 		}
 		return State.TERMINATE;
+	}
+
+	private boolean isArray() {
+		if(stateStack.isEmpty()) {
+			return false;
+		}
+		return stateStack.get(stateStack.size() - 1).equals(State.ARRAY_BEGIN);
 	}
 
 	private enum State {

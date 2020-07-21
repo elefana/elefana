@@ -52,7 +52,7 @@ public class NoAllocJsonFlattenTest {
 
 	@Test
 	public void testComplexNestedJson() throws Exception {
-		final String json = "{'key1': [{'key2':{'key3':{'result1':123, 'result2': true}, 'key4':{'result3':456, 'result4': false}}}]}";
+		final String json = "{'key1': [{'key2':{'key3':{'result1':123, 'result2': true}, 'key4':{'result3':456, 'result4': false}}}], 'result5': \"success\"}";
 		Assert.assertEquals(getLegacyFlattenedJson(json), getFlattenedJson(json));
 	}
 
