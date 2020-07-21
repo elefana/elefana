@@ -50,6 +50,12 @@ public class NoAllocJsonFlattenTest {
 		Assert.assertEquals(getLegacyFlattenedJson(json), getFlattenedJson(json));
 	}
 
+	@Test
+	public void testComplexNestedJson() throws Exception {
+		final String json = "{'key1': [{'key2':{'key3':{'result1':123, 'result2': true}, 'key4':{'result3':456, 'result4': false}}}]}";
+		Assert.assertEquals(getLegacyFlattenedJson(json), getFlattenedJson(json));
+	}
+
 	private String getFlattenedJson(String json) throws IOException {
 		final PooledStringBuilder input = PooledStringBuilder.allocate(json);
 		final PooledStringBuilder output = PooledStringBuilder.allocate();
