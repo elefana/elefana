@@ -277,6 +277,7 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 		final long timestamp = System.currentTimeMillis();
 		while(System.currentTimeMillis() - timestamp < timeout) {
 			for(int i = 0; i < locks.length; i++) {
+				//Sequential to encourage re-use of table offsets
 				final int index = i;
 				if(locks[index].tryLock()) {
 					if(shardIds[index] < 0) {
