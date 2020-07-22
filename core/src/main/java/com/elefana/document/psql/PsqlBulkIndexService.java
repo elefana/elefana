@@ -93,11 +93,11 @@ public class PsqlBulkIndexService implements Runnable {
 		final int totalThreads = getTotalThreads();
 
 		executorService = Executors.newFixedThreadPool(totalThreads, new NamedThreadFactory("elefana-bulkIndexService-indexExecutor"));
+		additionalSetup();
+
 		for (int i = 0; i < totalThreads; i++) {
 			executorService.submit(this);
 		}
-
-		additionalSetup();
 	}
 
 	@PreDestroy
