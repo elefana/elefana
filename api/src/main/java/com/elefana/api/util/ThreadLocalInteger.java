@@ -53,7 +53,11 @@ public class ThreadLocalInteger {
 		if(result == null) {
 			result = new LocalInteger();
 			try {
-				result.value = initialiser.call();
+				if(positiveOnly) {
+					result.value = Math.abs(initialiser.call());
+				} else {
+					result.value = initialiser.call();
+				}
 			} catch (Exception e) {}
 			integers.put(Thread.currentThread().getId(), result);
 		}
