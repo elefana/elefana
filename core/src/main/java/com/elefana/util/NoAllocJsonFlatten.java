@@ -21,6 +21,8 @@ public class NoAllocJsonFlatten implements NoAllocJsonReader.JsonReaderListener 
 
 	private int totalValuesAppended = 0;
 
+	private boolean valueWritten = false;
+
 	public void flatten(PooledStringBuilder input, PooledStringBuilder output) {
 		this.result = output;
 
@@ -130,6 +132,17 @@ public class NoAllocJsonFlatten implements NoAllocJsonReader.JsonReaderListener 
 	@Override
 	public boolean onArrayEnd() {
 		popUnderscore();
+
+		if(!valueWritten) {
+			if(totalValuesAppended > 0) {
+				result.append(',');
+			}
+			result.append('"');
+			result.append(keyBuffer, 0, keyBufferLength - 1);
+			result.append('"');
+			result.append(":null");
+			valueWritten = true;
+		}
 		resetKey();
 		return true;
 	}
@@ -137,6 +150,7 @@ public class NoAllocJsonFlatten implements NoAllocJsonReader.JsonReaderListener 
 	@Override
 	public boolean onKey(char[] value, int from, int length) {
 		appendToKeyBuffer(value, from, length);
+		valueWritten = false;
 		return true;
 	}
 
@@ -176,6 +190,7 @@ public class NoAllocJsonFlatten implements NoAllocJsonReader.JsonReaderListener 
 
 		totalValuesAppended++;
 		resetKey();
+		valueWritten = true;
 		return true;
 	}
 

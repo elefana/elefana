@@ -56,6 +56,12 @@ public class NoAllocJsonFlattenTest {
 		Assert.assertEquals(getLegacyFlattenedJson(json), getFlattenedJson(json));
 	}
 
+	@Test
+	public void testComplexNestedArrays() throws Exception {
+		final String json = "{\"log-to-disk\":{\"include-all-fields?\":true,\"exclude-fields\":[[[\"sctp\"]],[[\"m3ua\"]],[[\"mtp3\"]]],\"include-fields\":[]}}";
+		Assert.assertEquals(getLegacyFlattenedJson(json), getFlattenedJson(json));
+	}
+
 	private String getFlattenedJson(String json) throws IOException {
 		final PooledStringBuilder input = PooledStringBuilder.allocate(json);
 		final PooledStringBuilder output = PooledStringBuilder.allocate();

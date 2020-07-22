@@ -157,8 +157,18 @@ public class NoAllocJsonReader {
 		int stringStart = -1, stringEnd = -1;
 		char stringStartChar = ' ';
 
+		boolean escaped = false;
+
 		while(readIndex < length) {
+			if(escaped) {
+				escaped = false;
+				readIndex++;
+				continue;
+			}
 			switch(value[readIndex]) {
+			case '\\':
+				escaped = true;
+				break;
 			case '{':
 				if(stringStart == -1) {
 					return State.OBJECT_BEGIN;
@@ -214,10 +224,6 @@ public class NoAllocJsonReader {
 					stringStart = readIndex;
 					stringStartChar = value[readIndex];
 				} else if(value[readIndex] == stringStartChar) {
-					if(readIndex > 0 && value[readIndex - 1] == '\\') {
-						readIndex++;
-						continue;
-					}
 					stringEnd = readIndex;
 				}
 				break;

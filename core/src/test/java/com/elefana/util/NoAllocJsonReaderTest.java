@@ -94,6 +94,19 @@ public class NoAllocJsonReaderTest implements NoAllocJsonReader.JsonReaderListen
 		Assert.assertEquals("{\\\"nestedKey\\\":\\\"nestedValue\\\"}", rootResults.get("key1"));
 	}
 
+	@Test
+	public void testEscapedBackslash() {
+		final Scanner scanner = new Scanner(NoAllocJsonReaderTest.class.getResourceAsStream("/escapedSample2.json"));
+		final String line = scanner.nextLine();
+		scanner.close();
+
+		final PooledStringBuilder json = PooledStringBuilder.allocate(line);
+		reader.read(json, this);
+		json.release();
+
+		Assert.assertNotNull(rootResults.get("message"));
+	}
+
 	@Override
 	public boolean onReadBegin() {
 		return true;
