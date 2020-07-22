@@ -48,7 +48,6 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 	private final AtomicBoolean pruned = new AtomicBoolean();
 
 	private final ThreadLocalInteger readIndex;
-	private final ThreadLocalInteger writeIndex;
 
 	public DefaultTimeIngestTable(JdbcTemplate jdbcTemplate, String [] tablespaces,
 	                              String index, IndexTimeBucket timeBucket, int bulkParallelisation, List<String> existingTableNames) throws SQLException {
@@ -63,9 +62,6 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 		dataMarker = new AtomicInteger[capacity];
 
 		readIndex = new ThreadLocalInteger(() -> {
-			return (int) Thread.currentThread().getId() % tableNames.length;
-		});
-		writeIndex = new ThreadLocalInteger(() -> {
 			return (int) Thread.currentThread().getId() % tableNames.length;
 		});
 
@@ -281,7 +277,7 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 		final long timestamp = System.currentTimeMillis();
 		while(System.currentTimeMillis() - timestamp < timeout) {
 			for(int i = 0; i < locks.length; i++) {
-				int index = writeIndex.incrementAndGet() % locks.length;
+				final int index = i;
 				if(locks[index].tryLock()) {
 					if(shardIds[index] < 0) {
 						shardIds[index] = shardOffset;
