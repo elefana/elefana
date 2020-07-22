@@ -8,10 +8,16 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ThreadLocalInteger {
+	private final boolean positiveOnly;
 	private final Map<Long, LocalInteger> integers = new ConcurrentHashMap<Long, LocalInteger>();
 	private Callable<Integer> initialiser;
 
 	public ThreadLocalInteger() {
+		this(true);
+	}
+
+	public ThreadLocalInteger(boolean positiveOnly) {
+		this.positiveOnly = positiveOnly;
 		this.initialiser = new Callable<Integer>() {
 			@Override
 			public Integer call() throws Exception {
@@ -21,11 +27,21 @@ public class ThreadLocalInteger {
 	}
 
 	public ThreadLocalInteger(Callable<Integer> initialiser) {
+		this(true, initialiser);
+	}
+
+	public ThreadLocalInteger(boolean positiveOnly, Callable<Integer> initialiser) {
+		this.positiveOnly = positiveOnly;
 		this.initialiser = initialiser;
 	}
 
 	public int incrementAndGet() {
-		return getLocalInteger().value++;
+		final LocalInteger localInteger = getLocalInteger();
+		localInteger.value++;
+		if(positiveOnly && localInteger.value < 0) {
+			localInteger.value = 0;
+		}
+		return localInteger.value;
 	}
 	
 	public String getThreadIdAndNextValue() {
