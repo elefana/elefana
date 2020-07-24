@@ -29,6 +29,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PreDestroy;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -67,6 +68,12 @@ public class TableIndexCreator implements Runnable {
 		fieldIndexQueue = new DiskBackedQueue(FIELD_INDEX_QUEUE_ID,
 				nodeSettingsService.getDataDirectory(), TableFieldIndexDelay.class);
 		taskScheduler.scheduleAtFixedRate(this, Math.max(1000, interval));
+	}
+
+	@PreDestroy
+	public void preDestroy() {
+		tableIndexQueue.dispose();
+		fieldIndexQueue.dispose();
 	}
 
 	@Override

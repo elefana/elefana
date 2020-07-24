@@ -143,6 +143,8 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 		try {
 			executorService.awaitTermination(120, TimeUnit.SECONDS);
 		} catch (InterruptedException e) {}
+
+		mappingQueue.dispose();
 	}
 
 	public List<String> getFieldNamesByMapping(String index, String type) {

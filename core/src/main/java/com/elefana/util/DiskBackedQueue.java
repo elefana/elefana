@@ -117,6 +117,7 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 	public void dispose() {
 		try {
 			chronicleQueue.close();
+			files.dispose();
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
 		}
