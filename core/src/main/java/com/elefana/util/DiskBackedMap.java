@@ -44,10 +44,10 @@ public class DiskBackedMap<K, V> implements Map<K, V> {
 		try {
 			ChronicleMapBuilder mapBuilder = ChronicleMap.of(keyClass, valueClass)
 					.name(mapId).entries(expectedEntries);
-			if(!keyClass.equals(Integer.class)) {
+			if(!keyClass.equals(Integer.class) && !keyClass.equals(Long.class)) {
 				mapBuilder = mapBuilder.averageKey(averageKey);
 			}
-			if(!valueClass.equals(Integer.class)) {
+			if(!valueClass.equals(Integer.class) && !valueClass.equals(Long.class)) {
 				mapBuilder = mapBuilder.averageValue(averageValue);
 			}
 			chronicleMap = mapBuilder.createOrRecoverPersistedTo(new File(mapsDirectory, mapId));
