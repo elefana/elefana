@@ -18,10 +18,7 @@ package com.elefana.util;
 import com.codahale.metrics.MetricRegistry;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.ShardFailedException;
-import com.elefana.api.indices.GetIndexTemplateForIndexRequest;
-import com.elefana.api.indices.GetIndexTemplateForIndexResponse;
-import com.elefana.api.indices.IndexStorageSettings;
-import com.elefana.api.indices.IndexTemplate;
+import com.elefana.api.indices.*;
 import com.elefana.api.json.JsonUtils;
 import com.elefana.api.util.PooledStringBuilder;
 import com.elefana.indices.IndexTemplateService;
@@ -338,7 +335,7 @@ public class CoreIndexUtils implements IndexUtils {
 		}
 
 		final IndexStorageSettings indexStorageSettings = indexTemplate.getStorage();
-		if(!indexStorageSettings.isGinEnabled()) {
+		if(!indexStorageSettings.isGinEnabled() && !indexStorageSettings.isHashEnabled() && !indexStorageSettings.isBrinEnabled()) {
 			return;
 		}
 
@@ -453,6 +450,11 @@ public class CoreIndexUtils implements IndexUtils {
 
 			if(indexTemplate != null && indexTemplate.getStorage() != null) {
 				tableIndexCreator.createPsqlTableIndices(connection, tableName, indexTemplate.getStorage());
+
+				if(indexTemplate.getStorage().getIndexGenerationSettings() != null &&
+						indexTemplate.getStorage().getIndexGenerationSettings().getMode().equals(IndexGenerationMode.PRESET)) {
+					ensureJsonFieldIndexExist(indexName, indexTemplate.getStorage().getIndexGenerationSettings().getPresetIndexFields());
+				}
 			} else {
 				tableIndexCreator.createPsqlTableIndices(connection, tableName, DEFAULT_INDEX_STORAGE_SETTINGS);
 			}

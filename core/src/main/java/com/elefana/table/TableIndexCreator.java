@@ -129,7 +129,7 @@ public class TableIndexCreator implements Runnable {
 	}
 
 	public void createPsqlTableIndices(Connection connection, String tableName, IndexStorageSettings settings) throws SQLException {
-		if(!settings.isBrinEnabled() && !settings.isGinEnabled()) {
+		if(!settings.isGinEnabled() && !settings.isHashEnabled() && !settings.isBrinEnabled()) {
 			return;
 		}
 
@@ -187,28 +187,37 @@ public class TableIndexCreator implements Runnable {
 		}
 	}
 
-	private void internalCreatePsqlTableIndices(Connection connection, String tableName, IndexGenerationMode indexGenerationMode, boolean ginEnabled, boolean brinEnabled) throws SQLException {
+	private void internalCreatePsqlTableIndices(Connection connection, String tableName,
+												IndexGenerationMode indexGenerationMode,
+												boolean ginEnabled, boolean brinEnabled) throws SQLException {
 		final String brinIndexName = IndexUtils.BRIN_INDEX_PREFIX + tableName;
 		final String ginIndexName = IndexUtils.GIN_INDEX_PREFIX + tableName;
 
 		PreparedStatement preparedStatement;
 
-		if(indexGenerationMode.equals(IndexGenerationMode.ALL) && ginEnabled) {
-			final String createGinIndexQuery = "CREATE INDEX CONCURRENTLY IF NOT EXISTS " + ginIndexName + " ON " + tableName
-					+ " USING GIN (_source jsonb_ops)";
-			LOGGER.info(createGinIndexQuery);
-			preparedStatement = connection.prepareStatement(createGinIndexQuery);
-			preparedStatement.execute();
-			preparedStatement.close();
-		}
-
-		if(brinEnabled) {
-			final String createTimestampIndexQuery = "CREATE INDEX CONCURRENTLY IF NOT EXISTS " + brinIndexName + " ON "
-					+ tableName + " USING BRIN (_timestamp, _bucket1s, _bucket1m, _bucket1h, _bucket1d) WITH (pages_per_range = " + nodeSettingsService.getBrinPagesPerRange() + ")";
-			LOGGER.info(createTimestampIndexQuery);
-			preparedStatement = connection.prepareStatement(createTimestampIndexQuery);
-			preparedStatement.execute();
-			preparedStatement.close();
+		switch(indexGenerationMode) {
+		case ALL:
+			if(ginEnabled) {
+				final String createGinIndexQuery = "CREATE INDEX CONCURRENTLY IF NOT EXISTS " + ginIndexName + " ON " + tableName
+						+ " USING GIN (_source jsonb_ops)";
+				LOGGER.info(createGinIndexQuery);
+				preparedStatement = connection.prepareStatement(createGinIndexQuery);
+				preparedStatement.execute();
+				preparedStatement.close();
+			}
+			if(brinEnabled) {
+				final String createTimestampIndexQuery = "CREATE INDEX CONCURRENTLY IF NOT EXISTS " + brinIndexName + " ON "
+						+ tableName + " USING BRIN (_timestamp, _bucket1s, _bucket1m, _bucket1h, _bucket1d) WITH (pages_per_range = " + nodeSettingsService.getBrinPagesPerRange() + ")";
+				LOGGER.info(createTimestampIndexQuery);
+				preparedStatement = connection.prepareStatement(createTimestampIndexQuery);
+				preparedStatement.execute();
+				preparedStatement.close();
+			}
+			break;
+		case DYNAMIC:
+			break;
+		case PRESET:
+			break;
 		}
 	}
 }
