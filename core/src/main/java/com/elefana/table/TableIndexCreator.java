@@ -168,13 +168,13 @@ public class TableIndexCreator implements Runnable {
 			final String query;
 			if(brinEnabled) {
 				final String btreeIndexName = IndexUtils.BTREE_INDEX_PREFIX + tableName + "_" + fieldName;
-				query = "CREATE INDEX CONCURRENTLY IF NOT EXISTS " + btreeIndexName + " ON " + tableName + " USING BTREE ((_source->>'" + fieldName + "'));";
+				query = "CREATE INDEX IF NOT EXISTS " + btreeIndexName + " ON " + tableName + " USING BTREE ((_source->>'" + fieldName + "'));";
 			} else if(hashEnabled) {
 				final String hashIndexName = IndexUtils.HASH_INDEX_PREFIX + tableName + "_" + fieldName;
-				query = "CREATE INDEX CONCURRENTLY IF NOT EXISTS " + hashIndexName + " ON " + tableName + " USING HASH ((_source->>'" + fieldName + "'));";
+				query = "CREATE INDEX IF NOT EXISTS " + hashIndexName + " ON " + tableName + " USING HASH ((_source->>'" + fieldName + "'));";
 			} else if(ginEnabled) {
 				final String ginIndexName = IndexUtils.GIN_INDEX_PREFIX + tableName + "_" + fieldName;
-				query = "CREATE INDEX CONCURRENTLY IF NOT EXISTS " + ginIndexName + " ON " + tableName + " USING GIN ((_source->>'" + fieldName + "'));";
+				query = "CREATE INDEX IF NOT EXISTS " + ginIndexName + " ON " + tableName + " USING GIN ((_source->>'" + fieldName + "'));";
 			} else {
 				return;
 			}
