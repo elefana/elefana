@@ -85,7 +85,7 @@ public class RangeQuery extends Query {
 			} else if(indexFieldStatsService.isDateField(indices.get(0), fieldName)) {
 				column = "elefana_json_field(_source, '" + fieldName + "')::numeric";
 			} else if(!fieldName.contains(".")) {
-				column = "_source->>'" + fieldName + "'::numeric";
+				column = "(_source->>'" + fieldName + "')::numeric";
 			} else {
 				column = "elefana_json_field(_source, '" + fieldName + "')::numeric";
 			}
@@ -95,7 +95,7 @@ public class RangeQuery extends Query {
 			} else if(indexFieldStatsService.isDateField(indices.get(0), fieldName)) {
 				column = "elefana_json_field(_source, '" + fieldName + "')::numeric";
 			} else if(!fieldName.contains(".")) {
-				column = "_source->>'" + fieldName + "'::numeric";
+				column = "(_source->>'" + fieldName + "')::numeric";
 			} else {
 				column = "elefana_json_field(_source, '" + fieldName + "')::numeric";
 			}
