@@ -102,6 +102,13 @@ public class TableIndexCreator implements Runnable {
 
 		final TableIndexDelay tableIndexDelay = new TableIndexDelay();
 		while(!tableIndexQueue.isEmpty()) {
+			if(tableIndexQueue.peek(tableIndexDelay)) {
+				if(tableIndexDelay.getIndexTimestamp() > System.currentTimeMillis()) {
+					return connection;
+				}
+			} else {
+				return connection;
+			}
 			if(!tableIndexQueue.poll(tableIndexDelay)) {
 				continue;
 			}
@@ -118,6 +125,13 @@ public class TableIndexCreator implements Runnable {
 
 		final TableFieldIndexDelay fieldIndexDelay = new TableFieldIndexDelay();
 		while(!fieldIndexQueue.isEmpty()) {
+			if(fieldIndexQueue.peek(fieldIndexDelay)) {
+				if(fieldIndexDelay.getIndexTimestamp() > System.currentTimeMillis()) {
+					return connection;
+				}
+			} else {
+				return connection;
+			}
 			if(!fieldIndexQueue.poll(fieldIndexDelay)) {
 				continue;
 			}
