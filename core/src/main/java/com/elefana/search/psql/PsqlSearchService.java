@@ -27,6 +27,7 @@ import com.elefana.api.search.MultiSearchResponse;
 import com.elefana.api.search.SearchRequest;
 import com.elefana.api.search.SearchResponse;
 import com.elefana.api.util.PooledStringBuilder;
+import com.elefana.indices.fieldstats.IndexFieldStatsService;
 import com.elefana.indices.psql.PsqlIndexFieldMappingService;
 import com.elefana.indices.psql.PsqlIndexTemplateService;
 import com.elefana.node.NodeSettingsService;
@@ -69,6 +70,8 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 	@Autowired
 	private PsqlIndexTemplateService indexTemplateService;
 	@Autowired
+	private IndexFieldStatsService indexFieldStatsService;
+	@Autowired
 	private TableGarbageCollector tableGarbageCollector;
 	@Autowired
 	private IndexUtils indexUtils;
@@ -104,10 +107,10 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 		searchTotalTime = metricRegistry.histogram(MetricRegistry.name("search", "time"));
 
 		if (nodeSettingsService.isUsingCitus()) {
-			searchQueryBuilder = new CitusSearchQueryBuilder(jdbcTemplate, indexUtils);
+			searchQueryBuilder = new CitusSearchQueryBuilder(jdbcTemplate, indexUtils, indexFieldStatsService);
 			searchHitsQueryExecutor = new CitusSearchHitsQueryExecutor(jdbcTemplate, searchHitsTime, searchHitsSize);
 		} else {
-			searchQueryBuilder = new PartitionTableSearchQueryBuilder(jdbcTemplate, indexUtils);
+			searchQueryBuilder = new PartitionTableSearchQueryBuilder(jdbcTemplate, indexUtils, indexFieldStatsService);
 			searchHitsQueryExecutor = new PartitionTableSearchHitsQueryExecutor(jdbcTemplate, searchHitsTime,
 					searchHitsSize);
 		}

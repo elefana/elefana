@@ -34,6 +34,8 @@ import com.elefana.node.VersionInfoService;
 import com.elefana.util.IndexUtils;
 import com.elefana.util.NamedThreadFactory;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import io.netty.handler.codec.http.HttpMethod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,6 +48,7 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -72,6 +75,12 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
     protected ExecutorService requestExecutorService;
     protected State state;
     protected LoadUnloadManager loadUnloadManager;
+
+    private final Cache<String, Boolean> isBooleanFieldCache = CacheBuilder.newBuilder().maximumSize(2048).expireAfterAccess(Duration.ofHours(1)).build();
+    private final Cache<String, Boolean> isDateFieldCache = CacheBuilder.newBuilder().maximumSize(2048).expireAfterAccess(Duration.ofHours(1)).build();
+    private final Cache<String, Boolean> isDoubleFieldCache = CacheBuilder.newBuilder().maximumSize(2048).expireAfterAccess(Duration.ofHours(1)).build();
+    private final Cache<String, Boolean> isLongFieldCache = CacheBuilder.newBuilder().maximumSize(2048).expireAfterAccess(Duration.ofHours(1)).build();
+    private final Cache<String, Boolean> isStringFieldCache = CacheBuilder.newBuilder().maximumSize(2048).expireAfterAccess(Duration.ofHours(1)).build();
 
     @PostConstruct
     public void postConstruct() {
@@ -177,6 +186,71 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
             state.getFieldNames(response.getFieldNames(), index);
         }
         return response;
+    }
+
+    @Override
+    public boolean isBooleanField(final String index, final String field) {
+        try {
+            return isBooleanFieldCache.get(field, () -> {
+                ensureIndicesLoaded(index);
+                return state.getFieldStats(field, index).getFieldClass().equals(Boolean.class);
+            });
+        } catch (ExecutionException e) {
+            LOGGER.error(e.getMessage(), e);
+        }
+        return false;
+    }
+
+    @Override
+    public boolean isDateField(final String index, final String field) {
+        try {
+            return isDateFieldCache.get(field, () -> {
+                ensureIndicesLoaded(index);
+                return state.getFieldStats(field, index).getFieldClass().equals(Date.class);
+            });
+        } catch (ExecutionException e) {
+            LOGGER.error(e.getMessage(), e);
+        }
+        return false;
+    }
+
+    @Override
+    public boolean isDoubleField(final String index, final String field) {
+        try {
+            return isDoubleFieldCache.get(field, () -> {
+                ensureIndicesLoaded(index);
+                return state.getFieldStats(field, index).getFieldClass().equals(Double.class);
+            });
+        } catch (ExecutionException e) {
+            LOGGER.error(e.getMessage(), e);
+        }
+        return false;
+    }
+
+    @Override
+    public boolean isLongField(final String index, final String field) {
+        try {
+            return isLongFieldCache.get(field, () -> {
+                ensureIndicesLoaded(index);
+                return state.getFieldStats(field, index).getFieldClass().equals(Long.class);
+            });
+        } catch (ExecutionException e) {
+            LOGGER.error(e.getMessage(), e);
+        }
+        return false;
+    }
+
+    @Override
+    public boolean isStringField(final String index, final String field) {
+        try {
+            return isStringFieldCache.get(field, () -> {
+                ensureIndicesLoaded(index);
+                return state.getFieldStats(field, index).getFieldClass().equals(String.class);
+            });
+        } catch (ExecutionException e) {
+            LOGGER.error(e.getMessage(), e);
+        }
+        return false;
     }
 
     private void setResponseShardInfo(GetFieldStatsResponse response) {

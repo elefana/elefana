@@ -16,6 +16,7 @@
 package com.elefana.search;
 
 import com.elefana.api.indices.IndexTemplate;
+import com.elefana.indices.fieldstats.IndexFieldStatsService;
 import com.elefana.util.CumulativeAverage;
 import com.elefana.util.IndexUtils;
 import org.slf4j.Logger;
@@ -32,15 +33,17 @@ public class PartitionTableSearchQueryBuilder implements SearchQueryBuilder {
 
 	private final JdbcTemplate jdbcTemplate;
 	private final IndexUtils indexUtils;
+	private final IndexFieldStatsService indexFieldStatsService;
 
-	public PartitionTableSearchQueryBuilder(JdbcTemplate jdbcTemplate, IndexUtils indexUtils) {
+	public PartitionTableSearchQueryBuilder(JdbcTemplate jdbcTemplate, IndexUtils indexUtils, IndexFieldStatsService indexFieldStatsService) {
 		super();
 		this.jdbcTemplate = jdbcTemplate;
 		this.indexUtils = indexUtils;
+		this.indexFieldStatsService = indexFieldStatsService;
 	}
 
 	@Override
-	public PsqlQueryComponents buildQuery(IndexTemplate matchedIndexTemplate,List<String> indices, String[] types,
+	public PsqlQueryComponents buildQuery(IndexTemplate matchedIndexTemplate, List<String> indices, String[] types,
 			RequestBodySearch requestBodySearch) {
 		if(indices.isEmpty() && IndexUtils.isTypesEmpty(types)) {
 			return new PsqlQueryComponents("", "", "", "LIMIT 0");
@@ -82,7 +85,7 @@ public class PartitionTableSearchQueryBuilder implements SearchQueryBuilder {
 		
 		if(!requestBodySearch.getQuery().isMatchAllQuery()) {
 			whereClause.append(" AND (");
-			whereClause.append(requestBodySearch.getQuerySqlWhereClause(matchedIndexTemplate));
+			whereClause.append(requestBodySearch.getQuerySqlWhereClause(indices, matchedIndexTemplate, indexFieldStatsService));
 			whereClause.append(")");
 		}
 

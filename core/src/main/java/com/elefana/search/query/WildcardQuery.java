@@ -16,11 +16,17 @@
 package com.elefana.search.query;
 
 import com.elefana.api.indices.IndexTemplate;
+import com.elefana.indices.fieldstats.IndexFieldStatsService;
 import com.fasterxml.jackson.databind.JsonNode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Iterator;
+import java.util.List;
 
 public class WildcardQuery extends Query {
+	private static final Logger LOGGER = LoggerFactory.getLogger(WildcardQuery.class);
+
 	private static final String KEY_VALUE = "value";
 	private static final String KEY_BOOST = "boost";
 	
@@ -51,8 +57,22 @@ public class WildcardQuery extends Query {
 	}
 
 	@Override
-	public String toSqlWhereClause(IndexTemplate indexTemplate) {
-		return "elefana_json_field(_source, '" + fieldName + "') LIKE '" + value.replace("*", "%").replace("?", "_") + "'";
+	public String toSqlWhereClause(List<String> indices,  IndexTemplate indexTemplate,
+	                               IndexFieldStatsService indexFieldStatsService) {
+		if(fieldName.contains(".")) {
+			return toProcedureSqlClause();
+		}
+		try {
+			if(indexFieldStatsService.isStringField(indices.get(0), fieldName)) {
+				return "_source->>'" + fieldName + "' LIKE '" + value.replace("*", "%").replace("?", "_") + "'";
+			}
+		} catch (Exception e) {
+			LOGGER.error(e.getMessage(), e);
+		}
+		return toProcedureSqlClause();
 	}
 
+	private String toProcedureSqlClause() {
+		return "elefana_json_field(_source, '" + fieldName + "') LIKE '" + value.replace("*", "%").replace("?", "_") + "'";
+	}
 }

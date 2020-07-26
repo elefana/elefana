@@ -16,11 +16,13 @@
 package com.elefana.search.query;
 
 import com.elefana.api.indices.IndexTemplate;
+import com.elefana.indices.fieldstats.IndexFieldStatsService;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Iterator;
+import java.util.List;
 
 public class RangeQuery extends Query {
 	private static final Logger LOGGER = LoggerFactory.getLogger(RangeQuery.class);
@@ -70,7 +72,7 @@ public class RangeQuery extends Query {
 	}
 
 	@Override
-	public String toSqlWhereClause(IndexTemplate indexTemplate) {
+	public String toSqlWhereClause(List<String> indices, IndexTemplate indexTemplate, IndexFieldStatsService indexFieldStatsService) {
 		StringBuilder result = new StringBuilder();
 		
 		final String column;
@@ -78,11 +80,25 @@ public class RangeQuery extends Query {
 		if(indexTemplate != null && indexTemplate.getStorage().getTimestampPath() != null) {
 			if(indexTemplate.getStorage().getTimestampPath().equalsIgnoreCase(fieldName)) {
 				column = "_timestamp";
+			} else if(indexFieldStatsService.isStringField(indices.get(0), fieldName)) {
+				column = "elefana_json_field(_source, '" + fieldName + "')::numeric";
+			} else if(indexFieldStatsService.isDateField(indices.get(0), fieldName)) {
+				column = "elefana_json_field(_source, '" + fieldName + "')::numeric";
+			} else if(!fieldName.contains(".")) {
+				column = "_source->>'" + fieldName + "'::numeric";
 			} else {
 				column = "elefana_json_field(_source, '" + fieldName + "')::numeric";
 			}
 		} else {
-			column = "elefana_json_field(_source, '" + fieldName + "')::numeric";
+			if(indexFieldStatsService.isStringField(indices.get(0), fieldName)) {
+				column = "elefana_json_field(_source, '" + fieldName + "')::numeric";
+			} else if(indexFieldStatsService.isDateField(indices.get(0), fieldName)) {
+				column = "elefana_json_field(_source, '" + fieldName + "')::numeric";
+			} else if(!fieldName.contains(".")) {
+				column = "_source->>'" + fieldName + "'::numeric";
+			} else {
+				column = "elefana_json_field(_source, '" + fieldName + "')::numeric";
+			}
 		}
 		
 		if (from != null) {

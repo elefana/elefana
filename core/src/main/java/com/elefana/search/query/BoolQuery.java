@@ -17,6 +17,7 @@ package com.elefana.search.query;
 
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.indices.IndexTemplate;
+import com.elefana.indices.fieldstats.IndexFieldStatsService;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -108,7 +109,9 @@ public class BoolQuery extends Query {
 	}
 
 	@Override
-	public String toSqlWhereClause(IndexTemplate indexTemplate) {
+	public String toSqlWhereClause(List<String> indices,
+	                               IndexTemplate indexTemplate,
+	                               IndexFieldStatsService indexFieldStatsService) {
 		StringBuilder result = new StringBuilder();
 		result.append('(');
 		
@@ -122,7 +125,7 @@ public class BoolQuery extends Query {
 				if(totalClauses > 0) {
 					result.append(" AND ");
 				}
-				result.append(mustClauses.get(i).toSqlWhereClause(indexTemplate));
+				result.append(mustClauses.get(i).toSqlWhereClause(indices, indexTemplate, indexFieldStatsService));
 				totalClauses++;
 			}
 			result.append(')');
@@ -141,7 +144,7 @@ public class BoolQuery extends Query {
 				if(totalClauses > 0) {
 					result.append(" AND ");
 				}
-				result.append(filterClauses.get(i).toSqlWhereClause(indexTemplate));
+				result.append(filterClauses.get(i).toSqlWhereClause(indices, indexTemplate, indexFieldStatsService));
 				totalClauses++;
 			}
 			result.append(')');
@@ -160,7 +163,7 @@ public class BoolQuery extends Query {
 				if(totalClauses > 0) {
 					result.append(" AND ");
 				}
-				result.append(mustNotClauses.get(i).toSqlWhereClause(indexTemplate));
+				result.append(mustNotClauses.get(i).toSqlWhereClause(indices, indexTemplate, indexFieldStatsService));
 				totalClauses++;
 			}
 			result.append(')');
@@ -193,7 +196,7 @@ public class BoolQuery extends Query {
 					if(totalClauses > 0) {
 						result.append(" OR ");
 					}
-					result.append(shouldClauses.get(i).toSqlWhereClause(indexTemplate));
+					result.append(shouldClauses.get(i).toSqlWhereClause(indices, indexTemplate, indexFieldStatsService));
 					totalClauses++;
 				}
 				break;

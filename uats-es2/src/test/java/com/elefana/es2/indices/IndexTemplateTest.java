@@ -102,7 +102,7 @@ public class IndexTemplateTest {
 
 		given()
 				.request()
-				.body("{\"template\": \"" + index + "\",\"storage\":{\"id_enabled\":false }}")
+				.body("{\"template\": \"" + index + "\",\"storage\":{\"id_enabled\":false, \"index_generation\": {\"index_delay_seconds\":7200} }}")
 				.when()
 				.put("/_template/testIndexTemplateIdDisabled")
 				.then()
@@ -113,7 +113,8 @@ public class IndexTemplateTest {
 				.log().all()
 				.statusCode(200)
 				.body("testIndexTemplateIdDisabled.template", equalTo(index))
-				.body("testIndexTemplateIdDisabled.storage.id_enabled", equalTo(false));
+				.body("testIndexTemplateIdDisabled.storage.id_enabled", equalTo(false))
+				.body("testIndexTemplateIdDisabled.storage.index_generation.index_delay_seconds", equalTo(7200));
 
 		try {
 			Thread.sleep(100);

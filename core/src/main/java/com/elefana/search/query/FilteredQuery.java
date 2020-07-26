@@ -17,7 +17,10 @@ package com.elefana.search.query;
 
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.indices.IndexTemplate;
+import com.elefana.indices.fieldstats.IndexFieldStatsService;
 import com.fasterxml.jackson.databind.JsonNode;
+
+import java.util.List;
 
 public class FilteredQuery extends Query {
 	private static final String KEY_QUERY = "query";
@@ -46,19 +49,20 @@ public class FilteredQuery extends Query {
 	}
 
 	@Override
-	public String toSqlWhereClause(IndexTemplate indexTemplate) {
+	public String toSqlWhereClause(List<String> indices, IndexTemplate indexTemplate,
+	                               IndexFieldStatsService indexFieldStatsService) {
 		if(!query.isMatchAllQuery() && !filter.isMatchAllQuery()) {
 			StringBuilder result = new StringBuilder();
 			result.append('(');
-			result.append(query.toSqlWhereClause(indexTemplate));
+			result.append(query.toSqlWhereClause(indices, indexTemplate, indexFieldStatsService));
 			result.append(" AND ");
-			result.append(filter.toSqlWhereClause(indexTemplate));
+			result.append(filter.toSqlWhereClause(indices, indexTemplate, indexFieldStatsService));
 			result.append(')');
 			return result.toString();
 		} else if(query.isMatchAllQuery()) {
-			return filter.toSqlWhereClause(indexTemplate);
+			return filter.toSqlWhereClause(indices, indexTemplate, indexFieldStatsService);
 		} else {
-			return query.toSqlWhereClause(indexTemplate);
+			return query.toSqlWhereClause(indices, indexTemplate, indexFieldStatsService);
 		}
 	}
 

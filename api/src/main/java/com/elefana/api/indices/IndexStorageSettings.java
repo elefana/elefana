@@ -36,6 +36,8 @@ public class IndexStorageSettings {
 	private boolean brinEnabled = false;
 	@JsonProperty("gin_enabled")
 	private boolean ginEnabled = false;
+	@JsonProperty("hash_enabled")
+	private boolean hashEnabled = false;
 	@JsonProperty("id_enabled")
 	private boolean idEnabled = true;
 
@@ -103,6 +105,14 @@ public class IndexStorageSettings {
 		this.ginEnabled = ginEnabled;
 	}
 
+	public boolean isHashEnabled() {
+		return hashEnabled;
+	}
+
+	public void setHashEnabled(boolean hashEnabled) {
+		this.hashEnabled = hashEnabled;
+	}
+
 	public boolean isIdEnabled() {
 		return idEnabled;
 	}
@@ -120,6 +130,7 @@ public class IndexStorageSettings {
 				mappingEnabled == that.mappingEnabled &&
 				brinEnabled == that.brinEnabled &&
 				ginEnabled == that.ginEnabled &&
+				hashEnabled == that.hashEnabled &&
 				idEnabled == that.idEnabled &&
 				distributionMode == that.distributionMode &&
 				indexTimeBucket == that.indexTimeBucket &&
@@ -130,7 +141,7 @@ public class IndexStorageSettings {
 	@Override
 	public int hashCode() {
 		return Objects.hash(distributionMode, indexTimeBucket, timestampPath, indexGenerationSettings,
-				fieldStatsEnabled, mappingEnabled, brinEnabled, ginEnabled, idEnabled);
+				fieldStatsEnabled, mappingEnabled, brinEnabled, ginEnabled, hashEnabled, idEnabled);
 	}
 
 	@Override
@@ -144,6 +155,7 @@ public class IndexStorageSettings {
 				", mappingDisabled=" + mappingEnabled +
 				", brinEnabled=" + brinEnabled +
 				", ginEnabled=" + ginEnabled +
+				", hashEnabled=" + hashEnabled +
 				'}';
 	}
 }

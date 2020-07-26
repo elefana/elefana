@@ -16,11 +16,13 @@
 package com.elefana.search.query;
 
 import com.elefana.api.indices.IndexTemplate;
+import com.elefana.indices.fieldstats.IndexFieldStatsService;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Iterator;
+import java.util.List;
 
 public class TermQuery extends Query {
 	private static final Logger LOGGER = LoggerFactory.getLogger(TermQuery.class);
@@ -52,8 +54,22 @@ public class TermQuery extends Query {
 	}
 
 	@Override
-	public String toSqlWhereClause(IndexTemplate indexTemplate) {
-		return "elefana_json_field(_source, '" + fieldName + "') = '" + value + "'";
+	public String toSqlWhereClause(List<String> indices, IndexTemplate indexTemplate,
+	                               IndexFieldStatsService indexFieldStatsService) {
+		if(fieldName.contains(".")) {
+			return toProcedureSqlClause();
+		}
+		try {
+			if(indexFieldStatsService.isStringField(indices.get(0), fieldName)) {
+				return "_source->>'" + fieldName + "' = '" + value + "'";
+			}
+		} catch (Exception e) {
+			LOGGER.error(e.getMessage(), e);
+		}
+		return toProcedureSqlClause();
 	}
 
+	private String toProcedureSqlClause() {
+		return "elefana_json_field(_source, '" + fieldName + "') = '" + value + "'";
+	}
 }

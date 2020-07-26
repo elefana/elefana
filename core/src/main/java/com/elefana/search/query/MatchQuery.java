@@ -16,9 +16,11 @@
 package com.elefana.search.query;
 
 import com.elefana.api.indices.IndexTemplate;
+import com.elefana.indices.fieldstats.IndexFieldStatsService;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import java.util.Iterator;
+import java.util.List;
 
 public class MatchQuery extends Query {
 	private static final String KEY_QUERY = "query";
@@ -65,7 +67,8 @@ public class MatchQuery extends Query {
 	}
 	
 	@Override
-	public String toSqlWhereClause(IndexTemplate indexTemplate) {
+	public String toSqlWhereClause(List<String> indices, IndexTemplate indexTemplate,
+	                               IndexFieldStatsService indexFieldStatsService) {
 		switch(matchMode) {
 		case PHRASE:
 			return toPhraseSqlWhereClause();

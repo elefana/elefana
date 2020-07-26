@@ -18,6 +18,7 @@ package com.elefana.search;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.indices.IndexTemplate;
 import com.elefana.api.json.JsonUtils;
+import com.elefana.indices.fieldstats.IndexFieldStatsService;
 import com.elefana.search.agg.AggregationsParser;
 import com.elefana.search.agg.RootAggregationContext;
 import com.elefana.search.query.Query;
@@ -26,6 +27,8 @@ import com.elefana.search.sort.Sort;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.List;
 
 public class RequestBodySearch {
 	private static final Logger LOGGER = LoggerFactory.getLogger(RequestBodySearch.class);
@@ -91,9 +94,10 @@ public class RequestBodySearch {
 		return originalQuery;
 	}
 
-	public String getQuerySqlWhereClause(IndexTemplate indexTemplate) {
+	public String getQuerySqlWhereClause(List<String> indices, IndexTemplate indexTemplate,
+	                                     IndexFieldStatsService indexFieldStatsService) {
 		if(querySqlWhereClause == null) {
-			querySqlWhereClause = query.toSqlWhereClause(indexTemplate);
+			querySqlWhereClause = query.toSqlWhereClause(indices, indexTemplate, indexFieldStatsService);
 		}
 		return querySqlWhereClause;
 	}

@@ -16,6 +16,9 @@
 package com.elefana.search.query;
 
 import com.elefana.api.indices.IndexTemplate;
+import com.elefana.indices.fieldstats.IndexFieldStatsService;
+
+import java.util.List;
 
 public class MatchAllQuery extends Query {
 	
@@ -25,7 +28,8 @@ public class MatchAllQuery extends Query {
 	}
 
 	@Override
-	public String toSqlWhereClause(IndexTemplate indexTemplate) {
+	public String toSqlWhereClause(List<String> indices,  IndexTemplate indexTemplate,
+	                               IndexFieldStatsService indexFieldStatsService) {
 		return "";
 	}
 

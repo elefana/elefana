@@ -41,6 +41,16 @@ public interface IndexFieldStatsService extends RequestExecutor {
 
     public GetFieldNamesResponse getFieldNames(String indexPattern, String typePattern);
 
+    public boolean isBooleanField(String index, String field);
+
+    public boolean isDateField(String index, String field);
+
+    public boolean isDoubleField(String index, String field);
+
+    public boolean isLongField(String index, String field);
+
+    public boolean isStringField(String index, String field);
+
     public void submitDocument(String document, String index);
 
     public void submitDocument(PooledStringBuilder document, String index);

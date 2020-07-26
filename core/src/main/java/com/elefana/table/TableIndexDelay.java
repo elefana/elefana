@@ -25,16 +25,17 @@ public class TableIndexDelay extends SelfDescribingMarshallable {
 	private String tableName;
 	private long indexTimestamp;
 	private IndexGenerationMode mode;
-	private boolean ginEnabled, brinEnabled;
+	private boolean ginEnabled, brinEnabled, hashEnabled;
 
 	public TableIndexDelay() {}
 
-	public TableIndexDelay(String tableName, long indexTimestamp, IndexGenerationMode mode, boolean ginEnabled, boolean brinEnabled) {
+	public TableIndexDelay(String tableName, long indexTimestamp, IndexGenerationMode mode, boolean ginEnabled, boolean brinEnabled, boolean hashEnabled) {
 		this.tableName = tableName;
 		this.indexTimestamp = indexTimestamp;
 		this.mode = mode;
 		this.ginEnabled = ginEnabled;
 		this.brinEnabled = brinEnabled;
+		this.hashEnabled = hashEnabled;
 	}
 
 	@Override
@@ -44,6 +45,7 @@ public class TableIndexDelay extends SelfDescribingMarshallable {
 		bytes.writeInt(mode.ordinal());
 		bytes.writeBoolean(ginEnabled);
 		bytes.writeBoolean(brinEnabled);
+		bytes.writeBoolean(hashEnabled);
 	}
 
 	@Override
@@ -53,6 +55,7 @@ public class TableIndexDelay extends SelfDescribingMarshallable {
 		mode = IndexGenerationMode.values()[bytes.readInt()];
 		ginEnabled = bytes.readBoolean();
 		brinEnabled = bytes.readBoolean();
+		hashEnabled = bytes.readBoolean();
 	}
 
 	public String getTableName() {
@@ -73,5 +76,9 @@ public class TableIndexDelay extends SelfDescribingMarshallable {
 
 	public boolean isBrinEnabled() {
 		return brinEnabled;
+	}
+
+	public boolean isHashEnabled() {
+		return hashEnabled;
 	}
 }

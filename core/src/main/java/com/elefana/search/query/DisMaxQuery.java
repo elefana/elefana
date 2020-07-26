@@ -17,6 +17,7 @@ package com.elefana.search.query;
 
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.indices.IndexTemplate;
+import com.elefana.indices.fieldstats.IndexFieldStatsService;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import java.util.ArrayList;
@@ -49,7 +50,8 @@ public class DisMaxQuery extends Query {
 	}
 
 	@Override
-	public String toSqlWhereClause(IndexTemplate indexTemplate) {
+	public String toSqlWhereClause(List<String> indices, IndexTemplate indexTemplate,
+	                               IndexFieldStatsService indexFieldStatsService) {
 		//TODO: Handle scoring/sorting
 		StringBuilder result = new StringBuilder();
 		for(int i = 0; i < queries.size(); i++) {
@@ -57,7 +59,7 @@ public class DisMaxQuery extends Query {
 				result.append(" OR ");
 			}
 			result.append('(');
-			result.append(queries.get(i).toSqlWhereClause(indexTemplate));
+			result.append(queries.get(i).toSqlWhereClause(indices, indexTemplate, indexFieldStatsService));
 			result.append(')');
 		}
 		return result.toString();

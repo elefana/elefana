@@ -17,6 +17,7 @@ package com.elefana.search;
 
 import com.elefana.api.exception.ShardFailedException;
 import com.elefana.api.indices.IndexTemplate;
+import com.elefana.indices.fieldstats.IndexFieldStatsService;
 import com.elefana.util.CumulativeAverage;
 import com.elefana.util.IndexUtils;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -29,11 +30,13 @@ import java.util.List;
 public class CitusSearchQueryBuilder implements SearchQueryBuilder {
 	private final JdbcTemplate jdbcTemplate;
 	private final IndexUtils indexUtils;
+	private final IndexFieldStatsService indexFieldStatsService;
 
-	public CitusSearchQueryBuilder(JdbcTemplate jdbcTemplate, IndexUtils indexUtils) {
+	public CitusSearchQueryBuilder(JdbcTemplate jdbcTemplate, IndexUtils indexUtils, IndexFieldStatsService indexFieldStatsService) {
 		super();
 		this.jdbcTemplate = jdbcTemplate;
 		this.indexUtils = indexUtils;
+		this.indexFieldStatsService = indexFieldStatsService;
 	}
 
 	@Override
@@ -84,7 +87,7 @@ public class CitusSearchQueryBuilder implements SearchQueryBuilder {
 		final StringBuilder whereClause = POOLED_STRING_BUILDER.get();
 		if (!requestBodySearch.getQuery().isMatchAllQuery()) {
 			whereClause.append("(");
-			whereClause.append(requestBodySearch.getQuerySqlWhereClause(matchedIndexTemplate));
+			whereClause.append(requestBodySearch.getQuerySqlWhereClause(indices, matchedIndexTemplate, indexFieldStatsService));
 			whereClause.append(")");
 		}
 

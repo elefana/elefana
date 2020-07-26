@@ -16,6 +16,9 @@
 package com.elefana.search.query;
 
 import com.elefana.api.indices.IndexTemplate;
+import com.elefana.indices.fieldstats.IndexFieldStatsService;
+
+import java.util.List;
 
 public abstract class Query {
 
@@ -23,5 +26,7 @@ public abstract class Query {
 		return false;
 	}
 	
-	public abstract String toSqlWhereClause(IndexTemplate indexTemplate);
+	public abstract String toSqlWhereClause(List<String> indices,
+	                                        IndexTemplate indexTemplate,
+	                                        IndexFieldStatsService indexFieldStatsService);
 }

@@ -21,6 +21,7 @@ import com.elefana.esqs.EsFieldQuery;
 import com.elefana.esqs.EsQueryOperator;
 import com.elefana.esqs.EsQueryString;
 import com.elefana.esqs.EsQueryStringWalker;
+import com.elefana.indices.fieldstats.IndexFieldStatsService;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -112,7 +113,8 @@ public class QueryStringQuery extends Query implements EsQueryStringWalker {
 	}
 
 	@Override
-	public String toSqlWhereClause(IndexTemplate indexTemplate) {
+	public String toSqlWhereClause(List<String> indices, IndexTemplate indexTemplate,
+	                               IndexFieldStatsService indexFieldStatsService) {
 		return sqlQuery;
 	}
 

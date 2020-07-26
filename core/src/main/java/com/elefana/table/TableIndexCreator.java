@@ -122,7 +122,8 @@ public class TableIndexCreator implements Runnable {
 				continue;
 			}
 			internalCreatePsqlFieldIndex(connection, fieldIndexDelay.getTableName(),
-					fieldIndexDelay.getFieldName(), fieldIndexDelay.getMode());
+					fieldIndexDelay.getFieldName(), fieldIndexDelay.getMode(),
+					fieldIndexDelay.isBrinEnabled(), fieldIndexDelay.isBrinEnabled(), fieldIndexDelay.isHashEnabled());
 		}
 		return connection;
 	}
@@ -138,33 +139,48 @@ public class TableIndexCreator implements Runnable {
 		} else {
 			final long indexTimestamp = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(settings.getIndexGenerationSettings().getIndexDelaySeconds());
 			tableIndexQueue.offer(new TableIndexDelay(tableName, indexTimestamp, settings.getIndexGenerationSettings().getMode(),
-					settings.isGinEnabled(), settings.isBrinEnabled()));
+					settings.isGinEnabled(), settings.isBrinEnabled(), settings.isHashEnabled()));
 		}
 	}
 
 	public void createPsqlFieldIndex(Connection connection, String tableName, String fieldName, IndexStorageSettings settings) throws SQLException {
-		if(!settings.isGinEnabled()) {
+		if(!settings.isGinEnabled() && !settings.isHashEnabled() && !settings.isBrinEnabled()) {
 			return;
 		}
 
 		if(settings.getIndexGenerationSettings().getIndexDelaySeconds() <= 0) {
-			internalCreatePsqlFieldIndex(connection, tableName, fieldName, settings.getIndexGenerationSettings().getMode());
+			internalCreatePsqlFieldIndex(connection, tableName, fieldName, settings.getIndexGenerationSettings().getMode(),
+					settings.isGinEnabled(), settings.isGinEnabled(), settings.isHashEnabled());
 		} else {
 			final long indexTimestamp = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(settings.getIndexGenerationSettings().getIndexDelaySeconds());
-			fieldIndexQueue.offer(new TableFieldIndexDelay(tableName, fieldName, indexTimestamp, settings.getIndexGenerationSettings().getMode()));
+			fieldIndexQueue.offer(new TableFieldIndexDelay(tableName, fieldName, indexTimestamp, settings.getIndexGenerationSettings().getMode(),
+					settings.isGinEnabled(), settings.isGinEnabled(), settings.isHashEnabled()));
 		}
 	}
 
-	private void internalCreatePsqlFieldIndex(Connection connection, String tableName, String fieldName, IndexGenerationMode indexGenerationMode) throws SQLException {
-		switch(indexGenerationMode) {
+	private void internalCreatePsqlFieldIndex(Connection connection, String tableName, String fieldName, IndexGenerationMode mode,
+	                                          boolean ginEnabled, boolean brinEnabled, boolean hashEnabled) throws SQLException {
+		switch(mode) {
 		case ALL:
 			return;
 		case PRESET:
 		case DYNAMIC:
-			final String btreeIndexName = IndexUtils.BTREE_INDEX_PREFIX + tableName + "_" + fieldName;
-			final String createGinFieldIndexQuery = "CREATE INDEX CONCURRENTLY IF NOT EXISTS " + btreeIndexName + " ON " + tableName + " USING BTREE ((_source->>'" + fieldName + "'));";
-			LOGGER.info(createGinFieldIndexQuery);
-			PreparedStatement preparedStatement = connection.prepareStatement(createGinFieldIndexQuery);
+			final String query;
+			if(brinEnabled) {
+				final String btreeIndexName = IndexUtils.BTREE_INDEX_PREFIX + tableName + "_" + fieldName;
+				query = "CREATE INDEX CONCURRENTLY IF NOT EXISTS " + btreeIndexName + " ON " + tableName + " USING BTREE ((_source->>'" + fieldName + "'));";
+			} else if(hashEnabled) {
+				final String hashIndexName = IndexUtils.HASH_INDEX_PREFIX + tableName + "_" + fieldName;
+				query = "CREATE INDEX CONCURRENTLY IF NOT EXISTS " + hashIndexName + " ON " + tableName + " USING HASH ((_source->>'" + fieldName + "'));";
+			} else if(ginEnabled) {
+				final String ginIndexName = IndexUtils.GIN_INDEX_PREFIX + tableName + "_" + fieldName;
+				query = "CREATE INDEX CONCURRENTLY IF NOT EXISTS " + ginIndexName + " ON " + tableName + " USING GIN ((_source->>'" + fieldName + "'));";
+			} else {
+				return;
+			}
+
+			LOGGER.info(query);
+			PreparedStatement preparedStatement = connection.prepareStatement(query);
 			preparedStatement.execute();
 			preparedStatement.close();
 			break;
