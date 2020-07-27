@@ -37,11 +37,11 @@ public interface IndexUtils {
 	public static final String PARTITION_TRACKING_TABLE = "elefana_partition_tracking";
 
 	public static final String TRIGGERS_PREFIX = "elefana_triggers_";
-	public static final String HASH_INDEX_PREFIX = "elefana_hash_idx_";
-	public static final String BTREE_INDEX_PREFIX = "elefana_btree_idx_";
-	public static final String GIN_INDEX_PREFIX = "elefana_gin_idx_";
-	public static final String BRIN_INDEX_PREFIX = "elefana_brin_idx_";
-	public static final String PRIMARY_KEY_PREFIX = "elefana_pkey_";
+	public static final String HASH_INDEX_PREFIX = "hx_";
+	public static final String BTREE_INDEX_PREFIX = "btx_";
+	public static final String GIN_INDEX_PREFIX = "gx_";
+	public static final String BRIN_INDEX_PREFIX = "brx_";
+	public static final String PRIMARY_KEY_PREFIX = "epkey_";
 
 	public static final char[] HEX_CHARS = "0123456789ABCDEF".toCharArray();
 

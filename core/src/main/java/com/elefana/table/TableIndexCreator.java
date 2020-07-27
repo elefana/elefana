@@ -35,6 +35,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Queue;
 import java.util.concurrent.TimeUnit;
+import java.util.zip.CRC32;
 
 @Service
 @DependsOn({"nodeStatsService"})
@@ -181,13 +182,13 @@ public class TableIndexCreator implements Runnable {
 		case DYNAMIC:
 			final String query;
 			if(brinEnabled) {
-				final String btreeIndexName = IndexUtils.BTREE_INDEX_PREFIX + tableName + "_" + fieldName;
+				final String btreeIndexName = getPsqlIndexName(IndexUtils.BTREE_INDEX_PREFIX, tableName, fieldName);
 				query = "CREATE INDEX IF NOT EXISTS " + btreeIndexName + " ON " + tableName + " USING BTREE ((_source->>'" + fieldName + "'));";
 			} else if(hashEnabled) {
-				final String hashIndexName = IndexUtils.HASH_INDEX_PREFIX + tableName + "_" + fieldName;
+				final String hashIndexName = getPsqlIndexName(IndexUtils.HASH_INDEX_PREFIX, tableName, fieldName);
 				query = "CREATE INDEX IF NOT EXISTS " + hashIndexName + " ON " + tableName + " USING HASH ((_source->>'" + fieldName + "'));";
 			} else if(ginEnabled) {
-				final String ginIndexName = IndexUtils.GIN_INDEX_PREFIX + tableName + "_" + fieldName;
+				final String ginIndexName = getPsqlIndexName(IndexUtils.GIN_INDEX_PREFIX, tableName, fieldName);
 				query = "CREATE INDEX IF NOT EXISTS " + ginIndexName + " ON " + tableName + " USING GIN ((_source->>'" + fieldName + "'));";
 			} else {
 				return;
@@ -233,5 +234,15 @@ public class TableIndexCreator implements Runnable {
 		case PRESET:
 			break;
 		}
+	}
+
+	public static String getPsqlIndexName(String prefix, String tableName, String fieldName) {
+		return prefix + tableName.replace("_m_", "__").replace("_f_", "__") + "_" + getFieldNameHash(fieldName);
+	}
+
+	public static String getFieldNameHash(String fieldName) {
+		CRC32 crc = new CRC32();
+		crc.update(fieldName.getBytes());
+		return Long.toHexString(crc.getValue());
 	}
 }
