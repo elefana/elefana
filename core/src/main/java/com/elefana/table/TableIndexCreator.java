@@ -152,6 +152,7 @@ public class TableIndexCreator implements Runnable {
 			internalCreatePsqlTableIndices(connection, tableName, settings.getIndexGenerationSettings().getMode(),
 					settings.isGinEnabled(), settings.isBrinEnabled());
 		} else {
+			LOGGER.info("Defer " + tableName + " index creation by " + settings.getIndexGenerationSettings().getIndexDelaySeconds() + " seconds");
 			final long indexTimestamp = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(settings.getIndexGenerationSettings().getIndexDelaySeconds());
 			tableIndexQueue.offer(new TableIndexDelay(tableName, indexTimestamp, settings.getIndexGenerationSettings().getMode(),
 					settings.isGinEnabled(), settings.isBrinEnabled(), settings.isHashEnabled()));
@@ -167,6 +168,7 @@ public class TableIndexCreator implements Runnable {
 			internalCreatePsqlFieldIndex(connection, tableName, fieldName, settings.getIndexGenerationSettings().getMode(),
 					settings.isGinEnabled(), settings.isGinEnabled(), settings.isHashEnabled());
 		} else {
+			LOGGER.info("Defer " + tableName + "->" + fieldName + " field index creation by " + settings.getIndexGenerationSettings().getIndexDelaySeconds() + " seconds");
 			final long indexTimestamp = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(settings.getIndexGenerationSettings().getIndexDelaySeconds());
 			fieldIndexQueue.offer(new TableFieldIndexDelay(tableName, fieldName, indexTimestamp, settings.getIndexGenerationSettings().getMode(),
 					settings.isGinEnabled(), settings.isGinEnabled(), settings.isHashEnabled()));
