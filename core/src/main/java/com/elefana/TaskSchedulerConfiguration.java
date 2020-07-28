@@ -42,7 +42,7 @@ public class TaskSchedulerConfiguration implements SchedulingConfigurer {
     public TaskScheduler taskScheduler() {
         final ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
         taskScheduler.setPoolSize(Math.max(4, environment.getProperty("elefana.scheduler.pool.size",
-		        Integer.class, Runtime.getRuntime().availableProcessors() - 1)));
+		        Integer.class, Runtime.getRuntime().availableProcessors() * 2)));
         return taskScheduler;
     }
 }
