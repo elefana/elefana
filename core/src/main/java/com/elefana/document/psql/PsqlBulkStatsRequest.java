@@ -15,7 +15,6 @@
  ******************************************************************************/
 package com.elefana.document.psql;
 
-import com.elefana.api.RequestExecutor;
 import com.elefana.api.document.BulkStatsRequest;
 import com.elefana.api.document.BulkStatsResponse;
 

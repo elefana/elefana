@@ -15,12 +15,12 @@
  ******************************************************************************/
 package com.elefana.api.document;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
 import com.elefana.api.util.PooledStringBuilder;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public abstract class MultiGetRequest extends ApiRequest<MultiGetResponse> {
 	private final List<GetRequest> getRequests = new ArrayList<GetRequest>(1);

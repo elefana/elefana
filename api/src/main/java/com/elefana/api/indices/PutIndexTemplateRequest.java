@@ -15,8 +15,6 @@
  ******************************************************************************/
 package com.elefana.api.indices;
 
-import java.util.concurrent.Callable;
-
 import com.elefana.api.AckResponse;
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;

@@ -17,13 +17,13 @@
 package com.elefana.indices.fieldstats.job;
 
 import com.elefana.api.json.JsonUtils;
+import com.elefana.api.util.PooledStringBuilder;
 import com.elefana.document.BulkIndexOperation;
 import com.elefana.indices.fieldstats.LoadUnloadManager;
 import com.elefana.indices.fieldstats.state.State;
 import com.elefana.indices.fieldstats.state.field.ElefanaWrongFieldStatsTypeException;
 import com.elefana.indices.fieldstats.state.field.FieldStats;
 import com.elefana.util.CumulativeAverage;
-import com.elefana.api.util.PooledStringBuilder;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.TreeNode;
 import com.fasterxml.jackson.databind.JsonNode;

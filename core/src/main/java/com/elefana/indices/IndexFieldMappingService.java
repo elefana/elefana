@@ -15,7 +15,10 @@
  ******************************************************************************/
 package com.elefana.indices;
 
-import com.elefana.api.indices.*;
+import com.elefana.api.indices.GetFieldCapabilitiesRequest;
+import com.elefana.api.indices.GetFieldMappingsRequest;
+import com.elefana.api.indices.PutFieldMappingRequest;
+import com.elefana.api.indices.RefreshIndexRequest;
 import com.elefana.api.util.PooledStringBuilder;
 
 public interface IndexFieldMappingService {

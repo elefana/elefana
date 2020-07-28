@@ -15,12 +15,12 @@
  ******************************************************************************/
 package com.elefana.api.indices;
 
+import com.elefana.api.ApiRequest;
+import com.elefana.api.RequestExecutor;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
-
-import com.elefana.api.ApiRequest;
-import com.elefana.api.RequestExecutor;
 
 public abstract class ListIndexTemplatesRequest extends ApiRequest<ListIndexTemplatesResponse> implements Callable<ListIndexTemplatesResponse> {
 	private final List<String> templateIds = new ArrayList<String>(1);

@@ -3,7 +3,6 @@
  */
 package com.elefana.util;
 
-import net.openhft.chronicle.bytes.BytesMarshallable;
 import net.openhft.chronicle.map.ChronicleMap;
 import net.openhft.chronicle.map.ChronicleMapBuilder;
 import org.jetbrains.annotations.NotNull;

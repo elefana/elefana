@@ -20,10 +20,6 @@ import com.elefana.indices.fieldstats.state.field.FieldStatsImpl;
 import com.elefana.util.NoAllocMinMaxWord;
 
 import javax.annotation.concurrent.ThreadSafe;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @ThreadSafe
 public class StringFieldStats extends ComparableFieldStats<String> {

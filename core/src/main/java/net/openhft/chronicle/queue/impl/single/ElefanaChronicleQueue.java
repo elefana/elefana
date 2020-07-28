@@ -3,10 +3,7 @@
  */
 package net.openhft.chronicle.queue.impl.single;
 
-import com.elefana.util.DiskBackedQueue;
 import net.openhft.chronicle.bytes.MappedFile;
-import net.openhft.chronicle.queue.impl.WireStorePool;
-import net.openhft.chronicle.queue.impl.WireStoreSupplier;
 import net.openhft.chronicle.wire.WireType;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;

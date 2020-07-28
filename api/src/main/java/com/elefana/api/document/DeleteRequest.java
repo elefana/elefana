@@ -18,8 +18,6 @@ package com.elefana.api.document;
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
 
-import java.util.concurrent.Callable;
-
 public abstract class DeleteRequest extends ApiRequest<DeleteResponse> {
 	protected final String index, type, id;
 

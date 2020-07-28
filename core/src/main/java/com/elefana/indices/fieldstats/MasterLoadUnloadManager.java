@@ -15,7 +15,6 @@
  ******************************************************************************/
 package com.elefana.indices.fieldstats;
 
-import com.elefana.indices.fieldstats.state.IllegalLoadingOperation;
 import com.elefana.indices.fieldstats.state.State;
 import com.elefana.indices.fieldstats.state.StateImpl;
 import com.elefana.indices.fieldstats.state.field.ElefanaWrongFieldStatsTypeException;

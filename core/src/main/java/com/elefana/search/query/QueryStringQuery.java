@@ -16,7 +16,6 @@
 package com.elefana.search.query;
 
 import com.elefana.api.indices.IndexTemplate;
-import com.elefana.api.json.JsonUtils;
 import com.elefana.esqs.EsFieldQuery;
 import com.elefana.esqs.EsQueryOperator;
 import com.elefana.esqs.EsQueryString;

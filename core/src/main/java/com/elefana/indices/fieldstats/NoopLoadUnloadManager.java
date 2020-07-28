@@ -15,10 +15,17 @@
  ******************************************************************************/
 package com.elefana.indices.fieldstats;
 
+import java.util.List;
+
 public class NoopLoadUnloadManager implements LoadUnloadManager {
 
 	@Override
 	public void shutdown() {
+	}
+
+	@Override
+	public List<String> compileIndexPattern(String indexPattern) {
+		return null;
 	}
 
 	@Override

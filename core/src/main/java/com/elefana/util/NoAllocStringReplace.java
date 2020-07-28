@@ -20,12 +20,9 @@ import com.elefana.indices.fieldstats.job.DocumentSourceProvider;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Stream;
 
 public class NoAllocStringReplace {
 	public static final AtomicInteger MAX_ARRAY_SIZE = new AtomicInteger(256);
