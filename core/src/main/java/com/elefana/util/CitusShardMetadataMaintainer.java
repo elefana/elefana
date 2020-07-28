@@ -26,7 +26,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
-import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
@@ -34,6 +33,8 @@ import javax.annotation.PreDestroy;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -55,9 +56,9 @@ public class CitusShardMetadataMaintainer implements Runnable {
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 	@Autowired
-	private TaskScheduler taskScheduler;
-	@Autowired
 	protected IndexTemplateService indexTemplateService;
+
+	private final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
 
 	private HashDiskBackedQueue<CitusTableTimestampSample> timeShardRepairQueue;
 
@@ -70,8 +71,7 @@ public class CitusShardMetadataMaintainer implements Runnable {
 				nodeSettingsService.getDataDirectory(), CitusTableTimestampSample.class,
 				TIME_SHARD_REPAIR_EXPECTED_ENTRIES,
 				TIME_SHARD_REPAIR_AVERAGE_KEY, TIME_SHARD_REPAIR_AVERAGE_VALUE);
-		taskScheduler.scheduleAtFixedRate(this,
-				environment.getProperty("elefana.citus.repair.interval", Long.class, DEFAULT_SCHEDULE_MILLIS));
+		executorService.scheduleAtFixedRate(this, 0L, environment.getProperty("elefana.citus.repair.interval", Long.class, DEFAULT_SCHEDULE_MILLIS), TimeUnit.MILLISECONDS);
 	}
 
 	@PreDestroy
@@ -79,6 +79,7 @@ public class CitusShardMetadataMaintainer implements Runnable {
 		if(!nodeSettingsService.isMasterNode()) {
 			return;
 		}
+		executorService.shutdownNow();
 	}
 
 	public void queueTimeSeriesIndexForShardMaintenance(String index, String tableName, long timestampSample) {

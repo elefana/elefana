@@ -17,8 +17,8 @@ package com.elefana.table;
 
 import com.elefana.api.indices.IndexGenerationMode;
 import com.elefana.api.indices.IndexStorageSettings;
-import com.elefana.node.NodeStatsService;
 import com.elefana.node.NodeSettingsService;
+import com.elefana.node.NodeStatsService;
 import com.elefana.util.DiskBackedQueue;
 import com.elefana.util.IndexUtils;
 import org.slf4j.Logger;
@@ -26,14 +26,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PreDestroy;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.util.Queue;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.CRC32;
 
@@ -51,8 +51,8 @@ public class TableIndexCreator implements Runnable {
 	private NodeStatsService nodeStatsService;
 	@Autowired
 	private NodeSettingsService nodeSettingsService;
-	@Autowired
-	private TaskScheduler taskScheduler;
+
+	private final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
 
 	private DiskBackedQueue<TableIndexDelay> tableIndexQueue;
 	private DiskBackedQueue<TableFieldIndexDelay> fieldIndexQueue;
@@ -68,11 +68,16 @@ public class TableIndexCreator implements Runnable {
 				nodeSettingsService.getDataDirectory(), TableIndexDelay.class);
 		fieldIndexQueue = new DiskBackedQueue(FIELD_INDEX_QUEUE_ID,
 				nodeSettingsService.getDataDirectory(), TableFieldIndexDelay.class);
-		taskScheduler.scheduleAtFixedRate(this, Math.max(1000, interval));
+		executorService.scheduleAtFixedRate(this, 0L, Math.max(1000, interval), TimeUnit.MILLISECONDS);
 	}
 
 	@PreDestroy
 	public void preDestroy() {
+		if(!nodeStatsService.isMasterNode()) {
+			//Only master node can create indices
+			return;
+		}
+		executorService.shutdownNow();
 		tableIndexQueue.dispose();
 		fieldIndexQueue.dispose();
 	}
