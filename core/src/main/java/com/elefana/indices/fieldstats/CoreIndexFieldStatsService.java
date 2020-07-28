@@ -191,7 +191,13 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
     public GetFieldNamesResponse getFieldNames(String indexPattern, String typePattern) {
         final GetFieldNamesResponse response = new GetFieldNamesResponse();
         try {
-            response.getFieldNames().addAll(fieldNamesCache.get(indexPattern));
+            final Set<String> cachedFieldNames = fieldNamesCache.get(indexPattern);
+            if(cachedFieldNames.isEmpty()) {
+                fieldNamesCache.invalidate(indexPattern);
+                response.getFieldNames().addAll(getFieldNamesFromDatabase(indexPattern));
+            } else {
+                response.getFieldNames().addAll(cachedFieldNames);
+            }
         } catch (ExecutionException e) {
             response.getFieldNames().addAll(getFieldNamesFromDatabase(indexPattern));
         }
