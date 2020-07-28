@@ -3,9 +3,6 @@
  */
 package com.elefana.util;
 
-import net.openhft.chronicle.queue.impl.StoreFileListener;
-import net.openhft.chronicle.wire.SelfDescribingMarshallable;
-
 import java.io.File;
 
 public class HashDiskBackedQueue<T extends UniqueSelfDescribingMarshallable> extends DiskBackedQueue<T> {

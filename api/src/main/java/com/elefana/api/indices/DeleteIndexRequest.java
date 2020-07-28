@@ -19,8 +19,6 @@ import com.elefana.api.AckResponse;
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
 
-import java.util.concurrent.Callable;
-
 public abstract class DeleteIndexRequest extends ApiRequest<AckResponse> {
 	private final String indexPattern, typePattern;
 

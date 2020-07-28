@@ -19,7 +19,6 @@ import com.codahale.metrics.Timer;
 import com.elefana.api.document.BulkItemResponse;
 import com.elefana.api.document.BulkOpType;
 import com.elefana.api.document.DocumentShardInfo;
-import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.json.JsonUtils;
 import com.elefana.document.ingest.IngestTable;
 import com.elefana.indices.fieldstats.IndexFieldStatsService;

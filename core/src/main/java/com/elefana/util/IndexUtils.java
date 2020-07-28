@@ -16,7 +16,6 @@
 package com.elefana.util;
 
 import com.elefana.api.exception.ElefanaException;
-import com.elefana.api.json.JsonUtils;
 import com.elefana.api.util.PooledStringBuilder;
 import com.elefana.indices.fieldstats.job.DocumentSourceProvider;
 import com.fasterxml.jackson.core.JsonParser;

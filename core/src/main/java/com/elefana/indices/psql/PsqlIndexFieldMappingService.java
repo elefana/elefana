@@ -28,7 +28,6 @@ import com.elefana.indices.V2FieldMapper;
 import com.elefana.indices.V5FieldMapper;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
-import com.elefana.util.CitusTableTimestampSample;
 import com.elefana.util.HashDiskBackedQueue;
 import com.elefana.util.IndexUtils;
 import com.elefana.util.NamedThreadFactory;

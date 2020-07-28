@@ -16,7 +16,6 @@
 package com.elefana.node.v2;
 
 import com.codahale.metrics.Gauge;
-import com.codahale.metrics.Histogram;
 import com.codahale.metrics.MetricRegistry;
 import com.elefana.node.ProcessStats;
 import oshi.SystemInfo;

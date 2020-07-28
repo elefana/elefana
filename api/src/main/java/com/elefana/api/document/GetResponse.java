@@ -15,13 +15,12 @@
  ******************************************************************************/
 package com.elefana.api.document;
 
-import java.util.Map;
-
 import com.elefana.api.ApiResponse;
-
 import com.elefana.api.json.JsonUtils;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.netty.handler.codec.http.HttpResponseStatus;
+
+import java.util.Map;
 
 public class GetResponse extends ApiResponse {
 	@JsonProperty("_index")

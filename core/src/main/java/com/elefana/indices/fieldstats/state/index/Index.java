@@ -16,8 +16,6 @@
 
 package com.elefana.indices.fieldstats.state.index;
 
-import java.util.concurrent.locks.Lock;
-
 public interface Index {
     public long getMaxDocuments();
     public default void incrementMaxDocuments() {
