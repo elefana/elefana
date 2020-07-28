@@ -26,16 +26,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
 
 public class MasterLoadUnloadManager implements LoadUnloadManager {
 	private static final Logger LOGGER = LoggerFactory.getLogger(MasterLoadUnloadManager.class);
@@ -302,5 +300,15 @@ public class MasterLoadUnloadManager implements LoadUnloadManager {
 		final boolean result = missingIndices.contains(index);
 		loadUnloadLock.readLock().unlock();
 		return result;
+	}
+
+	public List<String> compileIndexPattern(String indexPattern) {
+		final List<String> resultA = state.compileIndexPattern(indexPattern);
+		final Set<String> resultB = missingIndices
+				.stream()
+				.filter(i -> StateImpl.matches(indexPattern, i))
+				.collect(Collectors.toSet());
+		resultB.addAll(resultA);
+		return new ArrayList<String>(resultB);
 	}
 }

@@ -36,6 +36,8 @@ import com.elefana.util.NamedThreadFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import io.netty.handler.codec.http.HttpMethod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +45,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 
@@ -81,6 +84,14 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
     private final Cache<String, Boolean> isDoubleFieldCache = CacheBuilder.newBuilder().maximumSize(2048).expireAfterAccess(Duration.ofHours(1)).build();
     private final Cache<String, Boolean> isLongFieldCache = CacheBuilder.newBuilder().maximumSize(2048).expireAfterAccess(Duration.ofHours(1)).build();
     private final Cache<String, Boolean> isStringFieldCache = CacheBuilder.newBuilder().maximumSize(2048).expireAfterAccess(Duration.ofHours(1)).build();
+
+    private final LoadingCache<String, Set<String>> fieldNamesCache = CacheBuilder.newBuilder().maximumSize(512).
+            expireAfterWrite(Duration.ofHours(24)).build(new CacheLoader<String, Set<String>>() {
+        @Override
+        public Set<String> load(String key) throws Exception {
+            return getFieldNamesFromDatabase(key);
+        }
+    });
 
     @PostConstruct
     public void postConstruct() {
@@ -179,11 +190,10 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
     @Override
     public GetFieldNamesResponse getFieldNames(String indexPattern, String typePattern) {
         final GetFieldNamesResponse response = new GetFieldNamesResponse();
-        ensureIndicesLoaded(indexPattern);
-        List<String> indices = state.compileIndexPattern(indexPattern);
-
-        for (String index : indices) {
-            state.getFieldNames(response.getFieldNames(), index);
+        try {
+            response.getFieldNames().addAll(fieldNamesCache.get(indexPattern));
+        } catch (ExecutionException e) {
+            response.getFieldNames().addAll(getFieldNamesFromDatabase(indexPattern));
         }
         return response;
     }
@@ -370,5 +380,34 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private Set<String> getFieldNamesFromDatabase(String indexPattern) {
+        final Set<String> result = new HashSet<String>();
+        try {
+            final List<String> indices = loadUnloadManager.compileIndexPattern(indexPattern);
+            final StringBuilder queryBuilder = new StringBuilder();
+            queryBuilder.append("SELECT DISTINCT _fieldname FROM elefana_field_stats_fieldstats WHERE _indexname IN (");
+            for(int i = 0; i < indices.size(); i++) {
+                final String index = indices.get(i);
+                queryBuilder.append('\'');
+                queryBuilder.append(index);
+                queryBuilder.append('\'');
+                if(i < indices.size() - 1) {
+                    queryBuilder.append(',');
+                }
+            }
+            queryBuilder.append(");");
+
+            final String query = queryBuilder.toString();
+            LOGGER.info(query);
+            final SqlRowSet sqlRowSet = jdbcTemplate.queryForRowSet(query);
+            while(sqlRowSet.next()) {
+                result.add(sqlRowSet.getString("_fieldname"));
+            }
+        } catch (Exception e) {
+            LOGGER.error(e.getMessage(), e);
+        }
+        return result;
     }
 }

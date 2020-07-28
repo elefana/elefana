@@ -16,7 +16,11 @@
 
 package com.elefana.indices.fieldstats;
 
+import java.util.List;
+
 public interface LoadUnloadManager {
+
+    List<String> compileIndexPattern(String indexPattern);
 
     public void someoneWroteToIndex(String indexName);
 
