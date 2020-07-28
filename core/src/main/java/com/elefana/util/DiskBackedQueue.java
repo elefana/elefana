@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileListener {
 	private static final Logger LOGGER = LoggerFactory.getLogger(DiskBackedQueue.class);
@@ -26,6 +27,8 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 	private final ElefanaChronicleQueue chronicleQueue;
 	private final ExcerptTailer tailer;
 	private final DiskBackedMap<Integer, QueueCycleFile> files;
+
+	private final AtomicBoolean disposed = new AtomicBoolean(false);
 
 	public DiskBackedQueue(String queueId, File dataDirectory, Class<T> clazz) {
 		this(queueId, dataDirectory, clazz,  RollCycles.DAILY);
@@ -92,6 +95,9 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 
 	@Override
 	public void onAcquired(int cycle, File file) {
+		if(disposed.get()) {
+			return;
+		}
 		files.compute(cycle, (cycleKey, queueCycleFile) -> {
 			if(queueCycleFile == null) {
 				return new QueueCycleFile(file);
@@ -104,6 +110,9 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 
 	@Override
 	public void onReleased(int cycle, File file) {
+		if(disposed.get()) {
+			return;
+		}
 		try {
 			files.computeIfPresent(cycle, (integer, queueCycleFile) -> {
 				queueCycleFile.setReleased(true);
@@ -115,6 +124,10 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 	}
 
 	public void dispose() {
+		if(disposed.get()) {
+			return;
+		}
+		disposed.set(true);
 		try {
 			chronicleQueue.close();
 			files.dispose();
