@@ -47,7 +47,7 @@ public class DiskBackedQueueTest {
 		final File dataDirectory = Files.createTempDirectory(queueId).toFile();
 
 		final DiskBackedQueue<TestData> queue = new DiskBackedQueue<>(
-				queueId, dataDirectory, TestData.class, RollCycles.TEST4_SECONDLY, timeProvider);
+				queueId, dataDirectory, TestData.class, RollCycles.TEST4_SECONDLY, timeProvider, false);
 		final TestData testData = new TestData();
 		for(int i = 0; i < 32; i++) {
 			final int expectedResult = random.nextInt();
