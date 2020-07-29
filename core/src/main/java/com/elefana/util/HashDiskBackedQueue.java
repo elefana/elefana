@@ -10,9 +10,19 @@ public class HashDiskBackedQueue<T extends UniqueSelfDescribingMarshallable> ext
 
 	public HashDiskBackedQueue(String queueId, File dataDirectory, Class<T> clazz,
 	                           int expectedEntries, String averageKey, T averageValue) {
-		super(queueId, dataDirectory, clazz);
+		this(queueId, dataDirectory, clazz, expectedEntries, averageKey, averageValue, false);
+	}
+
+	public HashDiskBackedQueue(String queueId, File dataDirectory, Class<T> clazz,
+							   int expectedEntries, String averageKey, T averageValue,
+							   boolean cleanImmediately) {
+		super(queueId, dataDirectory, clazz, cleanImmediately);
 		backedMap = new DiskBackedMap<String, T>(queueId, String.class, clazz,
 				dataDirectory, expectedEntries, averageKey, averageValue);
+
+		if(cleanImmediately) {
+			backedMap.clear();
+		}
 	}
 
 	@Override

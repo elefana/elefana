@@ -27,7 +27,12 @@ public class DiskBackedMap<K, V> implements Map<K, V> {
 	private ChronicleMap<K, V> chronicleMap;
 
 	public DiskBackedMap(String mapId, Class<K> keyClass, Class<V> valueClass, File dataDirectory,
-	                     int expectedEntries, K averageKey, V averageValue) {
+						int expectedEntries, K averageKey, V averageValue) {
+		this(mapId, keyClass, valueClass, dataDirectory, expectedEntries, averageKey, averageValue, false);
+	}
+
+	public DiskBackedMap(String mapId, Class<K> keyClass, Class<V> valueClass, File dataDirectory,
+	                     int expectedEntries, K averageKey, V averageValue, boolean cleanImmediately) {
 		this.mapId = mapId;
 		this.keyClass = keyClass;
 		this.valueClass = valueClass;
@@ -50,6 +55,10 @@ public class DiskBackedMap<K, V> implements Map<K, V> {
 				mapBuilder = mapBuilder.averageValue(averageValue);
 			}
 			chronicleMap = mapBuilder.createOrRecoverPersistedTo(new File(mapsDirectory, mapId));
+
+			if(cleanImmediately) {
+				chronicleMap.clear();
+			}
 		} catch (IOException e) {
 			LOGGER.error(e.getMessage(), e);
 		}

@@ -34,15 +34,24 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 	private final AtomicBoolean disposed = new AtomicBoolean(false);
 
 	public DiskBackedQueue(String queueId, File dataDirectory, Class<T> clazz) {
-		this(queueId, dataDirectory, clazz,  RollCycles.DAILY);
+		this(queueId, dataDirectory, clazz, false);
+	}
+
+	public DiskBackedQueue(String queueId, File dataDirectory, Class<T> clazz, boolean cleanImmediately) {
+		this(queueId, dataDirectory, clazz,  RollCycles.DAILY, cleanImmediately);
 	}
 
 	public DiskBackedQueue(String queueId, File dataDirectory, Class<T> clazz, RollCycles rollCycles) {
-		this(queueId, dataDirectory, clazz,  rollCycles, SystemTimeProvider.INSTANCE);
+		this(queueId, dataDirectory, clazz,  rollCycles, false);
+	}
+
+
+	public DiskBackedQueue(String queueId, File dataDirectory, Class<T> clazz, RollCycles rollCycles, boolean cleanImmediately) {
+		this(queueId, dataDirectory, clazz,  rollCycles, SystemTimeProvider.INSTANCE, cleanImmediately);
 	}
 
 	public DiskBackedQueue(String queueId, File dataDirectory, Class<T> clazz,
-	                       RollCycles rollCycles, TimeProvider timeProvider) {
+	                       RollCycles rollCycles, TimeProvider timeProvider, boolean cleanImmediately) {
 		this.queueId = queueId;
 		this.clazz = clazz;
 		files = new DiskBackedMap<>(queueId + "-files", Integer.class, QueueCycleFile.class,
@@ -65,6 +74,11 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 				timeProvider(timeProvider).
 				storeFileListener(this).build();
 		tailer = chronicleQueue.createTailer(queueId + "-tailer");
+
+		if(cleanImmediately) {
+			chronicleQueue.clear();
+			prune();
+		}
 	}
 
 	public int prune() {
