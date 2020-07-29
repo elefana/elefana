@@ -80,6 +80,7 @@ public class CitusShardMetadataMaintainer implements Runnable {
 			return;
 		}
 		executorService.shutdownNow();
+		timeShardRepairQueue.dispose();
 	}
 
 	public void queueTimeSeriesIndexForShardMaintenance(String index, String tableName, long timestampSample) {
@@ -91,6 +92,11 @@ public class CitusShardMetadataMaintainer implements Runnable {
 
 	@Override
 	public void run() {
+		if(timeShardRepairQueue.isEmpty()) {
+			LOGGER.info("No shards queued for repair");
+			return;
+		}
+
 		final CitusTableTimestampSample tableTimestampSample = new CitusTableTimestampSample();
 		while(!timeShardRepairQueue.isEmpty()) {
 			try {
@@ -105,14 +111,18 @@ public class CitusShardMetadataMaintainer implements Runnable {
 				return;
 			}
 		}
+		timeShardRepairQueue.prune();
 	}
 
 	private boolean hasNullShardIntervals(CitusTableTimestampSample tableTimestampSample) {
 		final SqlRowSet rowSet = jdbcTemplate.queryForRowSet("SELECT COUNT(*) FROM (SELECT logicalrelid::text AS tableName, * FROM pg_dist_shard) AS results WHERE tableName='" +
 				tableTimestampSample.getTableName() + "' AND shardmaxvalue IS NULL");
 		if(rowSet.next()) {
-			return rowSet.getLong(1) > 0;
+			if(rowSet.getLong(1) > 0) {
+				return true;
+			}
 		}
+		LOGGER.info(tableTimestampSample.getTableName() + " shards in correct state");
 		return false;
 	}
 
