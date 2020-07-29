@@ -105,6 +105,8 @@ public class CitusShardMetadataMaintainer implements Runnable {
 				}
 				if(hasNullShardIntervals(tableTimestampSample)) {
 					repairShardIntervals(tableTimestampSample);
+				} else if(hasOverlappingShards(tableTimestampSample)) {
+					//TODO: Attempt data correction?
 				}
 			} catch (Exception e) {
 				LOGGER.error(e.getMessage(), e);
@@ -112,6 +114,28 @@ public class CitusShardMetadataMaintainer implements Runnable {
 			}
 		}
 		timeShardRepairQueue.prune();
+	}
+
+	private boolean hasOverlappingShards(CitusTableTimestampSample tableTimestampSample) {
+		final SqlRowSet rowSet = jdbcTemplate.queryForRowSet("SELECT COUNT(*) FROM (SELECT logicalrelid::text AS tableName, * FROM pg_dist_shard) AS results WHERE tableName='" +
+				tableTimestampSample.getTableName() + "' ORDER BY shardminvalue ASC");
+		long previousMaxValue = -1;
+
+		while(rowSet.next()) {
+			final long shardMaxValue = rowSet.getLong("shardmaxvalue");
+			if(previousMaxValue == -1) {
+				previousMaxValue = shardMaxValue;
+				continue;
+			}
+			final long shardMinValue = rowSet.getLong("shardminvalue");
+			if(previousMaxValue < shardMinValue) {
+				previousMaxValue = shardMaxValue;
+				continue;
+			}
+			LOGGER.error(tableTimestampSample.getTableName() + " has overlapping shard ranges");
+			return true;
+		}
+		return false;
 	}
 
 	private boolean hasNullShardIntervals(CitusTableTimestampSample tableTimestampSample) {
