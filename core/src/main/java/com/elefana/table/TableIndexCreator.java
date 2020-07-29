@@ -105,6 +105,10 @@ public class TableIndexCreator implements Runnable {
 		if(connection == null) {
 			connection = jdbcTemplate.getDataSource().getConnection();
 		}
+		if(tableIndexQueue.isEmpty()) {
+			LOGGER.info("No table index operations queued");
+			return connection;
+		}
 
 		final TableIndexDelay tableIndexDelay = new TableIndexDelay();
 		while(!tableIndexQueue.isEmpty()) {
@@ -128,6 +132,10 @@ public class TableIndexCreator implements Runnable {
 	private Connection runFieldIndexCreation(Connection connection) throws SQLException {
 		if(connection == null) {
 			connection = jdbcTemplate.getDataSource().getConnection();
+		}
+		if(fieldIndexQueue.isEmpty()) {
+			LOGGER.info("No table field index operations queued");
+			return connection;
 		}
 
 		final TableFieldIndexDelay fieldIndexDelay = new TableFieldIndexDelay();
