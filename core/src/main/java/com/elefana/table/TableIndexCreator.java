@@ -110,6 +110,7 @@ public class TableIndexCreator implements Runnable {
 		while(!tableIndexQueue.isEmpty()) {
 			if(tableIndexQueue.peek(tableIndexDelay)) {
 				if(tableIndexDelay.getIndexTimestamp() > System.currentTimeMillis()) {
+					LOGGER.info("To early to create index for " + tableIndexDelay.getTableName() + ". Remaining time: " + TimeUnit.MILLISECONDS.toMinutes(tableIndexDelay.getIndexTimestamp() - System.currentTimeMillis()) + " minutes");
 					return connection;
 				}
 			} else {
@@ -133,6 +134,7 @@ public class TableIndexCreator implements Runnable {
 		while(!fieldIndexQueue.isEmpty()) {
 			if(fieldIndexQueue.peek(fieldIndexDelay)) {
 				if(fieldIndexDelay.getIndexTimestamp() > System.currentTimeMillis()) {
+					LOGGER.info("To early to create field index for " + fieldIndexDelay.getTableName() + "->" + fieldIndexDelay.getFieldName() + ". Remaining time: " + TimeUnit.MILLISECONDS.toMinutes(fieldIndexDelay.getIndexTimestamp() - System.currentTimeMillis()) + " minutes");
 					return connection;
 				}
 			} else {
