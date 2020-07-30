@@ -117,7 +117,7 @@ public class CitusShardMetadataMaintainer implements Runnable {
 	}
 
 	private boolean hasOverlappingShards(CitusTableTimestampSample tableTimestampSample) {
-		final SqlRowSet rowSet = jdbcTemplate.queryForRowSet("SELECT COUNT(*) FROM (SELECT logicalrelid::text AS tableName, * FROM pg_dist_shard) AS results WHERE tableName='" +
+		final SqlRowSet rowSet = jdbcTemplate.queryForRowSet("SELECT * FROM (SELECT logicalrelid::text AS tableName, * FROM pg_dist_shard) AS results WHERE tableName='" +
 				tableTimestampSample.getTableName() + "' ORDER BY shardminvalue ASC");
 		long previousMaxValue = -1;
 
