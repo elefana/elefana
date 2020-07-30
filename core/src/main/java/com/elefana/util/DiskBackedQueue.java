@@ -69,6 +69,12 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 			queueDir.mkdirs();
 		}
 
+		if(cleanImmediately) {
+			for(File file : queueDir.listFiles()) {
+				file.delete();
+			}
+		}
+
 		chronicleQueue = ElefanaChronicleQueue.singleBuilder(queueDir).
 				rollCycle(rollCycles).
 				timeProvider(timeProvider).
@@ -76,8 +82,7 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 		tailer = chronicleQueue.createTailer(queueId + "-tailer");
 
 		if(cleanImmediately) {
-			chronicleQueue.clear();
-			prune();
+			files.clear();
 		}
 	}
 
