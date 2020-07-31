@@ -324,6 +324,8 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 	private void bulkIndexTime(BulkResponse bulkApiResponse, IndexTemplate indexTemplate, String index, List<BulkIndexOperation> indexOperations)
 			throws ElefanaException {
 		final IndexTimeBucket indexTimeBucket = indexTemplate.getStorage().getIndexTimeBucket();
+		LOGGER.info(indexTimeBucket.name());
+
 		final TimeIngestTable timeIngestTable = ingestTableTracker.getTimeIngestTable(index);
 		if(timeIngestTable == null) {
 			throw new ElefanaException(HttpResponseStatus.INTERNAL_SERVER_ERROR, "Could not get time ingest table for index " + index);

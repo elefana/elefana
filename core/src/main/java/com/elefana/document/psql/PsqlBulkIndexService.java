@@ -320,6 +320,7 @@ public class PsqlBulkIndexService implements Runnable {
 		final long timestamp = resultSet.getLong("_timestamp");
 		preparedStatement.close();
 
+		LOGGER.info(indexTemplate.getStorage().getIndexTimeBucket().name());
 		final int shardOffset = indexTemplate.getStorage().getIndexTimeBucket().getShardOffset(timestamp);
 		final long shardId = getShardId(connection, targetTable, shardOffset);
 		if(shardId == -1) {
