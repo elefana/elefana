@@ -35,6 +35,27 @@ import java.util.UUID;
 public class DiskBackedQueueTest {
 
 	@Test
+	public void testClearImmediately() throws Exception {
+		final int firstValue = 34634;
+
+		final SetTimeProvider timeProvider = new SetTimeProvider();
+		timeProvider.currentTimeMillis(1000);
+
+		final String queueId = UUID.randomUUID().toString();
+		final File dataDirectory = Files.createTempDirectory(queueId).toFile();
+
+		final DiskBackedQueue<TestData> queue1 = new DiskBackedQueue<>(
+				queueId, dataDirectory, TestData.class, RollCycles.TEST4_SECONDLY, timeProvider, false);
+		queue1.offer(new TestData(firstValue));
+		queue1.dispose();
+
+		final DiskBackedQueue<TestData> queue2 = new DiskBackedQueue<>(
+				queueId, dataDirectory, TestData.class, RollCycles.TEST4_SECONDLY, timeProvider, true);
+		final TestData testData = new TestData();
+		Assert.assertFalse(queue2.poll(testData));
+	}
+
+	@Test
 	public void testDeleteOldFiles() throws Exception {
 		if(OsInformation.isWindows()) {
 			return;
