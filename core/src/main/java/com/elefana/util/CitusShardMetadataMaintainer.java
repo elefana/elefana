@@ -132,7 +132,7 @@ public class CitusShardMetadataMaintainer implements Runnable {
 				previousMaxValue = shardMaxValue;
 				continue;
 			}
-			LOGGER.error(tableTimestampSample.getTableName() + " has overlapping shard ranges");
+			LOGGER.error(tableTimestampSample.getTableName() + " has overlapping shard ranges: " + shardMinValue + " " + shardMaxValue + " " + previousMaxValue);
 			return true;
 		}
 		return false;
