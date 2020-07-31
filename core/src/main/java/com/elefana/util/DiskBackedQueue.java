@@ -172,16 +172,19 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 		synchronized(tailer) {
 			long oldIndex = tailer.index();
 			tailer.direction(TailerDirection.FORWARD);
+			boolean success = true;
 			try (DocumentContext context = tailer.readingDocument()) {
 				if (context.isPresent()) {
 					if (oldIndex == 0) {
 						oldIndex = context.index();
 					}
 					tailer.readBytes(result);
+				} else {
+					success = false;
 				}
 			}
 			tailer.moveToIndex(oldIndex);
-			return true;
+			return success;
 		}
 
 	}

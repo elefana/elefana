@@ -83,6 +83,8 @@ public class DiskBackedQueueTest {
 		Assert.assertEquals(expectedValue, peekResult1.value);
 		Assert.assertEquals(expectedValue, peekResult2.value);
 		Assert.assertEquals(expectedValue, pollResult.value);
+
+		Assert.assertFalse(queue.peek(peekResult2));
 	}
 
 	@Test
