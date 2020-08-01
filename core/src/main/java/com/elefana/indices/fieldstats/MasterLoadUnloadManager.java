@@ -68,13 +68,7 @@ public class MasterLoadUnloadManager implements LoadUnloadManager {
 	private void snapshot() {
 		List<String> indices = state.compileIndexPattern("*");
 		indices.forEach(index -> {
-			loadUnloadLock.readLock().lock();
-			if(missingIndices.contains(index)){
-				loadUnloadLock.readLock().unlock();
-			} else {
-				loadUnloadLock.readLock().unlock();
-				snapshotIndex(index);
-			}
+			snapshotIndex(index);
 		});
 	}
 

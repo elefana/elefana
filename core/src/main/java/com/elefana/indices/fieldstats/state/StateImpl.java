@@ -209,11 +209,14 @@ public class StateImpl implements State{
 
             indexMapLock.writeLock().lock();
 
-            if(!indexMap.containsKey(indexName)) {
-                indexMap.put(indexName, createIndexImplementation(indexName));
+            try {
+                if(!indexMap.containsKey(indexName)) {
+                    indexMap.put(indexName, createIndexImplementation(indexName));
+                }
+            } finally {
+                indexMapLock.writeLock().unlock();
             }
 
-            indexMapLock.writeLock().unlock();
             indexMapLock.readLock().lock();
         }
         final Index result = indexMap.get(indexName);
@@ -357,8 +360,11 @@ public class StateImpl implements State{
     @Override
     public <T> void ensureFieldExists(String fieldName, Class<T> fieldClass) {
         indexMapLock.readLock().lock();
-        fieldMap.computeIfAbsent(fieldName, key -> createFieldImplementation(fieldName, fieldClass));
-        indexMapLock.readLock().unlock();
+        try {
+            fieldMap.computeIfAbsent(fieldName, key -> createFieldImplementation(fieldName, fieldClass));
+        } finally {
+            indexMapLock.readLock().unlock();
+        }
     }
 
     public boolean isIndexLoaded(String index) {
