@@ -717,6 +717,8 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 		int rows = 0;
 		try {
 			Connection connection = jdbcTemplate.getDataSource().getConnection();
+			connection.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
+
 			PreparedStatement preparedStatement = connection.prepareStatement(queryBuilder.toString());
 			if(indexInfoLast) {
 				preparedStatement.setLong(1, timestamp);
