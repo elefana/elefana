@@ -15,6 +15,8 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 public class DiskBackedMap<K, V> implements Map<K, V> {
 	private static final Logger LOGGER = LoggerFactory.getLogger(DiskBackedMap.class);
@@ -134,5 +136,26 @@ public class DiskBackedMap<K, V> implements Map<K, V> {
 	@Override
 	public Set<Entry<K, V>> entrySet() {
 		return chronicleMap.entrySet();
+	}
+
+	@Override
+	public V compute(K key, @NotNull BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+		return chronicleMap.compute(key, remappingFunction);
+	}
+
+	@Override
+	public V computeIfAbsent(K key, @NotNull Function<? super K, ? extends V> mappingFunction) {
+		return chronicleMap.computeIfAbsent(key, mappingFunction);
+	}
+
+	@Override
+	public V computeIfPresent(K key, @NotNull BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+		return chronicleMap.computeIfPresent(key, remappingFunction);
+	}
+
+	@Nullable
+	@Override
+	public V putIfAbsent(K key, V value) {
+		return chronicleMap.putIfAbsent(key, value);
 	}
 }
