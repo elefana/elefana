@@ -124,7 +124,6 @@ public abstract class BulkIndexTask implements Callable<List<BulkItemResponse>> 
 			final String stagingTable = ingestTable.getIngestionTableName(stagingTableId, true);
 			connection = jdbcTemplate.getDataSource().getConnection();
 			connection.setAutoCommit(false);
-			connection.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
 
 			final PgConnection pgConnection = connection.unwrap(PgConnection.class);
 			final CopyManager copyManager = new CopyManager(pgConnection);

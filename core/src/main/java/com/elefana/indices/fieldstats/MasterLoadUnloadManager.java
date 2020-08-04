@@ -51,7 +51,7 @@ public class MasterLoadUnloadManager implements LoadUnloadManager {
 	};
 
 	private Map<String, Long> lastIndexUse = new ConcurrentHashMap<>();
-	private ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("elefana-fieldStats-loadUnloadManager"));
+	private ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(2, new NamedThreadFactory("elefana-fieldStats-loadUnloadManager"));
 
 	public MasterLoadUnloadManager(JdbcTemplate jdbcTemplate, State state, boolean isMaster, long ttlMinutes, long snapshotMinutes) {
 		this.jdbcTemplate = jdbcTemplate;
@@ -61,7 +61,11 @@ public class MasterLoadUnloadManager implements LoadUnloadManager {
 		missingIndices.addAll(jdbcTemplate.queryForList("SELECT _indexname FROM elefana_field_stats_index", String.class));
 		scheduledExecutorService.scheduleAtFixedRate(this::unloadUnusedIndices, 0L, Math.max(ttlMinutes / 2, 1), TimeUnit.MINUTES);
 		if(isMaster) {
-			scheduledExecutorService.scheduleAtFixedRate(this::snapshot, 0L, Math.max(snapshotMinutes, 1), TimeUnit.MINUTES);
+			if(snapshotMinutes > 0) {
+				scheduledExecutorService.scheduleAtFixedRate(this::snapshot, 0L, snapshotMinutes, TimeUnit.MINUTES);
+			} else {
+				scheduledExecutorService.scheduleAtFixedRate(this::snapshot, 0L, 20, TimeUnit.SECONDS);
+			}
 		}
 	}
 
