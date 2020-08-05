@@ -70,42 +70,50 @@ public class MasterLoadUnloadManager implements LoadUnloadManager {
 	}
 
 	private void snapshot() {
-		List<String> indices = state.compileIndexPattern("*");
-		indices.forEach(index -> {
-			snapshotIndex(index);
-		});
-		LOGGER.info("Snapshotted stats for " + indices.size() + " indices");
+		try {
+			List<String> indices = state.compileIndexPattern("*");
+			indices.forEach(index -> {
+				snapshotIndex(index);
+			});
+			LOGGER.info("Snapshotted stats for " + indices.size() + " indices");
+		} catch(Exception e) {
+			LOGGER.error(e.getMessage(), e);
+		}
 	}
 
 	private void unloadUnusedIndices() {
-		long now = System.currentTimeMillis();
-		lastIndexUse.forEach((index, timestamp) -> {
-			if(now - timestamp > indexTtl) {
-				loadUnloadLock.readLock().lock();
-				try {
-					if (!missingIndices.contains(index)) {
+		try {
+			long now = System.currentTimeMillis();
+			lastIndexUse.forEach((index, timestamp) -> {
+				if(now - timestamp > indexTtl) {
+					loadUnloadLock.readLock().lock();
+					try {
+						if (!missingIndices.contains(index)) {
+							loadUnloadLock.readLock().unlock();
+							LOGGER.info("Index " + index + " wasn't used recently. Therefore it is being unloaded.");
+							unloadIndex(index);
+							loadUnloadLock.readLock().lock();
+						}
+					} finally {
 						loadUnloadLock.readLock().unlock();
-						LOGGER.info("Index " + index + " wasn't used recently. Therefore it is being unloaded.");
-						unloadIndex(index);
-						loadUnloadLock.readLock().lock();
 					}
-				} finally {
-					loadUnloadLock.readLock().unlock();
-				}
-			} else {
-				loadUnloadLock.readLock().lock();
-				try {
-					if (missingIndices.contains(index)) {
+				} else {
+					loadUnloadLock.readLock().lock();
+					try {
+						if (missingIndices.contains(index)) {
+							loadUnloadLock.readLock().unlock();
+							LOGGER.info("Index " + index + " isn't outdated but not loaded. Therefore it is being loaded from the database.");
+							loadIndex(index);
+							loadUnloadLock.readLock().lock();
+						}
+					} finally {
 						loadUnloadLock.readLock().unlock();
-						LOGGER.info("Index " + index + " isn't outdated but not loaded. Therefore it is being loaded from the database.");
-						loadIndex(index);
-						loadUnloadLock.readLock().lock();
 					}
-				} finally {
-					loadUnloadLock.readLock().unlock();
 				}
-			}
-		});
+			});
+		} catch(Exception e) {
+			LOGGER.error(e.getMessage(), e);
+		}
 	}
 
 	public void shutdown() {
