@@ -61,7 +61,7 @@ public class StateImplTest {
                 return null;
             }
         }).when(loadUnloadManager).deleteIndex(anyString());
-        testDocument = "{ \"bool\": false, \"string\": \"Hello there\", \"long\": 23, \"double\": 2.4, \"obj\": { \"bic\": \"EASYATW1\", \"iban\": \"AT12 4321\" }, \"list\": [3,4,5,6,6,4,4,2] } ";
+        testDocument = "{ \"bool\": false, \"string\": \"Hello there\", \"long\": 23, \"double\": 2.4, \"obj\": { \"bic\": \"EASYATW1\", \"iban\": \"AT12 4321\" }, \"list\": [3,4,5,6,6,4,4,2], \"listObjects\": [{\"field\": 77},{\"field\": 78}] } ";
         testDocumentNoBool = "{ \"string\": \"Hello there\", \"long\": 23, \"double\": 2.4, \"obj\": { \"bic\": \"EASYATW1\", \"iban\": \"AT12 4321\" }, \"list\": [3,4,5,6,6,4,4,2] } ";
         testDocumentNull = "{ \"bool\": false, \"string\": \"Hello there\", \"long\": null, \"double\": 2.4, \"obj\": { \"bic\": \"EASYATW1\", \"iban\": \"AT12 4321\" }, \"list\": [3,4,5,6,6,4,4,2] } ";
     }
@@ -131,6 +131,17 @@ public class StateImplTest {
         Assert.assertEquals(8 * 20, list.getSumDocumentFrequency());
         Assert.assertEquals(2, list.getMinimumValue().longValue());
         Assert.assertEquals(6, list.getMaximumValue().longValue());
+    }
+
+    @Test
+    public void testListNestedObjectFieldStatsReturn() throws ElefanaWrongFieldStatsTypeException {
+        submitDocumentNTimes(20, testDocument, TEST_INDEX);
+
+        FieldStats<Long> list = testState.getFieldStatsTypeChecked("listObjects.field", Long.class, TEST_INDEX);
+        Assert.assertEquals(20, list.getDocumentCount());
+        Assert.assertEquals(2 * 20, list.getSumDocumentFrequency());
+        Assert.assertEquals(77, list.getMinimumValue().longValue());
+        Assert.assertEquals(78, list.getMaximumValue().longValue());
     }
 
     @Test
@@ -206,12 +217,13 @@ public class StateImplTest {
         }
     }
     private void submitDocumentConcurrently(int numberOfThreads, int numberOfDocumentSubmissionsPerThread, String document, String index) {
-        final CyclicBarrier barrier = new CyclicBarrier(numberOfThreads + 1);
+        final CountDownLatch countDownLatch = new CountDownLatch(numberOfThreads);
         List<Thread> threadList = new ArrayList<>();
         for( int i = 0; i < numberOfThreads; i++) {
             threadList.add(new Thread(() -> {
                 try {
-                    barrier.await();
+                    countDownLatch.countDown();
+                    countDownLatch.await();
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -219,11 +231,6 @@ public class StateImplTest {
             }));
         }
         threadList.forEach(Thread::start);
-        try {
-            barrier.await();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
         threadList.forEach(thread -> {
             try {
                 thread.join();
@@ -392,6 +399,7 @@ public class StateImplTest {
             threadList.add(new Thread(() -> {
                 try {
                     countDownLatch.countDown();
+                    countDownLatch.await();
                     IndexComponent c = testState.unload(index);
                     if(c == null) {
                         return;

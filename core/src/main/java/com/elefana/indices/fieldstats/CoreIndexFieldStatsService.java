@@ -69,8 +69,6 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
     @Autowired
     protected IndexTemplateService indexTemplateService;
     @Autowired
-    protected TaskScheduler taskScheduler;
-    @Autowired
     protected JdbcTemplate jdbcTemplate;
     @Autowired
     protected IndexUtils indexUtils;

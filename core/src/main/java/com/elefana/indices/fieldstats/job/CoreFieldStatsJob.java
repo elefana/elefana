@@ -24,6 +24,7 @@ import com.elefana.indices.fieldstats.state.State;
 import com.elefana.indices.fieldstats.state.field.ElefanaWrongFieldStatsTypeException;
 import com.elefana.indices.fieldstats.state.field.FieldStats;
 import com.elefana.util.CumulativeAverage;
+import com.elefana.util.NoAllocJsonReader;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.TreeNode;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -40,7 +41,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 @NotThreadSafe
-public class CoreFieldStatsJob extends FieldStatsJob {
+public class CoreFieldStatsJob extends FieldStatsJob implements NoAllocJsonReader.JsonReaderListener {
     private static final Logger LOGGER = LoggerFactory.getLogger(CoreFieldStatsJob.class);
     private static final Lock LOCK = new ReentrantLock();
     private static final List<CoreFieldStatsJob> POOL = new ArrayList<CoreFieldStatsJob>(32);
@@ -50,6 +51,22 @@ public class CoreFieldStatsJob extends FieldStatsJob {
 
     private final List<DocumentSourceProvider> documents = new ArrayList<DocumentSourceProvider>(AVG_BATCH_SIZE.avg());
     private final Set<String> alreadyRegistered = new HashSet<>();
+
+    private final NoAllocJsonReader jsonReader = new NoAllocJsonReader();
+    private final StringBuilder keyBuilder = new StringBuilder();
+
+    private char [] keyBuffer = new char[128];
+    private int keyBufferLength = 0;
+
+    private int [] arrayContextStack = new int[32];
+    private int arrayContextStackIndex = 0;
+
+    private int [] underscorePositionStack = new int[32];
+    private int underscoreStackIndex = 0;
+
+    private int totalValuesAppended = 0;
+
+    private boolean valueWritten = false;
 
     private CoreFieldStatsJob(State state, LoadUnloadManager loadUnloadManager, String indexName) {
         super(state, loadUnloadManager, indexName);
@@ -74,6 +91,11 @@ public class CoreFieldStatsJob extends FieldStatsJob {
 
         documents.clear();
         alreadyRegistered.clear();
+
+        valueWritten = false;
+        keyBufferLength = 0;
+        arrayContextStackIndex = 0;
+        underscoreStackIndex = 0;
 
         LOCK.lock();
         POOL.add(this);
@@ -100,7 +122,10 @@ public class CoreFieldStatsJob extends FieldStatsJob {
             try {
                 alreadyRegistered.clear();
                 final DocumentSourceProvider document = documents.get(docIndex);
-                processAny(JsonUtils.extractJsonNode(document.getDocument(), document.getDocumentLength()), "");
+                PooledStringBuilder str = PooledStringBuilder.allocate();
+                str.append(document.getDocument(), 0, document.getDocumentLength());
+                jsonReader.read(str, this);
+                str.release();
                 document.dispose();
 
                 loadUnloadManager.someoneWroteToIndex(indexName);
@@ -117,65 +142,24 @@ public class CoreFieldStatsJob extends FieldStatsJob {
         release();
     }
 
-    private void processAny(TreeNode any, String prefix) {
-        if (any.isObject()) {
-            processObject((ObjectNode)any, prefix);
-        } else if (any.isArray()) {
-            processList((ArrayNode)any, prefix);
-        } else if (any.isValueNode()) {
-            ValueNode valueNode = (ValueNode)any;
-            if (valueNode.isNumber()) {
-                processNumber(valueNode, prefix);
-            } else if (valueNode.isTextual()) {
-                processString(valueNode, prefix);
-            } else if (valueNode.isBoolean()) {
-                processBoolean(valueNode, prefix);
-            }
+    private void processNumber(Number anyNumber, String prefix) {
+        if (anyNumber instanceof Double || anyNumber instanceof Float ) {
+            updateFieldStats(prefix, Double.class, anyNumber.doubleValue());
         } else {
-            LOGGER.info("No type matched for document: " + any.toString());
-        }
-    }
-
-    private void processObject(ObjectNode anyObject, String prefix) {
-        Iterator<Map.Entry<String, JsonNode>> fields = anyObject.fields();
-        while (fields.hasNext()) {
-            Map.Entry<String, JsonNode> fieldName = fields.next();
-            final PooledStringBuilder stringBuilder = PooledStringBuilder.allocate();
-            if(prefix.length() > 0) {
-                stringBuilder.append(prefix);
-                stringBuilder.append('.');
-                stringBuilder.append(fieldName.getKey());
-                processAny(fieldName.getValue(), stringBuilder.toStringAndRelease());
-            } else {
-                processAny(fieldName.getValue(), fieldName.getKey());
-            }
-        }
-    }
-
-    private void processList(ArrayNode anyList, String prefix) {
-        Iterator<JsonNode> elements = anyList.elements();
-        while(elements.hasNext()) {
-            processAny(elements.next(), prefix);
-        }
-    }
-
-    private void processNumber(ValueNode anyNumber, String prefix) {
-        if (anyNumber.isIntegralNumber()) {
-            long longNumber = anyNumber.asLong();
+            long longNumber = anyNumber.longValue();
             updateFieldStats(prefix, Long.class, longNumber);
-        } else if (anyNumber.isFloatingPointNumber()) {
-            updateFieldStats(prefix, Double.class, anyNumber.asDouble());
         }
     }
 
-    private void processBoolean(ValueNode anyBool, String prefix) {
-        Boolean bool = anyBool.asBoolean();
+    private void processBoolean(boolean bool, String prefix) {
         updateFieldStats(prefix, Boolean.class, bool);
     }
 
-    private void processString(ValueNode anyString, String prefix) {
-        String string = anyString.textValue();
-        updateFieldStats(prefix, String.class, string);
+    private void processString(String value, String prefix) {
+        if(value == null) {
+            return;
+        }
+        updateFieldStats(prefix, String.class, value);
     }
 
     private <T> void updateFieldStats(String fieldName, Class<T> tClass, T value) {
@@ -209,6 +193,284 @@ public class CoreFieldStatsJob extends FieldStatsJob {
 
     public int getTotalDocuments() {
         return documents.size();
+    }
+
+    @Override
+    public boolean onReadBegin() {
+        return true;
+    }
+
+    @Override
+    public boolean onReadEnd() {
+        return true;
+    }
+
+    @Override
+    public boolean onObjectBegin() {
+        pushDot(false);
+        return true;
+    }
+
+    @Override
+    public boolean onObjectEnd() {
+        popDot();
+        resetKey();
+        return true;
+    }
+
+    @Override
+    public boolean onArrayBegin() {
+        pushDot(true);
+        return true;
+    }
+
+    @Override
+    public boolean onArrayEnd() {
+        popDot();
+
+        if(!valueWritten) {
+            valueWritten = true;
+        }
+        resetKey();
+        return true;
+    }
+
+    @Override
+    public boolean onKey(char[] value, int from, int length) {
+        appendToKeyBuffer(value, from, length);
+        valueWritten = false;
+        return true;
+    }
+
+    @Override
+    public boolean onValue(char[] value, int from, int length) {
+        keyBuilder.append(keyBuffer, 0, keyBufferLength);
+
+        int startOffset = 0;
+        int trimLength = length;
+        for(int i = 0; i < length; i++) {
+            if(value[from + i] == ' ') {
+                continue;
+            }
+            startOffset = i;
+            break;
+        }
+        for(int i = length; i > 0; i--) {
+            if(value[from + i - 1] == ' ') {
+                continue;
+            }
+            trimLength = i;
+            break;
+        }
+        trimLength -= startOffset;
+
+        statField(keyBuilder.toString(), value, from + startOffset, trimLength);
+        keyBuilder.setLength(0);
+
+        totalValuesAppended++;
+        resetKey();
+        valueWritten = true;
+        return true;
+    }
+
+    private void statField(String key, char [] value, int from, int length) {
+        if(value[from] == '\'' || value[from] == '\"') {
+            processString(new String(value, from + 1, length - 2), key);
+        } else if(isBoolValue(value, from, length)) {
+            processBoolean(value[from] == 't' || value[from] == 'T', key);
+        } else if(isNullValue(value, from, length)) {
+            processString(null, key);
+        } else if(isFloatingPointValue(value, from, length)) {
+            processNumber(Float.valueOf(new String(value, from, length)), key);
+        } else if(isDoubleValue(value, from, length)) {
+            processNumber(Double.valueOf(new String(value, from, length)), key);
+        } else {
+            processNumber(Long.valueOf(new String(value, from, length)), key);
+        }
+    }
+
+    private boolean isFloatingPointValue(char [] value, int from, int length) {
+        if(value[from + length - 1] != 'f') {
+            return false;
+        }
+        return true;
+    }
+
+    private boolean isDoubleValue(char [] value, int from, int length) {
+        for(int i = from; i < from + length; i++) {
+            if(value[i] == '.') {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isNullValue(char [] value, int from, int length) {
+        if(length != 4) {
+            return false;
+        }
+        switch(value[from]) {
+        case 'n':
+        case 'N':
+            if(value[from + 1] != 'u' && value[from + 1] != 'U') {
+                return false;
+            }
+            if(value[from + 2] != 'l' && value[from + 2] != 'L') {
+                return false;
+            }
+            if(value[from + 3] != 'l' && value[from + 3] != 'L') {
+                return false;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private boolean isBoolValue(char [] value, int from, int length) {
+        if(length != 4 && length != 5) {
+            return false;
+        }
+        switch(value[from]) {
+        case 'f':
+        case 'F':
+            if(value[from + 1] != 'a' && value[from + 1] != 'A') {
+                return false;
+            }
+            if(value[from + 2] != 'l' && value[from + 2] != 'L') {
+                return false;
+            }
+            if(value[from + 3] != 's' && value[from + 3] != 'S') {
+                return false;
+            }
+            if(value[from + 4] != 'e' && value[from + 4] != 'E') {
+                return false;
+            }
+            return true;
+        case 't':
+        case 'T':
+            if(value[from + 1] != 'r' && value[from + 1] != 'R') {
+                return false;
+            }
+            if(value[from + 2] != 'u' && value[from + 2] != 'U') {
+                return false;
+            }
+            if(value[from + 3] != 'e' && value[from + 3] != 'E') {
+                return false;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private void pushDot(boolean arrayContext) {
+        if(underscoreStackIndex > 0 && !arrayContext) {
+            appendToKeyBuffer('.');
+        }
+        ensureUnderscoreStackCapacity(underscoreStackIndex);
+        ensureArrayContextStackCapacity(arrayContextStackIndex);
+
+        underscorePositionStack[underscoreStackIndex] = keyBufferLength;
+        underscoreStackIndex++;
+
+        arrayContextStack[arrayContextStackIndex] = arrayContext ? 0 : -1;
+        arrayContextStackIndex++;
+    }
+
+    private void popDot() {
+        if(underscoreStackIndex > 0) {
+            underscoreStackIndex--;
+            keyBufferLength = underscorePositionStack[underscoreStackIndex];
+
+            arrayContextStackIndex--;
+        } else {
+            keyBufferLength = 0;
+        }
+    }
+
+    private void resetKey() {
+        if(underscoreStackIndex > 0) {
+            keyBufferLength = underscorePositionStack[underscoreStackIndex - 1];
+        } else {
+            keyBufferLength = 0;
+        }
+    }
+
+    private boolean isArrayContext() {
+        if(arrayContextStackIndex > 0) {
+            return arrayContextStack[arrayContextStackIndex - 1] > -1;
+        }
+        return false;
+    }
+
+    private int getArrayIndex() {
+        if(arrayContextStackIndex > 0) {
+            if(arrayContextStack[arrayContextStackIndex - 1] > -1) {
+                return arrayContextStack[arrayContextStackIndex - 1];
+            }
+        }
+        return 0;
+    }
+
+    private void incrementArrayIndex() {
+        if(arrayContextStackIndex > 0) {
+            if(arrayContextStack[arrayContextStackIndex - 1] > -1) {
+                arrayContextStack[arrayContextStackIndex - 1]++;
+            }
+        }
+    }
+
+    private void appendToKeyBuffer(char c) {
+        ensureKeyBufferCapacity(keyBufferLength + 1);
+        keyBuffer[keyBufferLength] = c;
+        keyBufferLength++;
+    }
+
+    private void appendToKeyBuffer(int value) {
+        if(value < 10 && value >= 0) {
+            ensureKeyBufferCapacity(keyBufferLength + 1);
+            keyBuffer[keyBufferLength] = (char)(value + '0');
+            keyBufferLength++;
+        } else {
+            final String valueAsString = String.valueOf(value);
+            ensureKeyBufferCapacity(keyBufferLength + valueAsString.length());
+            for(int i = 0; i < valueAsString.length(); i++) {
+                keyBuffer[keyBufferLength] = valueAsString.charAt(i);
+                keyBufferLength++;
+            }
+        }
+    }
+
+    private void appendToKeyBuffer(char [] chars, int from, int length) {
+        ensureKeyBufferCapacity(keyBufferLength + length);
+        System.arraycopy(chars, from, keyBuffer, keyBufferLength, length);
+        keyBufferLength += length;
+    }
+
+    private void ensureKeyBufferCapacity(int capacity) {
+        if(keyBuffer.length > capacity) {
+            return;
+        }
+        final char [] newBuffer = new char[capacity * 2];
+        System.arraycopy(keyBuffer, 0, newBuffer, 0, keyBuffer.length);
+        keyBuffer = newBuffer;
+    }
+
+    private void ensureUnderscoreStackCapacity(int capacity) {
+        if(underscorePositionStack.length > capacity) {
+            return;
+        }
+        final int [] newBuffer = new int[capacity * 2];
+        System.arraycopy(underscorePositionStack, 0, newBuffer, 0, underscorePositionStack.length);
+        underscorePositionStack = newBuffer;
+    }
+
+    private void ensureArrayContextStackCapacity(int capacity) {
+        if(arrayContextStack.length > capacity) {
+            return;
+        }
+        final int [] newBuffer = new int[capacity * 2];
+        System.arraycopy(arrayContextStack, 0, newBuffer, 0, arrayContextStack.length);
+        arrayContextStack = newBuffer;
     }
 }
 

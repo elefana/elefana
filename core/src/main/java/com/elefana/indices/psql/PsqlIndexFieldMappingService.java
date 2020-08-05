@@ -152,13 +152,18 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 
 	public Set<String> getFieldNames(final String index, final String type) {
 		try {
-			return fieldNamesCache.get(index + "|" + type, new Callable<Set<String>>() {
+			final String key = index + "|" + type;
+			final Set<String> result = fieldNamesCache.get(key, new Callable<Set<String>>() {
 				@Override
 				public Set<String> call() throws Exception {
 					return getFieldNamesFromDatabase(index, type);
 				}
 			});
-		} catch (ExecutionException e) {
+			if(result.isEmpty()) {
+				fieldNamesCache.invalidate(key);
+			}
+			return result;
+ 		} catch (ExecutionException e) {
 			LOGGER.error(e.getMessage(), e);
 		}
 		return getFieldNamesFromDatabase(index, type);
@@ -180,12 +185,16 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 
 	public List<String> getTypesForIndex(final String index) {
 		try {
-			return typesByIndexCache.get(index, new Callable<List<String>>() {
+			final List<String> result = typesByIndexCache.get(index, new Callable<List<String>>() {
 				@Override
 				public List<String> call() throws Exception {
 					return getTypesForIndexFromDatabase(index);
 				}
 			});
+			if(result.size() == 0) {
+				typesByIndexCache.invalidate(index);
+			}
+			return result;
 		} catch (ExecutionException e) {
 			LOGGER.error(e.getMessage(), e);
 		}
@@ -728,7 +737,8 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 					"INSERT INTO elefana_index_field_names (_tracking_id, _index, _type, _field_names) VALUES (?, ?, ?, ?) ON CONFLICT (_tracking_id) DO UPDATE SET _field_names = EXCLUDED._field_names",
 					index + "-" + type, index, type, jsonObject);
 
-			fieldNamesCache.put(index + "|" + type, fieldNames);
+			final String key = index + "|" + type;
+			fieldNamesCache.invalidate(key);
 		} catch (Exception e) {
 			e.printStackTrace();
 			throw new ShardFailedException(e);
