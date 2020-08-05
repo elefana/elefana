@@ -122,7 +122,7 @@ public class PooledStringBuilder implements Serializable, Appendable, CharSequen
 	}
 
 	public PooledStringBuilder append(char[] str, int offset, int length) {
-		backingBuilder.append(CharBuffer.wrap(str, offset, length));
+		backingBuilder.append(str, offset, length);
 		return this;
 	}
 
