@@ -299,28 +299,11 @@ public class CoreIndexUtils implements IndexUtils {
 
 	@Override
 	public long getTimestamp(String index, char[] document, int documentLength) throws ElefanaException {
-		final GetIndexTemplateForIndexRequest indexTemplateForIndexRequest = indexTemplateService
-				.prepareGetIndexTemplateForIndex(index);
-		final GetIndexTemplateForIndexResponse indexTemplateForIndexResponse = indexTemplateForIndexRequest.get();
-		final IndexTemplate indexTemplate = indexTemplateForIndexResponse.getIndexTemplate();
-		if (indexTemplate == null) {
-			return System.currentTimeMillis();
-		}
-		String timestampPath = indexTemplate.getStorage().getTimestampPath();
-		if (timestampPath == null) {
-			return System.currentTimeMillis();
-		}
-
-		String[] path = jsonPathCache.get(timestampPath);
-		if (path == null) {
-			path = timestampPath.split("\\.");
-			jsonPathCache.put(timestampPath, path);
-		}
-		final JsonNode json = JsonUtils.extractJsonNode(document, documentLength, path);
-		if (json == null || !json.isNumber()) {
-			return System.currentTimeMillis();
-		}
-		return json.asLong();
+		final PooledStringBuilder str = PooledStringBuilder.allocate();
+		str.append(document, 0, documentLength);
+		final long result = getTimestamp(index, str);
+		str.release();
+		return result;
 	}
 
 	@Override

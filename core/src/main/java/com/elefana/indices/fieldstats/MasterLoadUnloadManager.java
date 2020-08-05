@@ -74,6 +74,7 @@ public class MasterLoadUnloadManager implements LoadUnloadManager {
 		indices.forEach(index -> {
 			snapshotIndex(index);
 		});
+		LOGGER.info("Snapshotted stats for " + indices.size() + " indices");
 	}
 
 	private void unloadUnusedIndices() {
