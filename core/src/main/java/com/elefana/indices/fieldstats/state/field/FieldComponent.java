@@ -123,11 +123,17 @@ public class FieldComponent {
             return new StaticFieldStats<Long>() {
                 @Override
                 public Long getMinimumValue() {
+                    if(minValue == null) {
+                        return null;
+                    }
                     return Long.parseLong(minValue);
                 }
 
                 @Override
                 public Long getMaximumValue() {
+                    if(maxValue == null) {
+                        return null;
+                    }
                     return Long.parseLong(maxValue);
                 }
 
@@ -141,11 +147,17 @@ public class FieldComponent {
             return new StaticFieldStats<Double>() {
                 @Override
                 public Double getMinimumValue() {
+                    if(minValue == null) {
+                        return null;
+                    }
                     return Double.parseDouble(minValue);
                 }
 
                 @Override
                 public Double getMaximumValue() {
+                    if(maxValue == null) {
+                        return null;
+                    }
                     return Double.parseDouble(maxValue);
                 }
 
@@ -159,11 +171,17 @@ public class FieldComponent {
             return new StaticFieldStats<Date>() {
                 @Override
                 public Date getMinimumValue() {
+                    if(minValue == null) {
+                        return null;
+                    }
                     return Date.from(Instant.parse(minValue));
                 }
 
                 @Override
                 public Date getMaximumValue() {
+                    if(maxValue == null) {
+                        return null;
+                    }
                     return Date.from(Instant.parse(maxValue));
                 }
 
@@ -195,11 +213,17 @@ public class FieldComponent {
             return new StaticFieldStats<Boolean>() {
                 @Override
                 public Boolean getMinimumValue() {
+                    if(minValue == null) {
+                        return null;
+                    }
                     return Boolean.parseBoolean(minValue);
                 }
 
                 @Override
                 public Boolean getMaximumValue() {
+                    if(maxValue == null) {
+                        return null;
+                    }
                     return Boolean.parseBoolean(maxValue);
                 }
 
