@@ -226,6 +226,9 @@ public class FieldComponent {
     }
 
     private static <T> String getStringRepresentation(T value, Class type) {
+        if(value == null) {
+            return null;
+        }
         if (type.equals(Long.class)) { return Long.toString((Long)value); }
         if (type.equals(Double.class)) { return Double.toString((Double)value); }
         if (type.equals(Date.class)) { return ((Date)value).toInstant().toString(); }

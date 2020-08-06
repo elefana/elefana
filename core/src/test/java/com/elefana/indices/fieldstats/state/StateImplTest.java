@@ -33,7 +33,6 @@ import org.mockito.stubbing.Answer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.CyclicBarrier;
 
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
@@ -120,6 +119,28 @@ public class StateImplTest {
     private void assertIndexMaxDocEquals(long expected, String index) {
         long indexMaxDocs = testState.getIndex(index).getMaxDocuments();
         Assert.assertEquals(expected, indexMaxDocs);
+    }
+
+    @Test
+    public void testFieldComponentIndexWithNoValue() throws ElefanaWrongFieldStatsTypeException {
+        final String index2 = TEST_INDEX + "2";
+        submitDocumentNTimes(20, testDocument, TEST_INDEX);
+
+        CoreFieldStatsJob job = CoreFieldStatsJob.allocate(testState, loadUnloadManager, index2);
+        job.addDocument("{\"string\": \"Hello there\", \"long\": null, \"double\": 2.4, \"obj\": { \"bic\": \"EASYATW1\", \"iban\": \"AT12 4321\" }, \"list\": [3,4,5,6,6,4,4,2] } ");
+        job.run();
+
+        testFieldComponent(TEST_INDEX, "string", String.class);
+        testFieldComponent(index2, "string", String.class);
+        testFieldComponent(TEST_INDEX, "bool", Boolean.class);
+        testFieldComponent(index2, "bool", Boolean.class);
+        testFieldComponent(TEST_INDEX, "long", Long.class);
+        testFieldComponent(index2, "long", Long.class);
+    }
+
+    private <T> void testFieldComponent(String index, String fieldName, Class<T> type) throws ElefanaWrongFieldStatsTypeException {
+        FieldStats<T> fieldStats = testState.getFieldStatsTypeChecked(fieldName, type, index);
+        FieldComponent fieldComponent = FieldComponent.getFieldComponent(fieldStats, type);
     }
 
     @Test
