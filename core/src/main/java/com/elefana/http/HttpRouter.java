@@ -27,10 +27,13 @@ import com.elefana.api.exception.NoSuchDocumentException;
 import com.elefana.api.util.PooledStringBuilder;
 import com.elefana.node.NodeSettingsService;
 import io.netty.buffer.Unpooled;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.codec.http.*;
+import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.GenericFutureListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -113,7 +116,7 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 		ctx.writeAndFlush(response);
 	}
 
-	public HttpResponse route(FullHttpRequest httpRequest) {
+	public HttpResponse route(FullHttpRequest httpRequest, ChannelFuture closeFuture) {
 		final String uri = httpRequest.uri();
 		final PooledStringBuilder requestContent = getRequestBody(httpRequest);
 		try {
@@ -123,7 +126,19 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 			if(apiRequest == null) {
 				throw new NoSuchApiException(httpRequest.getMethod(), uri);
 			}
+			final GenericFutureListener closeListener = new GenericFutureListener<Future<? super Void>>() {
+				@Override
+				public void operationComplete(Future<? super Void> future) throws Exception {
+					try {
+						apiRequest.cancel();
+					} catch (Exception e) {
+						LOGGER.error(e.getMessage(), e);
+					}
+				}
+			};
+			closeFuture.addListener(closeListener);
 			final ApiResponse apiResponse = apiRequest.get();
+			closeFuture.removeListener(closeListener);
 			if(apiResponse == null) {
 				throw new NoSuchApiException(httpRequest.getMethod(), uri);
 			}

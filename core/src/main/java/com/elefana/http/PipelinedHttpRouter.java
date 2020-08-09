@@ -44,7 +44,7 @@ public class PipelinedHttpRouter extends HttpRouter {
 			return;
 		}
 		try {
-			HttpResponse httpResponse = route((FullHttpRequest) request.getRequest());
+			HttpResponse httpResponse = route((FullHttpRequest) request.getRequest(), ctx.channel().closeFuture());
 			final ChannelPromise channelPromise = ctx.channel().newPromise();
 			ctx.write(request.createHttpResponse(httpResponse, channelPromise), channelPromise);
 		} finally {
