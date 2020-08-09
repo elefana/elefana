@@ -4,13 +4,20 @@
 package com.elefana.http;
 
 import static io.restassured.RestAssured.given;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.GZIPOutputStream;
 
+import com.codahale.metrics.Counter;
+import com.codahale.metrics.Histogram;
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -44,13 +51,28 @@ public class HttpServerTest extends ChannelInboundHandlerAdapter {
 	private final EventLoopGroup clientWorkerGroup = new NioEventLoopGroup();
 	
 	private NodeSettingsService nodeSettingsService;
+	private MetricRegistry metricRegistry;
+
+	private Counter counter;
+	private Meter meter;
+	private Histogram histogram;
 	
 	@Before
 	public void setUp() {
 		TOTAL_RESPONSES.set(0);
 		
 		nodeSettingsService = mock(NodeSettingsService.class);
+		metricRegistry = mock(MetricRegistry.class);
+		counter = mock(Counter.class);
+		meter = mock(Meter.class);
+		histogram = mock(Histogram.class);
+
+		when(metricRegistry.counter(anyString())).thenReturn(counter);
+		when(metricRegistry.meter(anyString())).thenReturn(meter);
+		when(metricRegistry.histogram(anyString())).thenReturn(histogram);
+
 		server.setNodeSettingsService(nodeSettingsService);
+		server.setMetricRegistry(metricRegistry);
 	}
 	
 	@After
@@ -202,7 +224,39 @@ public class HttpServerTest extends ChannelInboundHandlerAdapter {
 		.then()
 			.statusCode(413);
 	}
-	
+
+	@Test
+	public void testHttpTimeout() throws InterruptedException {
+		final int port = 9202;
+		final int payloadSize = 10485760;
+		final int httpTimeout = 2;
+
+		when(nodeSettingsService.isHttpGzipEnabled()).thenReturn(false);
+		when(nodeSettingsService.getMaxHttpPipelineEvents()).thenReturn(0);
+		when(nodeSettingsService.getMaxHttpPayloadSize()).thenReturn(payloadSize);
+		when(nodeSettingsService.getHttpTimeout()).thenReturn(httpTimeout);
+		server.start("localhost", port);
+
+		RestAssured.baseURI = "http://localhost:" + port;
+
+		Bootstrap client = createHttpClient();
+		ChannelFuture channelFuture = client.connect("localhost", port).sync();
+		final AtomicBoolean channelClosed = new AtomicBoolean(false);
+		channelFuture.channel().closeFuture().addListener(future -> {
+			channelClosed.set(true);
+		});
+
+		final DefaultFullHttpRequest request = createHttpRequest(generateRequestBody());
+		request.headers().add("Connection", "keep-alive");
+		channelFuture.channel().writeAndFlush(request);
+		Assert.assertEquals(false, channelClosed.get());
+		try {
+			Thread.sleep(1000 * httpTimeout);
+		} catch (Exception e) {}
+		Assert.assertEquals(true, channelClosed.get());
+		channelFuture.channel().closeFuture().sync();
+	}
+
 	@Override
 	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
 		TOTAL_RESPONSES.incrementAndGet();

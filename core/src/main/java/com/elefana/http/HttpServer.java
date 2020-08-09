@@ -31,6 +31,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.http.*;
+import io.netty.handler.timeout.IdleStateHandler;
 import org.mini2Dx.natives.OsInformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -136,6 +137,9 @@ public class HttpServer {
 				}
 
 				ChannelPipeline channelPipeline = ch.pipeline();
+				channelPipeline = ch.pipeline().addLast(new IdleStateHandler(
+						0, 0, nodeSettingsService.getHttpTimeout()));
+				channelPipeline = ch.pipeline().addLast(new HttpTimeoutHandler());
 				channelPipeline = ch.pipeline().addLast(new HttpServerCodec());
 				channelPipeline = channelPipeline.addLast(new HttpServerExpectContinueHandler());
 
@@ -154,10 +158,10 @@ public class HttpServer {
 					channelPipeline = channelPipeline.addLast("httpPipeliningHandler",
 							new HttpPipeliningHandler(maxHttpPipelineEvents));
 					channelPipeline = channelPipeline.addLast("httpRouter",
-							new PipelinedHttpRouter(apiRouter, httpConnections, httpRequests, httpRequestSize));
+							new PipelinedHttpRouter(apiRouter, nodeSettingsService, httpConnections, httpRequests, httpRequestSize));
 				} else {
 					channelPipeline = channelPipeline.addLast("httpRouter",
-							new DefaultHttpRouter(apiRouter, httpConnections, httpRequests, httpRequestSize));
+							new DefaultHttpRouter(apiRouter, nodeSettingsService, httpConnections, httpRequests, httpRequestSize));
 				}
 			}
 		});
@@ -190,5 +194,12 @@ public class HttpServer {
 
 	public void setNodeSettingsService(NodeSettingsService nodeSettingsService) {
 		this.nodeSettingsService = nodeSettingsService;
+	}
+
+	public void setMetricRegistry(MetricRegistry metricRegistry) {
+		this.metricRegistry = metricRegistry;
+		httpConnections = metricRegistry.counter(MetricRegistry.name("http", "connections"));
+		httpRequests = metricRegistry.meter(MetricRegistry.name("http", "requests"));
+		httpRequestSize = metricRegistry.histogram(MetricRegistry.name("http", "requestSize"));
 	}
 }

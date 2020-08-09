@@ -25,6 +25,7 @@ import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.NoSuchApiException;
 import com.elefana.api.exception.NoSuchDocumentException;
 import com.elefana.api.util.PooledStringBuilder;
+import com.elefana.node.NodeSettingsService;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -34,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.charset.Charset;
+import java.util.concurrent.TimeUnit;
 
 /**
  *
@@ -48,16 +50,23 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 	private static final Charset CHARSET = Charset.forName("UTF-8");
 
 	private final ApiRouter apiRouter;
+	private final NodeSettingsService nodeSettingsService;
 	private final Counter httpConnections;
 	private final Meter httpRequests;
 	private final Histogram httpRequestSize;
 
-	public HttpRouter(ApiRouter apiRouter, Counter httpConnections, Meter httpRequests, Histogram httpRequestSize) {
+	private final long httpTimeoutMillis;
+
+	public HttpRouter(ApiRouter apiRouter, NodeSettingsService nodeSettingsService,
+	                  Counter httpConnections, Meter httpRequests, Histogram httpRequestSize) {
 		super();
 		this.apiRouter = apiRouter;
+		this.nodeSettingsService = nodeSettingsService;
 		this.httpConnections = httpConnections;
 		this.httpRequests = httpRequests;
 		this.httpRequestSize = httpRequestSize;
+
+		this.httpTimeoutMillis = TimeUnit.SECONDS.toMillis(nodeSettingsService.getHttpTimeout());
 	}
 
 	@Override
@@ -75,8 +84,12 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 	}
 	
 	public void write(boolean keepAlive, ChannelHandlerContext ctx, HttpResponse response) {
+		final long startTime = System.currentTimeMillis();
 		while(!ctx.channel().isWritable()) {
-			//TODO: What to do here?
+			if(System.currentTimeMillis() - startTime >= httpTimeoutMillis) {
+				ctx.close();
+				return;
+			}
 		}
 		if(keepAlive) {
 			if(isErrorResponse(response)) {
@@ -90,8 +103,12 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 	}
 	
 	public void write(ChannelHandlerContext ctx, HttpPipelinedResponse response) {
+		final long startTime = System.currentTimeMillis();
 		while(!ctx.channel().isWritable()) {
-			//TODO: What to do here?
+			if(System.currentTimeMillis() - startTime >= httpTimeoutMillis) {
+				ctx.close();
+				return;
+			}
 		}
 		ctx.writeAndFlush(response);
 	}

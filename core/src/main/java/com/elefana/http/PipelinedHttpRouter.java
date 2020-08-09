@@ -19,6 +19,7 @@ import com.codahale.metrics.Counter;
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
 import com.elefana.api.ApiRouter;
+import com.elefana.node.NodeSettingsService;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.http.FullHttpRequest;
@@ -30,8 +31,9 @@ import io.netty.util.ReferenceCountUtil;
  */
 public class PipelinedHttpRouter extends HttpRouter {
 
-	public PipelinedHttpRouter(ApiRouter apiRouter, Counter httpConnections, Meter httpRequests, Histogram httpRequestSize) {
-		super(apiRouter, httpConnections, httpRequests, httpRequestSize);
+	public PipelinedHttpRouter(ApiRouter apiRouter, NodeSettingsService nodeSettingsService,
+	                           Counter httpConnections, Meter httpRequests, Histogram httpRequestSize) {
+		super(apiRouter, nodeSettingsService, httpConnections, httpRequests, httpRequestSize);
 	}
 
 	@Override
