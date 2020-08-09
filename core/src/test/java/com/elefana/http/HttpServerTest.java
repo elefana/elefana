@@ -245,11 +245,10 @@ public class HttpServerTest extends ChannelInboundHandlerAdapter {
 		channelFuture.channel().closeFuture().addListener(future -> {
 			channelClosed.set(true);
 		});
-
-		final DefaultFullHttpRequest request = createHttpRequest(generateRequestBody());
-		request.headers().add("Connection", "keep-alive");
-		channelFuture.channel().writeAndFlush(request);
-		Assert.assertEquals(false, channelClosed.get());
+		final long startTime = System.currentTimeMillis();
+		while(System.currentTimeMillis() - startTime < 1000) {
+			Assert.assertEquals(false, channelClosed.get());
+		}
 		try {
 			Thread.sleep(1000 * httpTimeout);
 		} catch (Exception e) {}
