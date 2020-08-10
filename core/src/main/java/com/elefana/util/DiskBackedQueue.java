@@ -69,7 +69,7 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 			queueDir.mkdirs();
 		}
 
-		if(cleanImmediately) {
+		if(cleanImmediately && queueDir.listFiles() != null) {
 			for(File file : queueDir.listFiles()) {
 				file.delete();
 			}
