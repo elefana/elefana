@@ -3,6 +3,8 @@
  */
 package com.elefana.util;
 
+import net.openhft.chronicle.queue.RollCycles;
+
 import java.io.File;
 
 public class HashDiskBackedQueue<T extends UniqueSelfDescribingMarshallable> extends DiskBackedQueue<T> {
@@ -16,14 +18,18 @@ public class HashDiskBackedQueue<T extends UniqueSelfDescribingMarshallable> ext
 	public HashDiskBackedQueue(String queueId, File dataDirectory, Class<T> clazz,
 							   int expectedEntries, String averageKey, T averageValue,
 							   boolean cleanImmediately) {
-		super(queueId, dataDirectory, clazz, cleanImmediately);
-		backedMap = new DiskBackedMap<String, T>(queueId, String.class, clazz,
-				dataDirectory, expectedEntries, averageKey, averageValue);
-
-		if(cleanImmediately) {
-			backedMap.clear();
-		}
+		this(queueId, dataDirectory, clazz, expectedEntries, averageKey, averageValue, RollCycles.DAILY, cleanImmediately);
 	}
+
+
+	public HashDiskBackedQueue(String queueId, File dataDirectory, Class<T> clazz,
+	                           int expectedEntries, String averageKey, T averageValue,
+	                           RollCycles rollCycles,  boolean cleanImmediately) {
+		super(queueId, dataDirectory, clazz, rollCycles, cleanImmediately);
+		backedMap = new DiskBackedMap<String, T>(queueId, String.class, clazz,
+				dataDirectory, expectedEntries, averageKey, averageValue, cleanImmediately);
+	}
+
 
 	@Override
 	public void dispose() {
@@ -48,13 +54,13 @@ public class HashDiskBackedQueue<T extends UniqueSelfDescribingMarshallable> ext
 
 	@Override
 	public boolean offer(T t) {
-		if(backedMap.containsKey(t.getKey())) {
-			return true;
-		}
-		final boolean success = super.offer(t);
-		if(success) {
-			backedMap.put(t.getKey(), t);
-		}
-		return success;
+		T result = backedMap.computeIfAbsent(t.getKey(), (k) -> {
+			final boolean success = super.offer(t);
+			if(success) {
+				return t;
+			}
+			return null;
+		});
+		return result != null;
 	}
 }
