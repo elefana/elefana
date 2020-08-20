@@ -25,6 +25,8 @@ import com.elefana.node.NodeStatsService;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.*;
+import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.epoll.EpollServerSocketChannel;
 import io.netty.channel.kqueue.KQueueEventLoopGroup;
 import io.netty.channel.kqueue.KQueueServerSocketChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -41,6 +43,7 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
+import java.util.concurrent.ExecutionException;
 
 /**
  *
@@ -100,10 +103,10 @@ public class HttpServer {
 		if (OsInformation.isMac()) {
 			//KQueue only supported by Netty on OS X >= 10.12
 			try {
-				final String [] macVersion = nodeStatsService.getOsStats().getOsVersion().split(".");
-				switch(Integer.parseInt(macVersion[0])) {
+				final String[] macVersion = nodeStatsService.getOsStats().getOsVersion().split(".");
+				switch (Integer.parseInt(macVersion[0])) {
 				case 10:
-					if(Integer.parseInt(macVersion[1]) > 11) {
+					if (Integer.parseInt(macVersion[1]) > 11) {
 						serverBootstrap.channel(KQueueServerSocketChannel.class);
 						serverExecutor = new KQueueEventLoopGroup();
 					} else {
@@ -120,6 +123,15 @@ public class HttpServer {
 				}
 			} catch (Exception e) {
 				LOGGER.info("KQueue not supported on this Mac version - falling back to Nio");
+				serverBootstrap.channel(NioServerSocketChannel.class);
+				serverExecutor = new NioEventLoopGroup();
+			}
+		} else if(OsInformation.isUnix()) {
+			try {
+				serverBootstrap.channel(EpollServerSocketChannel.class);
+				serverExecutor = new EpollEventLoopGroup();
+			} catch (Exception e) {
+				LOGGER.info("Epoll not supported - falling back to Nio");
 				serverBootstrap.channel(NioServerSocketChannel.class);
 				serverExecutor = new NioEventLoopGroup();
 			}
