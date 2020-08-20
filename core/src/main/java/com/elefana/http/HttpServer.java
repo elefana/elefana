@@ -34,6 +34,8 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.http.*;
 import io.netty.handler.timeout.IdleStateHandler;
+import io.netty.util.concurrent.DefaultEventExecutorGroup;
+import io.netty.util.concurrent.EventExecutorGroup;
 import org.mini2Dx.natives.OsInformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,6 +65,7 @@ public class HttpServer {
 	private MetricRegistry metricRegistry;
 
 	private EventLoopGroup serverExecutor;
+	private EventExecutorGroup idleExecutor;
 	private Counter httpConnections;
 	private Meter httpRequests;
 	private Histogram httpRequestSize;
@@ -141,6 +144,8 @@ public class HttpServer {
 		}
 		serverBootstrap.group(serverExecutor);
 
+		idleExecutor = new DefaultEventExecutorGroup(4);
+
 		serverBootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
 			@Override
 			protected void initChannel(SocketChannel ch) throws Exception {
@@ -149,9 +154,9 @@ public class HttpServer {
 				}
 
 				ChannelPipeline channelPipeline = ch.pipeline();
-				channelPipeline = ch.pipeline().addLast(new IdleStateHandler(
+				channelPipeline = ch.pipeline().addLast(idleExecutor, new IdleStateHandler(
 						0, 0, nodeSettingsService.getHttpTimeout()));
-				channelPipeline = ch.pipeline().addLast(new HttpTimeoutHandler());
+				channelPipeline = ch.pipeline().addLast(idleExecutor, new HttpTimeoutHandler());
 				channelPipeline = ch.pipeline().addLast(new HttpServerCodec());
 				channelPipeline = channelPipeline.addLast(new HttpServerExpectContinueHandler());
 
@@ -194,6 +199,7 @@ public class HttpServer {
 		}
 		try {
 			serverExecutor.shutdownGracefully().sync();
+			idleExecutor.shutdownGracefully().sync();
 			LOGGER.info("Stopped HTTP server");
 		} catch (InterruptedException e) {
 			e.printStackTrace();
