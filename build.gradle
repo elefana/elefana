@@ -204,6 +204,12 @@ project(":" + rootProject.name + "-api") {
 		
 		testCompile('org.springframework.boot:spring-boot-starter-test')
 	}
+
+	configurations.all {
+		resolutionStrategy {
+			force "io.netty:netty-codec-http:$nettyVersion"
+		}
+	}
 }
 
 project(":" + rootProject.name + "-core") {
@@ -246,6 +252,12 @@ project(":" + rootProject.name + "-core") {
 		testCompile('org.springframework.boot:spring-boot-starter-test')
 		testCompile "io.rest-assured:rest-assured:$restAssuredVersion"
 		testCompile "org.apache.commons:commons-text:$commonsTextVersion"
+	}
+
+	configurations.all {
+		resolutionStrategy {
+			force "io.netty:netty-all:$nettyVersion"
+		}
 	}
 	
 	processResources {
