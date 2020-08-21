@@ -96,13 +96,12 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 				return;
 			}
 		}
-		if(keepAlive) {
+		if(keepAlive && !isErrorResponse(response)) {
 			if (response instanceof FullHttpMessage) {
 				FullHttpMessage fullHttpMessage = (FullHttpMessage) response;
 				response.headers().setInt(HttpHeaderNames.CONTENT_LENGTH,
 						fullHttpMessage.content().readableBytes());
-				response.headers().set(CONNECTION,
-						HttpHeaderValues.KEEP_ALIVE);
+				response.headers().set(CONNECTION, HttpHeaderValues.KEEP_ALIVE);
 			}
 		} else {
 			response.headers().set(CONNECTION, HttpHeaderValues.CLOSE);
