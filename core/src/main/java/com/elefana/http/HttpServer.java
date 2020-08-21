@@ -45,7 +45,6 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
-import java.util.concurrent.ExecutionException;
 
 /**
  *
@@ -156,8 +155,8 @@ public class HttpServer {
 				ChannelPipeline channelPipeline = ch.pipeline();
 				channelPipeline = ch.pipeline().addLast(idleExecutor, new IdleStateHandler(
 						0, 0, nodeSettingsService.getHttpTimeout()));
-				channelPipeline = ch.pipeline().addLast(idleExecutor, new HttpTimeoutHandler());
-				channelPipeline = ch.pipeline().addLast(new HttpServerCodec());
+				channelPipeline = channelPipeline.addLast(idleExecutor, new HttpIdleTimeoutHandler());
+				channelPipeline = channelPipeline.addLast(new HttpServerCodec());
 				channelPipeline = channelPipeline.addLast(new HttpServerExpectContinueHandler());
 
 				final boolean compressionEnabled = nodeSettingsService.isHttpGzipEnabled();
@@ -169,17 +168,8 @@ public class HttpServer {
 				channelPipeline = channelPipeline.addLast("httpKeepAlive", new HttpServerKeepAliveHandler());
 				channelPipeline = channelPipeline.addLast("httpObjectAggregator",
 						new HttpObjectAggregator(nodeSettingsService.getMaxHttpPayloadSize()));
-
-				final int maxHttpPipelineEvents = nodeSettingsService.getMaxHttpPipelineEvents();
-				if (maxHttpPipelineEvents > 0) {
-					channelPipeline = channelPipeline.addLast("httpPipeliningHandler",
-							new HttpPipeliningHandler(maxHttpPipelineEvents));
-					channelPipeline = channelPipeline.addLast("httpRouter",
-							new PipelinedHttpRouter(apiRouter, nodeSettingsService, httpConnections, httpRequests, httpRequestSize));
-				} else {
-					channelPipeline = channelPipeline.addLast("httpRouter",
-							new DefaultHttpRouter(apiRouter, nodeSettingsService, httpConnections, httpRequests, httpRequestSize));
-				}
+				channelPipeline = channelPipeline.addLast("httpRouter",
+						new DefaultHttpRouter(apiRouter, nodeSettingsService, httpConnections, httpRequests, httpRequestSize));
 			}
 		});
 

@@ -40,6 +40,8 @@ import org.slf4j.LoggerFactory;
 import java.nio.charset.Charset;
 import java.util.concurrent.TimeUnit;
 
+import static io.netty.handler.codec.http.HttpHeaderNames.CONNECTION;
+
 /**
  *
  */
@@ -95,32 +97,35 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 			}
 		}
 		if(keepAlive) {
-			if(isErrorResponse(response)) {
-				ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
-			} else {
-				ctx.writeAndFlush(response, ctx.voidPromise());
+			if (response instanceof FullHttpMessage) {
+				FullHttpMessage fullHttpMessage = (FullHttpMessage) response;
+				response.headers().setInt(HttpHeaderNames.CONTENT_LENGTH,
+						fullHttpMessage.content().readableBytes());
+				response.headers().set(CONNECTION,
+						HttpHeaderValues.KEEP_ALIVE);
 			}
 		} else {
-			ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
+			response.headers().set(CONNECTION, HttpHeaderValues.CLOSE);
 		}
-	}
-	
-	public void write(ChannelHandlerContext ctx, HttpPipelinedResponse response) {
-		final long startTime = System.currentTimeMillis();
-		while(!ctx.channel().isWritable()) {
-			if(System.currentTimeMillis() - startTime >= httpTimeoutMillis) {
-				ctx.close();
-				return;
-			}
+
+		ChannelFuture writeFuture = ctx.write(response);
+
+		if (!keepAlive) {
+			ctx.writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
+		} else if(isErrorResponse(response)) {
+			writeFuture.addListener(ChannelFutureListener.CLOSE);
 		}
-		ctx.writeAndFlush(response);
 	}
 
-	public HttpResponse route(FullHttpRequest httpRequest, ChannelFuture closeFuture) {
+	public HttpResponse route(HttpRequest httpRequest, HttpContent httpContent, ChannelFuture closeFuture) {
 		final String uri = httpRequest.uri();
-		final PooledStringBuilder requestContent = getRequestBody(httpRequest);
+		final PooledStringBuilder requestContent = getRequestBody(httpRequest, httpContent);
 		try {
 			httpRequests.mark();
+
+			if(apiRouter == null) {
+				return createResponse(httpRequest, HttpResponseStatus.OK);
+			}
 
 			final ApiRequest<?> apiRequest = apiRouter.route(httpRequest.getMethod(), uri, requestContent);
 			if(apiRequest == null) {
@@ -164,7 +169,7 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 		}
 	}
 
-	private FullHttpResponse createErrorResponse(FullHttpRequest request, ElefanaException e) {
+	private FullHttpResponse createErrorResponse(HttpRequest request, ElefanaException e) {
 		final StringBuilder content = new StringBuilder();
 		content.append(e.getMessage());
 		content.append('\n');
@@ -174,11 +179,11 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 		return createResponse(request, e.getStatusCode(), content.toString());
 	}
 
-	private FullHttpResponse createResponse(FullHttpRequest request, HttpResponseStatus status) {
+	private FullHttpResponse createResponse(HttpRequest request, HttpResponseStatus status) {
 		return createResponse(request, status, "");
 	}
 
-	private FullHttpResponse createResponse(FullHttpRequest request, HttpResponseStatus status, String content) {
+	private FullHttpResponse createResponse(HttpRequest request, HttpResponseStatus status, String content) {
 		final FullHttpResponse result = new DefaultFullHttpResponse(request.getProtocolVersion(), status,
 				Unpooled.wrappedBuffer(content.getBytes(CHARSET)));
 		result.headers().set(HEADER_CHARSET, HEADER_VALUE_UTF8);
@@ -190,13 +195,13 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 		return result;
 	}
 
-	private PooledStringBuilder getRequestBody(FullHttpRequest request) {
+	private PooledStringBuilder getRequestBody(HttpRequest request, HttpContent content) {
 		if(httpRequestSize != null) {
-			httpRequestSize.update(request.content().readableBytes());
+			httpRequestSize.update(content.content().readableBytes());
 		}
 		String charset = request.headers().contains("charset") ? request.headers().get("charset").toUpperCase() : "UTF-8";
 		PooledStringBuilder result = PooledStringBuilder.allocate();
-		result.append(request.content(), Charset.forName(charset));
+		result.append(content.content(), Charset.forName(charset));
 		
 		if(request.headers().contains("Content-Type")) {
 			String contentType = request.headers().get("Content-Type").toLowerCase();
@@ -208,7 +213,7 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 			case "application/x-www-form-urlencoded":
 				result.release();
 				result = PooledStringBuilder.allocate();
-				result.appendUrlDecode(request.content(), charset);
+				result.appendUrlDecode(content.content(), charset);
 				break;
 			}
 		}

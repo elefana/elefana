@@ -18,6 +18,7 @@ import com.codahale.metrics.Counter;
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
+import io.netty.handler.codec.http.*;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -36,12 +37,6 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.codec.http.DefaultFullHttpRequest;
-import io.netty.handler.codec.http.DefaultHttpRequest;
-import io.netty.handler.codec.http.HttpClientCodec;
-import io.netty.handler.codec.http.HttpContentDecompressor;
-import io.netty.handler.codec.http.HttpMethod;
-import io.netty.handler.codec.http.HttpVersion;
 import io.restassured.RestAssured;
 
 public class HttpServerTest extends ChannelInboundHandlerAdapter {
@@ -98,7 +93,7 @@ public class HttpServerTest extends ChannelInboundHandlerAdapter {
 			post("/_bulk")
 		.then()
 			.contentType("application/json")
-			.statusCode(500);
+			.statusCode(200);
 	}
 	
 	@Test
@@ -119,11 +114,10 @@ public class HttpServerTest extends ChannelInboundHandlerAdapter {
 			post("/_bulk")
 		.then()
 			.contentType("application/json")
-			.statusCode(500);
+			.statusCode(200);
 	}
 	
 	@Test
-	@Ignore
 	public void testHttpPipelinedServer() throws Exception {
 		final int port = 9204;
 		
@@ -141,24 +135,27 @@ public class HttpServerTest extends ChannelInboundHandlerAdapter {
 			post("/_bulk")
 		.then()
 			.contentType("application/json")
-			.statusCode(500);
+			.statusCode(200);
 		
 		//Test pipelined request
 		Bootstrap client = createHttpClient();
         ChannelFuture channelFuture = client.connect("localhost", port).sync();
-        channelFuture.channel().writeAndFlush(createHttpRequest(generateRequestBody()));
-        channelFuture.channel().writeAndFlush(createHttpRequest(generateRequestBody()));
-        channelFuture.channel().writeAndFlush(createLastHttpRequest());
-        try {
-        	Thread.sleep(1000);
-        } catch (Exception e) {}
+        channelFuture.channel().write(createHttpRequest(generateRequestBody(), true));
+        channelFuture.channel().write(createHttpRequest(generateRequestBody(), true));
+        channelFuture.channel().writeAndFlush(createLastHttpRequest(false));
+
+        final int expectedMessages = 3;
+        while(TOTAL_RESPONSES.get() < expectedMessages) {
+	        try {
+		        Thread.sleep(1000);
+	        } catch (Exception e) {}
+        }
         channelFuture.channel().closeFuture().sync();
-        
-        Assert.assertEquals(2, TOTAL_RESPONSES.get());
+
+        Assert.assertEquals(3, TOTAL_RESPONSES.get());
 	}
 	
 	@Test
-	@Ignore
 	public void testGzipHttpPipelinedServer() throws Exception {
 		final int port = 9205;
 		
@@ -176,20 +173,24 @@ public class HttpServerTest extends ChannelInboundHandlerAdapter {
 			post("/_bulk")
 		.then()
 			.contentType("application/json")
-			.statusCode(500);
+			.statusCode(200);
 		
 		//Test pipelined request
 		Bootstrap client = createHttpClient();
         ChannelFuture channelFuture = client.connect("localhost", port).sync();
-        channelFuture.channel().writeAndFlush(createHttpRequest(generateGzipRequestBody()));
-        channelFuture.channel().writeAndFlush(createHttpRequest(generateGzipRequestBody()));
-        channelFuture.channel().writeAndFlush(createLastHttpRequest());
-        try {
-        	Thread.sleep(1000);
-        } catch (Exception e) {}
-        channelFuture.channel().closeFuture().sync();
-        
-        Assert.assertEquals(2, TOTAL_RESPONSES.get());
+        channelFuture.channel().write(createHttpRequest(generateGzipRequestBody(), true));
+        channelFuture.channel().write(createHttpRequest(generateGzipRequestBody(), true));
+        channelFuture.channel().writeAndFlush(createLastHttpRequest(false));
+
+		final int expectedMessages = 3;
+		while(TOTAL_RESPONSES.get() < expectedMessages) {
+			try {
+				Thread.sleep(1000);
+			} catch (Exception e) {}
+		}
+		channelFuture.channel().closeFuture().sync();
+
+		Assert.assertEquals(3, TOTAL_RESPONSES.get());
 	}
 	
 	@Test
@@ -213,7 +214,7 @@ public class HttpServerTest extends ChannelInboundHandlerAdapter {
 			post("/_bulk")
 		.then()
 			.contentType("application/json")
-			.statusCode(500);
+			.statusCode(200);
 		
 		requestBody += "TOO_LONG";
 		given()
@@ -258,6 +259,9 @@ public class HttpServerTest extends ChannelInboundHandlerAdapter {
 
 	@Override
 	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+		if(msg instanceof LastHttpContent) {
+			return;
+		}
 		TOTAL_RESPONSES.incrementAndGet();
 	}
 	
@@ -279,21 +283,26 @@ public class HttpServerTest extends ChannelInboundHandlerAdapter {
 		}
 	}
 	
-	private DefaultFullHttpRequest createHttpRequest(String requestBody) {
-		DefaultFullHttpRequest request = createHttpRequest(requestBody.getBytes());
+	private DefaultFullHttpRequest createHttpRequest(String requestBody, boolean keepAlive) {
+		DefaultFullHttpRequest request = createHttpRequest(requestBody.getBytes(), keepAlive);
 		request.headers().remove("Content-Encoding");
 		return request;
 	}
 	
-	private DefaultFullHttpRequest createHttpRequest(byte [] requestBody) {
+	private DefaultFullHttpRequest createHttpRequest(byte [] requestBody, boolean keepAlive) {
 		DefaultFullHttpRequest result = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, "/");
 		result.headers().add("Content-Encoding", "gzip");
+		result.headers().add("Content-Length", requestBody.length);
 		result.content().writeBytes(requestBody);
+
+		HttpUtil.setKeepAlive(result, keepAlive);
 		return result;
 	}
 	
-	private DefaultHttpRequest createLastHttpRequest() {
-		return new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, "/");
+	private DefaultHttpRequest createLastHttpRequest(boolean keepAlive) {
+		DefaultHttpRequest result = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, "/");
+		HttpUtil.setKeepAlive(result, keepAlive);
+		return result;
 	}
 	
 	private Bootstrap createHttpClient() {

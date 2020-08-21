@@ -19,7 +19,7 @@ import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.timeout.IdleStateEvent;
 
-public class HttpTimeoutHandler extends ChannelDuplexHandler {
+public class HttpIdleTimeoutHandler extends ChannelDuplexHandler {
 	@Override
 	public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
 		if (evt instanceof IdleStateEvent) {

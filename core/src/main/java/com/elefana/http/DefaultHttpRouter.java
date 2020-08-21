@@ -20,11 +20,13 @@ import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
 import com.elefana.api.ApiRouter;
 import com.elefana.node.NodeSettingsService;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.http.FullHttpRequest;
-import io.netty.handler.codec.http.HttpRequest;
-import io.netty.handler.codec.http.HttpUtil;
+import io.netty.handler.codec.http.*;
 import io.netty.util.ReferenceCountUtil;
+
+import static io.netty.handler.codec.http.HttpResponseStatus.CONTINUE;
+import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
 /**
  *
@@ -38,14 +40,15 @@ public class DefaultHttpRouter extends HttpRouter {
 
 	@Override
 	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-		HttpRequest request = (HttpRequest) msg;
-		
-		if (!(request instanceof FullHttpRequest)) {
+		if (!(msg instanceof HttpRequest)) {
 			return;
 		}
+		HttpRequest request = (HttpRequest) msg;
+		HttpContent content = (HttpContent) msg;
+
 		final boolean keepAlive = HttpUtil.isKeepAlive(request);
 		try {
-			write(keepAlive, ctx, route((FullHttpRequest) request, ctx.channel().closeFuture()));
+			write(keepAlive, ctx, route(request, content, ctx.channel().closeFuture()));
 		} finally {
 			ReferenceCountUtil.release(request);
 		}
