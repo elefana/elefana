@@ -23,6 +23,7 @@ import com.elefana.indices.fieldstats.state.index.Index;
 import com.elefana.indices.fieldstats.state.index.IndexComponent;
 import com.elefana.indices.fieldstats.state.index.IndexImpl;
 import com.google.common.collect.ImmutableList;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -65,6 +66,30 @@ public class MasterLoadUnloadManagerTest {
         when(testState.getIndex(eq(TEST_INDEX_TWO))).thenReturn(b);
 
         loadUnloadManager = new MasterLoadUnloadManager(jdbcTemplate, testState, true,10, 5);
+    }
+
+    @After
+    public void teardown() {
+        loadUnloadManager.shutdown();
+    }
+
+    @Test
+    public void testUnloadUnusedIndices() {
+        loadUnloadManager.shutdown();
+        loadUnloadManager = new MasterLoadUnloadManager(jdbcTemplate, testState, true,0, 0);
+
+        loadUnloadManager.ensureIndicesLoaded(TEST_INDEX);
+
+        for(int i = 0; i < 60000; i++) {
+            try {
+                Thread.sleep(1000L);
+            } catch (Exception e) {}
+
+            if(!loadUnloadManager.isIndexLoaded(TEST_INDEX)) {
+                break;
+            }
+        }
+        Assert.assertFalse(loadUnloadManager.isIndexLoaded(TEST_INDEX));
     }
 
     @Test

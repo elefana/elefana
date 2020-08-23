@@ -39,7 +39,7 @@ public class MasterLoadUnloadManager implements LoadUnloadManager {
 
 	private final JdbcTemplate jdbcTemplate;
 	private final State state;
-	private final long indexTtl;
+	private final long indexTtlMillis;
 
 	private final ReadWriteLock loadUnloadLock = new ReentrantReadWriteLock();
 	private final Set<String> missingIndices = new HashSet<String>();
@@ -56,10 +56,14 @@ public class MasterLoadUnloadManager implements LoadUnloadManager {
 	public MasterLoadUnloadManager(JdbcTemplate jdbcTemplate, State state, boolean isMaster, long ttlMinutes, long snapshotMinutes) {
 		this.jdbcTemplate = jdbcTemplate;
 		this.state = state;
-		this.indexTtl = ttlMinutes * 60 * 1000;
+		if(ttlMinutes > 0) {
+			this.indexTtlMillis = ttlMinutes * 60 * 1000;
+		} else {
+			this.indexTtlMillis = 30 * 1000;
+		}
 
 		missingIndices.addAll(jdbcTemplate.queryForList("SELECT _indexname FROM elefana_field_stats_index", String.class));
-		scheduledExecutorService.scheduleAtFixedRate(this::unloadUnusedIndices, 0L, Math.max(ttlMinutes / 2, 1), TimeUnit.MINUTES);
+		scheduledExecutorService.scheduleAtFixedRate(this::unloadUnusedIndices, 0L, indexTtlMillis / 2, TimeUnit.MILLISECONDS);
 		if(isMaster) {
 			if(snapshotMinutes > 0) {
 				scheduledExecutorService.scheduleAtFixedRate(this::snapshot, 0L, snapshotMinutes, TimeUnit.MINUTES);
@@ -85,30 +89,20 @@ public class MasterLoadUnloadManager implements LoadUnloadManager {
 		try {
 			long now = System.currentTimeMillis();
 			lastIndexUse.forEach((index, timestamp) -> {
-				if(now - timestamp > indexTtl) {
-					loadUnloadLock.readLock().lock();
-					try {
-						if (!missingIndices.contains(index)) {
-							loadUnloadLock.readLock().unlock();
-							LOGGER.info("Index " + index + " wasn't used recently. Therefore it is being unloaded.");
-							unloadIndex(index);
-							loadUnloadLock.readLock().lock();
-						}
-					} finally {
+				if(now - timestamp < indexTtlMillis) {
+					return;
+				}
+
+				loadUnloadLock.readLock().lock();
+				try {
+					if (!missingIndices.contains(index)) {
 						loadUnloadLock.readLock().unlock();
+						LOGGER.info("Index " + index + " wasn't used recently. Therefore it is being unloaded.");
+						unloadIndex(index);
+						loadUnloadLock.readLock().lock();
 					}
-				} else {
-					loadUnloadLock.readLock().lock();
-					try {
-						if (missingIndices.contains(index)) {
-							loadUnloadLock.readLock().unlock();
-							LOGGER.info("Index " + index + " isn't outdated but not loaded. Therefore it is being loaded from the database.");
-							loadIndex(index);
-							loadUnloadLock.readLock().lock();
-						}
-					} finally {
-						loadUnloadLock.readLock().unlock();
-					}
+				} finally {
+					loadUnloadLock.readLock().unlock();
 				}
 			});
 		} catch(Exception e) {
@@ -150,8 +144,9 @@ public class MasterLoadUnloadManager implements LoadUnloadManager {
 				}
 				LOGGER.info("Request needs index " + missingIndex + ", so it is loaded from the database.");
 				loadUnloadLock.readLock().unlock();
-				loadIndex(missingIndex);
-				lastIndexUse.compute(missingIndex, (name, timestamp) -> System.currentTimeMillis());
+				if(loadIndex(missingIndex)) {
+					lastIndexUse.compute(missingIndex, (name, timestamp) -> System.currentTimeMillis());
+				}
 				loadUnloadLock.readLock().lock();
 			}
 		} finally {
@@ -159,11 +154,11 @@ public class MasterLoadUnloadManager implements LoadUnloadManager {
 		}
 	}
 
-	private void loadIndex(String indexName) {
+	private boolean loadIndex(String indexName) {
 		loadUnloadLock.writeLock().lock();
 		if(!missingIndices.contains(indexName)) {
 			loadUnloadLock.writeLock().unlock();
-			return;
+			return false;
 		}
 		try {
 			IndexComponent indexComponent = jdbcTemplate.queryForObject(
@@ -206,6 +201,7 @@ public class MasterLoadUnloadManager implements LoadUnloadManager {
 		} finally {
 			loadUnloadLock.writeLock().unlock();
 		}
+		return true;
 	}
 
 	private void snapshotIndex(String indexName) {
