@@ -32,6 +32,6 @@ public class RealtimeIndexFieldNamesRequest extends GetFieldNamesRequest {
 
 	@Override
 	protected Callable<GetFieldNamesResponse> internalExecute() {
-		return () -> indexFieldStatsService.getFieldNames(indexPattern, typePattern);
+		return () -> indexFieldStatsService.getFieldNames(context, indexPattern, typePattern);
 	}
 }

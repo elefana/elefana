@@ -48,7 +48,7 @@ public class DefaultHttpRouter extends HttpRouter {
 
 		final boolean keepAlive = HttpUtil.isKeepAlive(request);
 		try {
-			write(keepAlive, ctx, route(request, content, ctx.channel().closeFuture()));
+			route(keepAlive, ctx, request, content, ctx.channel().closeFuture());
 		} finally {
 			ReferenceCountUtil.release(request);
 		}

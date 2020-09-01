@@ -174,12 +174,12 @@ public class ApiRouter {
 			if(urlComponents.length == 2) {
 				switch(urlComponents[1].toLowerCase()) {
 				case "_stats":
-					return bulkIngestService.prepareBulkStatsRequest();
+					return bulkIngestService.prepareBulkStatsRequest(context);
 				default:
-					return bulkIngestService.prepareBulkRequest(requestBody);
+					return bulkIngestService.prepareBulkRequest(context, requestBody);
 				}
 			} else {
-				return bulkIngestService.prepareBulkRequest(requestBody);
+				return bulkIngestService.prepareBulkRequest(context, requestBody);
 			}
 		}
 		throw new NoSuchApiException(method, url);
@@ -219,30 +219,30 @@ public class ApiRouter {
 				// _mapping
                 switch (urlComponents[0].toLowerCase()) {
                     case "_mapping":
-                        return indexFieldMappingService.prepareGetFieldMappings();
+                        return indexFieldMappingService.prepareGetFieldMappings(context);
                     case "_field_stats":
                         String clusterLevel = getParams.getOrDefault("level", "cluster");
                         if(!getParams.containsKey("fields")) {
                             throw new NoSuchApiException(method, url + "(Get parameter fields is missing)");
                         }
-                        return indexFieldStatsService.prepareGetFieldStatsGet("*", getParams.get("fields"), !clusterLevel.equals("indices"));
+                        return indexFieldStatsService.prepareGetFieldStatsGet(context,"*", getParams.get("fields"), !clusterLevel.equals("indices"));
                 }
 			case 2: {
 				// INDICES/_mapping | INDICES/_field_caps | INDICES/_field_names | INDICES/_field_stats
 				final String indexPattern = urlDecode(urlComponents[0]);
 				switch (urlComponents[1].toLowerCase()) {
 				case "_field_names":
-					return indexFieldStatsService.prepareGetFieldNames(indexPattern);
+					return indexFieldStatsService.prepareGetFieldNames(context, indexPattern);
 				case "_mapping":
-					return indexFieldMappingService.prepareGetFieldMappings(indexPattern);
+					return indexFieldMappingService.prepareGetFieldMappings(context, indexPattern);
 				case "_field_caps":
-					return indexFieldMappingService.prepareGetFieldCapabilities(indexPattern);
+					return indexFieldMappingService.prepareGetFieldCapabilities(context, indexPattern);
                 case "_field_stats":
                     String clusterLevel = getParams.getOrDefault("level", "cluster");
                     if(!getParams.containsKey("fields")) {
                         throw new NoSuchApiException(method, url + "(Get parameter fields is missing)");
                     }
-                    return indexFieldStatsService.prepareGetFieldStatsGet(indexPattern, getParams.get("fields"), !clusterLevel.equals("indices"));
+                    return indexFieldStatsService.prepareGetFieldStatsGet(context, indexPattern, getParams.get("fields"), !clusterLevel.equals("indices"));
 				}
 				break;
 			}
@@ -252,9 +252,9 @@ public class ApiRouter {
 				final String typePattern = urlDecode(urlComponents[2]);
 				switch (urlComponents[1].toLowerCase()) {
 				case "_field_names":
-					return indexFieldStatsService.prepareGetFieldNames(indexPattern, typePattern);
+					return indexFieldStatsService.prepareGetFieldNames(context, indexPattern, typePattern);
 				case "_mapping":
-					return indexFieldMappingService.prepareGetFieldMappings(indexPattern, typePattern);
+					return indexFieldMappingService.prepareGetFieldMappings(context, indexPattern, typePattern);
 				}
 				break;
 			}
@@ -266,7 +266,7 @@ public class ApiRouter {
 				case "_mapping":
 					switch(urlComponents[2].toLowerCase()) {
 					case "field":
-						return indexFieldMappingService.prepareGetFieldMappings(indexPattern, "*", field);
+						return indexFieldMappingService.prepareGetFieldMappings(context, indexPattern, "*", field);
 					}
 				}
 				break;
@@ -280,7 +280,7 @@ public class ApiRouter {
 				case "_mapping":
 					switch(urlComponents[3].toLowerCase()) {
 					case "field":
-						return indexFieldMappingService.prepareGetFieldMappings(indexPattern, typePattern, field);
+						return indexFieldMappingService.prepareGetFieldMappings(context, indexPattern, typePattern, field);
 					}
 				}
 				break;
@@ -292,7 +292,7 @@ public class ApiRouter {
 				switch (urlComponents[0].toLowerCase()) {
 				case "_field_stats":
 					String clusterLevel = getParams.getOrDefault("level", "cluster");
-					return indexFieldStatsService.prepareGetFieldStatsPost("*", requestBody, !clusterLevel.equals("indices"));
+					return indexFieldStatsService.prepareGetFieldStatsPost(context, "*", requestBody, !clusterLevel.equals("indices"));
 				}
 				break;
 			case 2: {
@@ -301,16 +301,16 @@ public class ApiRouter {
 				switch (urlComponents[1].toLowerCase()) {
 				case "_field_stats":
 				    String clusterLevel = getParams.getOrDefault("level", "cluster");
-					return indexFieldStatsService.prepareGetFieldStatsPost(indexPattern, requestBody, !clusterLevel.equals("indices"));
+					return indexFieldStatsService.prepareGetFieldStatsPost(context, indexPattern, requestBody, !clusterLevel.equals("indices"));
 				case "_refresh":
-					return indexFieldMappingService.prepareRefreshIndex(indexPattern);
+					return indexFieldMappingService.prepareRefreshIndex(context, indexPattern);
 				}
 				break;
 			}
 			}
 		} else if (isPutMethod(method)) {
 			final String index = urlDecode(urlComponents[0]);
-			return indexFieldMappingService.preparePutFieldMappings(index, requestBody);
+			return indexFieldMappingService.preparePutFieldMappings(context, index, requestBody);
 		}
 		throw new NoSuchApiException(method, url);
 	}
@@ -321,11 +321,11 @@ public class ApiRouter {
 		case 1:
 			switch (urlComponents[0].toLowerCase()) {
 			case "_mget":
-				return documentService.prepareMultiGet(requestBody);
+				return documentService.prepareMultiGet(context, requestBody);
 			default:
 				final String index = urlDecode(urlComponents[0]);
 				if(isDeleteMethod(method)) {
-					return documentService.prepareDeleteIndex(index, "*");
+					return documentService.prepareDeleteIndex(context, index, "*");
 				}
 				break;
 			}
@@ -336,7 +336,7 @@ public class ApiRouter {
 
 			switch (urlComponents[1].toLowerCase()) {
 			case "_mget":
-				return documentService.prepareMultiGet(index, requestBody);
+				return documentService.prepareMultiGet(context, index, requestBody);
 			case "_mapping":
 			case "_refresh":
 			case "_field_stats":
@@ -346,9 +346,9 @@ public class ApiRouter {
 
 			if (isPostMethod(method)) {
 				return documentService
-						.prepareIndex(index, type, UUID.randomUUID().toString(), requestBody, IndexOpType.OVERWRITE);
+						.prepareIndex(context, index, type, UUID.randomUUID().toString(), requestBody, IndexOpType.OVERWRITE);
 			} else if(isDeleteMethod(method)) {
-				return documentService.prepareDeleteIndex(index, type);
+				return documentService.prepareDeleteIndex(context, index, type);
 			}
 			break;
 		}
@@ -364,16 +364,16 @@ public class ApiRouter {
 
 			switch (urlComponents[2].toLowerCase()) {
 			case "_mget":
-				return documentService.prepareMultiGet(index, type, requestBody);
+				return documentService.prepareMultiGet(context, index, type, requestBody);
 			}
 			final String id = urlDecode(urlComponents[2]);
 
 			if (isGetMethod(method) || isHeadMethod(method)) {
-				return documentService.prepareGet(index, type, id, isGetMethod(method));
+				return documentService.prepareGet(context, index, type, id, isGetMethod(method));
 			} else if (isPostMethod(method)) {
-				return documentService.prepareIndex(index, type, id, requestBody, IndexOpType.OVERWRITE);
+				return documentService.prepareIndex(context, index, type, id, requestBody, IndexOpType.OVERWRITE);
 			} else if (isDeleteMethod(method)) {
-				return documentService.prepareDelete(index, type, id);
+				return documentService.prepareDelete(context, index, type, id);
 			}
 			break;
 		}
@@ -386,11 +386,11 @@ public class ApiRouter {
 			if (isPostMethod(method) || isPutMethod(method)) {
 				switch (urlComponents[3].toLowerCase()) {
 				case "_create": {
-					return documentService.prepareIndex(index, type, id, requestBody,
+					return documentService.prepareIndex(context, index, type, id, requestBody,
 							IndexOpType.CREATE);
 				}
 				case "_update": {
-					return documentService.prepareIndex(index, type, id, requestBody,
+					return documentService.prepareIndex(context, index, type, id, requestBody,
 							IndexOpType.UPDATE);
 				}
 				}
@@ -415,9 +415,9 @@ public class ApiRouter {
 			// _search
 			switch (urlComponents[0].toLowerCase()) {
 			case "_search":
-				return searchService.prepareSearch(requestBody);
+				return searchService.prepareSearch(context, requestBody);
 			case "_msearch":
-				return searchService.prepareMultiSearch(requestBody);
+				return searchService.prepareMultiSearch(context, requestBody);
 			}
 			break;
 		case 2: {
@@ -425,9 +425,9 @@ public class ApiRouter {
 			final String indexPattern = urlDecode(urlComponents[0]);
 			switch (urlComponents[1].toLowerCase()) {
 			case "_search":
-				return searchService.prepareSearch(indexPattern, requestBody);
+				return searchService.prepareSearch(context, indexPattern, requestBody);
 			case "_msearch":
-				return searchService.prepareMultiSearch(indexPattern, requestBody);
+				return searchService.prepareMultiSearch(context, indexPattern, requestBody);
 			}
 			break;
 		}
@@ -438,9 +438,9 @@ public class ApiRouter {
 
 			switch (urlComponents[2].toLowerCase()) {
 			case "_search":
-				return searchService.prepareSearch(indexPattern, typePattern, requestBody);
+				return searchService.prepareSearch(context, indexPattern, typePattern, requestBody);
 			case "_msearch":
-				return searchService.prepareMultiSearch(indexPattern, typePattern, requestBody);
+				return searchService.prepareMultiSearch(context, indexPattern, typePattern, requestBody);
 			}
 			break;
 		}
@@ -454,13 +454,13 @@ public class ApiRouter {
 			switch (urlComponents[1]){
 				case "stats":
 					// _nodes/stats
-					return nodesService.prepareAllNodesStats();
+					return nodesService.prepareAllNodesStats(context);
 			case "_local":
 				// _nodes/_local
-				return nodesService.prepareLocalNodeStats();
+				return nodesService.prepareLocalNodeStats(context);
 			case "_all":
 				// _nodes/_all
-				return nodesService.prepareAllNodesStats();
+				return nodesService.prepareAllNodesStats(context);
 			}
 			throw new NoSuchApiException(method, url);
 		case 3: {
@@ -469,16 +469,16 @@ public class ApiRouter {
 				final String nodes = urlDecode(urlComponents[1]);
 				switch (nodes.toLowerCase()) {
 					case "_all":
-						return nodesService.prepareAllNodesStats();
+						return nodesService.prepareAllNodesStats(context);
 					case "_local":
-						return nodesService.prepareLocalNodeStats();
+						return nodesService.prepareLocalNodeStats(context);
 					default:
-						return nodesService.prepareNodesStats(nodes.split(","));
+						return nodesService.prepareNodesStats(context, nodes.split(","));
 				}
 			} else if (urlComponents[1].equals("stats")) {
 				// _nodes/stats/filters
 				final String[] filter = urlComponents[2].split(",");
-				return nodesService.prepareAllNodesStats(filter);
+				return nodesService.prepareAllNodesStats(context, filter);
 			}
 		}
 		case 4: {
@@ -489,11 +489,11 @@ public class ApiRouter {
 					// _nodes/node ids/stats/filters
 					switch (nodes.toLowerCase()) {
 						case "_all":
-							return nodesService.prepareAllNodesStats(filter);
+							return nodesService.prepareAllNodesStats(context, filter);
 						case "_local":
-							return nodesService.prepareLocalNodeStats(filter);
+							return nodesService.prepareLocalNodeStats(context, filter);
 						default:
-							return nodesService.prepareNodesStats(nodes.split(","), filter);
+							return nodesService.prepareNodesStats(context, nodes.split(","), filter);
 					}
 			}
 			throw new NoSuchApiException(method, url);
@@ -511,14 +511,14 @@ public class ApiRouter {
 			case "_template":
 				final String templateId = urlDecode(urlComponents[1]);
 				if (isGetMethod(method) || isHeadMethod(method)) {
-					return indexTemplateService.prepareGetIndexTemplate(templateId, isGetMethod(method));
+					return indexTemplateService.prepareGetIndexTemplate(context, templateId, isGetMethod(method));
 				} else if (isPostMethod(method) || isPutMethod(method)) {
-					return indexTemplateService.preparePutIndexTemplate(templateId, requestBody);
+					return indexTemplateService.preparePutIndexTemplate(context, templateId, requestBody);
 				}
 				break;
 			default:
 				//INDEX/_template
-				return indexTemplateService.prepareGetIndexTemplateForIndex(urlComponents[0]);
+				return indexTemplateService.prepareGetIndexTemplateForIndex(context, urlComponents[0]);
 			}
 			break;
 		}

@@ -118,7 +118,7 @@ public class CoreIndexUtilsTest {
 		final IndexTemplate indexTemplate = new IndexTemplate();
 		indexTemplate.getStorage().setTimestampPath("timestamp");
 
-		when(indexTemplateService.prepareGetIndexTemplateForIndex(index)).thenReturn(indexTemplateForIndexRequest);
+		when(indexTemplateService.prepareGetIndexTemplateForIndex(null, index)).thenReturn(indexTemplateForIndexRequest);
 		when(indexTemplateForIndexRequest.get()).thenReturn(indexTemplateForIndexResponse);
 		when(indexTemplateForIndexResponse.getIndexTemplate()).thenReturn(indexTemplate);
 

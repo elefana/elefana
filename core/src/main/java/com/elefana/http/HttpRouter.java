@@ -113,22 +113,29 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 			ctx.writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
 		} else if(isErrorResponse(response)) {
 			writeFuture.addListener(ChannelFutureListener.CLOSE);
+		} else {
+			ctx.flush();
 		}
 	}
 
-	public HttpResponse route(HttpRequest httpRequest, HttpContent httpContent, ChannelFuture closeFuture) {
+	public void route(final boolean keepAlive, final ChannelHandlerContext context,
+					  HttpRequest httpRequest, HttpContent httpContent, ChannelFuture closeFuture) {
 		final String uri = httpRequest.uri();
 		final PooledStringBuilder requestContent = getRequestBody(httpRequest, httpContent);
 		try {
 			httpRequests.mark();
 
 			if(apiRouter == null) {
-				return createResponse(httpRequest, HttpResponseStatus.OK);
+				requestContent.release();
+				write(keepAlive, context, createResponse(httpRequest, HttpResponseStatus.OK));
+				return;
 			}
 
-			final ApiRequest<?> apiRequest = apiRouter.route(httpRequest.getMethod(), uri, requestContent);
+			final ApiRequest<?> apiRequest = apiRouter.route(context, httpRequest.getMethod(), uri, requestContent);
 			if(apiRequest == null) {
-				throw new NoSuchApiException(httpRequest.getMethod(), uri);
+				requestContent.release();
+				write(keepAlive, context, createResponse(httpRequest, HttpResponseStatus.NOT_FOUND));
+				return;
 			}
 			final GenericFutureListener closeListener = new GenericFutureListener<Future<? super Void>>() {
 				@Override
@@ -141,30 +148,51 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 				}
 			};
 			closeFuture.addListener(closeListener);
-			final ApiResponse apiResponse = apiRequest.get();
-			closeFuture.removeListener(closeListener);
-			if(apiResponse == null) {
-				throw new NoSuchApiException(httpRequest.getMethod(), uri);
-			}
-			return createResponse(httpRequest, HttpResponseStatus.valueOf(apiResponse.getStatusCode()), apiResponse.toJsonString());
-		} catch (NoSuchDocumentException e) {
-			return createResponse(httpRequest, HttpResponseStatus.NOT_FOUND, e.getMessage());
-		} catch (ElefanaException e) {
-			LOGGER.error(uri);
-			LOGGER.error(requestContent.toString());
-			LOGGER.error(e.getMessage(), e);
-			return createErrorResponse(httpRequest, e);
+			apiRequest.addListener(new GenericFutureListener<Future<? super Void>>() {
+				@Override
+				public void operationComplete(Future<? super Void> future) throws Exception {
+					closeFuture.removeListener(closeListener);
+
+					final HttpResponse httpResponse;
+					final ApiResponse apiResponse = apiRequest.get();
+					requestContent.release();
+
+					if(apiResponse == null) {
+						httpResponse = createResponse(httpRequest, HttpResponseStatus.NOT_FOUND, future.cause().getMessage());
+					} else if(future.isSuccess()) {
+						httpResponse = createResponse(httpRequest, HttpResponseStatus.valueOf(apiResponse.getStatusCode()), apiResponse.toJsonString());
+					} else {
+						if(future.cause() instanceof NoSuchDocumentException) {
+							httpResponse = createResponse(httpRequest, HttpResponseStatus.NOT_FOUND, future.cause().getMessage());
+						} else if(future.cause() instanceof ElefanaException) {
+							LOGGER.error(uri);
+							LOGGER.error(requestContent.toString());
+							LOGGER.error(future.cause().getMessage(), future.cause());
+							httpResponse = createErrorResponse(httpRequest, (ElefanaException) future.cause());
+						} else {
+							if(future.cause().getCause() instanceof ElefanaException) {
+								httpResponse = createErrorResponse(httpRequest, (ElefanaException) future.cause().getCause());
+							} else {
+								httpResponse = createResponse(httpRequest, HttpResponseStatus.INTERNAL_SERVER_ERROR);
+							}
+						}
+					}
+					try {
+						write(keepAlive, context, httpResponse);
+					} catch (Exception e) {
+						LOGGER.error(e.getMessage(), e);
+					}
+				}
+			});
+			apiRequest.execute();
+			return;
 		} catch (Exception e) {
 			LOGGER.error(uri);
 			LOGGER.error(requestContent.toString());
 			LOGGER.error(e.getMessage(), e);
-			if(e.getCause() instanceof ElefanaException) {
-				return createErrorResponse(httpRequest, (ElefanaException) e.getCause());
-			} else {
-				return createResponse(httpRequest, HttpResponseStatus.INTERNAL_SERVER_ERROR);
-			}
-		} finally {
 			requestContent.release();
+			write(keepAlive, context, createResponse(httpRequest, HttpResponseStatus.INTERNAL_SERVER_ERROR, e.getMessage()));
+			return;
 		}
 	}
 

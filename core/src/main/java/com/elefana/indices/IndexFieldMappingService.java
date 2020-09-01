@@ -20,22 +20,23 @@ import com.elefana.api.indices.GetFieldMappingsRequest;
 import com.elefana.api.indices.PutFieldMappingRequest;
 import com.elefana.api.indices.RefreshIndexRequest;
 import com.elefana.api.util.PooledStringBuilder;
+import io.netty.channel.ChannelHandlerContext;
 
 public interface IndexFieldMappingService {
 	
-	public GetFieldMappingsRequest prepareGetFieldMappings();
+	public GetFieldMappingsRequest prepareGetFieldMappings(ChannelHandlerContext context);
 	
-	public GetFieldMappingsRequest prepareGetFieldMappings(String indexPattern);
+	public GetFieldMappingsRequest prepareGetFieldMappings(ChannelHandlerContext context, String indexPattern);
 	
-	public GetFieldMappingsRequest prepareGetFieldMappings(String indexPattern, String typePattern);
+	public GetFieldMappingsRequest prepareGetFieldMappings(ChannelHandlerContext context, String indexPattern, String typePattern);
 	
-	public GetFieldMappingsRequest prepareGetFieldMappings(String indexPattern, String typePattern, String fieldPattern);
+	public GetFieldMappingsRequest prepareGetFieldMappings(ChannelHandlerContext context, String indexPattern, String typePattern, String fieldPattern);
 	
-	public PutFieldMappingRequest preparePutFieldMappings(String index, PooledStringBuilder mappings);
+	public PutFieldMappingRequest preparePutFieldMappings(ChannelHandlerContext context, String index, PooledStringBuilder mappings);
 	
-	public PutFieldMappingRequest preparePutFieldMappings(String index, String type, PooledStringBuilder mappings);
+	public PutFieldMappingRequest preparePutFieldMappings(ChannelHandlerContext context, String index, String type, PooledStringBuilder mappings);
 	
-	public GetFieldCapabilitiesRequest prepareGetFieldCapabilities(String indexPattern);
+	public GetFieldCapabilitiesRequest prepareGetFieldCapabilities(ChannelHandlerContext context, String indexPattern);
 
-	public RefreshIndexRequest prepareRefreshIndex(String index);
+	public RefreshIndexRequest prepareRefreshIndex(ChannelHandlerContext context, String index);
 }

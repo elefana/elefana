@@ -22,6 +22,7 @@ import com.elefana.node.NodeSettingsService;
 import com.elefana.node.NodeStatsService;
 import com.elefana.node.NodesService;
 import com.elefana.util.NamedThreadFactory;
+import io.netty.channel.ChannelHandlerContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
@@ -140,42 +141,42 @@ public class PsqlNodesService implements NodesService, RequestExecutor {
 	}
 
 	@Override
-	public NodesStatsRequest prepareAllNodesStats() {
-		return new PsqlNodesStatsRequest(this);
+	public NodesStatsRequest prepareAllNodesStats(ChannelHandlerContext context) {
+		return new PsqlNodesStatsRequest(this, context);
 	}
 
 	@Override
-	public NodesStatsRequest prepareNodesStats(String[] filteredNodes) {
-		NodesStatsRequest result = new PsqlNodesStatsRequest(this);
+	public NodesStatsRequest prepareNodesStats(ChannelHandlerContext context, String[] filteredNodes) {
+		NodesStatsRequest result = new PsqlNodesStatsRequest(this, context);
 		result.setFilteredNodes(filteredNodes);
 		return result;
 	}
 
 	@Override
-	public NodesStatsRequest prepareNodesStats(String[] filteredNodes, String[] infoFields) {
-		NodesStatsRequest result = new PsqlNodesStatsRequest(this);
+	public NodesStatsRequest prepareNodesStats(ChannelHandlerContext context, String[] filteredNodes, String[] infoFields) {
+		NodesStatsRequest result = new PsqlNodesStatsRequest(this, context);
 		result.setFilteredNodes(filteredNodes);
 		result.setInfoFields(infoFields);
 		return result;
 	}
 
 	@Override
-	public NodesStatsRequest prepareAllNodesStats(String[] infoFields) {
-		NodesStatsRequest result = new PsqlNodesStatsRequest(this);
+	public NodesStatsRequest prepareAllNodesStats(ChannelHandlerContext context, String[] infoFields) {
+		NodesStatsRequest result = new PsqlNodesStatsRequest(this, context);
 		result.setInfoFields(infoFields);
 		return result;
 	}
 
 	@Override
-	public NodesStatsRequest prepareLocalNodeStats() {
-		NodesStatsRequest result = new PsqlNodesStatsRequest(this);
+	public NodesStatsRequest prepareLocalNodeStats(ChannelHandlerContext context) {
+		NodesStatsRequest result = new PsqlNodesStatsRequest(this, context);
 		result.setLocalOnly(true);
 		return result;
 	}
 
 	@Override
-	public NodesStatsRequest prepareLocalNodeStats(String[] infoFields) {
-		NodesStatsRequest result = new PsqlNodesStatsRequest(this);
+	public NodesStatsRequest prepareLocalNodeStats(ChannelHandlerContext context, String[] infoFields) {
+		NodesStatsRequest result = new PsqlNodesStatsRequest(this, context);
 		result.setLocalOnly(true);
 		result.setInfoFields(infoFields);
 		return result;

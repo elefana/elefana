@@ -39,11 +39,11 @@ public class PsqlMultiSearchRequest extends MultiSearchRequest implements Callab
 	@Override
 	public MultiSearchResponse call() throws Exception {
 		if(fallbackIndex != null && fallbackType != null) {
-			return searchService.multiSearch(fallbackIndex, fallbackType, requestBody);
+			return searchService.multiSearch(context, fallbackIndex, fallbackType, requestBody);
 		} else if(fallbackIndex != null) {
-			return searchService.multiSearch(fallbackIndex, requestBody);
+			return searchService.multiSearch(context, fallbackIndex, requestBody);
 		} else {
-			return searchService.multiSearch(requestBody);
+			return searchService.multiSearch(context, requestBody);
 		}
 	}
 }

@@ -34,6 +34,6 @@ public class RealtimeGetFieldStatsRequest extends GetFieldStatsRequest {
 
 	@Override
 	protected Callable<GetFieldStatsResponse> internalExecute() {
-		return () -> indexFieldStatsService.getFieldStats(indexPattern, fields, clusterLevel);
+		return () -> indexFieldStatsService.getFieldStats(context, indexPattern, fields, clusterLevel);
 	}
 }

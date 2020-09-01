@@ -36,6 +36,6 @@ public class PsqlIndexRequest extends IndexRequest implements Callable<IndexResp
 
 	@Override
 	public IndexResponse call() throws Exception {
-		return documentService.index(getIndex(), getType(), getId(), getSource(), getOpType());
+		return documentService.index(context, getIndex(), getType(), getId(), getSource(), getOpType());
 	}
 }

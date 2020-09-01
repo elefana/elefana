@@ -559,7 +559,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 		return response;
 	}
 
-	public IndexResponse index(String index, String type, String id, PooledStringBuilder doc, IndexOpType opType)
+	public IndexResponse index(ChannelHandlerContext context, String index, String type, String id, PooledStringBuilder doc, IndexOpType opType)
 			throws ElefanaException {
 		indexUtils.ensureIndexExists(index);
 
@@ -668,7 +668,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 					boolean exists = false;
 
 					try {
-						final GetRequest getRequest = new PsqlGetRequest(this, index, type, id);
+						final GetRequest getRequest = new PsqlGetRequest(this, context, index, type, id);
 						getRequest.setFetchSource(false);
 						final GetResponse getResponse = get(getRequest);
 						if(getResponse.isFound()) {

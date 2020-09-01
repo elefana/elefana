@@ -33,6 +33,7 @@ import com.elefana.util.IndexUtils;
 import com.elefana.util.NamedThreadFactory;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import io.netty.channel.ChannelHandlerContext;
 import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -762,28 +763,28 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 	}
 
 	@Override
-	public GetFieldMappingsRequest prepareGetFieldMappings() {
-		return new PsqlGetFieldMappingsRequest(this);
+	public GetFieldMappingsRequest prepareGetFieldMappings(ChannelHandlerContext context) {
+		return new PsqlGetFieldMappingsRequest(this, context);
 	}
 
 	@Override
-	public GetFieldMappingsRequest prepareGetFieldMappings(String indexPattern) {
-		PsqlGetFieldMappingsRequest result = new PsqlGetFieldMappingsRequest(this);
+	public GetFieldMappingsRequest prepareGetFieldMappings(ChannelHandlerContext context, String indexPattern) {
+		PsqlGetFieldMappingsRequest result = new PsqlGetFieldMappingsRequest(this, context);
 		result.setIndicesPattern(indexPattern);
 		return result;
 	}
 
 	@Override
-	public GetFieldMappingsRequest prepareGetFieldMappings(String indexPattern, String typePattern) {
-		PsqlGetFieldMappingsRequest result = new PsqlGetFieldMappingsRequest(this);
+	public GetFieldMappingsRequest prepareGetFieldMappings(ChannelHandlerContext context, String indexPattern, String typePattern) {
+		PsqlGetFieldMappingsRequest result = new PsqlGetFieldMappingsRequest(this, context);
 		result.setIndicesPattern(indexPattern);
 		result.setTypesPattern(typePattern);
 		return result;
 	}
 	
 	@Override
-	public GetFieldMappingsRequest prepareGetFieldMappings(String indexPattern, String typePattern, String fieldPattern) {
-		PsqlGetFieldMappingsRequest result = new PsqlGetFieldMappingsRequest(this);
+	public GetFieldMappingsRequest prepareGetFieldMappings(ChannelHandlerContext context, String indexPattern, String typePattern, String fieldPattern) {
+		PsqlGetFieldMappingsRequest result = new PsqlGetFieldMappingsRequest(this, context);
 		result.setIndicesPattern(indexPattern);
 		result.setTypesPattern(typePattern);
 		result.setFieldPattern(fieldPattern);
@@ -791,28 +792,28 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 	}
 	
 	@Override
-	public PutFieldMappingRequest preparePutFieldMappings(String index, PooledStringBuilder mappings) {
-		PsqlPutFieldMappingRequest result = new PsqlPutFieldMappingRequest(this, index);
+	public PutFieldMappingRequest preparePutFieldMappings(ChannelHandlerContext context, String index, PooledStringBuilder mappings) {
+		PsqlPutFieldMappingRequest result = new PsqlPutFieldMappingRequest(this, context, index);
 		result.setMappings(mappings);
 		return result;
 	}
 
 	@Override
-	public PutFieldMappingRequest preparePutFieldMappings(String index, String type, PooledStringBuilder mappings) {
-		PsqlPutFieldMappingRequest result = new PsqlPutFieldMappingRequest(this, index);
+	public PutFieldMappingRequest preparePutFieldMappings(ChannelHandlerContext context, String index, String type, PooledStringBuilder mappings) {
+		PsqlPutFieldMappingRequest result = new PsqlPutFieldMappingRequest(this, context, index);
 		result.setType(type);
 		result.setMappings(mappings);
 		return result;
 	}
 	
 	@Override
-	public GetFieldCapabilitiesRequest prepareGetFieldCapabilities(String indexPattern) {
-		return new PsqlGetFieldCapabilitiesRequest(this, indexPattern);
+	public GetFieldCapabilitiesRequest prepareGetFieldCapabilities(ChannelHandlerContext context, String indexPattern) {
+		return new PsqlGetFieldCapabilitiesRequest(this, context, indexPattern);
 	}
 
 	@Override
-	public RefreshIndexRequest prepareRefreshIndex(String index) {
-		return new PsqlRefreshIndexRequest(this, index);
+	public RefreshIndexRequest prepareRefreshIndex(ChannelHandlerContext context, String index) {
+		return new PsqlRefreshIndexRequest(this, context, index);
 	}
 
 	@Override

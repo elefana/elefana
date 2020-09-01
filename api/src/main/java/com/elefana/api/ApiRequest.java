@@ -50,9 +50,14 @@ public abstract class ApiRequest<T extends ApiResponse> {
 	public ApiRequest(RequestExecutor requestExecutor, ChannelHandlerContext context, boolean streamingResponse) {
 		super();
 		this.requestExecutor = requestExecutor;
-		this.context = context;
 		this.streamingResponse = streamingResponse;
 
+		if(context == null) {
+			this.context = null;
+			channelPromise = null;
+			return;
+		}
+		this.context = context;
 		channelPromise = context.newPromise();
 	}
 	
@@ -62,7 +67,11 @@ public abstract class ApiRequest<T extends ApiResponse> {
 		if(executionStarted.getAndSet(true)) {
 			return;
 		}
-		backingFuture = requestExecutor.submit(internalExecute(), channelPromise);
+		if(channelPromise == null) {
+			backingFuture = requestExecutor.submit(internalExecute());
+		} else {
+			backingFuture = requestExecutor.submit(internalExecute(), channelPromise);
+		}
 	}
 	
 	public void cancel() {
@@ -100,6 +109,9 @@ public abstract class ApiRequest<T extends ApiResponse> {
 		if(!executionStarted.get()) {
 			return false;
 		}
+		if(channelPromise == null) {
+			return backingFuture.isDone();
+		}
 		return channelPromise.isDone();
 	}
 
@@ -108,58 +120,100 @@ public abstract class ApiRequest<T extends ApiResponse> {
 	}
 
 	public Channel channel() {
+		if(context == null) {
+			return null;
+		}
 		return context.channel();
 	}
 
 	public ChannelPromise setSuccess(Void result) {
+		if(context == null) {
+			return null;
+		}
 		return channelPromise.setSuccess(result);
 	}
 
 	public ChannelPromise setSuccess() {
+		if(context == null) {
+			return null;
+		}
 		return channelPromise.setSuccess();
 	}
 
 	public boolean trySuccess() {
+		if(context == null) {
+			return false;
+		}
 		return channelPromise.trySuccess();
 	}
 
 	public ChannelPromise setFailure(Throwable cause) {
+		if(context == null) {
+			return null;
+		}
 		return channelPromise.setFailure(cause);
 	}
 
 	public ChannelPromise addListener(GenericFutureListener<? extends io.netty.util.concurrent.Future<? super Void>> listener) {
+		if(context == null) {
+			return null;
+		}
 		return channelPromise.addListener(listener);
 	}
 
 	public ChannelPromise addListeners(GenericFutureListener<? extends io.netty.util.concurrent.Future<? super Void>>... listeners) {
+		if(context == null) {
+			return null;
+		}
 		return channelPromise.addListeners(listeners);
 	}
 
 	public ChannelPromise removeListener(GenericFutureListener<? extends io.netty.util.concurrent.Future<? super Void>> listener) {
+		if(context == null) {
+			return null;
+		}
 		return channelPromise.removeListener(listener);
 	}
 
 	public ChannelPromise removeListeners(GenericFutureListener<? extends io.netty.util.concurrent.Future<? super Void>>... listeners) {
+		if(context == null) {
+			return null;
+		}
 		return channelPromise.removeListeners(listeners);
 	}
 
 	public ChannelPromise sync() throws InterruptedException {
+		if(context == null) {
+			return null;
+		}
 		return channelPromise.sync();
 	}
 
 	public ChannelPromise syncUninterruptibly() {
+		if(context == null) {
+			return null;
+		}
 		return channelPromise.syncUninterruptibly();
 	}
 
 	public ChannelPromise await() throws InterruptedException {
+		if(context == null) {
+			return null;
+		}
 		return channelPromise.await();
 	}
 
 	public ChannelPromise awaitUninterruptibly() {
+		if(context == null) {
+			return null;
+		}
 		return channelPromise.awaitUninterruptibly();
 	}
 
 	public ChannelPromise unvoid() {
+		if(context == null) {
+			return null;
+		}
 		return channelPromise.unvoid();
 	}
 }

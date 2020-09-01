@@ -203,7 +203,7 @@ public class PsqlBulkIndexService implements Runnable {
 		if(indexTemplateService instanceof PsqlIndexTemplateService) {
 			indexTemplate = ((PsqlIndexTemplateService) indexTemplateService).getIndexTemplateForIndex(ingestTable.getIndex());
 		} else {
-			indexTemplate = indexTemplateService.prepareGetIndexTemplateForIndex(ingestTable.getIndex()).get().getIndexTemplate();
+			indexTemplate = indexTemplateService.prepareGetIndexTemplateForIndex(null, ingestTable.getIndex()).get().getIndexTemplate();
 		}
 
 		for(int i = 0; i < ingestTable.getCapacity(); i++) {

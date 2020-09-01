@@ -155,7 +155,7 @@ public class CitusShardMetadataMaintainer implements Runnable {
 		if(indexTemplateService instanceof PsqlIndexTemplateService) {
 			indexTemplate = ((PsqlIndexTemplateService) indexTemplateService).getIndexTemplateForIndex(tableTimestampSample.getIndexName());
 		} else {
-			indexTemplate = indexTemplateService.prepareGetIndexTemplateForIndex(tableTimestampSample.getIndexName()).get().getIndexTemplate();
+			indexTemplate = indexTemplateService.prepareGetIndexTemplateForIndex(null, tableTimestampSample.getIndexName()).get().getIndexTemplate();
 		}
 
 		if(!indexTemplate.isTimeSeries()) {

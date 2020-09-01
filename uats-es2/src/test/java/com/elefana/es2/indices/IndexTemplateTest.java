@@ -21,6 +21,7 @@ import static org.hamcrest.Matchers.notNullValue;
 
 import java.util.UUID;
 
+import com.elefana.TestUtils;
 import io.restassured.http.ContentType;
 import io.restassured.path.json.exception.JsonPathException;
 import io.restassured.response.ValidatableResponse;
@@ -46,6 +47,7 @@ public class IndexTemplateTest {
 	@Before
 	public void setup() {
 		RestAssured.baseURI = "http://localhost:9201";
+		TestUtils.waitForElefanaToStart();
 	}
 	
 	@Test

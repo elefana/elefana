@@ -39,11 +39,11 @@ public class PsqlSearchRequest extends SearchRequest implements Callable<SearchR
 	@Override
 	public SearchResponse call() throws Exception {
 		if(indexPattern != null && typePattern != null) {
-			return searchService.search(indexPattern, typePattern, requestBody);
+			return searchService.search(context, indexPattern, typePattern, requestBody);
 		} else if(indexPattern != null) {
-			return searchService.search(indexPattern, requestBody);
+			return searchService.search(context, indexPattern, requestBody);
 		} else {
-			return searchService.search(requestBody);
+			return searchService.search(context, requestBody);
 		}
 	}
 
