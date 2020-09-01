@@ -18,10 +18,11 @@ package com.elefana.document;
 import com.elefana.api.document.BulkRequest;
 import com.elefana.api.document.BulkStatsRequest;
 import com.elefana.api.util.PooledStringBuilder;
+import io.netty.channel.ChannelHandlerContext;
 
 public interface BulkIngestService {
 
-	public BulkRequest prepareBulkRequest(PooledStringBuilder requestBody);
+	public BulkRequest prepareBulkRequest(ChannelHandlerContext context, PooledStringBuilder requestBody);
 
-	public BulkStatsRequest prepareBulkStatsRequest();
+	public BulkStatsRequest prepareBulkStatsRequest(ChannelHandlerContext context);
 }

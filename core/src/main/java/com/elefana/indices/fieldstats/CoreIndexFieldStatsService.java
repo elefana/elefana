@@ -38,6 +38,7 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpMethod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -134,7 +135,7 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
     }
 
     @Override
-    public GetFieldStatsRequest prepareGetFieldStatsPost(String indexPattern, PooledStringBuilder requestBody, boolean clusterLevel) throws NoSuchApiException {
+    public GetFieldStatsRequest prepareGetFieldStatsPost(ChannelHandlerContext context, String indexPattern, PooledStringBuilder requestBody, boolean clusterLevel) throws NoSuchApiException {
         try {
             List<String> fields = new ArrayList<>();
 
@@ -146,21 +147,21 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
                 throw new NoSuchApiException(HttpMethod.POST, "No fields specified in request body");
             }
 
-            return new RealtimeGetFieldStatsRequest(this, indexPattern, fields, clusterLevel);
+            return new RealtimeGetFieldStatsRequest(this, context, indexPattern, fields, clusterLevel);
         } catch (Exception e) {
             throw new NoSuchApiException(HttpMethod.POST, "Invalid request body");
         }
     }
 
     @Override
-    public GetFieldStatsRequest prepareGetFieldStatsGet(String indexPattern, String fieldGetParam, boolean clusterLevel) {
+    public GetFieldStatsRequest prepareGetFieldStatsGet(ChannelHandlerContext context, String indexPattern, String fieldGetParam, boolean clusterLevel) {
         List<String> fields = Arrays.asList(fieldGetParam.split(","));
 
-        return new RealtimeGetFieldStatsRequest(this, indexPattern, fields, clusterLevel);
+        return new RealtimeGetFieldStatsRequest(this, context, indexPattern, fields, clusterLevel);
     }
 
     @Override
-    public GetFieldStatsResponse getFieldStats(String indexPattern, List<String> fields, boolean clusterLevel) {
+    public GetFieldStatsResponse getFieldStats(ChannelHandlerContext context, String indexPattern, List<String> fields, boolean clusterLevel) {
         GetFieldStatsResponse response = new GetFieldStatsResponse();
         ensureIndicesLoaded(indexPattern);
         List<String> indices = state.compileIndexPattern(indexPattern);
@@ -176,17 +177,17 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
     }
 
     @Override
-    public GetFieldNamesRequest prepareGetFieldNames(String indexPattern) {
-        return prepareGetFieldNames(indexPattern, "*");
+    public GetFieldNamesRequest prepareGetFieldNames(ChannelHandlerContext context, String indexPattern) {
+        return prepareGetFieldNames(context, indexPattern, "*");
     }
 
     @Override
-    public GetFieldNamesRequest prepareGetFieldNames(String indexPattern, String typePattern) {
-        return new RealtimeIndexFieldNamesRequest(this, indexPattern, typePattern);
+    public GetFieldNamesRequest prepareGetFieldNames(ChannelHandlerContext context, String indexPattern, String typePattern) {
+        return new RealtimeIndexFieldNamesRequest(this, context, indexPattern, typePattern);
     }
 
     @Override
-    public GetFieldNamesResponse getFieldNames(String indexPattern, String typePattern) {
+    public GetFieldNamesResponse getFieldNames(ChannelHandlerContext context, String indexPattern, String typePattern) {
         final GetFieldNamesResponse response = new GetFieldNamesResponse();
         try {
             final Set<String> cachedFieldNames = fieldNamesCache.get(indexPattern);

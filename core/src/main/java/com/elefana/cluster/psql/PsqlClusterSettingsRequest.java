@@ -17,14 +17,15 @@ package com.elefana.cluster.psql;
 
 import com.elefana.api.cluster.ClusterSettingsRequest;
 import com.elefana.api.cluster.ClusterSettingsResponse;
+import io.netty.channel.ChannelHandlerContext;
 
 import java.util.concurrent.Callable;
 
 public class PsqlClusterSettingsRequest extends ClusterSettingsRequest implements Callable<ClusterSettingsResponse> {
 	private final PsqlClusterService clusterService;
 
-	public PsqlClusterSettingsRequest(PsqlClusterService clusterService) {
-		super(clusterService);
+	public PsqlClusterSettingsRequest(PsqlClusterService clusterService, ChannelHandlerContext context) {
+		super(clusterService, context);
 		this.clusterService = clusterService;
 	}
 

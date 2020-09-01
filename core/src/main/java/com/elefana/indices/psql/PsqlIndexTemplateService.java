@@ -27,6 +27,7 @@ import com.elefana.api.util.PooledStringBuilder;
 import com.elefana.indices.IndexTemplateService;
 import com.elefana.util.NamedThreadFactory;
 import com.fasterxml.jackson.databind.JsonNode;
+import io.netty.channel.ChannelHandlerContext;
 import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,35 +77,35 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 	}
 	
 	@Override
-	public ListIndexTemplatesRequest prepareListIndexTemplates(String... templateIds) {
-		return new PsqlListIndexTemplatesRequest(this, templateIds);
+	public ListIndexTemplatesRequest prepareListIndexTemplates(ChannelHandlerContext context, String... templateIds) {
+		return new PsqlListIndexTemplatesRequest(this, context, templateIds);
 	}
 
 	@Override
-	public GetIndexTemplateRequest prepareGetIndexTemplate(String index, boolean fetchSource) {
-		final PsqlGetIndexTemplateRequest request = new PsqlGetIndexTemplateRequest(this, index);
+	public GetIndexTemplateRequest prepareGetIndexTemplate(ChannelHandlerContext context, String index, boolean fetchSource) {
+		final PsqlGetIndexTemplateRequest request = new PsqlGetIndexTemplateRequest(this, context, index);
 		request.setFetchSource(fetchSource);
 		return request;
 	}
 
 	@Override
-	public PutIndexTemplateRequest preparePutIndexTemplate(String templateId, PooledStringBuilder requestBody) {
-		return new PsqlPutIndexTemplateRequest(this, templateId, requestBody);
+	public PutIndexTemplateRequest preparePutIndexTemplate(ChannelHandlerContext context, String templateId, PooledStringBuilder requestBody) {
+		return new PsqlPutIndexTemplateRequest(this, context, templateId, requestBody);
 	}
 	
 	@Override
-	public GetIndexTemplateForIndexRequest prepareGetIndexTemplateForIndex(String index) {
+	public GetIndexTemplateForIndexRequest prepareGetIndexTemplateForIndex(ChannelHandlerContext context, String index) {
 		if (indexToTemplateNullCache.containsKey(index)) {
-			return new ImmediateGetIndexTemplateForIndexRequest(index, null, null);
+			return new ImmediateGetIndexTemplateForIndexRequest(context, index, null, null);
 		}
 		final String templateId = indexToTemplateIdCache.get(index);
 		if (templateId != null && templateIdToTemplateCache.containsKey(templateId)) {
-			return new ImmediateGetIndexTemplateForIndexRequest(index, templateId, templateIdToTemplateCache.get(templateId));
+			return new ImmediateGetIndexTemplateForIndexRequest(context, index, templateId, templateIdToTemplateCache.get(templateId));
 		}
 		if (templateId != null && templateIdToNullCache.containsKey(templateId)) {
-			return new ImmediateGetIndexTemplateForIndexRequest(index, templateId, null);
+			return new ImmediateGetIndexTemplateForIndexRequest(context,index, templateId, null);
 		}
-		return new PsqlGetIndexTemplateForIndexRequest(this, index);
+		return new PsqlGetIndexTemplateForIndexRequest(this, context, index);
 	}
 	
 	public Map<String, IndexTemplate> getIndexTemplates() {

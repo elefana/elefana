@@ -19,13 +19,15 @@ import com.elefana.api.AckResponse;
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
 import com.elefana.api.util.PooledStringBuilder;
+import io.netty.channel.ChannelHandlerContext;
 
 public abstract class PutIndexTemplateRequest extends ApiRequest<AckResponse> {
 	protected final String templateId;
 	protected PooledStringBuilder requestBody;
 
-	public PutIndexTemplateRequest(RequestExecutor requestExecutor, String templateId, PooledStringBuilder requestBody) {
-		super(requestExecutor);
+	public PutIndexTemplateRequest(RequestExecutor requestExecutor, ChannelHandlerContext context,
+	                               String templateId, PooledStringBuilder requestBody) {
+		super(requestExecutor, context);
 		this.templateId = templateId;
 		this.requestBody = requestBody;
 	}

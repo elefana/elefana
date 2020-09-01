@@ -21,6 +21,7 @@ import static org.hamcrest.Matchers.notNullValue;
 
 import java.util.UUID;
 
+import com.elefana.TestUtils;
 import io.restassured.http.ContentType;
 import io.restassured.path.json.exception.JsonPathException;
 import io.restassured.response.ValidatableResponse;
@@ -46,12 +47,18 @@ public class IndexTemplateTest {
 	@Before
 	public void setup() {
 		RestAssured.baseURI = "http://localhost:9201";
+		TestUtils.waitForElefanaToStart();
 	}
 	
-	@Test
+	@Test(timeout = 30000L)
 	public void testIndexTemplate() {
 		final String index = UUID.randomUUID().toString();
 		final String type = "test";
+
+		given().when().get("/_template/testIndexTemplateA")
+				.then()
+				.log().all()
+				.statusCode(404);
 
 		given().when().head("/_template/testIndexTemplateA")
 				.then()
@@ -74,7 +81,7 @@ public class IndexTemplateTest {
 			.body("testIndexTemplateA.mappings." + type, notNullValue());
 	}
 	
-	@Test
+	@Test(timeout = 30000L)
 	public void testIndexTemplateWithStorageSettings() {
 		final String index = UUID.randomUUID().toString();
 		final String type = "test";
@@ -95,7 +102,7 @@ public class IndexTemplateTest {
 			.body("testIndexTemplate.storage.timestamp_path", equalTo("timeField"));
 	}
 
-	@Test
+	@Test(timeout = 30000L)
 	public void testIndexTemplateWithIdIndexDisabled() {
 		final String index = UUID.randomUUID().toString();
 		final String type = "test";
@@ -135,7 +142,7 @@ public class IndexTemplateTest {
 				.body("created", equalTo(true));
 	}
 	
-	@Test
+	@Test(timeout = 30000L)
 	public void testIndexTemplateMappingGeneration() {
 		final String index = UUID.randomUUID().toString();
 		final String type = "test";

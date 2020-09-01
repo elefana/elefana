@@ -44,6 +44,7 @@ import com.elefana.util.NamedThreadFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.module.SimpleModule;
+import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -152,13 +153,13 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 	}
 
 	@Override
-	public BulkRequest prepareBulkRequest(PooledStringBuilder requestBody) {
-		return new PsqlBulkRequest(this, requestBody);
+	public BulkRequest prepareBulkRequest(ChannelHandlerContext context, PooledStringBuilder requestBody) {
+		return new PsqlBulkRequest(this, context, requestBody);
 	}
 
 	@Override
-	public BulkStatsRequest prepareBulkStatsRequest() {
-		return new PsqlBulkStatsRequest(this);
+	public BulkStatsRequest prepareBulkStatsRequest(ChannelHandlerContext context) {
+		return new PsqlBulkStatsRequest(this, context);
 	}
 
 	public BulkStatsResponse getBulkStats() {
@@ -202,7 +203,7 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 		return response;
 	}
 
-	public BulkResponse bulkOperations(PooledStringBuilder requestBody) throws ElefanaException {
+	public BulkResponse bulkOperations(ChannelHandlerContext context, PooledStringBuilder requestBody) throws ElefanaException {
 		final Timer.Context totalTimer = bulkIngestTotalTimer.time();
 
 		final Matcher matcher = NEW_LINE_PATTERN.matcher(requestBody);
@@ -304,7 +305,7 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 				if(indexTemplateService instanceof PsqlIndexTemplateService) {
 					indexTemplate = ((PsqlIndexTemplateService) indexTemplateService).getIndexTemplateForIndex(index);
 				} else {
-					indexTemplate = indexTemplateService.prepareGetIndexTemplateForIndex(index).get().getIndexTemplate();
+					indexTemplate = indexTemplateService.prepareGetIndexTemplateForIndex(context, index).get().getIndexTemplate();
 				}
 				if(indexTemplate != null && indexTemplate.isTimeSeries()) {
 					bulkIndexTime(bulkApiResponse, indexTemplate, index, indexOperations.get(index));

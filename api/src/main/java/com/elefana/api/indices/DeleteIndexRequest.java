@@ -18,16 +18,19 @@ package com.elefana.api.indices;
 import com.elefana.api.AckResponse;
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
+import io.netty.channel.ChannelHandlerContext;
 
 public abstract class DeleteIndexRequest extends ApiRequest<AckResponse> {
 	private final String indexPattern, typePattern;
 
-	public DeleteIndexRequest(RequestExecutor requestExecutor, String indexPattern) {
-		this(requestExecutor, indexPattern, "*");
+	public DeleteIndexRequest(RequestExecutor requestExecutor, ChannelHandlerContext context,
+	                          String indexPattern) {
+		this(requestExecutor, context, indexPattern, "*");
 	}
 
-	public DeleteIndexRequest(RequestExecutor requestExecutor, String indexPattern, String typePattern) {
-		super(requestExecutor);
+	public DeleteIndexRequest(RequestExecutor requestExecutor, ChannelHandlerContext context,
+	                          String indexPattern, String typePattern) {
+		super(requestExecutor, context);
 		this.indexPattern = indexPattern;
 		this.typePattern = typePattern;
 	}

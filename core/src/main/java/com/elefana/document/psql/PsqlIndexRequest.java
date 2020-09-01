@@ -17,14 +17,15 @@ package com.elefana.document.psql;
 
 import com.elefana.api.document.IndexRequest;
 import com.elefana.api.document.IndexResponse;
+import io.netty.channel.ChannelHandlerContext;
 
 import java.util.concurrent.Callable;
 
 public class PsqlIndexRequest extends IndexRequest implements Callable<IndexResponse> {
 	private final PsqlDocumentService documentService;
 
-	public PsqlIndexRequest(PsqlDocumentService documentService) {
-		super(documentService);
+	public PsqlIndexRequest(PsqlDocumentService documentService, ChannelHandlerContext context) {
+		super(documentService, context);
 		this.documentService = documentService;
 	}
 
@@ -35,6 +36,6 @@ public class PsqlIndexRequest extends IndexRequest implements Callable<IndexResp
 
 	@Override
 	public IndexResponse call() throws Exception {
-		return documentService.index(getIndex(), getType(), getId(), getSource(), getOpType());
+		return documentService.index(context, getIndex(), getType(), getId(), getSource(), getOpType());
 	}
 }

@@ -261,7 +261,7 @@ public class CoreIndexUtils implements IndexUtils {
 	@Override
 	public long getTimestamp(String index, String document) throws ElefanaException {
 		final GetIndexTemplateForIndexRequest indexTemplateForIndexRequest = indexTemplateService
-				.prepareGetIndexTemplateForIndex(index);
+				.prepareGetIndexTemplateForIndex(null, index);
 		final GetIndexTemplateForIndexResponse indexTemplateForIndexResponse = indexTemplateForIndexRequest.get();
 		final IndexTemplate indexTemplate = indexTemplateForIndexResponse.getIndexTemplate();
 		if (indexTemplate == null) {
@@ -281,7 +281,7 @@ public class CoreIndexUtils implements IndexUtils {
 
 	public long getTimestamp(String index, PooledStringBuilder document) throws ElefanaException {
 		final GetIndexTemplateForIndexRequest indexTemplateForIndexRequest = indexTemplateService
-				.prepareGetIndexTemplateForIndex(index);
+				.prepareGetIndexTemplateForIndex(null, index);
 		final GetIndexTemplateForIndexResponse indexTemplateForIndexResponse = indexTemplateForIndexRequest.get();
 		final IndexTemplate indexTemplate = indexTemplateForIndexResponse.getIndexTemplate();
 		if (indexTemplate == null) {
@@ -310,7 +310,7 @@ public class CoreIndexUtils implements IndexUtils {
 	public void ensureJsonFieldIndexExist(String indexName, List<String> fieldNames) throws ElefanaException {
 		final IndexTemplate indexTemplate;
 		final GetIndexTemplateForIndexResponse indexTemplateForIndexResponse = indexTemplateService
-				.prepareGetIndexTemplateForIndex(indexName).get();
+				.prepareGetIndexTemplateForIndex(null, indexName).get();
 		if (indexTemplateForIndexResponse.getIndexTemplate() != null) {
 			indexTemplate = indexTemplateForIndexResponse.getIndexTemplate();
 		} else {
@@ -389,7 +389,7 @@ public class CoreIndexUtils implements IndexUtils {
 		}
 
 		final GetIndexTemplateForIndexRequest indexTemplateForIndexRequest = indexTemplateService
-				.prepareGetIndexTemplateForIndex(indexName);
+				.prepareGetIndexTemplateForIndex(null, indexName);
 		final GetIndexTemplateForIndexResponse indexTemplateForIndexResponse = indexTemplateForIndexRequest.get();
 		final IndexTemplate indexTemplate = indexTemplateForIndexResponse.getIndexTemplate();
 		boolean timeSeries = false;

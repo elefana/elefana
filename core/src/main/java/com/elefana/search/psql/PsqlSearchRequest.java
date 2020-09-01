@@ -18,14 +18,16 @@ package com.elefana.search.psql;
 import com.elefana.api.search.SearchRequest;
 import com.elefana.api.search.SearchResponse;
 import com.elefana.api.util.PooledStringBuilder;
+import io.netty.channel.ChannelHandlerContext;
 
 import java.util.concurrent.Callable;
 
 public class PsqlSearchRequest extends SearchRequest implements Callable<SearchResponse> {
 	private final PsqlSearchService searchService;
 
-	public PsqlSearchRequest(PsqlSearchService searchService, PooledStringBuilder requestBody) {
-		super(searchService, requestBody);
+	public PsqlSearchRequest(PsqlSearchService searchService, ChannelHandlerContext context,
+	                         PooledStringBuilder requestBody) {
+		super(searchService, context, requestBody);
 		this.searchService = searchService;
 	}
 
@@ -37,11 +39,11 @@ public class PsqlSearchRequest extends SearchRequest implements Callable<SearchR
 	@Override
 	public SearchResponse call() throws Exception {
 		if(indexPattern != null && typePattern != null) {
-			return searchService.search(indexPattern, typePattern, requestBody);
+			return searchService.search(context, indexPattern, typePattern, requestBody);
 		} else if(indexPattern != null) {
-			return searchService.search(indexPattern, requestBody);
+			return searchService.search(context, indexPattern, requestBody);
 		} else {
-			return searchService.search(requestBody);
+			return searchService.search(context, requestBody);
 		}
 	}
 

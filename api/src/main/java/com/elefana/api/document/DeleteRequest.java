@@ -17,12 +17,14 @@ package com.elefana.api.document;
 
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
+import io.netty.channel.ChannelHandlerContext;
 
 public abstract class DeleteRequest extends ApiRequest<DeleteResponse> {
 	protected final String index, type, id;
 
-	public DeleteRequest(RequestExecutor requestExecutor, String index, String type, String id) {
-		super(requestExecutor);
+	public DeleteRequest(RequestExecutor requestExecutor, ChannelHandlerContext context,
+	                     String index, String type, String id) {
+		super(requestExecutor, context);
 		this.index = index;
 		this.type = type;
 		this.id = id;

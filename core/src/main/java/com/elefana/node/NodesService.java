@@ -16,18 +16,19 @@
 package com.elefana.node;
 
 import com.elefana.api.node.NodesStatsRequest;
+import io.netty.channel.ChannelHandlerContext;
 
 public interface NodesService {
 
-    public NodesStatsRequest prepareAllNodesStats();
+    public NodesStatsRequest prepareAllNodesStats(ChannelHandlerContext context);
 
-    public NodesStatsRequest prepareNodesStats(String [] filteredNodes);
+    public NodesStatsRequest prepareNodesStats(ChannelHandlerContext context, String [] filteredNodes);
 	
-	public NodesStatsRequest prepareNodesStats(String [] filteredNodes, String[] infoFields);
+	public NodesStatsRequest prepareNodesStats(ChannelHandlerContext context, String [] filteredNodes, String[] infoFields);
 
-	public NodesStatsRequest prepareAllNodesStats(String[] infoFields);
+	public NodesStatsRequest prepareAllNodesStats(ChannelHandlerContext context, String[] infoFields);
 
-	public NodesStatsRequest prepareLocalNodeStats();
+	public NodesStatsRequest prepareLocalNodeStats(ChannelHandlerContext context);
 	
-	public NodesStatsRequest prepareLocalNodeStats(String[] infoFields);
+	public NodesStatsRequest prepareLocalNodeStats(ChannelHandlerContext context, String[] infoFields);
 }

@@ -17,14 +17,16 @@ package com.elefana.indices.psql;
 
 import com.elefana.api.indices.GetFieldCapabilitiesRequest;
 import com.elefana.api.indices.GetFieldCapabilitiesResponse;
+import io.netty.channel.ChannelHandlerContext;
 
 import java.util.concurrent.Callable;
 
 public class PsqlGetFieldCapabilitiesRequest extends GetFieldCapabilitiesRequest implements Callable<GetFieldCapabilitiesResponse> {
 	private final PsqlIndexFieldMappingService indexFieldMappingService;
 
-	public PsqlGetFieldCapabilitiesRequest(PsqlIndexFieldMappingService indexFieldMappingService, String index) {
-		super(indexFieldMappingService, index);
+	public PsqlGetFieldCapabilitiesRequest(PsqlIndexFieldMappingService indexFieldMappingService, ChannelHandlerContext context,
+	                                       String index) {
+		super(indexFieldMappingService, context, index);
 		this.indexFieldMappingService = indexFieldMappingService;
 	}
 

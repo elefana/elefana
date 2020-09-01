@@ -18,14 +18,16 @@ package com.elefana.api.indices;
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
 import com.elefana.api.util.PooledStringBuilder;
+import io.netty.channel.ChannelHandlerContext;
 
 public abstract class PutFieldMappingRequest extends ApiRequest<PutFieldMappingResponse> {
 	protected String index;
 	protected String type;
 	protected PooledStringBuilder mappings;
 	
-	public PutFieldMappingRequest(RequestExecutor requestExecutor, String index) {
-		super(requestExecutor);
+	public PutFieldMappingRequest(RequestExecutor requestExecutor, ChannelHandlerContext context,
+	                              String index) {
+		super(requestExecutor, context);
 		this.index = index;
 	}
 

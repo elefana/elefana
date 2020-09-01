@@ -17,14 +17,16 @@ package com.elefana.document.psql;
 
 import com.elefana.api.document.GetRequest;
 import com.elefana.api.document.GetResponse;
+import io.netty.channel.ChannelHandlerContext;
 
 import java.util.concurrent.Callable;
 
 public class PsqlGetRequest extends GetRequest implements Callable<GetResponse> {
 	private final PsqlDocumentService documentService;
 
-	public PsqlGetRequest(PsqlDocumentService documentService, String index, String type, String id) {
-		super(documentService, index, type, id);
+	public PsqlGetRequest(PsqlDocumentService documentService, ChannelHandlerContext context,
+	                      String index, String type, String id) {
+		super(documentService, context, index, type, id);
 		this.documentService = documentService;
 	}
 

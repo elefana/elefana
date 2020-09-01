@@ -17,14 +17,16 @@ package com.elefana.document.psql;
 
 import com.elefana.api.document.DeleteRequest;
 import com.elefana.api.document.DeleteResponse;
+import io.netty.channel.ChannelHandlerContext;
 
 import java.util.concurrent.Callable;
 
 public class PsqlDeleteRequest extends DeleteRequest implements Callable<DeleteResponse> {
 	private final PsqlDocumentService documentService;
 
-	public PsqlDeleteRequest(PsqlDocumentService documentService, String index, String type, String id) {
-		super(documentService, index, type, id);
+	public PsqlDeleteRequest(PsqlDocumentService documentService, ChannelHandlerContext context,
+	                         String index, String type, String id) {
+		super(documentService, context, index, type, id);
 		this.documentService = documentService;
 	}
 

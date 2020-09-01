@@ -17,18 +17,21 @@ package com.elefana.document.psql;
 
 import com.elefana.api.AckResponse;
 import com.elefana.api.indices.DeleteIndexRequest;
+import io.netty.channel.ChannelHandlerContext;
 
 import java.util.concurrent.Callable;
 
 public class PsqlDeleteIndexRequest extends DeleteIndexRequest implements Callable<AckResponse> {
 	private final PsqlDocumentService documentService;
 
-	public PsqlDeleteIndexRequest(PsqlDocumentService documentService, String indexPattern) {
-		this(documentService, indexPattern, "*");
+	public PsqlDeleteIndexRequest(PsqlDocumentService documentService, ChannelHandlerContext context,
+	                              String indexPattern) {
+		this(documentService, context, indexPattern, "*");
 	}
 
-	public PsqlDeleteIndexRequest(PsqlDocumentService documentService, String indexPattern, String typePattern) {
-		super(documentService, indexPattern, typePattern);
+	public PsqlDeleteIndexRequest(PsqlDocumentService documentService, ChannelHandlerContext context,
+	                              String indexPattern, String typePattern) {
+		super(documentService, context, indexPattern, typePattern);
 		this.documentService = documentService;
 	}
 

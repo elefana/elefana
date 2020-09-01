@@ -17,12 +17,14 @@ package com.elefana.api.indices;
 
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
+import io.netty.channel.ChannelHandlerContext;
 
 public abstract class GetIndexTemplateForIndexRequest extends ApiRequest<GetIndexTemplateForIndexResponse> {
 	private final String index;
 	
-	public GetIndexTemplateForIndexRequest(RequestExecutor requestExecutor, String index) {
-		super(requestExecutor);
+	public GetIndexTemplateForIndexRequest(RequestExecutor requestExecutor, ChannelHandlerContext context,
+	                                       String index) {
+		super(requestExecutor, context);
 		this.index = index;
 	}
 

@@ -18,10 +18,15 @@ package com.elefana.api;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.ShardFailedException;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelPromise;
+import io.netty.util.concurrent.GenericFutureListener;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class ApiRequest<T extends ApiResponse> {
 	@JsonIgnore
@@ -29,40 +34,59 @@ public abstract class ApiRequest<T extends ApiResponse> {
 	@JsonIgnore
 	protected final boolean streamingResponse;
 	@JsonIgnore
-	protected Future<T> responseFuture;
+	protected final ChannelHandlerContext context;
+	@JsonIgnore
+	private final ChannelPromise channelPromise;
+	@JsonIgnore
+	private final AtomicBoolean executionStarted = new AtomicBoolean(false);
 
-	public ApiRequest(RequestExecutor requestExecutor) {
-		this(requestExecutor, false);
+	@JsonIgnore
+	protected Future<T> backingFuture;
+
+	public ApiRequest(RequestExecutor requestExecutor, ChannelHandlerContext context) {
+		this(requestExecutor, context, false);
 	}
 
-	public ApiRequest(RequestExecutor requestExecutor, boolean streamingResponse) {
+	public ApiRequest(RequestExecutor requestExecutor, ChannelHandlerContext context, boolean streamingResponse) {
 		super();
 		this.requestExecutor = requestExecutor;
 		this.streamingResponse = streamingResponse;
+
+		if(context == null) {
+			this.context = null;
+			channelPromise = null;
+			return;
+		}
+		this.context = context;
+		channelPromise = context.newPromise();
 	}
 	
 	protected abstract Callable<T> internalExecute();
 
 	public void execute() {
-		if(responseFuture != null) {
+		if(executionStarted.getAndSet(true)) {
 			return;
 		}
-		responseFuture = requestExecutor.submit(internalExecute());
+		if(channelPromise == null) {
+			backingFuture = requestExecutor.submit(internalExecute());
+		} else {
+			backingFuture = requestExecutor.submit(internalExecute(), channelPromise);
+		}
 	}
 	
 	public void cancel() {
-		if(responseFuture == null) {
+		if(!channelPromise.cancel(true)) {
 			return;
 		}
-		responseFuture.cancel(false);
+		backingFuture.cancel(true);
 	}
-	
+
 	public T get() throws ElefanaException {
 		try {
-			if(responseFuture == null) {
+			if(backingFuture == null) {
 				execute();
 			}
-			return responseFuture.get();
+			return backingFuture.get();
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 			throw new ShardFailedException(e);
@@ -82,13 +106,114 @@ public abstract class ApiRequest<T extends ApiResponse> {
 	}
 	
 	public boolean isDone() {
-		if(responseFuture == null) {
+		if(!executionStarted.get()) {
 			return false;
 		}
-		return responseFuture.isDone();
+		if(channelPromise == null) {
+			return backingFuture.isDone();
+		}
+		return channelPromise.isDone();
 	}
 
 	public boolean isStreamingResponse() {
 		return streamingResponse;
+	}
+
+	public Channel channel() {
+		if(context == null) {
+			return null;
+		}
+		return context.channel();
+	}
+
+	public ChannelPromise setSuccess(Void result) {
+		if(context == null) {
+			return null;
+		}
+		return channelPromise.setSuccess(result);
+	}
+
+	public ChannelPromise setSuccess() {
+		if(context == null) {
+			return null;
+		}
+		return channelPromise.setSuccess();
+	}
+
+	public boolean trySuccess() {
+		if(context == null) {
+			return false;
+		}
+		return channelPromise.trySuccess();
+	}
+
+	public ChannelPromise setFailure(Throwable cause) {
+		if(context == null) {
+			return null;
+		}
+		return channelPromise.setFailure(cause);
+	}
+
+	public ChannelPromise addListener(GenericFutureListener<? extends io.netty.util.concurrent.Future<? super Void>> listener) {
+		if(context == null) {
+			return null;
+		}
+		return channelPromise.addListener(listener);
+	}
+
+	public ChannelPromise addListeners(GenericFutureListener<? extends io.netty.util.concurrent.Future<? super Void>>... listeners) {
+		if(context == null) {
+			return null;
+		}
+		return channelPromise.addListeners(listeners);
+	}
+
+	public ChannelPromise removeListener(GenericFutureListener<? extends io.netty.util.concurrent.Future<? super Void>> listener) {
+		if(context == null) {
+			return null;
+		}
+		return channelPromise.removeListener(listener);
+	}
+
+	public ChannelPromise removeListeners(GenericFutureListener<? extends io.netty.util.concurrent.Future<? super Void>>... listeners) {
+		if(context == null) {
+			return null;
+		}
+		return channelPromise.removeListeners(listeners);
+	}
+
+	public ChannelPromise sync() throws InterruptedException {
+		if(context == null) {
+			return null;
+		}
+		return channelPromise.sync();
+	}
+
+	public ChannelPromise syncUninterruptibly() {
+		if(context == null) {
+			return null;
+		}
+		return channelPromise.syncUninterruptibly();
+	}
+
+	public ChannelPromise await() throws InterruptedException {
+		if(context == null) {
+			return null;
+		}
+		return channelPromise.await();
+	}
+
+	public ChannelPromise awaitUninterruptibly() {
+		if(context == null) {
+			return null;
+		}
+		return channelPromise.awaitUninterruptibly();
+	}
+
+	public ChannelPromise unvoid() {
+		if(context == null) {
+			return null;
+		}
+		return channelPromise.unvoid();
 	}
 }

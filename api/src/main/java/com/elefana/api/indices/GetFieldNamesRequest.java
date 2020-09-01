@@ -18,6 +18,7 @@ package com.elefana.api.indices;
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import io.netty.channel.ChannelHandlerContext;
 
 public abstract class GetFieldNamesRequest extends ApiRequest<GetFieldNamesResponse> {
 	@JsonIgnore
@@ -27,12 +28,14 @@ public abstract class GetFieldNamesRequest extends ApiRequest<GetFieldNamesRespo
 
 	protected int maxIndices = 10;
 
-	public GetFieldNamesRequest(RequestExecutor requestExecutor, String indexPattern) {
-		this(requestExecutor, indexPattern, "*");
+	public GetFieldNamesRequest(RequestExecutor requestExecutor, ChannelHandlerContext context,
+	                            String indexPattern) {
+		this(requestExecutor, context, indexPattern, "*");
 	}
 
-	public GetFieldNamesRequest(RequestExecutor requestExecutor, String indexPattern, String typePattern) {
-		super(requestExecutor, false);
+	public GetFieldNamesRequest(RequestExecutor requestExecutor, ChannelHandlerContext context,
+	                            String indexPattern, String typePattern) {
+		super(requestExecutor, context,false);
 		this.indexPattern = indexPattern;
 		this.typePattern = typePattern;
 	}

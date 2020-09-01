@@ -4,6 +4,7 @@ import com.elefana.api.ImmediateRequestExecutor;
 import com.elefana.api.indices.GetIndexTemplateForIndexRequest;
 import com.elefana.api.indices.GetIndexTemplateForIndexResponse;
 import com.elefana.api.indices.IndexTemplate;
+import io.netty.channel.ChannelHandlerContext;
 
 import java.util.concurrent.Callable;
 
@@ -11,8 +12,8 @@ public class ImmediateGetIndexTemplateForIndexRequest extends GetIndexTemplateFo
 	private final IndexTemplate indexTemplate;
 	private final String templateId;
 
-	public ImmediateGetIndexTemplateForIndexRequest(String index, String templateId, IndexTemplate indexTemplate) {
-		super(ImmediateRequestExecutor.INSTANCE, index);
+	public ImmediateGetIndexTemplateForIndexRequest(ChannelHandlerContext context, String index, String templateId, IndexTemplate indexTemplate) {
+		super(ImmediateRequestExecutor.INSTANCE, context, index);
 		this.templateId = templateId;
 		this.indexTemplate = indexTemplate;
 	}

@@ -112,7 +112,7 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 						if(indexTemplateService instanceof PsqlIndexTemplateService) {
 							indexTemplate = ((PsqlIndexTemplateService) indexTemplateService).getIndexTemplateForIndex(index);
 						} else {
-							indexTemplate = indexTemplateService.prepareGetIndexTemplateForIndex(index).get().getIndexTemplate();
+							indexTemplate = indexTemplateService.prepareGetIndexTemplateForIndex(null, index).get().getIndexTemplate();
 						}
 
 						if(indexTemplate != null && indexTemplate.isTimeSeries()) {
@@ -195,7 +195,7 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 		if(indexTemplateService instanceof PsqlIndexTemplateService) {
 			indexTemplate = ((PsqlIndexTemplateService) indexTemplateService).getIndexTemplateForIndex(index);
 		} else {
-			indexTemplate = indexTemplateService.prepareGetIndexTemplateForIndex(index).get().getIndexTemplate();
+			indexTemplate = indexTemplateService.prepareGetIndexTemplateForIndex(null, index).get().getIndexTemplate();
 		}
 		return createTimeIngestTable(index, indexTemplate.getStorage().getIndexTimeBucket(), existingTables);
 	}

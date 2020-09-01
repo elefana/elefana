@@ -18,18 +18,19 @@ package com.elefana.search;
 import com.elefana.api.search.MultiSearchRequest;
 import com.elefana.api.search.SearchRequest;
 import com.elefana.api.util.PooledStringBuilder;
+import io.netty.channel.ChannelHandlerContext;
 
 public interface SearchService {
 	
-	public MultiSearchRequest prepareMultiSearch(PooledStringBuilder requestBody);
+	public MultiSearchRequest prepareMultiSearch(ChannelHandlerContext context, PooledStringBuilder requestBody);
 	
-	public MultiSearchRequest prepareMultiSearch(String fallbackIndex, PooledStringBuilder requestBody);
+	public MultiSearchRequest prepareMultiSearch(ChannelHandlerContext context, String fallbackIndex, PooledStringBuilder requestBody);
 	
-	public MultiSearchRequest prepareMultiSearch(String fallbackIndex, String fallbackType, PooledStringBuilder requestBody);
+	public MultiSearchRequest prepareMultiSearch(ChannelHandlerContext context, String fallbackIndex, String fallbackType, PooledStringBuilder requestBody);
 
-	public SearchRequest prepareSearch(PooledStringBuilder requestBody);
+	public SearchRequest prepareSearch(ChannelHandlerContext context, PooledStringBuilder requestBody);
 
-	public SearchRequest prepareSearch(String indexPattern, PooledStringBuilder requestBody);
+	public SearchRequest prepareSearch(ChannelHandlerContext context, String indexPattern, PooledStringBuilder requestBody);
 
-	public SearchRequest prepareSearch(String indexPattern, String typesPattern, PooledStringBuilder requestBody);
+	public SearchRequest prepareSearch(ChannelHandlerContext context, String indexPattern, String typesPattern, PooledStringBuilder requestBody);
 }

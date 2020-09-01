@@ -18,14 +18,16 @@ package com.elefana.document.psql;
 import com.elefana.api.document.BulkRequest;
 import com.elefana.api.document.BulkResponse;
 import com.elefana.api.util.PooledStringBuilder;
+import io.netty.channel.ChannelHandlerContext;
 
 import java.util.concurrent.Callable;
 
 public class PsqlBulkRequest extends BulkRequest implements Callable<BulkResponse> {
 	private final PsqlBulkIngestService bulkIngestService;
 
-	public PsqlBulkRequest(PsqlBulkIngestService bulkIngestService, PooledStringBuilder requestBody) {
-		super(bulkIngestService, requestBody);
+	public PsqlBulkRequest(PsqlBulkIngestService bulkIngestService, ChannelHandlerContext context,
+	                       PooledStringBuilder requestBody) {
+		super(bulkIngestService, context, requestBody);
 		this.bulkIngestService = bulkIngestService;
 	}
 
@@ -36,7 +38,7 @@ public class PsqlBulkRequest extends BulkRequest implements Callable<BulkRespons
 
 	@Override
 	public BulkResponse call() throws Exception {
-		return bulkIngestService.bulkOperations(requestBody);
+		return bulkIngestService.bulkOperations(context, requestBody);
 	}
 
 }

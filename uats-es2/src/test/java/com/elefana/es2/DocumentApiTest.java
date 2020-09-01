@@ -84,7 +84,7 @@ public class DocumentApiTest extends DocumentedTest {
 		RestAssured.baseURI = "http://localhost:9201";
 	}
 	
-	@Test
+	@Test(timeout = 30000L)
 	public void testIndexWithoutId() {
 		TestUtils.waitForElefanaToStart();
 
@@ -105,7 +105,7 @@ public class DocumentApiTest extends DocumentedTest {
 			.body("created", equalTo(true));
 	}
 
-	@Test
+	@Test(timeout = 30000L)
 	public void testIndexWithId() {
 		TestUtils.waitForElefanaToStart();
 
@@ -114,7 +114,7 @@ public class DocumentApiTest extends DocumentedTest {
 		indexWithId(id, message, System.currentTimeMillis());
 	}
 
-	@Test
+	@Test(timeout = 30000L)
 	public void testExists() {
 		TestUtils.waitForElefanaToStart();
 
@@ -132,7 +132,7 @@ public class DocumentApiTest extends DocumentedTest {
 				.statusCode(200);
 	}
 
-	@Test
+	@Test(timeout = 30000L)
 	public void testZDelete() {
 		TestUtils.waitForElefanaToStart();
 
@@ -162,7 +162,7 @@ public class DocumentApiTest extends DocumentedTest {
 				.statusCode(404);
 	}
 
-	@Test
+	@Test(timeout = 30000L)
 	public void testZDeleteIndex() {
 		TestUtils.waitForElefanaToStart();
 
@@ -194,7 +194,7 @@ public class DocumentApiTest extends DocumentedTest {
 		Assert.fail("Expected 404 response but received " + lastResponseCode);
 	}
 	
-	@Test
+	@Test(timeout = 30000L)
 	public void testIndexWithEscapedJson() throws IOException {
 		TestUtils.waitForElefanaToStart();
 
@@ -251,7 +251,7 @@ public class DocumentApiTest extends DocumentedTest {
 		Assert.assertEquals(expectedAny.get("message").toString(), resultAny.get("message").toString());
 	}
 
-	@Test
+	@Test(timeout = 30000L)
 	public void testGet() {
 		TestUtils.waitForElefanaToStart();
 
@@ -273,7 +273,7 @@ public class DocumentApiTest extends DocumentedTest {
 			.body("_source.timestamp", equalTo(timestamp));
 	}
 	
-	@Test
+	@Test(timeout = 30000L)
 	public void testGetNotFound() {
 		final String id = UUID.randomUUID().toString();
 		given().when().get("/" + INDEX + "/" + TYPE + "/" + id)
@@ -285,7 +285,7 @@ public class DocumentApiTest extends DocumentedTest {
 			.body("found", equalTo(false));
 	}
 
-	@Test
+	@Test(timeout = 30000L)
 	public void testUpdate() {
 		TestUtils.waitForElefanaToStart();
 
@@ -321,7 +321,7 @@ public class DocumentApiTest extends DocumentedTest {
 			.body("_source.timestamp", equalTo(timestamp));
 	}
 
-	@Test
+	@Test(timeout = 30000L)
 	public void testMultiGet() {
 		TestUtils.waitForElefanaToStart();
 
@@ -365,7 +365,7 @@ public class DocumentApiTest extends DocumentedTest {
 		Assert.fail("Expected 2 results but got " + lastResultCount + " from index " + INDEX);
 	}
 	
-	@Test
+	@Test(timeout = 30000L)
 	public void testMultiGetWithIndex() {
 		TestUtils.waitForElefanaToStart();
 
@@ -407,7 +407,7 @@ public class DocumentApiTest extends DocumentedTest {
 		Assert.fail("Expected 2 results but got " + lastResultCount + " from index " + INDEX);
 	}
 	
-	@Test
+	@Test(timeout = 30000L)
 	public void testMultiGetWithIndexAndType() {
 		TestUtils.waitForElefanaToStart();
 

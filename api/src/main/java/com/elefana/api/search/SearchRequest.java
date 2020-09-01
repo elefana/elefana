@@ -18,6 +18,7 @@ package com.elefana.api.search;
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
 import com.elefana.api.util.PooledStringBuilder;
+import io.netty.channel.ChannelHandlerContext;
 
 public abstract class SearchRequest extends ApiRequest<SearchResponse> {
 	private static final PooledStringBuilder DEFAULT_QUERY = PooledStringBuilder.allocate("{\"query\":{\"match_all\": {}}}");
@@ -25,12 +26,13 @@ public abstract class SearchRequest extends ApiRequest<SearchResponse> {
 	protected String indexPattern, typePattern;
 	protected PooledStringBuilder requestBody;
 	
-	public SearchRequest(RequestExecutor requestExecutor) {
-		this(requestExecutor, DEFAULT_QUERY);
+	public SearchRequest(RequestExecutor requestExecutor, ChannelHandlerContext context) {
+		this(requestExecutor, context, DEFAULT_QUERY);
 	}
 
-	public SearchRequest(RequestExecutor requestExecutor, PooledStringBuilder requestBody) {
-		super(requestExecutor);
+	public SearchRequest(RequestExecutor requestExecutor, ChannelHandlerContext context,
+	                     PooledStringBuilder requestBody) {
+		super(requestExecutor, context);
 		this.requestBody = requestBody;
 	}
 

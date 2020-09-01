@@ -18,13 +18,15 @@ package com.elefana.api.search;
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
 import com.elefana.api.util.PooledStringBuilder;
+import io.netty.channel.ChannelHandlerContext;
 
 public abstract class MultiSearchRequest extends ApiRequest<MultiSearchResponse> {
 	protected String fallbackIndex, fallbackType;
 	protected PooledStringBuilder requestBody;
 
-	public MultiSearchRequest(RequestExecutor requestExecutor, PooledStringBuilder requestBody) {
-		super(requestExecutor);
+	public MultiSearchRequest(RequestExecutor requestExecutor, ChannelHandlerContext context,
+	                          PooledStringBuilder requestBody) {
+		super(requestExecutor, context);
 		this.requestBody = requestBody;
 	}
 

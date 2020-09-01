@@ -18,16 +18,17 @@ package com.elefana.indices;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.indices.*;
 import com.elefana.api.util.PooledStringBuilder;
+import io.netty.channel.ChannelHandlerContext;
 
 public interface IndexTemplateService {
 	
-	public ListIndexTemplatesRequest prepareListIndexTemplates(String ... templateIds);
+	public ListIndexTemplatesRequest prepareListIndexTemplates(ChannelHandlerContext context, String ... templateIds);
 	
-	public GetIndexTemplateForIndexRequest prepareGetIndexTemplateForIndex(String index);
+	public GetIndexTemplateForIndexRequest prepareGetIndexTemplateForIndex(ChannelHandlerContext context, String index);
 	
-	public GetIndexTemplateRequest prepareGetIndexTemplate(String templateId, boolean fetchSource);
+	public GetIndexTemplateRequest prepareGetIndexTemplate(ChannelHandlerContext context, String templateId, boolean fetchSource);
 	
-	public PutIndexTemplateRequest preparePutIndexTemplate(String templateId, PooledStringBuilder requestBody);
+	public PutIndexTemplateRequest preparePutIndexTemplate(ChannelHandlerContext context, String templateId, PooledStringBuilder requestBody);
 
 	public IndexTemplate getIndexTemplateForIndex(String index)  throws ElefanaException;
 }

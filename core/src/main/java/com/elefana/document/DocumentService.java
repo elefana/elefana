@@ -18,20 +18,21 @@ package com.elefana.document;
 import com.elefana.api.document.*;
 import com.elefana.api.indices.DeleteIndexRequest;
 import com.elefana.api.util.PooledStringBuilder;
+import io.netty.channel.ChannelHandlerContext;
 
 public interface DocumentService {
 
-	public GetRequest prepareGet(String index, String type, String id, boolean fetchSource);
+	public GetRequest prepareGet(ChannelHandlerContext context, String index, String type, String id, boolean fetchSource);
 
-	public DeleteRequest prepareDelete(String index, String type, String id);
+	public DeleteRequest prepareDelete(ChannelHandlerContext context, String index, String type, String id);
 
-	public DeleteIndexRequest prepareDeleteIndex(String indexPattern, String typePattern);
+	public DeleteIndexRequest prepareDeleteIndex(ChannelHandlerContext context, String indexPattern, String typePattern);
 
-	public MultiGetRequest prepareMultiGet(PooledStringBuilder requestBody);
+	public MultiGetRequest prepareMultiGet(ChannelHandlerContext context, PooledStringBuilder requestBody);
 
-	public MultiGetRequest prepareMultiGet(String indexPattern, PooledStringBuilder requestBody);
+	public MultiGetRequest prepareMultiGet(ChannelHandlerContext context, String indexPattern, PooledStringBuilder requestBody);
 
-	public MultiGetRequest prepareMultiGet(String indexPattern, String typePattern, PooledStringBuilder requestBody);
+	public MultiGetRequest prepareMultiGet(ChannelHandlerContext context, String indexPattern, String typePattern, PooledStringBuilder requestBody);
 
-	public IndexRequest prepareIndex(String index, String type, String id, PooledStringBuilder document, IndexOpType opType);
+	public IndexRequest prepareIndex(ChannelHandlerContext context, String index, String type, String id, PooledStringBuilder document, IndexOpType opType);
 }

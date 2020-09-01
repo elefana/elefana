@@ -17,6 +17,7 @@ package com.elefana.api.indices;
 
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
+import io.netty.channel.ChannelHandlerContext;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,8 +26,8 @@ import java.util.concurrent.Callable;
 public abstract class ListIndexTemplatesRequest extends ApiRequest<ListIndexTemplatesResponse> implements Callable<ListIndexTemplatesResponse> {
 	private final List<String> templateIds = new ArrayList<String>(1);
 	
-	public ListIndexTemplatesRequest(RequestExecutor requestExecutor) {
-		super(requestExecutor);
+	public ListIndexTemplatesRequest(RequestExecutor requestExecutor, ChannelHandlerContext context) {
+		super(requestExecutor, context);
 	}
 	
 	@Override

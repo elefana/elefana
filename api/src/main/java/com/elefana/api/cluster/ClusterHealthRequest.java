@@ -17,20 +17,21 @@ package com.elefana.api.cluster;
 
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
+import io.netty.channel.ChannelHandlerContext;
 
 public abstract class ClusterHealthRequest extends ApiRequest<ClusterHealthResponse> {
 	protected final String [] indices;
 
-	public ClusterHealthRequest(RequestExecutor requestExecutor) {
-		this(requestExecutor, new String [] {});
+	public ClusterHealthRequest(RequestExecutor requestExecutor, ChannelHandlerContext context) {
+		this(requestExecutor, context, new String [] {});
 	}
 	
-	public ClusterHealthRequest(RequestExecutor requestExecutor, String indices) {
-		this(requestExecutor, indices.split(","));
+	public ClusterHealthRequest(RequestExecutor requestExecutor, ChannelHandlerContext context, String indices) {
+		this(requestExecutor, context, indices.split(","));
 	}
 
-	public ClusterHealthRequest(RequestExecutor requestExecutor, String [] indices) {
-		super(requestExecutor);
+	public ClusterHealthRequest(RequestExecutor requestExecutor, ChannelHandlerContext context, String [] indices) {
+		super(requestExecutor, context);
 		this.indices = indices;
 	}
 }

@@ -17,22 +17,23 @@ package com.elefana.cluster.psql;
 
 import com.elefana.api.cluster.ClusterHealthRequest;
 import com.elefana.api.cluster.ClusterHealthResponse;
+import io.netty.channel.ChannelHandlerContext;
 
 import java.util.concurrent.Callable;
 
 public class PsqlClusterHealthRequest extends ClusterHealthRequest implements Callable<ClusterHealthResponse> {
 	private final PsqlClusterService clusterService;
 
-	public PsqlClusterHealthRequest(PsqlClusterService clusterService) {
-		this(clusterService, new String [] {});
+	public PsqlClusterHealthRequest(PsqlClusterService clusterService, ChannelHandlerContext context) {
+		this(clusterService, context, new String [] {});
 	}
 	
-	public PsqlClusterHealthRequest(PsqlClusterService clusterService, String indices) {
-		this(clusterService, indices.split(","));
+	public PsqlClusterHealthRequest(PsqlClusterService clusterService, ChannelHandlerContext context, String indices) {
+		this(clusterService, context, indices.split(","));
 	}
 
-	public PsqlClusterHealthRequest(PsqlClusterService clusterService, String [] indices) {
-		super(clusterService);
+	public PsqlClusterHealthRequest(PsqlClusterService clusterService, ChannelHandlerContext context, String [] indices) {
+		super(clusterService, context);
 		this.clusterService = clusterService;
 	}
 

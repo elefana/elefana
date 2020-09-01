@@ -17,6 +17,7 @@ package com.elefana.indices.fieldstats;
 
 import com.elefana.api.indices.GetFieldStatsRequest;
 import com.elefana.api.indices.GetFieldStatsResponse;
+import io.netty.channel.ChannelHandlerContext;
 
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -24,13 +25,15 @@ import java.util.concurrent.Callable;
 public class RealtimeGetFieldStatsRequest extends GetFieldStatsRequest {
 	private final IndexFieldStatsService indexFieldStatsService;
 
-	public RealtimeGetFieldStatsRequest(IndexFieldStatsService indexFieldStatsService, String indexPattern, List<String> fields, boolean clusterLevel) {
-		super(indexFieldStatsService, indexPattern, fields, clusterLevel);
+	public RealtimeGetFieldStatsRequest(IndexFieldStatsService indexFieldStatsService,
+	                                    ChannelHandlerContext context,
+	                                    String indexPattern, List<String> fields, boolean clusterLevel) {
+		super(indexFieldStatsService, context, indexPattern, fields, clusterLevel);
 		this.indexFieldStatsService = indexFieldStatsService;
 	}
 
 	@Override
 	protected Callable<GetFieldStatsResponse> internalExecute() {
-		return () -> indexFieldStatsService.getFieldStats(indexPattern, fields, clusterLevel);
+		return () -> indexFieldStatsService.getFieldStats(context, indexPattern, fields, clusterLevel);
 	}
 }

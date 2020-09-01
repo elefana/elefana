@@ -34,6 +34,7 @@ import com.elefana.node.VersionInfoService;
 import com.elefana.util.EscapeUtils;
 import com.elefana.util.IndexUtils;
 import com.elefana.util.NamedThreadFactory;
+import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
@@ -101,45 +102,45 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 	}
 
 	@Override
-	public GetRequest prepareGet(String index, String type, String id, boolean fetchSource) {
-		final PsqlGetRequest getRequest = new PsqlGetRequest(this, index, type, id);
+	public GetRequest prepareGet(ChannelHandlerContext context, String index, String type, String id, boolean fetchSource) {
+		final PsqlGetRequest getRequest = new PsqlGetRequest(this, context, index, type, id);
 		getRequest.setFetchSource(fetchSource);
 		return getRequest;
 	}
 
 	@Override
-	public DeleteRequest prepareDelete(String index, String type, String id) {
-		return new PsqlDeleteRequest(this, index, type, id);
+	public DeleteRequest prepareDelete(ChannelHandlerContext context, String index, String type, String id) {
+		return new PsqlDeleteRequest(this, context, index, type, id);
 	}
 
 	@Override
-	public DeleteIndexRequest prepareDeleteIndex(String indexPattern, String typePattern) {
-		return new PsqlDeleteIndexRequest(this, indexPattern, typePattern);
+	public DeleteIndexRequest prepareDeleteIndex(ChannelHandlerContext context, String indexPattern, String typePattern) {
+		return new PsqlDeleteIndexRequest(this, context, indexPattern, typePattern);
 	}
 
 	@Override
-	public MultiGetRequest prepareMultiGet(PooledStringBuilder requestBody) {
-		return new PsqlMultiGetRequest(this, requestBody);
+	public MultiGetRequest prepareMultiGet(ChannelHandlerContext context, PooledStringBuilder requestBody) {
+		return new PsqlMultiGetRequest(this, context, requestBody);
 	}
 
 	@Override
-	public MultiGetRequest prepareMultiGet(String indexPattern, PooledStringBuilder requestBody) {
-		final MultiGetRequest result = new PsqlMultiGetRequest(this, requestBody);
+	public MultiGetRequest prepareMultiGet(ChannelHandlerContext context, String indexPattern, PooledStringBuilder requestBody) {
+		final MultiGetRequest result = new PsqlMultiGetRequest(this, context, requestBody);
 		result.setIndexPattern(indexPattern);
 		return result;
 	}
 
 	@Override
-	public MultiGetRequest prepareMultiGet(String indexPattern, String typePattern, PooledStringBuilder requestBody) {
-		final MultiGetRequest result = new PsqlMultiGetRequest(this, requestBody);
+	public MultiGetRequest prepareMultiGet(ChannelHandlerContext context, String indexPattern, String typePattern, PooledStringBuilder requestBody) {
+		final MultiGetRequest result = new PsqlMultiGetRequest(this, context, requestBody);
 		result.setIndexPattern(indexPattern);
 		result.setTypePattern(typePattern);
 		return result;
 	}
 
 	@Override
-	public IndexRequest prepareIndex(String index, String type, String id, PooledStringBuilder document, IndexOpType opType) {
-		final IndexRequest result = new PsqlIndexRequest(this);
+	public IndexRequest prepareIndex(ChannelHandlerContext context, String index, String type, String id, PooledStringBuilder document, IndexOpType opType) {
+		final IndexRequest result = new PsqlIndexRequest(this, context);
 		result.setIndex(index);
 		result.setType(type);
 		result.setId(id);
@@ -558,7 +559,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 		return response;
 	}
 
-	public IndexResponse index(String index, String type, String id, PooledStringBuilder doc, IndexOpType opType)
+	public IndexResponse index(ChannelHandlerContext context, String index, String type, String id, PooledStringBuilder doc, IndexOpType opType)
 			throws ElefanaException {
 		indexUtils.ensureIndexExists(index);
 
@@ -667,7 +668,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 					boolean exists = false;
 
 					try {
-						final GetRequest getRequest = new PsqlGetRequest(this, index, type, id);
+						final GetRequest getRequest = new PsqlGetRequest(this, context, index, type, id);
 						getRequest.setFetchSource(false);
 						final GetResponse getResponse = get(getRequest);
 						if(getResponse.isFound()) {
