@@ -17,6 +17,7 @@ package com.elefana.indices.psql;
 
 import com.elefana.api.indices.ListIndexTemplatesRequest;
 import com.elefana.api.indices.ListIndexTemplatesResponse;
+import io.netty.channel.ChannelHandlerContext;
 
 import java.util.concurrent.FutureTask;
 
@@ -24,20 +25,21 @@ public class PsqlListIndexTemplatesRequest extends ListIndexTemplatesRequest {
 	private final PsqlIndexTemplateService indexTemplateService;
 	private final String [] templateIds;
 
-	public PsqlListIndexTemplatesRequest(PsqlIndexTemplateService indexTemplateService, String... templateIds) {
-		super(null);
+	public PsqlListIndexTemplatesRequest(PsqlIndexTemplateService indexTemplateService, ChannelHandlerContext context,
+	                                     String... templateIds) {
+		super(null, context);
 		this.indexTemplateService = indexTemplateService;
 		this.templateIds = templateIds;
 	}
 
 	@Override
 	public void execute() {
-		if(this.responseFuture != null) {
+		if(this.backingFuture != null) {
 			return;
 		}
 		FutureTask<ListIndexTemplatesResponse> responseFuture = new FutureTask<ListIndexTemplatesResponse>(this);
 		responseFuture.run();
-		this.responseFuture = responseFuture;
+		this.backingFuture = responseFuture;
 	}
 
 	@Override

@@ -17,13 +17,15 @@ package com.elefana.api.document;
 
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
+import io.netty.channel.ChannelHandlerContext;
 
 public abstract class GetRequest extends ApiRequest<GetResponse> {
 	protected String index, type, id;
 	protected boolean fetchSource = true;
 
-	public GetRequest(RequestExecutor requestExecutor, String index, String type, String id) {
-		super(requestExecutor);
+	public GetRequest(RequestExecutor requestExecutor, ChannelHandlerContext context,
+	                  String index, String type, String id) {
+		super(requestExecutor, context);
 		this.index = index;
 		this.type = type;
 		this.id = id;

@@ -18,14 +18,16 @@ package com.elefana.indices.psql;
 import com.elefana.api.AckResponse;
 import com.elefana.api.indices.PutIndexTemplateRequest;
 import com.elefana.api.util.PooledStringBuilder;
+import io.netty.channel.ChannelHandlerContext;
 
 import java.util.concurrent.Callable;
 
 public class PsqlPutIndexTemplateRequest extends PutIndexTemplateRequest implements Callable<AckResponse> {
 	private final PsqlIndexTemplateService indexTemplateService;
 
-	public PsqlPutIndexTemplateRequest(PsqlIndexTemplateService indexTemplateService, String templateId, PooledStringBuilder requestBody) {
-		super(indexTemplateService, templateId, requestBody);
+	public PsqlPutIndexTemplateRequest(PsqlIndexTemplateService indexTemplateService, ChannelHandlerContext context,
+	                                   String templateId, PooledStringBuilder requestBody) {
+		super(indexTemplateService, context, templateId, requestBody);
 		this.indexTemplateService = indexTemplateService;
 	}
 

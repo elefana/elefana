@@ -17,14 +17,17 @@ package com.elefana.indices.psql;
 
 import com.elefana.api.indices.RefreshIndexRequest;
 import com.elefana.api.indices.RefreshIndexResponse;
+import io.netty.channel.ChannelHandlerContext;
 
 import java.util.concurrent.Callable;
 
 public class PsqlRefreshIndexRequest extends RefreshIndexRequest implements Callable<RefreshIndexResponse> {
 	private final PsqlIndexFieldMappingService indexFieldMappingService;
 	
-	public PsqlRefreshIndexRequest(PsqlIndexFieldMappingService indexFieldMappingService, String index) {
-		super(indexFieldMappingService, index);
+	public PsqlRefreshIndexRequest(PsqlIndexFieldMappingService indexFieldMappingService,
+	                               ChannelHandlerContext context,
+	                               String index) {
+		super(indexFieldMappingService, context, index);
 		this.indexFieldMappingService = indexFieldMappingService;
 	}
 

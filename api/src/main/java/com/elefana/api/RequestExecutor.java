@@ -15,10 +15,26 @@
  ******************************************************************************/
 package com.elefana.api;
 
+import io.netty.channel.ChannelPromise;
+
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
 public interface RequestExecutor {
+
+	public default <T> Future<T> submit(final Callable<T> request, ChannelPromise promise) {
+		Future<T> result = submit(() -> {
+			try {
+				T requestRequest = request.call();
+				promise.setSuccess();
+				return requestRequest;
+			} catch (Exception e) {
+				promise.setFailure(e);
+				return null;
+			}
+		});
+		return result;
+	}
 
 	public <T> Future<T> submit(Callable<T> request);
 }

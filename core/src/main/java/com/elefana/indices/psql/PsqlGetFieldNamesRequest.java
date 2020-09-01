@@ -17,18 +17,21 @@ package com.elefana.indices.psql;
 
 import com.elefana.api.indices.GetFieldNamesRequest;
 import com.elefana.api.indices.GetFieldNamesResponse;
+import io.netty.channel.ChannelHandlerContext;
 
 import java.util.concurrent.Callable;
 
 public class PsqlGetFieldNamesRequest extends GetFieldNamesRequest implements Callable<GetFieldNamesResponse> {
 	private final PsqlIndexFieldMappingService indexFieldMappingService;
 
-	public PsqlGetFieldNamesRequest(PsqlIndexFieldMappingService indexFieldMappingService, String indexPattern) {
-		this(indexFieldMappingService, indexPattern, "*");
+	public PsqlGetFieldNamesRequest(PsqlIndexFieldMappingService indexFieldMappingService, ChannelHandlerContext context,
+	                                String indexPattern) {
+		this(indexFieldMappingService, context, indexPattern, "*");
 	}
 
-	public PsqlGetFieldNamesRequest(PsqlIndexFieldMappingService indexFieldMappingService, String indexPattern, String typePattern) {
-		super(indexFieldMappingService, indexPattern, typePattern);
+	public PsqlGetFieldNamesRequest(PsqlIndexFieldMappingService indexFieldMappingService, ChannelHandlerContext context,
+	                                String indexPattern, String typePattern) {
+		super(indexFieldMappingService, context, indexPattern, typePattern);
 		this.indexFieldMappingService = indexFieldMappingService;
 	}
 

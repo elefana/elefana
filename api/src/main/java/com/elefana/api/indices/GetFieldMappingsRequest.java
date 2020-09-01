@@ -17,14 +17,15 @@ package com.elefana.api.indices;
 
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
+import io.netty.channel.ChannelHandlerContext;
 
 public abstract class GetFieldMappingsRequest extends ApiRequest<GetFieldMappingsResponse> {
 	private String indicesPattern;
 	private String typesPattern;
 	private String fieldPattern;
 	
-	public GetFieldMappingsRequest(RequestExecutor requestExecutor) {
-		super(requestExecutor);
+	public GetFieldMappingsRequest(RequestExecutor requestExecutor, ChannelHandlerContext context) {
+		super(requestExecutor, context);
 		this.indicesPattern = "*";
 		this.typesPattern = "*";
 		this.fieldPattern = null;

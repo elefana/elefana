@@ -15,6 +15,8 @@
  ******************************************************************************/
 package com.elefana.api;
 
+import io.netty.channel.ChannelPromise;
+
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
@@ -27,7 +29,6 @@ public class ImmediateRequestExecutor implements RequestExecutor {
 		try {
 			return CompletableFuture.completedFuture(request.call());
 		} catch (Exception e) {
-			e.printStackTrace();
 			throw new RuntimeException(e);
 		}
 	}

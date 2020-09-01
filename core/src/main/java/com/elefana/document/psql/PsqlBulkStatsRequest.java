@@ -17,14 +17,15 @@ package com.elefana.document.psql;
 
 import com.elefana.api.document.BulkStatsRequest;
 import com.elefana.api.document.BulkStatsResponse;
+import io.netty.channel.ChannelHandlerContext;
 
 import java.util.concurrent.Callable;
 
 public class PsqlBulkStatsRequest extends BulkStatsRequest implements Callable<BulkStatsResponse> {
 	private final PsqlBulkIngestService bulkIngestService;
 
-	public PsqlBulkStatsRequest(PsqlBulkIngestService bulkIngestService) {
-		super(bulkIngestService);
+	public PsqlBulkStatsRequest(PsqlBulkIngestService bulkIngestService, ChannelHandlerContext context) {
+		super(bulkIngestService, context);
 		this.bulkIngestService = bulkIngestService;
 	}
 

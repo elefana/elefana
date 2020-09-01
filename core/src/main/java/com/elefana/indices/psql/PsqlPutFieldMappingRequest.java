@@ -17,14 +17,17 @@ package com.elefana.indices.psql;
 
 import com.elefana.api.indices.PutFieldMappingRequest;
 import com.elefana.api.indices.PutFieldMappingResponse;
+import io.netty.channel.ChannelHandlerContext;
 
 import java.util.concurrent.Callable;
 
 public class PsqlPutFieldMappingRequest extends PutFieldMappingRequest implements Callable<PutFieldMappingResponse> {
 	private final PsqlIndexFieldMappingService indexFieldMappingService;
 
-	public PsqlPutFieldMappingRequest(PsqlIndexFieldMappingService indexFieldMappingService, String index) {
-		super(indexFieldMappingService, index);
+	public PsqlPutFieldMappingRequest(PsqlIndexFieldMappingService indexFieldMappingService,
+	                                  ChannelHandlerContext context,
+	                                  String index) {
+		super(indexFieldMappingService, context, index);
 		this.indexFieldMappingService = indexFieldMappingService;
 	}
 

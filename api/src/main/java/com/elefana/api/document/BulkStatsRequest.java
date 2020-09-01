@@ -17,10 +17,11 @@ package com.elefana.api.document;
 
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
+import io.netty.channel.ChannelHandlerContext;
 
 public abstract class BulkStatsRequest extends ApiRequest<BulkStatsResponse> {
 
-	public BulkStatsRequest(RequestExecutor requestExecutor) {
-		super(requestExecutor);
+	public BulkStatsRequest(RequestExecutor requestExecutor, ChannelHandlerContext context) {
+		super(requestExecutor, context);
 	}
 }

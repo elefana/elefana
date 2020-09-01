@@ -17,14 +17,15 @@ package com.elefana.api.node;
 
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
+import io.netty.channel.ChannelHandlerContext;
 
 public abstract class NodesStatsRequest extends ApiRequest<NodesStatsResponse> {
 	private boolean localOnly = false;
 	private String [] filteredNodes;
 	private String[] infoFields;
 
-	public NodesStatsRequest(RequestExecutor requestExecutor) {
-		super(requestExecutor);
+	public NodesStatsRequest(RequestExecutor requestExecutor, ChannelHandlerContext context) {
+		super(requestExecutor, context);
 	}
 
 	public boolean isLocalOnly() {

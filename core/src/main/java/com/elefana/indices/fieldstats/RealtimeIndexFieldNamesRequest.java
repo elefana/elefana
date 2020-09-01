@@ -17,14 +17,16 @@ package com.elefana.indices.fieldstats;
 
 import com.elefana.api.indices.GetFieldNamesRequest;
 import com.elefana.api.indices.GetFieldNamesResponse;
+import io.netty.channel.ChannelHandlerContext;
 
 import java.util.concurrent.Callable;
 
 public class RealtimeIndexFieldNamesRequest extends GetFieldNamesRequest {
 	private final IndexFieldStatsService indexFieldStatsService;
 
-	public RealtimeIndexFieldNamesRequest(IndexFieldStatsService indexFieldStatsService, String indexPattern, String typePattern) {
-		super(indexFieldStatsService, indexPattern, typePattern);
+	public RealtimeIndexFieldNamesRequest(IndexFieldStatsService indexFieldStatsService, ChannelHandlerContext context,
+	                                      String indexPattern, String typePattern) {
+		super(indexFieldStatsService, context, indexPattern, typePattern);
 		this.indexFieldStatsService = indexFieldStatsService;
 	}
 

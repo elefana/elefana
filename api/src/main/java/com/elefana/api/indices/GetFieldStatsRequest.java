@@ -17,6 +17,7 @@ package com.elefana.api.indices;
 
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
+import io.netty.channel.ChannelHandlerContext;
 
 import java.util.List;
 
@@ -25,8 +26,9 @@ public abstract class GetFieldStatsRequest extends ApiRequest<GetFieldStatsRespo
 	protected final boolean clusterLevel;
 	protected final List<String> fields;
 
-	public GetFieldStatsRequest(RequestExecutor requestExecutor, String indexPattern, List<String> fields, boolean clusterLevel) {
-		super(requestExecutor);
+	public GetFieldStatsRequest(RequestExecutor requestExecutor, ChannelHandlerContext context,
+	                            String indexPattern, List<String> fields, boolean clusterLevel) {
+		super(requestExecutor, context);
 		this.indexPattern = indexPattern;
 		this.clusterLevel = clusterLevel;
 		this.fields = fields;

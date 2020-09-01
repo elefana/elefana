@@ -18,16 +18,17 @@ package com.elefana.cluster;
 import com.elefana.api.cluster.ClusterHealthRequest;
 import com.elefana.api.cluster.ClusterInfoRequest;
 import com.elefana.api.cluster.ClusterSettingsRequest;
+import io.netty.channel.ChannelHandlerContext;
 
 public interface ClusterService {
 	
-	public ClusterInfoRequest prepareClusterInfo();
+	public ClusterInfoRequest prepareClusterInfo(ChannelHandlerContext context);
 	
-	public ClusterHealthRequest prepareClusterHealth();
+	public ClusterHealthRequest prepareClusterHealth(ChannelHandlerContext context);
 	
-	public ClusterHealthRequest prepareClusterHealth(String indices);
+	public ClusterHealthRequest prepareClusterHealth(ChannelHandlerContext context, String indices);
 	
-	public ClusterHealthRequest prepareClusterHealth(String... indices);
+	public ClusterHealthRequest prepareClusterHealth(ChannelHandlerContext context, String... indices);
 	
-	public ClusterSettingsRequest prepareClusterSettings();
+	public ClusterSettingsRequest prepareClusterSettings(ChannelHandlerContext context);
 }

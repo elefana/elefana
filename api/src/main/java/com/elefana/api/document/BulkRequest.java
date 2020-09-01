@@ -18,16 +18,17 @@ package com.elefana.api.document;
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
 import com.elefana.api.util.PooledStringBuilder;
+import io.netty.channel.ChannelHandlerContext;
 
 public abstract class BulkRequest extends ApiRequest<BulkResponse> {
 	protected PooledStringBuilder requestBody;
 	
-	public BulkRequest(RequestExecutor requestExecutor) {
-		super(requestExecutor);
+	public BulkRequest(RequestExecutor requestExecutor, ChannelHandlerContext context) {
+		super(requestExecutor, context);
 	}
 
-	public BulkRequest(RequestExecutor requestExecutor, PooledStringBuilder requestBody) {
-		super(requestExecutor);
+	public BulkRequest(RequestExecutor requestExecutor, ChannelHandlerContext context, PooledStringBuilder requestBody) {
+		super(requestExecutor, context);
 		this.requestBody = requestBody;
 	}
 

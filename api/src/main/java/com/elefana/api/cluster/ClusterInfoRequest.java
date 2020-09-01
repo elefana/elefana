@@ -17,11 +17,12 @@ package com.elefana.api.cluster;
 
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
+import io.netty.channel.ChannelHandlerContext;
 
 public abstract class ClusterInfoRequest extends ApiRequest<ClusterInfoResponse> {
 
-	public ClusterInfoRequest(RequestExecutor requestExecutor) {
-		super(requestExecutor);
+	public ClusterInfoRequest(RequestExecutor requestExecutor, ChannelHandlerContext context) {
+		super(requestExecutor, context);
 	}
 
 }

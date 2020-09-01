@@ -17,14 +17,15 @@ package com.elefana.node.psql;
 
 import com.elefana.api.node.NodesStatsRequest;
 import com.elefana.api.node.NodesStatsResponse;
+import io.netty.channel.ChannelHandlerContext;
 
 import java.util.concurrent.Callable;
 
 public class PsqlNodesStatsRequest extends NodesStatsRequest implements Callable<NodesStatsResponse> {
 	private final PsqlNodesService nodesService;
 	
-	public PsqlNodesStatsRequest(PsqlNodesService nodesService) {
-		super(nodesService);
+	public PsqlNodesStatsRequest(PsqlNodesService nodesService, ChannelHandlerContext context) {
+		super(nodesService, context);
 		this.nodesService = nodesService;
 	}
 

@@ -24,22 +24,27 @@ import com.elefana.api.indices.GetFieldStatsRequest;
 import com.elefana.api.indices.GetFieldStatsResponse;
 import com.elefana.api.util.PooledStringBuilder;
 import com.elefana.document.BulkIndexOperation;
+import io.netty.channel.ChannelHandlerContext;
 
 import java.util.List;
 
 public interface IndexFieldStatsService extends RequestExecutor {
 
-    public GetFieldStatsRequest prepareGetFieldStatsPost(String indexPattern, PooledStringBuilder requestBody, boolean clusterLevel) throws NoSuchApiException;
+    public GetFieldStatsRequest prepareGetFieldStatsPost(ChannelHandlerContext context,
+                                                         String indexPattern, PooledStringBuilder requestBody,
+                                                         boolean clusterLevel) throws NoSuchApiException;
 
-    public GetFieldStatsRequest prepareGetFieldStatsGet(String indexPattern, String fieldGetParam, boolean clusterLevel);
+    public GetFieldStatsRequest prepareGetFieldStatsGet(ChannelHandlerContext context,
+                                                        String indexPattern, String fieldGetParam, boolean clusterLevel);
 
-    public GetFieldStatsResponse getFieldStats(String indexPattern, List<String> fields, boolean clusterLevel);
+    public GetFieldStatsResponse getFieldStats(ChannelHandlerContext context,
+                                               String indexPattern, List<String> fields, boolean clusterLevel);
 
-    public GetFieldNamesRequest prepareGetFieldNames(String indexPattern);
+    public GetFieldNamesRequest prepareGetFieldNames(ChannelHandlerContext context, String indexPattern);
 
-    public GetFieldNamesRequest prepareGetFieldNames(String indexPattern, String typePattern);
+    public GetFieldNamesRequest prepareGetFieldNames(ChannelHandlerContext context, String indexPattern, String typePattern);
 
-    public GetFieldNamesResponse getFieldNames(String indexPattern, String typePattern);
+    public GetFieldNamesResponse getFieldNames(ChannelHandlerContext context, String indexPattern, String typePattern);
 
     public boolean isBooleanField(String index, String field);
 

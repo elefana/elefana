@@ -21,6 +21,8 @@ import com.elefana.cluster.ClusterService;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
 import com.elefana.util.NamedThreadFactory;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelPromise;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -139,33 +141,32 @@ public class PsqlClusterService implements ClusterService, RequestExecutor {
 	}
 
 	@Override
-	public ClusterInfoRequest prepareClusterInfo() {
-		return new PsqlClusterInfoRequest(this);
+	public ClusterInfoRequest prepareClusterInfo(ChannelHandlerContext context) {
+		return new PsqlClusterInfoRequest(this, context);
 	}
 
 	@Override
-	public ClusterHealthRequest prepareClusterHealth() {
-		return new PsqlClusterHealthRequest(this);
+	public ClusterHealthRequest prepareClusterHealth(ChannelHandlerContext context) {
+		return new PsqlClusterHealthRequest(this, context);
 	}
 	
 	@Override
-	public ClusterHealthRequest prepareClusterHealth(String indices) {
-		return new PsqlClusterHealthRequest(this, indices);
+	public ClusterHealthRequest prepareClusterHealth(ChannelHandlerContext context, String indices) {
+		return new PsqlClusterHealthRequest(this, context, indices);
 	}
 
 	@Override
-	public ClusterHealthRequest prepareClusterHealth(String... indices) {
-		return new PsqlClusterHealthRequest(this, indices);
+	public ClusterHealthRequest prepareClusterHealth(ChannelHandlerContext context, String... indices) {
+		return new PsqlClusterHealthRequest(this, context, indices);
 	}
 
 	@Override
-	public ClusterSettingsRequest prepareClusterSettings() {
-		return new PsqlClusterSettingsRequest(this);
+	public ClusterSettingsRequest prepareClusterSettings(ChannelHandlerContext context) {
+		return new PsqlClusterSettingsRequest(this, context);
 	}
 
 	@Override
 	public <T> Future<T> submit(Callable<T> request) {
 		return executorService.submit(request);
 	}
-
 }

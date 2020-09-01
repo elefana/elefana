@@ -18,6 +18,7 @@ package com.elefana.api.document;
 import com.elefana.api.ApiRequest;
 import com.elefana.api.RequestExecutor;
 import com.elefana.api.util.PooledStringBuilder;
+import io.netty.channel.ChannelHandlerContext;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,12 +28,13 @@ public abstract class MultiGetRequest extends ApiRequest<MultiGetResponse> {
 	protected String indexPattern, typePattern;
 	private PooledStringBuilder requestBody;
 	
-	public MultiGetRequest(RequestExecutor requestExecutor) {
-		super(requestExecutor);
+	public MultiGetRequest(RequestExecutor requestExecutor, ChannelHandlerContext context) {
+		super(requestExecutor, context);
 	}
 
-	public MultiGetRequest(RequestExecutor requestExecutor, PooledStringBuilder requestBody) {
-		super(requestExecutor);
+	public MultiGetRequest(RequestExecutor requestExecutor, ChannelHandlerContext context,
+	                       PooledStringBuilder requestBody) {
+		super(requestExecutor, context);
 		this.requestBody = requestBody;
 	}
 	
