@@ -36,9 +36,9 @@ public abstract class ApiRequest<T extends ApiResponse> {
 	@JsonIgnore
 	protected final ChannelHandlerContext context;
 	@JsonIgnore
-	private final ChannelPromise channelPromise;
+	protected final ChannelPromise channelPromise;
 	@JsonIgnore
-	private final AtomicBoolean executionStarted = new AtomicBoolean(false);
+	protected final AtomicBoolean executionStarted = new AtomicBoolean(false);
 
 	@JsonIgnore
 	protected Future<T> backingFuture;
