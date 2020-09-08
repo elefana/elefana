@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Collection;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileListener {
@@ -205,6 +206,21 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 			final ExcerptAppender appender = chronicleQueue.acquireAppender();
 			try (DocumentContext context = appender.writingDocument()) {
 				context.wire().writeBytes(t);
+			}
+			return true;
+		} catch (Exception e) {
+			LOGGER.error(e.getMessage(), e);
+		}
+		return false;
+	}
+
+	public boolean offerAll(Collection<T> t) {
+		try {
+			final ExcerptAppender appender = chronicleQueue.acquireAppender();
+			for(T element : t) {
+				try (DocumentContext context = appender.writingDocument()) {
+					context.wire().writeBytes(element);
+				}
 			}
 			return true;
 		} catch (Exception e) {
