@@ -22,55 +22,55 @@ import net.openhft.chronicle.core.io.IORuntimeException;
 
 import java.util.Objects;
 
-public class CitusTableTimestampSample extends UniqueSelfDescribingMarshallable implements Comparable<CitusTableTimestampSample>, BytesMarshallable {
+public class IndexTablePair extends UniqueSelfDescribingMarshallable implements Comparable<IndexTablePair>, BytesMarshallable {
 	private String indexName;
 	private String tableName;
-	private long timestampSample;
 
-	public CitusTableTimestampSample() {}
+	public IndexTablePair() {}
 
-	public CitusTableTimestampSample(String indexName, String tableName, long timestampSample) {
+	public IndexTablePair(String indexName, String tableName, long timestampSample) {
 		this.indexName = indexName;
 		this.tableName = tableName;
-		this.timestampSample = timestampSample;
 	}
 
 	@Override
 	public void writeMarshallable(BytesOut bytes) {
 		bytes.writeUtf8(indexName);
 		bytes.writeUtf8(tableName);
-		bytes.writeLong(timestampSample);
 	}
 
 	@Override
 	public void readMarshallable(BytesIn bytes) throws IORuntimeException {
 		indexName = bytes.readUtf8();
 		tableName = bytes.readUtf8();
-		timestampSample = bytes.readLong();
 	}
 
 	public String getIndexName() {
 		return indexName;
 	}
 
+	public void setIndexName(String indexName) {
+		this.indexName = indexName;
+	}
+
 	public String getTableName() {
 		return tableName;
 	}
 
-	public long getTimestampSample() {
-		return timestampSample;
+	public void setTableName(String tableName) {
+		this.tableName = tableName;
 	}
 
 	@Override
-	public int compareTo(CitusTableTimestampSample o) {
+	public int compareTo(IndexTablePair o) {
 		return tableName.compareTo(o.tableName);
 	}
 
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
-		if (!(o instanceof CitusTableTimestampSample)) return false;
-		CitusTableTimestampSample that = (CitusTableTimestampSample) o;
+		if (!(o instanceof IndexTablePair)) return false;
+		IndexTablePair that = (IndexTablePair) o;
 		return Objects.equals(tableName, that.tableName);
 	}
 

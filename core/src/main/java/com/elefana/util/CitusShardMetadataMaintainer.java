@@ -42,13 +42,6 @@ public class CitusShardMetadataMaintainer implements Runnable {
 	private static final Logger LOGGER = LoggerFactory.getLogger(CitusShardMetadataMaintainer.class);
 	private static final long DEFAULT_SCHEDULE_MILLIS = TimeUnit.HOURS.toMillis(1);
 
-	private static final String TIME_SHARD_REPAIR_QUEUE_ID = "time-shard-repair-queue";
-	private static final int TIME_SHARD_REPAIR_EXPECTED_ENTRIES = 100_000;
-	private static final String TIME_SHARD_REPAIR_AVERAGE_KEY = "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz";
-	private static final CitusTableTimestampSample TIME_SHARD_REPAIR_AVERAGE_VALUE =
-			new CitusTableTimestampSample(TIME_SHARD_REPAIR_AVERAGE_KEY, TIME_SHARD_REPAIR_AVERAGE_KEY,
-					System.currentTimeMillis());
-
 	@Autowired
 	private Environment environment;
 	@Autowired
@@ -60,17 +53,11 @@ public class CitusShardMetadataMaintainer implements Runnable {
 
 	private final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
 
-	private HashDiskBackedQueue<CitusTableTimestampSample> timeShardRepairQueue;
-
 	@PostConstruct
 	public void postConstruct() throws SQLException {
 		if(!nodeSettingsService.isMasterNode()) {
 			return;
 		}
-		timeShardRepairQueue = new HashDiskBackedQueue<CitusTableTimestampSample>(TIME_SHARD_REPAIR_QUEUE_ID,
-				nodeSettingsService.getDataDirectory(), CitusTableTimestampSample.class,
-				TIME_SHARD_REPAIR_EXPECTED_ENTRIES,
-				TIME_SHARD_REPAIR_AVERAGE_KEY, TIME_SHARD_REPAIR_AVERAGE_VALUE);
 		executorService.scheduleAtFixedRate(this, 0L, environment.getProperty("elefana.citus.repair.interval", Long.class, DEFAULT_SCHEDULE_MILLIS), TimeUnit.MILLISECONDS);
 	}
 
@@ -80,29 +67,18 @@ public class CitusShardMetadataMaintainer implements Runnable {
 			return;
 		}
 		executorService.shutdownNow();
-		timeShardRepairQueue.dispose();
-	}
-
-	public void queueTimeSeriesIndexForShardMaintenance(String index, String tableName, long timestampSample) {
-		if(!nodeSettingsService.isMasterNode()) {
-			return;
-		}
-		timeShardRepairQueue.offer(new CitusTableTimestampSample(index, tableName, timestampSample));
 	}
 
 	@Override
 	public void run() {
-		if(timeShardRepairQueue.isEmpty()) {
-			LOGGER.info("No shards queued for repair");
-			return;
-		}
+		final IndexTablePair tableTimestampSample = new IndexTablePair();
 
-		final CitusTableTimestampSample tableTimestampSample = new CitusTableTimestampSample();
-		while(!timeShardRepairQueue.isEmpty()) {
+		final SqlRowSet partitionTables = jdbcTemplate.queryForRowSet("SELECT * FROM elefana_partition_tracking");
+		while(partitionTables.next()) {
 			try {
-				if(!timeShardRepairQueue.poll(tableTimestampSample)) {
-					continue;
-				}
+				tableTimestampSample.setIndexName(partitionTables.getString("_index"));
+				tableTimestampSample.setTableName(partitionTables.getString("_partitiontable"));
+
 				if(hasNullShardIntervals(tableTimestampSample)) {
 					repairShardIntervals(tableTimestampSample);
 				} else if(hasOverlappingShards(tableTimestampSample)) {
@@ -110,15 +86,13 @@ public class CitusShardMetadataMaintainer implements Runnable {
 				}
 			} catch (Exception e) {
 				LOGGER.error(e.getMessage(), e);
-				return;
 			}
 		}
-		timeShardRepairQueue.prune();
 	}
 
-	private boolean hasOverlappingShards(CitusTableTimestampSample tableTimestampSample) {
+	private boolean hasOverlappingShards(IndexTablePair tablePair) {
 		final SqlRowSet rowSet = jdbcTemplate.queryForRowSet("SELECT * FROM (SELECT logicalrelid::text AS tableName, * FROM pg_dist_shard) AS results WHERE tableName='" +
-				tableTimestampSample.getTableName() + "' ORDER BY shardminvalue ASC");
+				tablePair.getTableName() + "' ORDER BY shardminvalue ASC");
 		long previousMaxValue = -1;
 
 		while(rowSet.next()) {
@@ -132,30 +106,30 @@ public class CitusShardMetadataMaintainer implements Runnable {
 				previousMaxValue = shardMaxValue;
 				continue;
 			}
-			LOGGER.error(tableTimestampSample.getTableName() + " has overlapping shard ranges: " + shardMinValue + " " + shardMaxValue + " " + previousMaxValue);
+			LOGGER.error(tablePair.getTableName() + " has overlapping shard ranges: " + shardMinValue + " " + shardMaxValue + " " + previousMaxValue);
 			return true;
 		}
 		return false;
 	}
 
-	private boolean hasNullShardIntervals(CitusTableTimestampSample tableTimestampSample) {
+	private boolean hasNullShardIntervals(IndexTablePair tablePair) {
 		final SqlRowSet rowSet = jdbcTemplate.queryForRowSet("SELECT COUNT(*) FROM (SELECT logicalrelid::text AS tableName, * FROM pg_dist_shard) AS results WHERE tableName='" +
-				tableTimestampSample.getTableName() + "' AND shardmaxvalue IS NULL");
+				tablePair.getTableName() + "' AND shardmaxvalue IS NULL");
 		if(rowSet.next()) {
 			if(rowSet.getLong(1) > 0) {
 				return true;
 			}
 		}
-		LOGGER.info(tableTimestampSample.getTableName() + " shards in correct state");
+		LOGGER.info(tablePair.getTableName() + " no null shards");
 		return false;
 	}
 
-	private void repairShardIntervals(CitusTableTimestampSample tableTimestampSample) throws Exception {
+	private void repairShardIntervals(IndexTablePair tablePair) throws Exception {
 		final IndexTemplate indexTemplate;
 		if(indexTemplateService instanceof PsqlIndexTemplateService) {
-			indexTemplate = ((PsqlIndexTemplateService) indexTemplateService).getIndexTemplateForIndex(tableTimestampSample.getIndexName());
+			indexTemplate = ((PsqlIndexTemplateService) indexTemplateService).getIndexTemplateForIndex(tablePair.getIndexName());
 		} else {
-			indexTemplate = indexTemplateService.prepareGetIndexTemplateForIndex(null, tableTimestampSample.getIndexName()).get().getIndexTemplate();
+			indexTemplate = indexTemplateService.prepareGetIndexTemplateForIndex(null, tablePair.getIndexName()).get().getIndexTemplate();
 		}
 
 		if(!indexTemplate.isTimeSeries()) {
@@ -171,18 +145,19 @@ public class CitusShardMetadataMaintainer implements Runnable {
 
 		final List<Long> shardIds = new ArrayList<Long>();
 		final SqlRowSet rowSet = jdbcTemplate.queryForRowSet("SELECT shardid FROM (SELECT logicalrelid::text AS tableName, * FROM pg_dist_shard) AS results WHERE tableName='" +
-				tableTimestampSample.getTableName() + "' ORDER BY shardid ASC;");
+				tablePair.getTableName() + "' ORDER BY shardid ASC;");
 		while(rowSet.next()) {
 			shardIds.add(rowSet.getLong(1));
 		}
 
 		if(shardIds.size() != timeBucket.getIngestTableCapacity()) {
-			throw new Exception("Shard count mismatch for " + tableTimestampSample.getTableName() +
+			throw new Exception("Shard count mismatch for " + tablePair.getTableName() +
 					". Expected " + timeBucket.getIngestTableCapacity() + " but got " + shardIds.size());
 		}
 
-		final long indexStart = tableTimestampSample.getTimestampSample() -
-				(tableTimestampSample.getTimestampSample() % timeBucket.getBucketOperand());
+		final SqlRowSet timestampSample = jdbcTemplate.queryForRowSet("SELECT _timestamp FROM " + tablePair.getTableName() + " LIMIT 1");
+		final long timestamp = timestampSample.getLong("_timestamp");
+		final long indexStart = timestamp - (timestamp % timeBucket.getBucketOperand());
 		final long interval = timeBucket.getBucketInterval();
 
 		for(int i = 0; i < shardIds.size(); i++) {
@@ -193,6 +168,6 @@ public class CitusShardMetadataMaintainer implements Runnable {
 			jdbcTemplate.execute("UPDATE pg_dist_shard SET shardminvalue='" + minValue + "', shardmaxvalue='" + maxValue + "' WHERE shardid=" + shardId);
 		}
 
-		LOGGER.info("Repaired shard intervals for " + tableTimestampSample.getTableName());
+		LOGGER.info("Repaired shard intervals for " + tablePair.getTableName());
 	}
 }

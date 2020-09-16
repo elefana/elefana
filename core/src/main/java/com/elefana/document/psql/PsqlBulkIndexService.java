@@ -74,8 +74,6 @@ public class PsqlBulkIndexService implements Runnable {
 	protected IngestTableTracker ingestTableTracker;
 	@Autowired
 	protected MetricRegistry metricRegistry;
-	@Autowired
-	protected CitusShardMetadataMaintainer shardMetadataMaintainer;
 
 	protected final AtomicBoolean running = new AtomicBoolean(true);
 	protected ExecutorService executorService;
@@ -333,8 +331,6 @@ public class PsqlBulkIndexService implements Runnable {
 		appendShardStatement.execute();
 		appendShardStatement.close();
 		connection.commit();
-
-		shardMetadataMaintainer.queueTimeSeriesIndexForShardMaintenance(indexName, targetTable, timestamp);
 		return BulkIndexResult.SUCCESS;
 	}
 
