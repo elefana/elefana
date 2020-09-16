@@ -156,6 +156,9 @@ public class CitusShardMetadataMaintainer implements Runnable {
 		}
 
 		final SqlRowSet timestampSample = jdbcTemplate.queryForRowSet("SELECT _timestamp FROM " + tablePair.getTableName() + " LIMIT 1");
+		if(!timestampSample.next()) {
+			return;
+		}
 		final long timestamp = timestampSample.getLong("_timestamp");
 		final long indexStart = timestamp - (timestamp % timeBucket.getBucketOperand());
 		final long interval = timeBucket.getBucketInterval();
