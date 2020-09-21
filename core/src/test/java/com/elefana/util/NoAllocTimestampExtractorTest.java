@@ -21,7 +21,7 @@ public class NoAllocTimestampExtractorTest {
 	public void testExtractNotPresent() {
 		final NoAllocTimestampExtractor extractor = new NoAllocTimestampExtractor("@timestamp");
 		final PooledStringBuilder json = PooledStringBuilder.allocate("{\"test\":\"123\",\"test2\":[0,3, 4, 5], \"@tstmp\": 123456789}");
-		Assert.assertEquals(System.currentTimeMillis(), extractor.extract(json));
+		Assert.assertEquals(System.currentTimeMillis(), extractor.extract(json), 1L);
 		json.release();
 	}
 }

@@ -26,11 +26,13 @@ import org.junit.Test;
 import org.mini2Dx.natives.OsInformation;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
 
 public class DiskBackedQueueTest {
 
@@ -109,6 +111,39 @@ public class DiskBackedQueueTest {
 	}
 
 	@Test
+	public void testIsEmpty() throws Exception {
+		final int expectedValue = 10385;
+
+		final String queueId = UUID.randomUUID().toString();
+		final File dataDirectory = Files.createTempDirectory(queueId).toFile();
+
+		final DiskBackedQueue<TestData> queue = new DiskBackedQueue<>(
+				queueId, dataDirectory, TestData.class, RollCycles.TEST_DAILY);
+		Assert.assertTrue(queue.isEmpty());
+
+		queue.offer(new TestData(expectedValue));
+		Assert.assertFalse(queue.isEmpty());
+
+		final TestData peekResult1 = new TestData();
+		final TestData peekResult2 = new TestData();
+		final TestData pollResult = new TestData();
+
+		queue.peek(peekResult1);
+		Assert.assertFalse(queue.isEmpty());
+		queue.peek(peekResult2);
+		Assert.assertFalse(queue.isEmpty());
+		queue.poll(pollResult);
+		Assert.assertTrue(queue.isEmpty());
+
+		Assert.assertEquals(expectedValue, peekResult1.value);
+		Assert.assertEquals(expectedValue, peekResult2.value);
+		Assert.assertEquals(expectedValue, pollResult.value);
+
+		Assert.assertFalse(queue.peek(peekResult2));
+		Assert.assertTrue(queue.isEmpty());
+	}
+
+	@Test
 	public void testResume() throws Exception {
 		final int totalItems = 32;
 		final Random random = new Random(123456);
@@ -125,10 +160,12 @@ public class DiskBackedQueueTest {
 		for(int i = 0; i < totalItems; i++) {
 			queue.offer(new TestData(expectedQueue.get(i)));
 		}
+		Assert.assertFalse(queue.isEmpty());
 		queue.dispose();
 
 		final DiskBackedQueue<TestData> resumedQueue = new DiskBackedQueue<>(
 				queueId, dataDirectory, TestData.class, RollCycles.TEST_DAILY);
+		Assert.assertFalse(resumedQueue.isEmpty());
 		final TestData result = new TestData();
 		for(int i = 0; i < totalItems; i++) {
 			if(!resumedQueue.poll(result)) {
@@ -136,6 +173,54 @@ public class DiskBackedQueueTest {
 			}
 			Assert.assertEquals(expectedQueue.get(i).intValue(), result.value);
 		}
+	}
+
+	@Test
+	public void testConcurrentOfferPoll() throws IOException {
+		final String queueId = UUID.randomUUID().toString();
+		final File dataDirectory = Files.createTempDirectory(queueId).toFile();
+
+		final DiskBackedQueue<TestData> queue = new DiskBackedQueue<>(
+				queueId, dataDirectory, TestData.class, RollCycles.TEST4_DAILY);
+
+		final CountDownLatch countDownLatch = new CountDownLatch(2);
+		final Thread [] threads = new Thread[2];
+		threads[0] = new Thread(() -> {
+			try {
+				countDownLatch.countDown();
+				countDownLatch.await();
+			} catch (Exception e) {}
+
+			for(int i = 0; i < 1000; i++) {
+				queue.offer(new TestData(i));
+			}
+		});
+		threads[1] = new Thread(() -> {
+			try {
+				countDownLatch.countDown();
+				countDownLatch.await();
+			} catch (Exception e) {}
+
+			final TestData result = new TestData();
+			for(int i = 0; i < 1000; i++) {
+				if(queue.poll(result)) {
+					Assert.assertEquals(i, result.value);
+				} else {
+					i--;
+				}
+				queue.prune();
+			}
+		});
+
+		try {
+			threads[0].start();
+			threads[1].start();
+			threads[0].join();
+			threads[1].join();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		Assert.assertEquals(true, queue.isEmpty());
 	}
 
 	public static class TestData implements BytesMarshallable {
