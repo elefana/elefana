@@ -197,11 +197,15 @@ public class DiskBackedQueueTest {
 		Assert.assertFalse(resumedQueue.isEmpty());
 		final TestData result = new TestData();
 		for(int i = 0; i < totalItems; i++) {
+			if(!resumedQueue.peek(result)) {
+				Assert.fail("Expected data but there was none");
+			}
 			if(!resumedQueue.poll(result)) {
 				Assert.fail("Expected data but there was none");
 			}
 			Assert.assertEquals(expectedQueue.get(i).intValue(), result.value);
 		}
+		Assert.assertTrue(resumedQueue.isEmpty());
 
 		resumedQueue.offer(new TestData(99));
 		resumedQueue.poll(result);
