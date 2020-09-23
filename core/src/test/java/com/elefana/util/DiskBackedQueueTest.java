@@ -89,16 +89,18 @@ public class DiskBackedQueueTest {
 		final String queueId = UUID.randomUUID().toString();
 		final File dataDirectory = Files.createTempDirectory(queueId).toFile();
 
-		final DiskBackedQueue<TestData> queue = new DiskBackedQueue<>(
-				queueId, dataDirectory, TestData.class, RollCycles.TEST_DAILY);
-		queue.offer(new TestData(expectedValue));
-
 		final TestData peekResult1 = new TestData();
 		final TestData peekResult2 = new TestData();
+
+		final DiskBackedQueue<TestData> queue = new DiskBackedQueue<>(
+				queueId, dataDirectory, TestData.class, RollCycles.TEST_DAILY);
+		Assert.assertFalse(queue.peek(peekResult1));
+		queue.offer(new TestData(expectedValue));
+
 		final TestData pollResult = new TestData();
 
-		queue.peek(peekResult1);
-		queue.peek(peekResult2);
+		Assert.assertTrue(queue.peek(peekResult1));
+		Assert.assertTrue(queue.peek(peekResult2));
 		queue.poll(pollResult);
 
 		Assert.assertEquals(expectedValue, peekResult1.value);
@@ -212,7 +214,7 @@ public class DiskBackedQueueTest {
 		Assert.assertEquals(99, result.value);
 	}
 
-	@Test
+	@Test(timeout=10000L)
 	public void testConcurrentOfferPoll() throws IOException {
 		final String queueId = UUID.randomUUID().toString();
 		final File dataDirectory = Files.createTempDirectory(queueId).toFile();

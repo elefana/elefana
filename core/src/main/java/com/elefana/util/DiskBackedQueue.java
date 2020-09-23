@@ -185,6 +185,9 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 			return false;
 		}
 		synchronized(tailer) {
+			if(!tailer.peekDocument()) {
+				return false;
+			}
 			long oldIndex = tailer.index();
 			tailer.direction(TailerDirection.FORWARD);
 			boolean success = true;
@@ -200,7 +203,10 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 			} catch (Exception e) {
 				LOGGER.error(e.getMessage(), e);
 			}
-			tailer.moveToIndex(oldIndex);
+			if(!tailer.moveToIndex(oldIndex)) {
+				LOGGER.error("Could not move to index " + oldIndex);
+			}
+			tailer.direction(TailerDirection.FORWARD);
 			return success;
 		}
 	}
