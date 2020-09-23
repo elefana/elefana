@@ -88,6 +88,9 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 	}
 
 	public int prune() {
+		if(disposed.get()) {
+			return 0;
+		}
 		int totalPruned = 0;
 		for(int cycle : files.keySet()) {
 			synchronized(tailer) {
@@ -160,16 +163,25 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 	}
 
 	public boolean isEmpty() {
+		if(disposed.get()) {
+			return true;
+		}
 		synchronized(tailer) {
 			return !tailer.peekDocument();
 		}
 	}
 
 	public void clear() {
+		if(disposed.get()) {
+			return;
+		}
 		chronicleQueue.clear();
 	}
 
 	public boolean peek(T result) {
+		if(disposed.get()) {
+			return false;
+		}
 		synchronized(tailer) {
 			long oldIndex = tailer.index();
 			tailer.direction(TailerDirection.FORWARD);
@@ -192,6 +204,9 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 	}
 
 	public boolean poll(T result) {
+		if(disposed.get()) {
+			return false;
+		}
 		synchronized(tailer) {
 			try (DocumentContext context = tailer.readingDocument()) {
 				if(!context.isPresent()) {
@@ -203,6 +218,9 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 	}
 
 	public boolean offer(T t) {
+		if(disposed.get()) {
+			return false;
+		}
 		try {
 			final ExcerptAppender appender = chronicleQueue.acquireAppender();
 			try (DocumentContext context = appender.writingDocument()) {
@@ -216,6 +234,9 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 	}
 
 	public boolean offerAll(Collection<T> t) {
+		if(disposed.get()) {
+			return false;
+		}
 		try {
 			final ExcerptAppender appender = chronicleQueue.acquireAppender();
 			for(T element : t) {
@@ -231,6 +252,9 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 	}
 
 	public int getFileCount() {
+		if(disposed.get()) {
+			return 0;
+		}
 		return files.size();
 	}
 }
