@@ -33,6 +33,7 @@ public class DiskBackedMapTest {
 				dataDirectory, 1000, 0, 0, false);
 		map1.put(77, 78);
 		Assert.assertEquals(1, map1.size());
+		map1.dispose();
 
 		final DiskBackedMap<Integer, Integer> map2 = new DiskBackedMap<>(mapId, Integer.class, Integer.class,
 				dataDirectory, 1000, 0, 0, true);
