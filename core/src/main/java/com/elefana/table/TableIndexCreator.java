@@ -55,6 +55,8 @@ public class TableIndexCreator implements Runnable {
 	private DiskBackedQueue<TableIndexDelay> tableIndexQueue;
 	private DiskBackedQueue<TableFieldIndexDelay> fieldIndexQueue;
 
+	private IndexCreatedListener listener;
+
 	public void initialise() throws SQLException {
 		if(!nodeSettingsService.isMasterNode()) {
 			//Only master node can create indices
@@ -225,6 +227,10 @@ public class TableIndexCreator implements Runnable {
 				PreparedStatement preparedStatement = connection.prepareStatement(query);
 				preparedStatement.execute();
 				preparedStatement.close();
+
+				if(listener != null) {
+					listener.onCreated();
+				}
 			}
 			if(hashEnabled) {
 				final String hashIndexName = getPsqlIndexName(IndexUtils.HASH_INDEX_PREFIX, tableName, fieldName);
@@ -233,6 +239,10 @@ public class TableIndexCreator implements Runnable {
 				PreparedStatement preparedStatement = connection.prepareStatement(query);
 				preparedStatement.execute();
 				preparedStatement.close();
+
+				if(listener != null) {
+					listener.onCreated();
+				}
 			}
 			if(ginEnabled) {
 				final String ginIndexName = getPsqlIndexName(IndexUtils.GIN_INDEX_PREFIX, tableName, fieldName);
@@ -241,6 +251,10 @@ public class TableIndexCreator implements Runnable {
 				PreparedStatement preparedStatement = connection.prepareStatement(query);
 				preparedStatement.execute();
 				preparedStatement.close();
+
+				if(listener != null) {
+					listener.onCreated();
+				}
 			}
 			break;
 		}
@@ -263,6 +277,10 @@ public class TableIndexCreator implements Runnable {
 				preparedStatement = connection.prepareStatement(createGinIndexQuery);
 				preparedStatement.execute();
 				preparedStatement.close();
+
+				if(listener != null) {
+					listener.onCreated();
+				}
 			}
 			if(brinEnabled) {
 				final String createTimestampIndexQuery = "CREATE INDEX CONCURRENTLY IF NOT EXISTS " + brinIndexName + " ON "
@@ -271,6 +289,10 @@ public class TableIndexCreator implements Runnable {
 				preparedStatement = connection.prepareStatement(createTimestampIndexQuery);
 				preparedStatement.execute();
 				preparedStatement.close();
+
+				if(listener != null) {
+					listener.onCreated();
+				}
 			}
 			break;
 		case DYNAMIC:
@@ -296,5 +318,14 @@ public class TableIndexCreator implements Runnable {
 
 	public void setNodeSettingsService(NodeSettingsService nodeSettingsService) {
 		this.nodeSettingsService = nodeSettingsService;
+	}
+
+	public void setListener(IndexCreatedListener listener) {
+		this.listener = listener;
+	}
+
+	public interface IndexCreatedListener {
+
+		public void onCreated();
 	}
 }

@@ -34,11 +34,13 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.util.ArrayList;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.mockito.Mockito.*;
 
-public class TableIndexCreatorTest {
+public class TableIndexCreatorTest implements TableIndexCreator.IndexCreatedListener {
 	private final TableIndexCreator tableIndexCreator = new TableIndexCreator();
+	private final AtomicBoolean indexCreated = new AtomicBoolean(false);
 
 	private JdbcTemplate jdbcTemplate;
 	private DataSource dataSource;
@@ -95,7 +97,7 @@ public class TableIndexCreatorTest {
 		Assert.assertTrue(psqlIndex.length() <= 63);
 	}
 
-	@Test
+	@Test(timeout = 15000L)
 	public void testTableFieldIndexDelay() throws Exception {
 		final String tableName = "tableName";
 		final String fieldName = "fieldName";
@@ -110,13 +112,20 @@ public class TableIndexCreatorTest {
 
 		tableIndexCreator.createPsqlFieldIndex(null, tableName, fieldName, storageSettings);
 
-		try {
-			Thread.sleep(2500);
-		} catch (Exception e) {}
+		while(!indexCreated.get()) {
+			try {
+				Thread.sleep(1000);
+			} catch (Exception e) {}
+		}
 
 		verify(connection, times(1)).prepareStatement(anyString());
 		verify(preparedStatement, times(1)).execute();
 		verify(preparedStatement, times(1)).close();
 		verifyNoMoreInteractions(preparedStatement);
+	}
+
+	@Override
+	public void onCreated() {
+		indexCreated.set(true);
 	}
 }
