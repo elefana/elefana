@@ -12,9 +12,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -26,6 +25,7 @@ public class DiskBackedMap<K, V> implements Map<K, V> {
 	private final Class<K> keyClass;
 	private final Class<V> valueClass;
 
+	private final AtomicBoolean disposed = new AtomicBoolean(false);
 	private ChronicleMap<K, V> chronicleMap;
 
 	public DiskBackedMap(String mapId, Class<K> keyClass, Class<V> valueClass, File dataDirectory,
@@ -67,6 +67,9 @@ public class DiskBackedMap<K, V> implements Map<K, V> {
 	}
 
 	public void dispose() {
+		if(disposed.getAndSet(true)) {
+			return;
+		}
 		try {
 			chronicleMap.close();
 		} catch (Exception e) {
@@ -76,86 +79,134 @@ public class DiskBackedMap<K, V> implements Map<K, V> {
 
 	@Override
 	public int size() {
+		if(disposed.get()) {
+			return 0;
+		}
 		return chronicleMap.size();
 	}
 
 	@Override
 	public boolean isEmpty() {
+		if(disposed.get()) {
+			return true;
+		}
 		return chronicleMap.isEmpty();
 	}
 
 	@Override
 	public boolean containsKey(Object key) {
+		if(disposed.get()) {
+			return false;
+		}
 		return chronicleMap.containsKey(key);
 	}
 
 	@Override
 	public boolean containsValue(Object value) {
+		if(disposed.get()) {
+			return false;
+		}
 		return chronicleMap.containsValue(value);
 	}
 
 	@Override
 	public V get(Object key) {
+		if(disposed.get()) {
+			return null;
+		}
 		return chronicleMap.get(key);
 	}
 
 	@Nullable
 	@Override
 	public V put(K key, V value) {
+		if(disposed.get()) {
+			return null;
+		}
 		return chronicleMap.put(key, value);
 	}
 
 	@Override
 	public V remove(Object key) {
+		if(disposed.get()) {
+			return null;
+		}
 		return chronicleMap.remove(key);
 	}
 
 	@Override
 	public void putAll(@NotNull Map<? extends K, ? extends V> m) {
+		if(disposed.get()) {
+			return;
+		}
 		chronicleMap.putAll(m);
 	}
 
 	@Override
 	public void clear() {
+		if(disposed.get()) {
+			return;
+		}
 		chronicleMap.clear();
 	}
 
 	@NotNull
 	@Override
 	public Set<K> keySet() {
+		if(disposed.get()) {
+			return new HashSet<>();
+		}
 		return chronicleMap.keySet();
 	}
 
 	@NotNull
 	@Override
 	public Collection<V> values() {
+		if(disposed.get()) {
+			return new LinkedList<>();
+		}
 		return chronicleMap.values();
 	}
 
 	@NotNull
 	@Override
 	public Set<Entry<K, V>> entrySet() {
+		if(disposed.get()) {
+			return new HashSet<>();
+		}
 		return chronicleMap.entrySet();
 	}
 
 	@Override
 	public V compute(K key, @NotNull BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+		if(disposed.get()) {
+			return null;
+		}
 		return chronicleMap.compute(key, remappingFunction);
 	}
 
 	@Override
 	public V computeIfAbsent(K key, @NotNull Function<? super K, ? extends V> mappingFunction) {
+		if(disposed.get()) {
+			return null;
+		}
 		return chronicleMap.computeIfAbsent(key, mappingFunction);
 	}
 
 	@Override
 	public V computeIfPresent(K key, @NotNull BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+		if(disposed.get()) {
+			return null;
+		}
 		return chronicleMap.computeIfPresent(key, remappingFunction);
 	}
 
 	@Nullable
 	@Override
 	public V putIfAbsent(K key, V value) {
+		if(disposed.get()) {
+			return null;
+		}
 		return chronicleMap.putIfAbsent(key, value);
 	}
 }

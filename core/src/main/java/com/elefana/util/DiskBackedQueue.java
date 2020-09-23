@@ -150,10 +150,9 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 	}
 
 	public void dispose() {
-		if(disposed.get()) {
+		if(disposed.getAndSet(true)) {
 			return;
 		}
-		disposed.set(true);
 		try {
 			chronicleQueue.close();
 			files.dispose();
