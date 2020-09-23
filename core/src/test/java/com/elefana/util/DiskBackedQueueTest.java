@@ -232,8 +232,10 @@ public class DiskBackedQueueTest {
 						countDownLatch.await();
 					} catch (Exception e) {}
 
+					final TestData resultData = new TestData();
 					for(int j = threadIndex * 1000; j < (threadIndex * 1000) + 1000; j++) {
-						queue.offer(new TestData(j));
+						queue.peek(resultData);
+						Assert.assertTrue(queue.offer(new TestData(j)));
 						expected.add(j);
 					}
 				});
@@ -248,6 +250,10 @@ public class DiskBackedQueueTest {
 					for(int j = 0; j < (totalThreads - 1) * 1000; j++) {
 						if(j < ((totalThreads - 1) * 1000) - 1) {
 							Assert.assertFalse(queueId.isEmpty());
+						}
+						if(!queue.peek(resultData)) {
+							j--;
+							continue;
 						}
 						if(queue.poll(resultData)) {
 							result.add(resultData.value);
