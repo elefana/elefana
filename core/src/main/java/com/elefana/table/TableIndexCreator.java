@@ -184,8 +184,10 @@ public class TableIndexCreator implements Runnable {
 					" seconds (MODE:" + settings.getIndexGenerationSettings().getMode() + ", GIN:" + settings.isGinEnabled() +
 					", BRIN:" + settings.isBrinEnabled() + ", HASH:" + settings.isHashEnabled() + ") (" + hashCode() + ")");
 			final long indexTimestamp = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(settings.getIndexGenerationSettings().getIndexDelaySeconds());
-			tableIndexQueue.offer(new TableIndexDelay(tableName, indexTimestamp, settings.getIndexGenerationSettings().getMode(),
-					settings.isGinEnabled(), settings.isBrinEnabled(), settings.isHashEnabled()));
+			if(!tableIndexQueue.offer(new TableIndexDelay(tableName, indexTimestamp, settings.getIndexGenerationSettings().getMode(),
+					settings.isGinEnabled(), settings.isBrinEnabled(), settings.isHashEnabled()))) {
+				LOGGER.error("Could not offer to table index queue");
+			}
 		}
 	}
 
@@ -202,8 +204,10 @@ public class TableIndexCreator implements Runnable {
 					" seconds (MODE:" + settings.getIndexGenerationSettings().getMode() + ", GIN:" + settings.isGinEnabled() +
 					", BRIN:" + settings.isBrinEnabled() + ", HASH:" + settings.isHashEnabled() + ") (" + hashCode() + ")");
 			final long indexTimestamp = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(settings.getIndexGenerationSettings().getIndexDelaySeconds());
-			fieldIndexQueue.offer(new TableFieldIndexDelay(tableName, fieldName, indexTimestamp, settings.getIndexGenerationSettings().getMode(),
-					settings.isGinEnabled(), settings.isBrinEnabled(), settings.isHashEnabled()));
+			if(!fieldIndexQueue.offer(new TableFieldIndexDelay(tableName, fieldName, indexTimestamp, settings.getIndexGenerationSettings().getMode(),
+					settings.isGinEnabled(), settings.isBrinEnabled(), settings.isHashEnabled()))) {
+				LOGGER.error("Could not offer to field index queue");
+			}
 		}
 	}
 

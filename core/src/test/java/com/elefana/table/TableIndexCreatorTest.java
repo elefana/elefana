@@ -111,7 +111,7 @@ public class TableIndexCreatorTest {
 		tableIndexCreator.createPsqlFieldIndex(null, tableName, fieldName, storageSettings);
 
 		try {
-			Thread.sleep(1200);
+			Thread.sleep(2500);
 		} catch (Exception e) {}
 
 		verify(connection, times(1)).prepareStatement(anyString());
