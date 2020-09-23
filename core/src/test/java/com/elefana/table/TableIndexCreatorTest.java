@@ -71,6 +71,7 @@ public class TableIndexCreatorTest implements TableIndexCreator.IndexCreatedList
 
 		tableIndexCreator.setJdbcTemplate(jdbcTemplate);
 		tableIndexCreator.setNodeSettingsService(nodeSettingsService);
+		tableIndexCreator.setListener(this);
 		tableIndexCreator.initialise();
 	}
 
