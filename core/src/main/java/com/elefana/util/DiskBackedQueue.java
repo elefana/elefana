@@ -93,6 +93,9 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 		}
 		int totalPruned = 0;
 		for(int cycle : files.keySet()) {
+			if(disposed.get()) {
+				return 0;
+			}
 			synchronized(tailer) {
 				if(cycle > tailer.cycle()) {
 					continue;
