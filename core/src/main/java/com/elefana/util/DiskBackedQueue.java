@@ -183,11 +183,12 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 				} else {
 					success = false;
 				}
+			} catch (Exception e) {
+				LOGGER.error(e.getMessage(), e);
 			}
 			tailer.moveToIndex(oldIndex);
 			return success;
 		}
-
 	}
 
 	public boolean poll(T result) {
