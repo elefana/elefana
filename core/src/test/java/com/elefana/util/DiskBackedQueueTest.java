@@ -111,39 +111,6 @@ public class DiskBackedQueueTest {
 	}
 
 	@Test
-	public void testIsEmpty() throws Exception {
-		final int expectedValue = 10385;
-
-		final String queueId = UUID.randomUUID().toString();
-		final File dataDirectory = Files.createTempDirectory(queueId).toFile();
-
-		final DiskBackedQueue<TestData> queue = new DiskBackedQueue<>(
-				queueId, dataDirectory, TestData.class, RollCycles.TEST_DAILY);
-		Assert.assertTrue(queue.isEmpty());
-
-		queue.offer(new TestData(expectedValue));
-		Assert.assertFalse(queue.isEmpty());
-
-		final TestData peekResult1 = new TestData();
-		final TestData peekResult2 = new TestData();
-		final TestData pollResult = new TestData();
-
-		queue.peek(peekResult1);
-		Assert.assertFalse(queue.isEmpty());
-		queue.peek(peekResult2);
-		Assert.assertFalse(queue.isEmpty());
-		queue.poll(pollResult);
-		Assert.assertTrue(queue.isEmpty());
-
-		Assert.assertEquals(expectedValue, peekResult1.value);
-		Assert.assertEquals(expectedValue, peekResult2.value);
-		Assert.assertEquals(expectedValue, pollResult.value);
-
-		Assert.assertFalse(queue.peek(peekResult2));
-		Assert.assertTrue(queue.isEmpty());
-	}
-
-	@Test
 	public void testPrune() throws Exception {
 		final int expectedValue = 10385;
 
@@ -152,10 +119,7 @@ public class DiskBackedQueueTest {
 
 		final DiskBackedQueue<TestData> queue = new DiskBackedQueue<>(
 				queueId, dataDirectory, TestData.class, RollCycles.TEST_SECONDLY);
-		Assert.assertTrue(queue.isEmpty());
-
 		queue.offer(new TestData(expectedValue));
-		Assert.assertFalse(queue.isEmpty());
 
 		for(int i = 0; i < 10; i++) {
 			queue.prune();
@@ -165,13 +129,9 @@ public class DiskBackedQueueTest {
 			} catch (Exception e) {}
 		}
 
-		Assert.assertFalse(queue.isEmpty());
-
 		final TestData pollResult = new TestData();
 		queue.poll(pollResult);
-		Assert.assertTrue(queue.isEmpty());
 		Assert.assertEquals(expectedValue, pollResult.value);
-		Assert.assertTrue(queue.isEmpty());
 	}
 
 	@Test
@@ -191,12 +151,10 @@ public class DiskBackedQueueTest {
 		for(int i = 0; i < totalItems; i++) {
 			queue.offer(new TestData(expectedQueue.get(i)));
 		}
-		Assert.assertFalse(queue.isEmpty());
 		queue.dispose();
 
 		final DiskBackedQueue<TestData> resumedQueue = new DiskBackedQueue<>(
 				queueId, dataDirectory, TestData.class, RollCycles.TEST_DAILY);
-		Assert.assertFalse(resumedQueue.isEmpty());
 		final TestData result = new TestData();
 		for(int i = 0; i < totalItems; i++) {
 			if(!resumedQueue.peek(result)) {
@@ -207,7 +165,6 @@ public class DiskBackedQueueTest {
 			}
 			Assert.assertEquals(expectedQueue.get(i).intValue(), result.value);
 		}
-		Assert.assertTrue(resumedQueue.isEmpty());
 
 		resumedQueue.offer(new TestData(99));
 		resumedQueue.poll(result);
@@ -284,7 +241,6 @@ public class DiskBackedQueueTest {
 				e.printStackTrace();
 			}
 		}
-		Assert.assertEquals(true, queue.isEmpty());
 		Assert.assertEquals(expected.size(), result.size());
 
 		for(int i : expected) {

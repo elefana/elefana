@@ -106,26 +106,16 @@ public class TableIndexCreator implements Runnable {
 	}
 
 	private Connection runTableIndexCreation(Connection connection) throws SQLException {
-		if(tableIndexQueue.isEmpty()) {
-			LOGGER.info("No table index operations queued (" + hashCode() + ")");
-			return connection;
-		}
-		if(connection == null) {
-			connection = jdbcTemplate.getDataSource().getConnection();
-		}
-
 		final TableIndexDelay tableIndexDelay = new TableIndexDelay();
-		while(!tableIndexQueue.isEmpty()) {
-			if(tableIndexQueue.peek(tableIndexDelay)) {
-				if(tableIndexDelay.getIndexTimestamp() > System.currentTimeMillis()) {
-					LOGGER.info("Too early to create index for " + tableIndexDelay.getTableName() + ". Remaining time: " + TimeUnit.MILLISECONDS.toMinutes(tableIndexDelay.getIndexTimestamp() - System.currentTimeMillis()) + " minutes");
-					return connection;
-				} else {
-					LOGGER.info("Executing table index creation for " + tableIndexDelay.getTableName());
-				}
-			} else {
-				LOGGER.info("Table index queue peek returned false");
+		while(tableIndexQueue.peek(tableIndexDelay)) {
+			if(tableIndexDelay.getIndexTimestamp() > System.currentTimeMillis()) {
+				LOGGER.info("Too early to create index for " + tableIndexDelay.getTableName() + ". Remaining time: " + TimeUnit.MILLISECONDS.toMinutes(tableIndexDelay.getIndexTimestamp() - System.currentTimeMillis()) + " minutes");
 				return connection;
+			} else {
+				LOGGER.info("Executing table index creation for " + tableIndexDelay.getTableName());
+			}
+			if(connection == null) {
+				connection = jdbcTemplate.getDataSource().getConnection();
 			}
 			try {
 				internalCreatePsqlTableIndices(connection, tableIndexDelay.getTableName(), tableIndexDelay.getMode(),
@@ -140,26 +130,16 @@ public class TableIndexCreator implements Runnable {
 	}
 
 	private Connection runFieldIndexCreation(Connection connection) throws SQLException {
-		if(fieldIndexQueue.isEmpty()) {
-			LOGGER.info("No table field index operations queued (" + hashCode() + ")");
-			return connection;
-		}
-		if(connection == null) {
-			connection = jdbcTemplate.getDataSource().getConnection();
-		}
-
 		final TableFieldIndexDelay fieldIndexDelay = new TableFieldIndexDelay();
-		while(!fieldIndexQueue.isEmpty()) {
-			if(fieldIndexQueue.peek(fieldIndexDelay)) {
-				if(fieldIndexDelay.getIndexTimestamp() > System.currentTimeMillis()) {
-					LOGGER.info("Too early to create field index for " + fieldIndexDelay.getTableName() + "->" + fieldIndexDelay.getFieldName() + ". Remaining time: " + TimeUnit.MILLISECONDS.toMinutes(fieldIndexDelay.getIndexTimestamp() - System.currentTimeMillis()) + " minutes");
-					return connection;
-				} else {
-					LOGGER.info("Executing field index creation for " + fieldIndexDelay.getTableName() + "->" + fieldIndexDelay.getFieldName());
-				}
-			} else {
-				LOGGER.info("Table field index queue peek returned false");
+		while(fieldIndexQueue.peek(fieldIndexDelay)) {
+			if(fieldIndexDelay.getIndexTimestamp() > System.currentTimeMillis()) {
+				LOGGER.info("Too early to create field index for " + fieldIndexDelay.getTableName() + "->" + fieldIndexDelay.getFieldName() + ". Remaining time: " + TimeUnit.MILLISECONDS.toMinutes(fieldIndexDelay.getIndexTimestamp() - System.currentTimeMillis()) + " minutes");
 				return connection;
+			} else {
+				LOGGER.info("Executing field index creation for " + fieldIndexDelay.getTableName() + "->" + fieldIndexDelay.getFieldName());
+			}
+			if(connection == null) {
+				connection = jdbcTemplate.getDataSource().getConnection();
 			}
 			try {
 				internalCreatePsqlFieldIndex(connection, fieldIndexDelay.getTableName(),

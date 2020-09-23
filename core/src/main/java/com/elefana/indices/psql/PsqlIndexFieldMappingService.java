@@ -517,11 +517,7 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 	private void generateMappingsForQueuedTables() {
 		try {
 			final QueuedIndex nextIndex = new QueuedIndex();
-			while (!mappingQueue.isEmpty()) {
-				if(!mappingQueue.peek(nextIndex)) {
-					lastMapping.set(System.currentTimeMillis());
-					return;
-				}
+			while (mappingQueue.peek(nextIndex)) {
 				if(nextIndex.getTimestamp() > System.currentTimeMillis()) {
 					lastMapping.set(System.currentTimeMillis());
 					return;

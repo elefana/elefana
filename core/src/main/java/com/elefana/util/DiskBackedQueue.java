@@ -164,15 +164,6 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 		}
 	}
 
-	public boolean isEmpty() {
-		if(disposed.get()) {
-			return true;
-		}
-		synchronized(tailer) {
-			return !tailer.peekDocument();
-		}
-	}
-
 	public void clear() {
 		if(disposed.get()) {
 			return;
@@ -185,9 +176,6 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 			return false;
 		}
 		synchronized(tailer) {
-			if(!tailer.peekDocument()) {
-				return false;
-			}
 			long oldIndex = tailer.index();
 			tailer.direction(TailerDirection.FORWARD);
 			boolean success = true;
