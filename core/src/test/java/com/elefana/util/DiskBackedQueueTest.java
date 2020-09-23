@@ -144,6 +144,37 @@ public class DiskBackedQueueTest {
 	}
 
 	@Test
+	public void testPrune() throws Exception {
+		final int expectedValue = 10385;
+
+		final String queueId = UUID.randomUUID().toString();
+		final File dataDirectory = Files.createTempDirectory(queueId).toFile();
+
+		final DiskBackedQueue<TestData> queue = new DiskBackedQueue<>(
+				queueId, dataDirectory, TestData.class, RollCycles.TEST_SECONDLY);
+		Assert.assertTrue(queue.isEmpty());
+
+		queue.offer(new TestData(expectedValue));
+		Assert.assertFalse(queue.isEmpty());
+
+		for(int i = 0; i < 10; i++) {
+			queue.prune();
+
+			try {
+				Thread.sleep(500);
+			} catch (Exception e) {}
+		}
+
+		Assert.assertFalse(queue.isEmpty());
+
+		final TestData pollResult = new TestData();
+		queue.poll(pollResult);
+		Assert.assertTrue(queue.isEmpty());
+		Assert.assertEquals(expectedValue, pollResult.value);
+		Assert.assertTrue(queue.isEmpty());
+	}
+
+	@Test
 	public void testResume() throws Exception {
 		final int totalItems = 32;
 		final Random random = new Random(123456);

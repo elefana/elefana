@@ -48,8 +48,6 @@ public class TableIndexCreator implements Runnable {
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 	@Autowired
-	private NodeStatsService nodeStatsService;
-	@Autowired
 	private NodeSettingsService nodeSettingsService;
 
 	private final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
@@ -58,7 +56,7 @@ public class TableIndexCreator implements Runnable {
 	private DiskBackedQueue<TableFieldIndexDelay> fieldIndexQueue;
 
 	public void initialise() throws SQLException {
-		if(!nodeStatsService.isMasterNode()) {
+		if(!nodeSettingsService.isMasterNode()) {
 			//Only master node can create indices
 			return;
 		}
@@ -73,7 +71,7 @@ public class TableIndexCreator implements Runnable {
 
 	@PreDestroy
 	public void preDestroy() {
-		if(!nodeStatsService.isMasterNode()) {
+		if(!nodeSettingsService.isMasterNode()) {
 			//Only master node can create indices
 			return;
 		}
@@ -107,7 +105,7 @@ public class TableIndexCreator implements Runnable {
 
 	private Connection runTableIndexCreation(Connection connection) throws SQLException {
 		if(tableIndexQueue.isEmpty()) {
-			LOGGER.info("No table index operations queued");
+			LOGGER.info("No table index operations queued (" + hashCode() + ")");
 			return connection;
 		}
 		if(connection == null) {
@@ -140,7 +138,7 @@ public class TableIndexCreator implements Runnable {
 
 	private Connection runFieldIndexCreation(Connection connection) throws SQLException {
 		if(fieldIndexQueue.isEmpty()) {
-			LOGGER.info("No table field index operations queued");
+			LOGGER.info("No table field index operations queued (" + hashCode() + ")");
 			return connection;
 		}
 		if(connection == null) {
@@ -182,7 +180,7 @@ public class TableIndexCreator implements Runnable {
 		} else {
 			LOGGER.info("Defer " + tableName + " index creation by " + settings.getIndexGenerationSettings().getIndexDelaySeconds() +
 					" seconds (MODE:" + settings.getIndexGenerationSettings().getMode() + ", GIN:" + settings.isGinEnabled() +
-					", BRIN:" + settings.isBrinEnabled() + ", HASH:" + settings.isHashEnabled() + ")");
+					", BRIN:" + settings.isBrinEnabled() + ", HASH:" + settings.isHashEnabled() + ") (" + hashCode() + ")");
 			final long indexTimestamp = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(settings.getIndexGenerationSettings().getIndexDelaySeconds());
 			tableIndexQueue.offer(new TableIndexDelay(tableName, indexTimestamp, settings.getIndexGenerationSettings().getMode(),
 					settings.isGinEnabled(), settings.isBrinEnabled(), settings.isHashEnabled()));
@@ -200,7 +198,7 @@ public class TableIndexCreator implements Runnable {
 		} else {
 			LOGGER.info("Defer " + tableName + "->" + fieldName + " field index creation by " + settings.getIndexGenerationSettings().getIndexDelaySeconds() +
 					" seconds (MODE:" + settings.getIndexGenerationSettings().getMode() + ", GIN:" + settings.isGinEnabled() +
-					", BRIN:" + settings.isBrinEnabled() + ", HASH:" + settings.isHashEnabled() + ")");
+					", BRIN:" + settings.isBrinEnabled() + ", HASH:" + settings.isHashEnabled() + ") (" + hashCode() + ")");
 			final long indexTimestamp = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(settings.getIndexGenerationSettings().getIndexDelaySeconds());
 			fieldIndexQueue.offer(new TableFieldIndexDelay(tableName, fieldName, indexTimestamp, settings.getIndexGenerationSettings().getMode(),
 					settings.isGinEnabled(), settings.isBrinEnabled(), settings.isHashEnabled()));
@@ -286,5 +284,11 @@ public class TableIndexCreator implements Runnable {
 		return Long.toHexString(crc.getValue());
 	}
 
+	public void setJdbcTemplate(JdbcTemplate jdbcTemplate) {
+		this.jdbcTemplate = jdbcTemplate;
+	}
 
+	public void setNodeSettingsService(NodeSettingsService nodeSettingsService) {
+		this.nodeSettingsService = nodeSettingsService;
+	}
 }
