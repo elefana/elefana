@@ -28,10 +28,8 @@ import org.mini2Dx.natives.OsInformation;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CountDownLatch;
 
 public class DiskBackedQueueTest {
@@ -204,6 +202,10 @@ public class DiskBackedQueueTest {
 			}
 			Assert.assertEquals(expectedQueue.get(i).intValue(), result.value);
 		}
+
+		resumedQueue.offer(new TestData(99));
+		resumedQueue.poll(result);
+		Assert.assertEquals(99, result.value);
 	}
 
 	@Test
@@ -214,44 +216,68 @@ public class DiskBackedQueueTest {
 		final DiskBackedQueue<TestData> queue = new DiskBackedQueue<>(
 				queueId, dataDirectory, TestData.class, RollCycles.TEST4_DAILY);
 
-		final CountDownLatch countDownLatch = new CountDownLatch(2);
-		final Thread [] threads = new Thread[2];
-		threads[0] = new Thread(() -> {
-			try {
-				countDownLatch.countDown();
-				countDownLatch.await();
-			} catch (Exception e) {}
+		final int totalThreads = 4;
+		final CountDownLatch countDownLatch = new CountDownLatch(totalThreads);
+		final Thread [] threads = new Thread[totalThreads];
 
-			for(int i = 0; i < 1000; i++) {
-				queue.offer(new TestData(i));
+		final Set<Integer> expected = new ConcurrentSkipListSet<>();
+		final Set<Integer> result = new ConcurrentSkipListSet<>();
+
+		for(int i = 0; i < totalThreads; i++) {
+			if(i < totalThreads - 1) {
+				final int threadIndex = i;
+				threads[i] = new Thread(() -> {
+					try {
+						countDownLatch.countDown();
+						countDownLatch.await();
+					} catch (Exception e) {}
+
+					for(int j = threadIndex * 1000; j < (threadIndex * 1000) + 1000; j++) {
+						queue.offer(new TestData(j));
+						expected.add(j);
+					}
+				});
+			} else {
+				threads[i] = new Thread(() -> {
+					try {
+						countDownLatch.countDown();
+						countDownLatch.await();
+					} catch (Exception e) {}
+
+					final TestData resultData = new TestData();
+					for(int j = 0; j < (totalThreads - 1) * 1000; j++) {
+						if(j < ((totalThreads - 1) * 1000) - 1) {
+							Assert.assertFalse(queueId.isEmpty());
+						}
+						if(queue.poll(resultData)) {
+							result.add(resultData.value);
+							continue;
+						} else {
+							j--;
+						}
+						queue.prune();
+					}
+				});
 			}
-		});
-		threads[1] = new Thread(() -> {
+		}
+
+		for(int i = 0; i < totalThreads; i++) {
+			threads[i].start();
+		}
+
+		for(int i = 0; i < totalThreads; i++) {
 			try {
-				countDownLatch.countDown();
-				countDownLatch.await();
-			} catch (Exception e) {}
-
-			final TestData result = new TestData();
-			for(int i = 0; i < 1000; i++) {
-				if(queue.poll(result)) {
-					Assert.assertEquals(i, result.value);
-				} else {
-					i--;
-				}
-				queue.prune();
+				threads[i].join();
+			} catch (Exception e) {
+				e.printStackTrace();
 			}
-		});
-
-		try {
-			threads[0].start();
-			threads[1].start();
-			threads[0].join();
-			threads[1].join();
-		} catch (Exception e) {
-			e.printStackTrace();
 		}
 		Assert.assertEquals(true, queue.isEmpty());
+		Assert.assertEquals(expected.size(), result.size());
+
+		for(int i : expected) {
+			Assert.assertTrue(result.contains(i));
+		}
 	}
 
 	public static class TestData implements BytesMarshallable {

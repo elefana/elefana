@@ -114,9 +114,9 @@ public class TableIndexCreatorTest {
 			Thread.sleep(1200);
 		} catch (Exception e) {}
 
-		verify(connection).prepareStatement(anyString());
-		verify(preparedStatement).execute();
-		verify(preparedStatement).close();
+		verify(connection, times(1)).prepareStatement(anyString());
+		verify(preparedStatement, times(1)).execute();
+		verify(preparedStatement, times(1)).close();
 		verifyNoMoreInteractions(preparedStatement);
 	}
 }

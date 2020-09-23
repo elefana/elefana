@@ -82,24 +82,24 @@ public class TableIndexCreator implements Runnable {
 
 	@Override
 	public void run() {
+		Connection connection = null;
 		try {
-			Connection connection = null;
 			try {
 				connection = runTableIndexCreation(connection);
 				connection = runFieldIndexCreation(connection);
 			} catch (Exception e) {
 				LOGGER.error(e.getMessage(), e);
 			}
+			tableIndexQueue.prune();
+			fieldIndexQueue.prune();
+		} catch (Exception e) {
+			LOGGER.error(e.getMessage(), e);
+		} finally {
 			if(connection != null) {
 				try {
 					connection.close();
 				} catch (Exception e) {}
 			}
-
-			tableIndexQueue.prune();
-			fieldIndexQueue.prune();
-		} catch (Exception e) {
-			LOGGER.error(e.getMessage(), e);
 		}
 	}
 
@@ -122,6 +122,7 @@ public class TableIndexCreator implements Runnable {
 					LOGGER.info("Executing table index creation for " + tableIndexDelay.getTableName());
 				}
 			} else {
+				LOGGER.info("Table index queue peek returned false");
 				return connection;
 			}
 			try {
@@ -155,6 +156,7 @@ public class TableIndexCreator implements Runnable {
 					LOGGER.info("Executing field index creation for " + fieldIndexDelay.getTableName() + "->" + fieldIndexDelay.getFieldName());
 				}
 			} else {
+				LOGGER.info("Table field index queue peek returned false");
 				return connection;
 			}
 			try {
