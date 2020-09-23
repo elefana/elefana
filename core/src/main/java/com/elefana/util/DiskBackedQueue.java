@@ -191,8 +191,10 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 			} catch (Exception e) {
 				LOGGER.error(e.getMessage(), e);
 			}
-			if(!tailer.moveToIndex(oldIndex)) {
-				LOGGER.error("Could not move to index " + oldIndex);
+			if(success) {
+				if (!tailer.moveToIndex(oldIndex)) {
+					LOGGER.error("Could not move to index " + oldIndex);
+				}
 			}
 			tailer.direction(TailerDirection.FORWARD);
 			return success;
