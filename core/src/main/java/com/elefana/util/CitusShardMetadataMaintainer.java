@@ -71,22 +71,26 @@ public class CitusShardMetadataMaintainer implements Runnable {
 
 	@Override
 	public void run() {
-		final IndexTablePair tableTimestampSample = new IndexTablePair();
+		try {
+			final IndexTablePair tableTimestampSample = new IndexTablePair();
 
-		final SqlRowSet partitionTables = jdbcTemplate.queryForRowSet("SELECT * FROM elefana_partition_tracking");
-		while(partitionTables.next()) {
-			try {
-				tableTimestampSample.setIndexName(partitionTables.getString("_index"));
-				tableTimestampSample.setTableName(partitionTables.getString("_partitiontable"));
+			final SqlRowSet partitionTables = jdbcTemplate.queryForRowSet("SELECT * FROM elefana_partition_tracking");
+			while(partitionTables.next()) {
+				try {
+					tableTimestampSample.setIndexName(partitionTables.getString("_index"));
+					tableTimestampSample.setTableName(partitionTables.getString("_partitiontable"));
 
-				if(hasNullShardIntervals(tableTimestampSample)) {
-					repairShardIntervals(tableTimestampSample);
-				} else if(hasOverlappingShards(tableTimestampSample)) {
-					//TODO: Attempt data correction?
+					if(hasNullShardIntervals(tableTimestampSample)) {
+						repairShardIntervals(tableTimestampSample);
+					} else if(hasOverlappingShards(tableTimestampSample)) {
+						//TODO: Attempt data correction?
+					}
+				} catch (Exception e) {
+					LOGGER.error(e.getMessage(), e);
 				}
-			} catch (Exception e) {
-				LOGGER.error(e.getMessage(), e);
 			}
+		} catch (Exception e) {
+			LOGGER.error(e.getMessage(), e);
 		}
 	}
 
