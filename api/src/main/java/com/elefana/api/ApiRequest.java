@@ -75,8 +75,10 @@ public abstract class ApiRequest<T extends ApiResponse> {
 	}
 	
 	public void cancel() {
-		if(!channelPromise.cancel(true)) {
-			return;
+		if(channelPromise != null) {
+			if(!channelPromise.cancel(true)) {
+				return;
+			}
 		}
 		backingFuture.cancel(true);
 	}
