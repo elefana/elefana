@@ -29,7 +29,11 @@ public interface RequestExecutor {
 				promise.setSuccess();
 				return requestRequest;
 			} catch (Exception e) {
-				promise.setFailure(e);
+				if(!promise.isDone()) {
+					promise.setFailure(e);
+				} else {
+					e.printStackTrace();
+				}
 				return null;
 			}
 		});
