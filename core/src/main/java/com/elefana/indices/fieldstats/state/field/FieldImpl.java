@@ -25,6 +25,7 @@ import javax.annotation.concurrent.ThreadSafe;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 @ThreadSafe
 public class FieldImpl implements Field {
@@ -32,6 +33,7 @@ public class FieldImpl implements Field {
 
     protected final Map<String, FieldStats> fieldStats = new ConcurrentHashMap<>();
     protected final Class type;
+    protected final Function<String, FieldStats> createFieldStatsHandle = this::createFieldStats;
 
     public FieldImpl(Class type) {
         this.type = type;
@@ -44,9 +46,7 @@ public class FieldImpl implements Field {
     @Override
     @Nonnull
     public FieldStats getIndexFieldStats(String indexName) {
-        return fieldStats.computeIfAbsent(indexName, key ->
-                createFieldStats(indexName)
-        );
+        return fieldStats.computeIfAbsent(indexName, createFieldStatsHandle);
     }
 
     @Override

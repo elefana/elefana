@@ -27,6 +27,9 @@ import java.util.concurrent.locks.ReentrantLock;
 public class NoAllocStringReplace {
 	public static final AtomicInteger MAX_ARRAY_SIZE = new AtomicInteger(256);
 
+	private static final char ESCAPE_CHAR = '\\';
+	private static final String ESCAPE_STR = "\\";
+
 	private static final Lock LOCK = new ReentrantLock();
 	private static final List<NoAllocStringReplace> POOL = new ArrayList<NoAllocStringReplace>();
 
@@ -102,7 +105,7 @@ public class NoAllocStringReplace {
 
 		boolean match = false;
 
-		if(str[index] == '\\') {
+		if(str[index] == ESCAPE_CHAR) {
 			switch(str[index + 1]) {
 			case 'u':
 				if(index > 0 && str[index - 1] == '\\') {
@@ -120,7 +123,7 @@ public class NoAllocStringReplace {
 		}
 
 		if(match) {
-			insert(index, 1, "\\");
+			insert(index, 1, ESCAPE_STR);
 		}
 	}
 
