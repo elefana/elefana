@@ -295,6 +295,11 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 		throw new ElefanaException(HttpResponseStatus.TOO_MANY_REQUESTS, "Unable to lock ingest table for index '" + index + "'");
 	}
 
+	@Override
+	public int getOffsetedIndex(int index) {
+		return index;
+	}
+
 	public int lockWrittenTable() throws ElefanaException {
 		return lockWrittenTable(5L * locks.length);
 	}

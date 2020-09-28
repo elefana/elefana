@@ -21,4 +21,6 @@ public interface TimeIngestTable extends IngestTable {
 	public int lockTable(int shardOffset) throws ElefanaException;
 
 	public int lockTable(int shardOffset, long timeout) throws ElefanaException;
+
+	public int getOffsetedIndex(int index);
 }
