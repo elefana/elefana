@@ -282,11 +282,14 @@ public class CoreFieldStatsJob extends FieldStatsJob implements NoAllocJsonReade
         } else if(isNullValue(value, from, length)) {
             processString(null, key);
         } else if(isFloatingPointValue(value, from, length)) {
-            processNumber(Float.valueOf(new String(value, from, length)), key);
+            //processNumber(Float.valueOf(new String(value, from, length)), key);
+            processNumber(0f, key);
         } else if(isDoubleValue(value, from, length)) {
-            processNumber(Double.valueOf(new String(value, from, length)), key);
+            //processNumber(Double.valueOf(new String(value, from, length)), key);
+            processNumber(0.0, key);
         } else {
-            processNumber(Long.valueOf(new String(value, from, length)), key);
+            //processNumber(Long.valueOf(new String(value, from, length)), key);
+            processNumber(0L, key);
         }
     }
 
