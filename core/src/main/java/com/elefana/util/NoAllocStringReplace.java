@@ -29,6 +29,7 @@ public class NoAllocStringReplace {
 
 	private static final char ESCAPE_CHAR = '\\';
 	private static final String ESCAPE_STR = "\\";
+	private static final char UNICODE_PREFIX = 'u';
 
 	private static final Lock LOCK = new ReentrantLock();
 	private static final List<NoAllocStringReplace> POOL = new ArrayList<NoAllocStringReplace>();
@@ -102,29 +103,22 @@ public class NoAllocStringReplace {
 		if(index > length - 5) {
 			return;
 		}
+		if(str[index] != ESCAPE_CHAR) {
+			return;
+		}
+		if (str[index + 1] != UNICODE_PREFIX) {
+			return;
+		}
+		if (index > 0 && str[index - 1] == ESCAPE_CHAR) {
+			return;
+		}
 
-		boolean match = false;
-
-		if(str[index] == ESCAPE_CHAR) {
-			switch(str[index + 1]) {
-			case 'u':
-				if(index > 0 && str[index - 1] == ESCAPE_CHAR) {
-					return;
-				}
-				match = true;
-				for(int j = index + 2; j <= index + 5 && j < str.length; j++) {
-					if(!Character.isDigit(str[j])) {
-						match = false;
-						break;
-					}
-				}
-				break;
+		for (int j = index + 2; j <= index + 5 && j < str.length; j++) {
+			if (!Character.isDigit(str[j])) {
+				return;
 			}
 		}
-
-		if(match) {
-			insert(index, 1, ESCAPE_STR);
-		}
+		insert(index, 1, ESCAPE_STR);
 	}
 
 	public void replaceAndEscapeUnicode(String [] search, String [] replace) {
@@ -246,22 +240,22 @@ public class NoAllocStringReplace {
 			return false;
 
 		for(int i = 0; i < str.length(); i++) {
-			for(int j = 0; j < search.length; j++) {
-				if(search[j] == null) {
+			for (String s : search) {
+				if (s == null) {
 					continue;
 				}
-				if(search[j].isEmpty()) {
+				if (s.isEmpty()) {
 					continue;
 				}
 
 				boolean match = true;
-				for(int k = 0; k < search[j].length() && i + k < str.length(); k++) {
-					if(str.charAt(i + k) != search[j].charAt(k)) {
+				for (int k = 0; k < s.length() && i + k < str.length(); k++) {
+					if (str.charAt(i + k) != s.charAt(k)) {
 						match = false;
 						break;
 					}
 				}
-				if(match) {
+				if (match) {
 					return true;
 				}
 			}
@@ -278,22 +272,22 @@ public class NoAllocStringReplace {
 			return false;
 
 		for(int i = 0; i < length; i++) {
-			for(int j = 0; j < search.length; j++) {
-				if(search[j] == null) {
+			for (String s : search) {
+				if (s == null) {
 					continue;
 				}
-				if(search[j].isEmpty()) {
+				if (s.isEmpty()) {
 					continue;
 				}
 
 				boolean match = true;
-				for(int k = 0; k < search[j].length() && i + k < length; k++) {
-					if(str[i + k] != search[j].charAt(k)) {
+				for (int k = 0; k < s.length() && i + k < length; k++) {
+					if (str[i + k] != s.charAt(k)) {
 						match = false;
 						break;
 					}
 				}
-				if(match) {
+				if (match) {
 					return true;
 				}
 			}
