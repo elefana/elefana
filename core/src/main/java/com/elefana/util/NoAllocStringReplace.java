@@ -108,7 +108,7 @@ public class NoAllocStringReplace {
 		if(str[index] == ESCAPE_CHAR) {
 			switch(str[index + 1]) {
 			case 'u':
-				if(index > 0 && str[index - 1] == '\\') {
+				if(index > 0 && str[index - 1] == ESCAPE_CHAR) {
 					return;
 				}
 				match = true;
