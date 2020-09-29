@@ -36,6 +36,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @ThreadSafe
@@ -47,6 +49,8 @@ public class StateImpl implements State{
 
     protected final ReadWriteLock indexMapLock;
     protected Cache<String, Set<String>> fieldNamesCache;
+
+    protected BiFunction<String, Class, Field> createFieldMethod = this::createFieldImplementation;
 
     public StateImpl(Environment environment) {
         this(environment, false);
@@ -268,7 +272,7 @@ public class StateImpl implements State{
     @Nonnull
     public <T> FieldStats<T> getFieldStatsTypeChecked(String fieldName, Class<T> tClass, String index) throws ElefanaWrongFieldStatsTypeException {
         indexMapLock.readLock().lock();
-        Field field = fieldMap.computeIfAbsent(fieldName, key -> createFieldImplementation(fieldName, tClass));
+        Field field = fieldMap.computeIfAbsent(fieldName, key -> createFieldMethod.apply(fieldName, tClass));
         indexMapLock.readLock().unlock();
 
         if(!field.hasIndexFieldStats(index)) {
@@ -282,7 +286,7 @@ public class StateImpl implements State{
             upgradeFieldToString(fieldName);
 
             indexMapLock.readLock().lock();
-            field = fieldMap.computeIfAbsent(fieldName, key -> createFieldImplementation(fieldName, tClass));
+            field = fieldMap.computeIfAbsent(fieldName, key -> createFieldMethod.apply(fieldName, tClass));
             indexMapLock.readLock().unlock();
             return (FieldStats<T>) field.getIndexFieldStats(index);
         }
@@ -290,7 +294,7 @@ public class StateImpl implements State{
             upgradeFieldToString(fieldName);
 
             indexMapLock.readLock().lock();
-            field = fieldMap.computeIfAbsent(fieldName, key -> createFieldImplementation(fieldName, tClass));
+            field = fieldMap.computeIfAbsent(fieldName, key -> createFieldMethod.apply(fieldName, tClass));
             indexMapLock.readLock().unlock();
             return (FieldStats<T>) field.getIndexFieldStats(index);
         }
@@ -361,7 +365,7 @@ public class StateImpl implements State{
     public <T> void ensureFieldExists(String fieldName, Class<T> fieldClass) {
         indexMapLock.readLock().lock();
         try {
-            fieldMap.computeIfAbsent(fieldName, key -> createFieldImplementation(fieldName, fieldClass));
+            fieldMap.computeIfAbsent(fieldName, key -> createFieldMethod.apply(fieldName, fieldClass));
         } finally {
             indexMapLock.readLock().unlock();
         }
