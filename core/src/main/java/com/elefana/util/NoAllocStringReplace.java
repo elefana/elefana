@@ -72,6 +72,10 @@ public class NoAllocStringReplace {
 	private char [] str;
 	private int length;
 
+	private int oldLength, remainder, searchLength;
+	private char [] oldStr;
+	private String searchStr = null, replaceStr = null;
+
 	private NoAllocStringReplace() {
 		super();
 		str = new char[MAX_ARRAY_SIZE.get()];
@@ -144,39 +148,17 @@ public class NoAllocStringReplace {
 	}
 
 	public void replaceAndEscapeUnicode(String [] search, String [] replace) {
-		if(search.length != replace.length) {
-			throw new RuntimeException("search and replace arrays must be same length");
-		}
-		boolean match = true;
-
-		final int searchArrayLength = search.length;
-		int searchLength = 0;
-		String searchStr = null;
-		String replaceStr = null;
+		checkSearchReplaceArrays(search, replace);
 
 		for(int i = 0; i < length; i++) {
-			for(int j = 0; j < searchArrayLength; j++) {
+			for(int j = 0; j < search.length; j++) {
 				searchStr = search[j];
 				replaceStr = replace[j];
-				if(searchStr == null || replaceStr == null) {
-					continue;
-				}
-				if(searchStr.isEmpty()) {
-					continue;
-				}
-				if(searchStr.length() > length - i) {
-					continue;
-				}
-				match = true;
-				searchLength = searchStr.length();
 
-				for(int k = 0; k < searchLength && i + k < length; k++) {
-					if(str[i + k] != searchStr.charAt(k)) {
-						match = false;
-						break;
-					}
+				if(isSkip(i, searchStr, replaceStr)) {
+					continue;
 				}
-				if(match) {
+				if(isMatch(i, searchStr)) {
 					replace(i, searchStr, replaceStr);
 					i += replaceStr.length() - 1;
 				}
@@ -185,11 +167,40 @@ public class NoAllocStringReplace {
 		}
 	}
 
+	private void checkSearchReplaceArrays(String [] search, String [] replace) {
+		if(search.length != replace.length) {
+			throw new RuntimeException("search and replace arrays must be same length");
+		}
+	}
+
+	private boolean isMatch(int i, String searchStr) {
+		searchLength = searchStr.length();
+		for(int k = 0; k < searchLength && i + k < length; k++) {
+			if(str[i + k] != searchStr.charAt(k)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private boolean isSkip(int i, String searchStr, String replaceStr) {
+		if(searchStr == null || replaceStr == null) {
+			return true;
+		}
+		if(searchStr.isEmpty()) {
+			return true;
+		}
+		if(searchStr.length() > length - i) {
+			return true;
+		}
+		return false;
+	}
+
 	public void insert(int index, int shift, String value) {
-		final int oldLength = length;
+		oldLength = length;
 		length += shift;
 		//Shift chars to right
-		char [] oldStr = str;
+		oldStr = str;
 		if(str.length < length) {
 			MAX_ARRAY_SIZE.set(Math.max(length * 2, MAX_ARRAY_SIZE.get()));
 			str = new char[MAX_ARRAY_SIZE.get()];
@@ -197,10 +208,11 @@ public class NoAllocStringReplace {
 				System.arraycopy(oldStr, 0, str, 0, index);
 			}
 		}
-		final int remainder = oldLength - (index + (value.length() - shift));
+		remainder = oldLength - (index + (value.length() - shift));
 		System.arraycopy(oldStr, index + (value.length() - shift), str,
 				(index + value.length()), remainder);
 		value.getChars(0, value.length(), str, index);
+		oldStr = null;
 	}
 
 	public void replace(int index, String search, String replace) {
@@ -211,10 +223,10 @@ public class NoAllocStringReplace {
 			insert(index, replace.length() - search.length(), replace);
 		} else if(search.length() > replace.length()) {
 			//Shift chars to left
-			final int oldLength = length;
+			oldLength = length;
 			length -= search.length() - replace.length();
 
-			final int remainder = oldLength - (index + search.length());
+			remainder = oldLength - (index + search.length());
 			if(remainder < 0) {
 				return;
 			}
@@ -233,6 +245,9 @@ public class NoAllocStringReplace {
 			str = pooledStr;
 			pooledStr = null;
 		}
+
+		searchStr = null;
+		replaceStr = null;
 
 		LOCK.lock();
 		POOL.add(this);
