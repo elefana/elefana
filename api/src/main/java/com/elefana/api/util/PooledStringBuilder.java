@@ -154,9 +154,8 @@ public class PooledStringBuilder implements Serializable, Appendable, CharSequen
 	}
 
 	public PooledStringBuilder append(ByteBuf byteBuf, Charset charset) {
-		CharBuffer charBuffer = charset.decode(byteBuf.nioBuffer());
 		try {
-			append(charBuffer);
+			append(byteBuf.readCharSequence(byteBuf.readableBytes(), charset));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
