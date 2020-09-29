@@ -216,7 +216,7 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 
 	private FullHttpResponse createResponse(HttpRequest request, HttpResponseStatus status, String content) {
 		final FullHttpResponse result = new DefaultFullHttpResponse(request.getProtocolVersion(), status,
-				Unpooled.wrappedBuffer(content.getBytes(CHARSET)));
+				Unpooled.wrappedBuffer((content == null ? "" : content).getBytes(CHARSET)));
 		result.headers().set(HEADER_CHARSET, HEADER_VALUE_UTF8);
 		result.headers().set(HEADER_CONTENT_TYPE, HEADER_VALUE_APPLICATION_JSON);
 
