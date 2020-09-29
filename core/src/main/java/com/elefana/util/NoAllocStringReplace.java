@@ -114,7 +114,29 @@ public class NoAllocStringReplace {
 		}
 
 		for (int j = index + 2; j <= index + 5 && j < str.length; j++) {
-			if (!Character.isDigit(str[j])) {
+			switch(str[j]) {
+			case '\u0030':
+			case '\u0031':
+			case '\u0032':
+			case '\u0033':
+			case '\u0034':
+			case '\u0035':
+			case '\u0036':
+			case '\u0037':
+			case '\u0038':
+			case '\u0039':
+			case '\uFF10':
+			case '\uFF11':
+			case '\uFF12':
+			case '\uFF13':
+			case '\uFF14':
+			case '\uFF15':
+			case '\uFF16':
+			case '\uFF17':
+			case '\uFF18':
+			case '\uFF19':
+				continue;
+			default:
 				return;
 			}
 		}
@@ -169,7 +191,8 @@ public class NoAllocStringReplace {
 		//Shift chars to right
 		char [] oldStr = str;
 		if(str.length < length) {
-			str = new char[length * 2];
+			MAX_ARRAY_SIZE.set(Math.max(length * 2, MAX_ARRAY_SIZE.get()));
+			str = new char[MAX_ARRAY_SIZE.get()];
 			if(index > 0) {
 				System.arraycopy(oldStr, 0, str, 0, index);
 			}
