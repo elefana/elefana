@@ -462,7 +462,3 @@ project(":" + rootProject.name + "-docs") {
 	asciidoctor.dependsOn copyGeneratedSnippets	
 	build.dependsOn asciidoctor
 }
-
-task wrapper(type: Wrapper) {
-	gradleVersion = '4.10.3'
-}
