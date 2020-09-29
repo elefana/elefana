@@ -26,6 +26,7 @@ import com.elefana.indices.fieldstats.state.index.IndexComponent;
 import com.google.common.collect.ImmutableList;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;

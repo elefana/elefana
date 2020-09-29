@@ -15,6 +15,7 @@
  ******************************************************************************/
 package com.elefana.node;
 
+import com.elefana.indices.fieldstats.job.CoreFieldStatsJob;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.validator.routines.InetAddressValidator;
 import org.slf4j.Logger;
@@ -124,6 +125,10 @@ public class NodeSettingsService {
 
 			citusWorkerHost = environment.getProperty("elefana.citus.worker.host", "");
 			citusWorkerPort = environment.getProperty("elefana.citus.worker.port", Integer.class, 5432);
+		}
+
+		if(environment.getProperty("elefana.simpleStats", Boolean.class, false)) {
+			CoreFieldStatsJob.BASIC_MODE = true;
 		}
 
 		flattenJson = environment.getProperty("elefana.flattenJson", Boolean.class, false);

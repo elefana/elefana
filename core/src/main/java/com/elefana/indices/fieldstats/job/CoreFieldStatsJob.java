@@ -47,6 +47,8 @@ public class CoreFieldStatsJob extends FieldStatsJob implements NoAllocJsonReade
     private static final List<CoreFieldStatsJob> POOL = new ArrayList<CoreFieldStatsJob>(32);
     private static final CumulativeAverage AVG_BATCH_SIZE = new CumulativeAverage(128);
 
+    public static boolean BASIC_MODE = false;
+
     private static JsonFactory jsonFactory = new JsonFactory().setCodec(new ObjectMapper());
 
     private final List<DocumentSourceProvider> documents = new ArrayList<DocumentSourceProvider>(AVG_BATCH_SIZE.avg());
@@ -275,21 +277,33 @@ public class CoreFieldStatsJob extends FieldStatsJob implements NoAllocJsonReade
 
     private void statField(String key, char [] value, int from, int length) {
         if(value[from] == '\'' || value[from] == '\"') {
-            //processString(new String(value, from + 1, length - 2), key);
-            processString("", key);
+            if(BASIC_MODE) {
+                processString("", key);
+            } else {
+                processString(new String(value, from + 1, length - 2), key);
+            }
         } else if(isBoolValue(value, from, length)) {
             processBoolean(value[from] == 't' || value[from] == 'T', key);
         } else if(isNullValue(value, from, length)) {
             processString(null, key);
         } else if(isFloatingPointValue(value, from, length)) {
-            //processNumber(Float.valueOf(new String(value, from, length)), key);
-            processNumber(0f, key);
+            if(BASIC_MODE) {
+                processNumber(0f, key);
+            } else {
+                processNumber(Float.valueOf(new String(value, from, length)), key);
+            }
         } else if(isDoubleValue(value, from, length)) {
-            //processNumber(Double.valueOf(new String(value, from, length)), key);
-            processNumber(0.0, key);
+            if(BASIC_MODE) {
+                processNumber(0.0, key);
+            } else {
+                processNumber(Double.valueOf(new String(value, from, length)), key);
+            }
         } else {
-            //processNumber(Long.valueOf(new String(value, from, length)), key);
-            processNumber(0L, key);
+            if(BASIC_MODE) {
+                processNumber(0L, key);
+            } else {
+                processNumber(Long.valueOf(new String(value, from, length)), key);
+            }
         }
     }
 

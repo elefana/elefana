@@ -220,10 +220,16 @@ public class V2JvmStats extends JvmStats {
 	}
 
 	private KeyValuePair getKVP(String key, Object value) {
+		if(key != null && key.contains("'")) {
+			key = key.replace("'", "_");
+		}
 		return new KeyValuePair(key, value);
 	}
 
 	private <B> KeyValuePair getKVPIterate(String key, List<B> list, Function<B, String> generateKey, Function<B, Object> generateValue) {
+		if(key != null && key.contains("'")) {
+			key = key.replace("'", "_");
+		}
 		return getKVP(key, generateMap(list
 				.stream()
 				.map(b -> getKVP(generateKey.apply(b), generateValue.apply(b)))
