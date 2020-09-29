@@ -276,6 +276,8 @@ public class CoreFieldStatsJob extends FieldStatsJob implements NoAllocJsonReade
     }
 
     private void statField(String key, char [] value, int from, int length) {
+        key.intern();
+
         if(value[from] == '\'' || value[from] == '\"') {
             if(BASIC_MODE) {
                 processString("", key);
