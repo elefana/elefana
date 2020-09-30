@@ -83,6 +83,9 @@ public abstract class ApiRequest<T extends ApiResponse> {
 				return;
 			}
 		}
+		if(backingFuture == null) {
+			return;
+		}
 		if(backingFuture.isDone()) {
 			return;
 		}
