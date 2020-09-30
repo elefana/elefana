@@ -177,28 +177,41 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 		}
 		synchronized(tailer) {
 			long oldIndex = tailer.index();
-			tailer.direction(TailerDirection.FORWARD);
+			int oldCycle = tailer.cycle();
+			long oldSequence = chronicleQueue.rollCycle().toSequenceNumber(oldIndex);
+			if (oldIndex == 0) {
+				tailer.toStart();
+				tailer.direction(TailerDirection.FORWARD);
+			} else {
+				tailer.direction(TailerDirection.NONE);
+			}
+
 			boolean success = true;
 			try (DocumentContext context = tailer.readingDocument()) {
 				if (context.isPresent()) {
-					if (oldIndex == 0) {
-						oldIndex = context.index();
-					}
-					tailer.readBytes(result);
+					context.wire().readBytes(result);
 				} else {
 					success = false;
 				}
 			} catch (Exception e) {
 				LOGGER.error(e.getMessage(), e);
 			}
-			if(success) {
-				tailer.direction(TailerDirection.BACKWARD);
-				if (!tailer.moveToIndex(oldIndex)) {
-					LOGGER.error("Could not move to index " + oldIndex);
-				}
+			if(oldIndex == 0) {
+				tailer.toStart();
 			}
 			tailer.direction(TailerDirection.FORWARD);
+
+			long newIndex = tailer.index();
+			int newCycle = tailer.cycle();
+			long newSequence = chronicleQueue.rollCycle().toSequenceNumber(newIndex);
+			System.out.println(oldCycle + " " + oldSequence + " -> " + newCycle + " " + newSequence + " " + success);
 			return success;
+		}
+	}
+
+	public long getTailerIndex() {
+		synchronized (tailer) {
+			return tailer.index();
 		}
 	}
 
@@ -207,12 +220,32 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 			return false;
 		}
 		synchronized(tailer) {
+			boolean success = false;
+			int cycle = tailer.cycle();
+			long previousSequenceNumber = chronicleQueue.rollCycle().toSequenceNumber(tailer.index());
+			if(previousSequenceNumber == 0) {
+				//tailer.moveToIndex(tailer.index() + 1);
+			}
+			System.out.println(tailer.cycle() + " " + chronicleQueue.rollCycle().toSequenceNumber(tailer.index()));
+
 			try (DocumentContext context = tailer.readingDocument()) {
 				if(!context.isPresent()) {
+					System.out.println("HERE1");
 					return false;
 				}
-				return context.wire().readBytes(result);
+				success = context.wire().readBytes(result);
 			}
+
+			if(!success) {
+				System.out.println("HERE2");
+				return false;
+			}
+			long sequenceNumber = chronicleQueue.rollCycle().toSequenceNumber(tailer.index());
+			if(sequenceNumber == 1 && tailer.cycle() != cycle) {
+				tailer.moveToIndex(tailer.index() - 1);
+				System.out.println("HERE3 " + chronicleQueue.rollCycle().toSequenceNumber(tailer.index()));
+			}
+			return true;
 		}
 	}
 
@@ -225,6 +258,7 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 			try (DocumentContext context = appender.writingDocument()) {
 				context.wire().writeBytes(t);
 			}
+			System.out.println("LAST APPEND " + appender.cycle() + " " + chronicleQueue.rollCycle().toSequenceNumber(appender.lastIndexAppended()));
 			return true;
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);

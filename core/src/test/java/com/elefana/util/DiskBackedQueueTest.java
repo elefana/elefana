@@ -111,6 +111,72 @@ public class DiskBackedQueueTest {
 	}
 
 	@Test
+	public void testPeekOnRollover() throws Exception {
+		final int expectedValue1 = 45867;
+		final int expectedValue2 = 586;
+		final int expectedValue3 = 586;
+
+		final String queueId = UUID.randomUUID().toString();
+		final File dataDirectory = Files.createTempDirectory(queueId).toFile();
+
+		final TestData peekResult1 = new TestData();
+		final TestData peekResult2 = new TestData();
+		final TestData peekResult3 = new TestData();
+
+		SetTimeProvider timeProvider = new SetTimeProvider();
+		timeProvider.currentTimeMillis(System.currentTimeMillis());
+
+		final DiskBackedQueue<TestData> queue = new DiskBackedQueue<>(
+				queueId, dataDirectory, TestData.class, RollCycles.TEST_SECONDLY, timeProvider, false);
+		Assert.assertFalse(queue.peek(peekResult1));
+		queue.offer(new TestData(expectedValue1));
+		queue.offer(new TestData(expectedValue2));
+
+		final TestData pollResult = new TestData();
+
+		timeProvider.advanceMillis(1500);
+		queue.offer(new TestData(expectedValue3));
+
+		final long prePeekIndex1 = queue.getTailerIndex();
+		Assert.assertTrue(queue.peek(peekResult1));
+		final long postPeekIndex1 = queue.getTailerIndex();
+		Assert.assertEquals(expectedValue1, peekResult1.value);
+		Assert.assertEquals(0, prePeekIndex1);
+		Assert.assertNotEquals(0, postPeekIndex1);
+
+		final long prePollIndex1 = queue.getTailerIndex();
+		Assert.assertTrue(queue.poll(pollResult));
+		final long postPollIndex1 = queue.getTailerIndex();
+		Assert.assertEquals(prePollIndex1  + 1, postPollIndex1);
+		Assert.assertEquals(expectedValue1, pollResult.value);
+
+		final long prePeekIndex2 = queue.getTailerIndex();
+		Assert.assertTrue(queue.peek(peekResult2));
+		final long postPeekIndex2 = queue.getTailerIndex();
+		Assert.assertEquals(prePeekIndex2, postPeekIndex2);
+		Assert.assertEquals(expectedValue2, peekResult2.value);
+
+		final long prePollIndex2 = queue.getTailerIndex();
+		Assert.assertTrue(queue.poll(pollResult));
+		final long postPollIndex2 = queue.getTailerIndex();
+		Assert.assertNotEquals(prePollIndex2, postPollIndex2);
+		Assert.assertEquals(expectedValue2, pollResult.value);
+
+		final long prePeekIndex3 = queue.getTailerIndex();
+		Assert.assertEquals(postPollIndex2, prePeekIndex3);
+		Assert.assertTrue(queue.peek(peekResult3));
+		final long postPeekIndex3 = queue.getTailerIndex();
+		Assert.assertEquals(prePeekIndex3, postPeekIndex3);
+		Assert.assertEquals(expectedValue3, peekResult3.value);
+
+		final long prePollIndex3 = queue.getTailerIndex();
+		Assert.assertTrue(queue.poll(pollResult));
+		final long postPollIndex3 = queue.getTailerIndex();
+		Assert.assertEquals(prePollIndex3 + 1, postPollIndex3);
+		Assert.assertEquals(expectedValue3, pollResult.value);
+	}
+
+	@Test
 	public void testPrune() throws Exception {
 		final int expectedValue = 10385;
 
