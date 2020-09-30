@@ -232,8 +232,7 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 		}
 		String charset = request.headers().contains("charset") ? request.headers().get("charset").toUpperCase() : "UTF-8";
 		PooledStringBuilder result = PooledStringBuilder.allocate();
-		result.append(content.content(), Charset.forName(charset));
-		
+
 		if(request.headers().contains("Content-Type")) {
 			String contentType = request.headers().get("Content-Type").toLowerCase();
 			if(contentType.contains(";")) {
@@ -242,11 +241,14 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 			
 			switch(contentType) {
 			case "application/x-www-form-urlencoded":
-				result.release();
-				result = PooledStringBuilder.allocate();
 				result.appendUrlDecode(content.content(), charset);
 				break;
+			default:
+				result.append(content.content(), Charset.forName(charset));
+				break;
 			}
+		} else {
+			result.append(content.content(), Charset.forName(charset));
 		}
 		return result;
 	}
