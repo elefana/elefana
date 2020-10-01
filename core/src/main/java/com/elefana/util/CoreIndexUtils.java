@@ -420,7 +420,7 @@ public class CoreIndexUtils implements IndexUtils {
 				createTableQuery.append(indexName);
 				createTableQuery.append("')");
 			}
-			final String tablespace = tablespaces[tablespaceIndex.incrementAndGet() % tablespaces.length];
+			final String tablespace = tablespaces[Math.abs(tablespaceIndex.incrementAndGet() % tablespaces.length)];
 			if (tablespace != null && !tablespace.isEmpty()) {
 				createTableQuery.append(" TABLESPACE ");
 				createTableQuery.append(tablespace);
