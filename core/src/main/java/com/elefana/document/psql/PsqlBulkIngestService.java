@@ -41,6 +41,7 @@ import com.elefana.node.VersionInfoService;
 import com.elefana.util.CumulativeAverage;
 import com.elefana.util.IndexUtils;
 import com.elefana.util.NamedThreadFactory;
+import com.elefana.util.ThreadPriorities;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.module.SimpleModule;
@@ -109,8 +110,8 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 	public void postConstruct() {
 		final int totalIngestThreads = nodeSettingsService.getBulkIngestThreads();
 		final int totalProcessingThreads = (nodeSettingsService.getBulkParallelisation() * totalIngestThreads) + 1;
-		bulkRequestExecutorService = Executors.newFixedThreadPool(totalIngestThreads, new NamedThreadFactory(REQUEST_THREAD_PREFIX));
-		bulkProcessingExecutorService = Executors.newFixedThreadPool(totalProcessingThreads, new NamedThreadFactory(PROCESSOR_THREAD_PREFIX));
+		bulkRequestExecutorService = Executors.newFixedThreadPool(totalIngestThreads, new NamedThreadFactory(REQUEST_THREAD_PREFIX, ThreadPriorities.BULK_INGEST_SERVICE));
+		bulkProcessingExecutorService = Executors.newFixedThreadPool(totalProcessingThreads, new NamedThreadFactory(PROCESSOR_THREAD_PREFIX, ThreadPriorities.BULK_INGEST_SERVICE));
 
 		bulkIndexTimer = metricRegistry.timer(MetricRegistry.name("bulk", "index", "duration", "total"));
 

@@ -34,6 +34,7 @@ import com.elefana.node.VersionInfoService;
 import com.elefana.util.EscapeUtils;
 import com.elefana.util.IndexUtils;
 import com.elefana.util.NamedThreadFactory;
+import com.elefana.util.ThreadPriorities;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import org.postgresql.util.PGobject;
@@ -87,9 +88,8 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 
 	@PostConstruct
 	public void postConstruct() {
-		final int totalThreads = environment.getProperty("elefana.service.document.threads", Integer.class,
-				Runtime.getRuntime().availableProcessors());
-		executorService = Executors.newFixedThreadPool(totalThreads, new NamedThreadFactory("elefana-documentService-requestExecutor"));
+		executorService = Executors.newCachedThreadPool(new NamedThreadFactory(
+				"elefana-documentService-requestExecutor", ThreadPriorities.DOCUMENT_SERVICE));
 	}
 
 	@PreDestroy

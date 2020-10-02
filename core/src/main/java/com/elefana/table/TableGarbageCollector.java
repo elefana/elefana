@@ -18,6 +18,7 @@ package com.elefana.table;
 import com.elefana.node.NodeStatsService;
 import com.elefana.util.IndexUtils;
 import com.elefana.util.NamedThreadFactory;
+import com.elefana.util.ThreadPriorities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,15 +38,16 @@ import java.util.concurrent.TimeUnit;
 @DependsOn("nodeStatsService")
 public class TableGarbageCollector implements Runnable {
 	private static final Logger LOGGER = LoggerFactory.getLogger(TableGarbageCollector.class);
-	private static final long GC_TIME_MILLIS = 1000L;
+	private static final long GC_TIME_MILLIS = 60000L;
 	
 	private final Queue<String> tableDeletionQueue = new ConcurrentLinkedQueue<String>();
-	private final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1, new NamedThreadFactory("elefana-table-garbage-collector"));
 	
 	@Autowired
 	private IndexUtils indexUtils;
 	@Autowired
 	private NodeStatsService nodeStatsService;
+
+	private ScheduledExecutorService scheduledExecutorService = null;
 	
 	@PostConstruct
 	public void postConstruct() {
@@ -53,11 +55,16 @@ public class TableGarbageCollector implements Runnable {
 			//Only master node can execute search
 			return;
 		}
+		scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("elefana-table-garbage-collector", ThreadPriorities.TABLE_GARBAGE_COLLECTOR));
 		scheduledExecutorService.scheduleAtFixedRate(this, 1L, GC_TIME_MILLIS, TimeUnit.MILLISECONDS);
 	}
 	
 	@PreDestroy
 	public void preDestroy() {
+		if(!nodeStatsService.isMasterNode()) {
+			//Only master node can execute search
+			return;
+		}
 		scheduledExecutorService.shutdown();
 
 		try {

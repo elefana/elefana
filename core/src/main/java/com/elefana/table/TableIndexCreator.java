@@ -21,6 +21,8 @@ import com.elefana.node.NodeSettingsService;
 import com.elefana.node.NodeStatsService;
 import com.elefana.util.DiskBackedQueue;
 import com.elefana.util.IndexUtils;
+import com.elefana.util.NamedThreadFactory;
+import com.elefana.util.ThreadPriorities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,8 +52,7 @@ public class TableIndexCreator implements Runnable {
 	@Autowired
 	private NodeSettingsService nodeSettingsService;
 
-	private final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
-
+	private ScheduledExecutorService executorService = null;
 	private DiskBackedQueue<TableIndexDelay> tableIndexQueue;
 	private DiskBackedQueue<TableFieldIndexDelay> fieldIndexQueue;
 
@@ -62,6 +63,8 @@ public class TableIndexCreator implements Runnable {
 			//Only master node can create indices
 			return;
 		}
+		executorService = Executors.newSingleThreadScheduledExecutor(
+				new NamedThreadFactory("tableIndexCreator", ThreadPriorities.PSQL_INDEX_CREATOR));
 		final long interval = nodeSettingsService.getMappingInterval();
 
 		tableIndexQueue = new DiskBackedQueue(TABLE_INDEX_QUEUE_ID,

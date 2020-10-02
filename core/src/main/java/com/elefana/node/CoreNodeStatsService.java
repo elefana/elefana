@@ -27,6 +27,7 @@ import com.elefana.node.v5.V5JvmStats;
 import com.elefana.node.v5.V5OsStats;
 import com.elefana.node.v5.V5ProcessStats;
 import com.elefana.util.NamedThreadFactory;
+import com.elefana.util.ThreadPriorities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,7 +54,8 @@ public class CoreNodeStatsService implements NodeStatsService {
 
 	public static final String[] ALL_INFO = new String[] { KEY_OS, KEY_PROCESS, KEY_JVM };
 
-	private final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1, new NamedThreadFactory("elefana-nodesStatsService-statsExecutor"));
+	private final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1,
+			new NamedThreadFactory("elefana-nodesStatsService-statsExecutor", ThreadPriorities.NODE_STATS_SERVICE));
 
 	@Autowired
 	protected Environment environment;
@@ -99,7 +101,7 @@ public class CoreNodeStatsService implements NodeStatsService {
 			break;
 		}
 
-		long refreshInterval = environment.getProperty("elefana.service.node.statsRefreshInterval", Long.class, 1L);
+		long refreshInterval = environment.getProperty("elefana.service.node.statsRefreshInterval", Long.class, 10L);
 
 		scheduledExecutorService.scheduleAtFixedRate(jvmStats, 0L, refreshInterval, TimeUnit.SECONDS);
 		scheduledExecutorService.scheduleAtFixedRate(osStats, 0L, refreshInterval, TimeUnit.SECONDS);

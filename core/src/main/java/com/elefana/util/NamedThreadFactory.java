@@ -20,17 +20,23 @@ import java.util.concurrent.ThreadFactory;
 public class NamedThreadFactory implements ThreadFactory {
 	private final String threadGroupName;
 	private final ThreadGroup threadGroup;
+	private final int threadPriority;
+
 	private int threadId = 0;
 	
-	public NamedThreadFactory(String threadGroupName) {
+	public NamedThreadFactory(String threadGroupName, int threadPriority) {
 		super();
 		this.threadGroupName = threadGroupName;
+		this.threadPriority = threadPriority;
+
 		threadGroup = new ThreadGroup(threadGroupName);
 	}
 
 	@Override
 	public Thread newThread(Runnable r) {
-		return new Thread(threadGroup, r, threadGroupName + (threadId++));
+		final Thread result = new Thread(threadGroup, r, threadGroupName + (threadId++));
+		result.setPriority(threadPriority);
+		return result;
 	}
 
 }

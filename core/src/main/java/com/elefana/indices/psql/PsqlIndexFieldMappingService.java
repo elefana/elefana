@@ -31,6 +31,7 @@ import com.elefana.node.VersionInfoService;
 import com.elefana.util.HashDiskBackedQueue;
 import com.elefana.util.IndexUtils;
 import com.elefana.util.NamedThreadFactory;
+import com.elefana.util.ThreadPriorities;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import io.netty.channel.ChannelHandlerContext;
@@ -118,7 +119,8 @@ public class PsqlIndexFieldMappingService implements IndexFieldMappingService, R
 				MAPPING_AVERAGE_KEY, MAPPING_AVERAGE_VALUE);
 
 		final int totalThreads = environment.getProperty("elefana.service.field.threads", Integer.class, 2);
-		executorService = Executors.newFixedThreadPool(totalThreads, new NamedThreadFactory("elefana-fieldMappingService-requestExecutor"));
+		executorService = Executors.newFixedThreadPool(totalThreads, new NamedThreadFactory(
+				"elefana-fieldMappingService-requestExecutor", ThreadPriorities.FIELD_MAPPING_SERVICE));
 
 		mappingScheduledTask = taskScheduler.scheduleAtFixedRate(new Runnable() {
 			@Override

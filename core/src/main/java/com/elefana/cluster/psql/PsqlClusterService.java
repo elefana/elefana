@@ -21,6 +21,7 @@ import com.elefana.cluster.ClusterService;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
 import com.elefana.util.NamedThreadFactory;
+import com.elefana.util.ThreadPriorities;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import org.slf4j.Logger;
@@ -60,8 +61,8 @@ public class PsqlClusterService implements ClusterService, RequestExecutor {
 
 	@PostConstruct
 	public void postConstruct() {
-		final int totalThreads = environment.getProperty("elefana.service.cluster.threads", Integer.class, 2);
-		executorService = Executors.newFixedThreadPool(totalThreads, new NamedThreadFactory("elefana-clusterService-requestExecutor"));
+		executorService = Executors.newCachedThreadPool(new NamedThreadFactory(
+				"elefana-clusterService-requestExecutor", ThreadPriorities.CLUSTER_SERVICE));
 		
 		clusterInfoResponse.getVersion().setBuildSnapshot(false);
 		clusterInfoResponse.getVersion().setLuceneVersion("N/A");

@@ -35,6 +35,7 @@ import com.elefana.search.*;
 import com.elefana.table.TableGarbageCollector;
 import com.elefana.util.IndexUtils;
 import com.elefana.util.NamedThreadFactory;
+import com.elefana.util.ThreadPriorities;
 import io.netty.channel.ChannelHandlerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -92,15 +93,9 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 	public void postConstruct() {
 		sqlFetchSize = environment.getProperty("elefana.service.search.sql.fetchSize", Integer.class, DEFAULT_FETCH_SIZE);
 
-		final int totalRequestThreads = environment.getProperty("elefana.service.search.count.threads", Integer.class,
-				Runtime.getRuntime().availableProcessors());
-		final int totalHitsThreads = environment.getProperty("elefana.service.search.hits.threads", Integer.class,
-				Runtime.getRuntime().availableProcessors());
-		final int totalAggregationThreads = environment.getProperty("elefana.service.search.aggregation.threads",
-				Integer.class, Runtime.getRuntime().availableProcessors());
-		searchCountExecutorService = Executors.newFixedThreadPool(totalRequestThreads, new NamedThreadFactory("elefana-searchService-countExecutor"));
-		searchHitsExecutorService = Executors.newFixedThreadPool(totalHitsThreads, new NamedThreadFactory("elefana-searchService-hitsExecutor"));
-		searchAggregationsExecutorService = Executors.newFixedThreadPool(totalAggregationThreads, new NamedThreadFactory("elefana-searchService-aggregationsExecutor"));
+		searchCountExecutorService = Executors.newCachedThreadPool(new NamedThreadFactory("elefana-searchService-countExecutor", ThreadPriorities.SEARCH_SERVICE));
+		searchHitsExecutorService = Executors.newCachedThreadPool(new NamedThreadFactory("elefana-searchService-hitsExecutor", ThreadPriorities.SEARCH_SERVICE));
+		searchAggregationsExecutorService = Executors.newCachedThreadPool(new NamedThreadFactory("elefana-searchService-aggregationsExecutor", ThreadPriorities.SEARCH_SERVICE));
 
 		searchHitsTime = metricRegistry.histogram(MetricRegistry.name("search", "hits", "time"));
 		searchHitsSize = metricRegistry.histogram(MetricRegistry.name("search", "hits", "size"));

@@ -33,6 +33,7 @@ import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
 import com.elefana.util.IndexUtils;
 import com.elefana.util.NamedThreadFactory;
+import com.elefana.util.ThreadPriorities;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -101,7 +102,8 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
         loadUnloadManager = createLoadUnloadManager(nodeSettingsService.isMasterNode(), indexTtlMinutes, indexSnapshotMinutes);
 
         final int requestThreadNumber = environment.getProperty("elefana.service.fieldStats.requestThreads", Integer.class, 2);
-        requestExecutorService = Executors.newFixedThreadPool(requestThreadNumber, new NamedThreadFactory("elefana-fieldStatsService-requestExecutor"));
+        requestExecutorService = Executors.newFixedThreadPool(requestThreadNumber, new NamedThreadFactory(
+                "elefana-fieldStatsService-requestExecutor", ThreadPriorities.FIELD_STATS_SERVICE));
     }
 
     @PreDestroy

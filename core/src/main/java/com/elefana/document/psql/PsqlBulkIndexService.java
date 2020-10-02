@@ -33,6 +33,7 @@ import com.elefana.node.NodeSettingsService;
 import com.elefana.util.CitusShardMetadataMaintainer;
 import com.elefana.util.IndexUtils;
 import com.elefana.util.NamedThreadFactory;
+import com.elefana.util.ThreadPriorities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -90,7 +91,8 @@ public class PsqlBulkIndexService implements Runnable {
 
 		final int totalThreads = getTotalThreads();
 
-		executorService = Executors.newFixedThreadPool(totalThreads, new NamedThreadFactory("elefana-bulkIndexService-indexExecutor"));
+		executorService = Executors.newFixedThreadPool(totalThreads, new NamedThreadFactory(
+				"elefana-bulkIndexService-indexExecutor", ThreadPriorities.BULK_INDEX_SERVICE));
 		additionalSetup();
 
 		for (int i = 0; i < totalThreads; i++) {

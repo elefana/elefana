@@ -26,6 +26,7 @@ import com.elefana.api.json.JsonUtils;
 import com.elefana.api.util.PooledStringBuilder;
 import com.elefana.indices.IndexTemplateService;
 import com.elefana.util.NamedThreadFactory;
+import com.elefana.util.ThreadPriorities;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.netty.channel.ChannelHandlerContext;
 import org.postgresql.util.PGobject;
@@ -63,8 +64,8 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 	
 	@PostConstruct
 	public void postConstruct() {
-		final int totalThreads = environment.getProperty("elefana.service.template.threads", Integer.class, Runtime.getRuntime().availableProcessors());
-		executorService = Executors.newFixedThreadPool(totalThreads, new NamedThreadFactory("elefana-indexTemplateService-requestExecutor"));
+		executorService = Executors.newCachedThreadPool(
+				new NamedThreadFactory("elefana-indexTemplateService-requestExecutor", ThreadPriorities.INDEX_TEMPLATE_SERVICE));
 	}
 	
 	@PreDestroy

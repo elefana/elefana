@@ -51,13 +51,14 @@ public class CitusShardMetadataMaintainer implements Runnable {
 	@Autowired
 	protected IndexTemplateService indexTemplateService;
 
-	private final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+	private ScheduledExecutorService executorService;
 
 	@PostConstruct
 	public void postConstruct() throws SQLException {
 		if(!nodeSettingsService.isMasterNode()) {
 			return;
 		}
+		executorService = Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("citusShardMaintainer", ThreadPriorities.CITUS_SHARD_MAINTAINER));
 		executorService.scheduleAtFixedRate(this, 0L, environment.getProperty("elefana.citus.repair.interval", Long.class, DEFAULT_SCHEDULE_MILLIS), TimeUnit.MILLISECONDS);
 	}
 
