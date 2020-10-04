@@ -62,12 +62,16 @@ public class NodeSettingsService {
 	private int maxHttpPipelineEvents;
 	private int maxHttpPayloadSize;
 	private int httpTimeout;
+	private int httpThreads;
+	private boolean httpForceNio;
 
 	private boolean transportEnabled;
 	private String transportIp;
 	private int transportPort;
 	private boolean transportCompressionEnabled;
 	private String transportAddress;
+	private int transportThreads;
+	private boolean transportForceNio;
 
 	private boolean usingCitus = false;
 	private String citusCoordinatorHost = "";
@@ -107,6 +111,8 @@ public class NodeSettingsService {
 			maxHttpPayloadSize = environment.getRequiredProperty("elefana.http.maxPayloadSize", Integer.class);
 			httpTimeout = environment.getProperty("elefana.http.timeout", Integer.class, 300);
 			httpAddress = httpIp + ":" + httpPort;
+			httpThreads = environment.getProperty("elefana.http.threads", Integer.class, Runtime.getRuntime().availableProcessors());
+			httpForceNio = environment.getProperty("elefana.http.nio", Boolean.class, false);
 		}
 
 		transportEnabled = environment.getProperty("elefana.transport.server.enabled", Boolean.class, false);
@@ -116,6 +122,8 @@ public class NodeSettingsService {
 			transportCompressionEnabled = environment.getProperty("elefana.transport.server.compression", Boolean.class,
 					false);
 			transportAddress = transportIp + ":" + transportPort;
+			transportThreads = environment.getProperty("elefana.transport.server.threads", Integer.class, Runtime.getRuntime().availableProcessors());
+			transportForceNio = environment.getProperty("elefana.transport.server.nio", Boolean.class, false);
 		}
 
 		usingCitus = environment.getRequiredProperty("elefana.citus.enabled", Boolean.class);
@@ -284,6 +292,14 @@ public class NodeSettingsService {
 		return httpTimeout;
 	}
 
+	public int getHttpThreads() {
+		return httpThreads;
+	}
+
+	public boolean isHttpForceNio() {
+		return httpForceNio;
+	}
+
 	public boolean isTransportEnabled() {
 		return transportEnabled;
 	}
@@ -298,6 +314,14 @@ public class NodeSettingsService {
 
 	public String getTransportAddress() {
 		return transportAddress;
+	}
+
+	public int getTransportThreads() {
+		return transportThreads;
+	}
+
+	public boolean isTransportForceNio() {
+		return transportForceNio;
 	}
 
 	public boolean isTransportCompressionEnabled() {

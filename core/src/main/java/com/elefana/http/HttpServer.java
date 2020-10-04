@@ -102,7 +102,10 @@ public class HttpServer {
 		serverBootstrap.childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
 		serverBootstrap.childOption(ChannelOption.WRITE_BUFFER_WATER_MARK, new WriteBufferWaterMark(8 * 1024, 32 * 1024));
 
-		if (OsInformation.isMac()) {
+		if(nodeSettingsService.isHttpForceNio()) {
+			serverBootstrap.channel(NioServerSocketChannel.class);
+			serverExecutor = new NioEventLoopGroup(nodeSettingsService.getHttpThreads());
+		} else if (OsInformation.isMac()) {
 			//KQueue only supported by Netty on OS X >= 10.12
 			try {
 				final String[] macVersion = nodeStatsService.getOsStats().getOsVersion().split(".");
@@ -110,40 +113,40 @@ public class HttpServer {
 				case 10:
 					if (Integer.parseInt(macVersion[1]) > 11) {
 						serverBootstrap.channel(KQueueServerSocketChannel.class);
-						serverExecutor = new KQueueEventLoopGroup();
+						serverExecutor = new KQueueEventLoopGroup(nodeSettingsService.getHttpThreads());
 					} else {
 						LOGGER.info("KQueue not supported on this Mac version - falling back to Nio");
 						serverBootstrap.channel(NioServerSocketChannel.class);
-						serverExecutor = new NioEventLoopGroup();
+						serverExecutor = new NioEventLoopGroup(nodeSettingsService.getHttpThreads());
 					}
 					break;
 				default:
 					LOGGER.info("KQueue not supported on this Mac version - falling back to Nio");
 					serverBootstrap.channel(NioServerSocketChannel.class);
-					serverExecutor = new NioEventLoopGroup();
+					serverExecutor = new NioEventLoopGroup(nodeSettingsService.getHttpThreads());
 					break;
 				}
 			} catch (Exception e) {
 				LOGGER.info("KQueue not supported on this Mac version - falling back to Nio");
 				serverBootstrap.channel(NioServerSocketChannel.class);
-				serverExecutor = new NioEventLoopGroup();
+				serverExecutor = new NioEventLoopGroup(nodeSettingsService.getHttpThreads());
 			}
 		} else if(OsInformation.isUnix()) {
 			try {
 				serverBootstrap.channel(EpollServerSocketChannel.class);
-				serverExecutor = new EpollEventLoopGroup();
+				serverExecutor = new EpollEventLoopGroup(nodeSettingsService.getHttpThreads());
 			} catch (Exception e) {
 				LOGGER.info("Epoll not supported - falling back to Nio");
 				serverBootstrap.channel(NioServerSocketChannel.class);
-				serverExecutor = new NioEventLoopGroup();
+				serverExecutor = new NioEventLoopGroup(nodeSettingsService.getHttpThreads());
 			}
 		} else {
 			serverBootstrap.channel(NioServerSocketChannel.class);
-			serverExecutor = new NioEventLoopGroup();
+			serverExecutor = new NioEventLoopGroup(nodeSettingsService.getHttpThreads());
 		}
 		serverBootstrap.group(serverExecutor);
 
-		idleExecutor = new DefaultEventExecutorGroup(4);
+		idleExecutor = new DefaultEventExecutorGroup(2);
 
 		serverBootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
 			@Override
