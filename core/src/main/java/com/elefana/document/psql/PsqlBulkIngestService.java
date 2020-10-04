@@ -97,6 +97,8 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 	private MetricRegistry metricRegistry;
 	@Autowired
 	private IndexFieldStatsService fieldStatsService;
+	@Autowired
+	private PsqlBulkIndexService bulkIndexService;
 
 	private final AtomicInteger tablespaceIndex = new AtomicInteger();
 	private ExecutorService bulkRequestExecutorService, bulkProcessingExecutorService;
@@ -425,6 +427,8 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 
 		if(!success) {
 			bulkApiResponse.setErrors(true);
+		} else {
+			bulkIndexService.notifyContentAvailable();
 		}
 		for (int i = 0; i < results.size(); i++) {
 			try {

@@ -58,6 +58,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Service
 public class PsqlBulkIndexService implements Runnable {
 	private static final Logger LOGGER = LoggerFactory.getLogger(PsqlBulkIndexService.class);
+	private static final long NOTIFIER_WAIT_MILLIS = 10000L;
 
 	@Autowired
 	protected Environment environment;
@@ -82,6 +83,8 @@ public class PsqlBulkIndexService implements Runnable {
 	protected Meter bulkIndexMeter;
 	private Timer bulkIndexTimer;
 	private Counter duplicateKeyCounter;
+
+	private final Object notifier = new Object();
 
 	@PostConstruct
 	public void postConstruct() {
@@ -142,6 +145,11 @@ public class PsqlBulkIndexService implements Runnable {
 					} catch (SQLException e1) {
 						e1.printStackTrace();
 					}
+				} else {
+					//Nothing was indexed, wait until notified content available
+					synchronized(notifier) {
+						notifier.wait(NOTIFIER_WAIT_MILLIS);
+					}
 				}
 			}
 		} catch (Exception e) {
@@ -153,9 +161,13 @@ public class PsqlBulkIndexService implements Runnable {
 		executorService.submit(this);
 	}
 
-	private <T extends IngestTable> Connection processQueue(Connection connection, Queue<T> queue) throws SQLException {
-		boolean atLeast1Ingestion = false;
+	public void notifyContentAvailable() {
+		synchronized(notifier) {
+			notifier.notifyAll();
+		}
+	}
 
+	private <T extends IngestTable> Connection processQueue(Connection connection, Queue<T> queue) throws SQLException {
 		while(!queue.isEmpty()) {
 			final IngestTable nextIngestTable = queue.poll();
 
@@ -170,8 +182,6 @@ public class PsqlBulkIndexService implements Runnable {
 						((PsqlIndexFieldMappingService) indexFieldMappingService).
 								scheduleIndexForMappingAndStats(nextIngestTable.getIndex());
 					}
-
-					atLeast1Ingestion = true;
 				}
 			} catch (Exception e) {
 				LOGGER.error(e.getMessage(), e);
@@ -186,13 +196,6 @@ public class PsqlBulkIndexService implements Runnable {
 				}
 			}
 		}
-
-		if(!atLeast1Ingestion) {
-			try {
-				Thread.sleep(10L);
-			} catch (Exception e) {}
-		}
-
 		return connection;
 	}
 
