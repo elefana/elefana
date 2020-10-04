@@ -129,13 +129,15 @@ public class PsqlBulkIndexService implements Runnable {
 		try {
 			final Queue<HashIngestTable> hashIngestTablesQueue = new LinkedList<HashIngestTable>();
 			final Queue<TimeIngestTable> timeIngestTablesQueue = new LinkedList<TimeIngestTable>();
+			final AtomicBoolean indexedItems = new AtomicBoolean();
 			while (running.get()) {
+				indexedItems.set(false);
 				ingestTableTracker.getHashIngestTables(hashIngestTablesQueue);
 				ingestTableTracker.getTimeIngestTables(timeIngestTablesQueue);
 
 				Connection connection = null;
-				connection = processQueue(connection, hashIngestTablesQueue);
-				connection = processQueue(connection, timeIngestTablesQueue);
+				connection = processQueue(connection, indexedItems, hashIngestTablesQueue);
+				connection = processQueue(connection, indexedItems, timeIngestTablesQueue);
 
 				if (connection != null) {
 					try {
@@ -145,7 +147,9 @@ public class PsqlBulkIndexService implements Runnable {
 					} catch (SQLException e1) {
 						e1.printStackTrace();
 					}
-				} else {
+				}
+
+				if(!indexedItems.get()) {
 					//Nothing was indexed, wait until notified content available
 					synchronized(notifier) {
 						notifier.wait(NOTIFIER_WAIT_MILLIS);
@@ -167,7 +171,7 @@ public class PsqlBulkIndexService implements Runnable {
 		}
 	}
 
-	private <T extends IngestTable> Connection processQueue(Connection connection, Queue<T> queue) throws SQLException {
+	private <T extends IngestTable> Connection processQueue(Connection connection, AtomicBoolean indexedItems, Queue<T> queue) throws SQLException {
 		while(!queue.isEmpty()) {
 			final IngestTable nextIngestTable = queue.poll();
 
@@ -178,6 +182,7 @@ public class PsqlBulkIndexService implements Runnable {
 
 			try {
 				if(ingestTable(connection, nextIngestTable)) {
+					indexedItems.set(true);
 					if(indexFieldMappingService instanceof PsqlIndexFieldMappingService) {
 						((PsqlIndexFieldMappingService) indexFieldMappingService).
 								scheduleIndexForMappingAndStats(nextIngestTable.getIndex());
