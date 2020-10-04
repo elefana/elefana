@@ -58,7 +58,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Service
 public class PsqlBulkIndexService implements Runnable {
 	private static final Logger LOGGER = LoggerFactory.getLogger(PsqlBulkIndexService.class);
-	private static final long NOTIFIER_WAIT_MILLIS = 10000L;
+	private static final long NOTIFIER_WAIT_MILLIS = 500L;
 
 	@Autowired
 	protected Environment environment;
