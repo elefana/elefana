@@ -72,6 +72,7 @@ public class HttpServer {
 	@PostConstruct
 	public void postConstruct() {
 		if(!nodeSettingsService.isHttpEnabled()) {
+			LOGGER.info("HTTP server disabled");
 			return;
 		}
 		
