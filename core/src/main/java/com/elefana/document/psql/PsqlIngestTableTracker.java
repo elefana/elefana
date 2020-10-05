@@ -146,6 +146,8 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 					initialised.set(true);
 				}
 			}, Instant.now().plusMillis(5000L));
+		} else {
+			initialised.set(true);
 		}
 
 		taskScheduler.scheduleAtFixedRate(this, Instant.now().plus(ingestionTableExpiryMillis, ChronoUnit.MILLIS),
