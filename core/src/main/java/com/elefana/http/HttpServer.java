@@ -78,8 +78,12 @@ public class HttpServer {
 		httpConnections = metricRegistry.counter(MetricRegistry.name("http", "connections"));
 		httpRequests = metricRegistry.meter(MetricRegistry.name("http", "requests"));
 		httpRequestSize = metricRegistry.histogram(MetricRegistry.name("http", "requestSize"));
-		
-		start(nodeSettingsService.getHttpIp(), nodeSettingsService.getHttpPort());
+
+		try {
+			start(nodeSettingsService.getHttpIp(), nodeSettingsService.getHttpPort());
+		} catch (Exception e) {
+			LOGGER.error(e.getMessage(), e);
+		}
 	}
 
 	@PreDestroy
