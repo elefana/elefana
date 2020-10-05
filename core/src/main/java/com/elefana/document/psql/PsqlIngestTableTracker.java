@@ -41,13 +41,14 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 @Service
 public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 	private static final Logger LOGGER = LoggerFactory.getLogger(PsqlIngestTableTracker.class);
 
-	private static final String[] DEFAULT_TABLESPACES = new String[] { "" };
+	private static final String[] DEFAULT_TABLESPACES = new String[]{""};
 	private static final List<String> EMPTY_ARRAYLIST = new ArrayList<>(1);
 
 	@Autowired
@@ -65,6 +66,7 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 
 	protected final Map<String, HashIngestTable> indexToHashIngestTable = new ConcurrentHashMap<String, HashIngestTable>();
 	protected final Map<String, TimeIngestTable> indexToTimeIngestTable = new ConcurrentHashMap<String, TimeIngestTable>();
+	protected final AtomicBoolean initialised = new AtomicBoolean(false);
 
 	protected String[] tablespaces;
 	protected int defaultCapacity;
@@ -90,53 +92,60 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 		defaultCapacity = totalProcessingThreads + totalIndexThreads;
 
 		final List<Map<String, Object>> existingTables = jdbcTemplate.queryForList("SELECT * FROM elefana_bulk_tables");
-		if(!existingTables.isEmpty()) {
+		if (!existingTables.isEmpty()) {
 			final Map<String, List<String>> existingTablesByIndex = new HashMap<String, List<String>>();
-			for(Map<String, Object> row : existingTables) {
+			for (Map<String, Object> row : existingTables) {
 				final String index = (String) row.get("_index");
 				final String tableName = (String) row.get("_ingestTableName");
 
-				if(!existingTablesByIndex.containsKey(index)) {
+				if (!existingTablesByIndex.containsKey(index)) {
 					existingTablesByIndex.put(index, new ArrayList<String>());
 				}
 				existingTablesByIndex.get(index).add(tableName);
 			}
 
-			final AtomicReference<ElefanaException> exception = new AtomicReference<ElefanaException>();
-			existingTablesByIndex.keySet().parallelStream().forEach(index -> {
-				try {
-					final List<String> existingTablesForIndex = existingTablesByIndex.get(index);
+			taskScheduler.schedule(new Runnable() {
+				@Override
+				public void run() {
+					final AtomicReference<ElefanaException> exception = new AtomicReference<ElefanaException>();
+					existingTablesByIndex.keySet().parallelStream().forEach(index -> {
+						try {
+							final List<String> existingTablesForIndex = existingTablesByIndex.get(index);
 
-					if(nodeSettingsService.isUsingCitus()) {
-						final IndexTemplate indexTemplate;
-						if(indexTemplateService instanceof PsqlIndexTemplateService) {
-							indexTemplate = ((PsqlIndexTemplateService) indexTemplateService).getIndexTemplateForIndex(index);
-						} else {
-							indexTemplate = indexTemplateService.prepareGetIndexTemplateForIndex(null, index).get().getIndexTemplate();
-						}
+							if (nodeSettingsService.isUsingCitus()) {
+								final IndexTemplate indexTemplate;
+								if (indexTemplateService instanceof PsqlIndexTemplateService) {
+									indexTemplate = ((PsqlIndexTemplateService) indexTemplateService).getIndexTemplateForIndex(index);
+								} else {
+									indexTemplate = indexTemplateService.prepareGetIndexTemplateForIndex(null, index).get().getIndexTemplate();
+								}
 
-						if(indexTemplate != null && indexTemplate.isTimeSeries()) {
-							final TimeIngestTable restoredTable = createTimeIngestTable(index, indexTemplate.getStorage().getIndexTimeBucket(), existingTablesForIndex);
-							indexToTimeIngestTable.put(index, restoredTable);
-							ingestTableCounter.inc(restoredTable.getCapacity());
-						} else {
-							final HashIngestTable restoredTable = createHashIngestTable(index, existingTablesForIndex);
-							indexToHashIngestTable.put(index, restoredTable);
-							ingestTableCounter.inc(restoredTable.getCapacity());
+								if (indexTemplate != null && indexTemplate.isTimeSeries()) {
+									final TimeIngestTable restoredTable = createTimeIngestTable(index, indexTemplate.getStorage().getIndexTimeBucket(), existingTablesForIndex);
+									indexToTimeIngestTable.put(index, restoredTable);
+									ingestTableCounter.inc(restoredTable.getCapacity());
+								} else {
+									final HashIngestTable restoredTable = createHashIngestTable(index, existingTablesForIndex);
+									indexToHashIngestTable.put(index, restoredTable);
+									ingestTableCounter.inc(restoredTable.getCapacity());
+								}
+							} else {
+								final HashIngestTable restoredTable = createHashIngestTable(index, existingTablesForIndex);
+								indexToHashIngestTable.put(index, restoredTable);
+								ingestTableCounter.inc(restoredTable.getCapacity());
+							}
+						} catch (ElefanaException e) {
+							exception.set(e);
 						}
-					} else {
-						final HashIngestTable restoredTable = createHashIngestTable(index, existingTablesForIndex);
-						indexToHashIngestTable.put(index, restoredTable);
-						ingestTableCounter.inc(restoredTable.getCapacity());
+					});
+
+					if (exception.get() != null) {
+						final Exception e = exception.get();
+						LOGGER.error(e.getMessage(), e);
 					}
-				} catch (ElefanaException e) {
-					exception.set(e);
+					initialised.set(true);
 				}
-			});
-
-			if(exception.get() != null) {
-				throw exception.get();
-			}
+			}, Instant.now().plusMillis(5000L));
 		}
 
 		taskScheduler.scheduleAtFixedRate(this, Instant.now().plus(ingestionTableExpiryMillis, ChronoUnit.MILLIS),
@@ -147,17 +156,17 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 	public void run() {
 		final long timestamp = System.currentTimeMillis();
 		try {
-			for(String key : indexToHashIngestTable.keySet()) {
+			for (String key : indexToHashIngestTable.keySet()) {
 				final HashIngestTable hashIngestTable = indexToHashIngestTable.get(key);
-				if(hashIngestTable == null) {
+				if (hashIngestTable == null) {
 					continue;
 				}
-				if(timestamp - hashIngestTable.getLastUsageTimestamp() < ingestionTableExpiryMillis) {
+				if (timestamp - hashIngestTable.getLastUsageTimestamp() < ingestionTableExpiryMillis) {
 					LOGGER.info(key + ", Last Time Used: " + hashIngestTable.getLastUsageTimestamp() + ", Now: " + timestamp + " (HASH TABLE) " + (timestamp - hashIngestTable.getLastUsageTimestamp()) + " " + ingestTableCounter.getCount());
 					continue;
 				}
 
-				if(!hashIngestTable.prune()) {
+				if (!hashIngestTable.prune()) {
 					continue;
 				}
 
@@ -166,17 +175,17 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 				ingestTableCounter.dec(hashIngestTable.getCapacity());
 				LOGGER.info(key + " pruned " + ingestTableCounter.getCount());
 			}
-			for(String key : indexToTimeIngestTable.keySet()) {
+			for (String key : indexToTimeIngestTable.keySet()) {
 				final TimeIngestTable timeIngestTable = indexToTimeIngestTable.get(key);
-				if(timeIngestTable == null) {
+				if (timeIngestTable == null) {
 					continue;
 				}
-				if(timestamp - timeIngestTable.getLastUsageTimestamp() < ingestionTableExpiryMillis) {
+				if (timestamp - timeIngestTable.getLastUsageTimestamp() < ingestionTableExpiryMillis) {
 					LOGGER.info(key + ", Last Time Used: " + timeIngestTable.getLastUsageTimestamp() + ", Now: " + timestamp + " (TIME TABLE) " + (timestamp - timeIngestTable.getLastUsageTimestamp()) + " " + ingestTableCounter.getCount());
 					continue;
 				}
 
-				if(!timeIngestTable.prune()) {
+				if (!timeIngestTable.prune()) {
 					continue;
 				}
 
@@ -192,7 +201,7 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 
 	protected TimeIngestTable createTimeIngestTable(String index, List<String> existingTables) throws ElefanaException {
 		final IndexTemplate indexTemplate;
-		if(indexTemplateService instanceof PsqlIndexTemplateService) {
+		if (indexTemplateService instanceof PsqlIndexTemplateService) {
 			indexTemplate = ((PsqlIndexTemplateService) indexTemplateService).getIndexTemplateForIndex(index);
 		} else {
 			indexTemplate = indexTemplateService.prepareGetIndexTemplateForIndex(null, index).get().getIndexTemplate();
@@ -225,11 +234,21 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 	}
 
 	public HashIngestTable getHashIngestTable(String index) throws ElefanaException {
+		while(!initialised.get()) {
+			try {
+				Thread.sleep(1000);
+			} catch (Exception e) {}
+		}
 		return getIngestTable(index, indexToHashIngestTable, false);
 	}
 
 	@Override
 	public TimeIngestTable getTimeIngestTable(String index) throws ElefanaException {
+		while(!initialised.get()) {
+			try {
+				Thread.sleep(1000);
+			} catch (Exception e) {}
+		}
 		return getIngestTable(index, indexToTimeIngestTable, true);
 	}
 
@@ -237,10 +256,10 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 	public int getTotalIngestTables() {
 		int result = 0;
 		try {
-			for(HashIngestTable hashIngestTable: indexToHashIngestTable.values()) {
+			for (HashIngestTable hashIngestTable : indexToHashIngestTable.values()) {
 				result += hashIngestTable.getCapacity();
 			}
-			for(TimeIngestTable timeIngestTable: indexToTimeIngestTable.values()) {
+			for (TimeIngestTable timeIngestTable : indexToTimeIngestTable.values()) {
 				result += timeIngestTable.getCapacity();
 			}
 		} catch (Exception e) {
@@ -249,11 +268,11 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 		return result;
 	}
 
-	private <T extends IngestTable> T getIngestTable(String index, Map<String, T> tables, boolean time) throws ElefanaException  {
+	private <T extends IngestTable> T getIngestTable(String index, Map<String, T> tables, boolean time) throws ElefanaException {
 		return tables.computeIfAbsent(index, key -> {
 			try {
 				final T newTable;
-				if(nodeSettingsService.isUsingCitus() && time) {
+				if (nodeSettingsService.isUsingCitus() && time) {
 					newTable = (T) createTimeIngestTable(index, EMPTY_ARRAYLIST);
 				} else {
 					newTable = (T) createHashIngestTable(index, EMPTY_ARRAYLIST);
