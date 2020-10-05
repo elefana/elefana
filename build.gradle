@@ -40,7 +40,7 @@ subprojects {
 	targetCompatibility = 1.8
 
 	ext {
-		chronicleQueueVersion = '5.20.60'
+		chronicleQueueVersion = '5.20.62'
 		chronicleMapVersion = '3.20.61'
 		commonsCodecVersion = '1.11'
 		commonsMathVersion = '3.6.1'
