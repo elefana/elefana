@@ -24,6 +24,7 @@
 		<filter class="ch.qos.logback.classic.filter.ThresholdFilter">
 			<level>ERROR</level>
 		</filter>
+		<minimumBreadcrumbLevel>DEBUG</minimumBreadcrumbLevel>
 	</appender>
 
 	<root level="INFO">
