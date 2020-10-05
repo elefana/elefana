@@ -85,11 +85,14 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 	private IndexTemplateService indexTemplateService;
 
 	private ExecutorService executorService;
+	private ExecutorService asyncDeletionExecutorService;
 
 	@PostConstruct
 	public void postConstruct() {
 		executorService = Executors.newCachedThreadPool(new NamedThreadFactory(
 				"elefana-documentService-requestExecutor", ThreadPriorities.DOCUMENT_SERVICE));
+		asyncDeletionExecutorService = Executors.newSingleThreadExecutor(new NamedThreadFactory(
+				"elefana-documentService-asyncDeletionExecutor", ThreadPriorities.DOCUMENT_SERVICE));
 	}
 
 	@PreDestroy
@@ -114,8 +117,8 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 	}
 
 	@Override
-	public DeleteIndexRequest prepareDeleteIndex(ChannelHandlerContext context, String indexPattern, String typePattern) {
-		return new PsqlDeleteIndexRequest(this, context, indexPattern, typePattern);
+	public DeleteIndexRequest prepareDeleteIndex(ChannelHandlerContext context, String indexPattern, String typePattern, boolean async) {
+		return new PsqlDeleteIndexRequest(this, context, indexPattern, typePattern, async);
 	}
 
 	@Override
@@ -409,9 +412,33 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 		return result;
 	}
 
-	public AckResponse deleteIndex(String indexPattern, String typePattern) throws ElefanaException {
+	public AckResponse deleteIndex(String indexPattern, String typePattern, boolean async) throws ElefanaException {
 		int rows = 0;
 
+		if(async) {
+			asyncDeletionExecutorService.submit(() -> {
+				try {
+					deleteIndexInternal(indexPattern, typePattern);
+				} catch (ElefanaException e) {
+					LOGGER.error(e.getMessage(), e);
+				}
+			});
+			rows = 1;
+		} else {
+			deleteIndexInternal(indexPattern, typePattern);
+		}
+
+		final AckResponse response = new AckResponse();
+		if(rows > 0) {
+			response.setAcknowledged(true);
+		} else {
+			response.setAcknowledged(false);
+		}
+		return response;
+	}
+
+	private int deleteIndexInternal(String indexPattern, String typePattern) throws ElefanaException {
+		int rows = 0;
 		for (String index : indexUtils.listIndicesForIndexPattern(indexPattern)) {
 			final String queryTarget = indexUtils.getQueryTarget(index);
 
@@ -460,14 +487,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 				}
 			}
 		}
-
-		final AckResponse response = new AckResponse();
-		if(rows > 0) {
-			response.setAcknowledged(true);
-		} else {
-			response.setAcknowledged(false);
-		}
-		return response;
+		return rows;
 	}
 
 	public DeleteResponse delete(String index, String type, String id) {

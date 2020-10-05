@@ -26,7 +26,7 @@ public interface DocumentService {
 
 	public DeleteRequest prepareDelete(ChannelHandlerContext context, String index, String type, String id);
 
-	public DeleteIndexRequest prepareDeleteIndex(ChannelHandlerContext context, String indexPattern, String typePattern);
+	public DeleteIndexRequest prepareDeleteIndex(ChannelHandlerContext context, String indexPattern, String typePattern, boolean async);
 
 	public MultiGetRequest prepareMultiGet(ChannelHandlerContext context, PooledStringBuilder requestBody);
 

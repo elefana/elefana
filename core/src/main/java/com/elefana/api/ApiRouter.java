@@ -325,7 +325,8 @@ public class ApiRouter {
 			default:
 				final String index = urlDecode(urlComponents[0]);
 				if(isDeleteMethod(method)) {
-					return documentService.prepareDeleteIndex(context, index, "*");
+					final boolean async = getParams.containsKey("async") ? Boolean.parseBoolean(getParams.get("async")) : false;
+					return documentService.prepareDeleteIndex(context, index, "*", async);
 				}
 				break;
 			}
@@ -348,7 +349,8 @@ public class ApiRouter {
 				return documentService
 						.prepareIndex(context, index, type, UUID.randomUUID().toString(), requestBody, IndexOpType.OVERWRITE);
 			} else if(isDeleteMethod(method)) {
-				return documentService.prepareDeleteIndex(context, index, type);
+				final boolean async = getParams.containsKey("async") ? Boolean.parseBoolean(getParams.get("async")) : false;
+				return documentService.prepareDeleteIndex(context, index, type, async);
 			}
 			break;
 		}

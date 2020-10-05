@@ -23,16 +23,18 @@ import java.util.concurrent.Callable;
 
 public class PsqlDeleteIndexRequest extends DeleteIndexRequest implements Callable<AckResponse> {
 	private final PsqlDocumentService documentService;
+	private final boolean async;
 
 	public PsqlDeleteIndexRequest(PsqlDocumentService documentService, ChannelHandlerContext context,
-	                              String indexPattern) {
-		this(documentService, context, indexPattern, "*");
+	                              String indexPattern, boolean async) {
+		this(documentService, context, indexPattern, "*", async);
 	}
 
 	public PsqlDeleteIndexRequest(PsqlDocumentService documentService, ChannelHandlerContext context,
-	                              String indexPattern, String typePattern) {
+	                              String indexPattern, String typePattern, boolean async) {
 		super(documentService, context, indexPattern, typePattern);
 		this.documentService = documentService;
+		this.async = async;
 	}
 
 	@Override
@@ -42,6 +44,6 @@ public class PsqlDeleteIndexRequest extends DeleteIndexRequest implements Callab
 
 	@Override
 	public AckResponse call() throws Exception {
-		return documentService.deleteIndex(getIndexPattern(), getTypePattern());
+		return documentService.deleteIndex(getIndexPattern(), getTypePattern(), async);
 	}
 }
