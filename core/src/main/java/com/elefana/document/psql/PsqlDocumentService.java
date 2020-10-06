@@ -57,10 +57,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Service
 public class PsqlDocumentService implements DocumentService, RequestExecutor {
 	private static final Logger LOGGER = LoggerFactory.getLogger(PsqlDocumentService.class);
+
+	public static final Lock DELETE_CREATE_INDEX_LOCK = new ReentrantLock();
 
 	private static final long ONE_SECOND_IN_MILLIS = 1000L;
 	private static final long ONE_MINUTE_IN_MILLIS = ONE_SECOND_IN_MILLIS * 60L;
@@ -417,10 +421,13 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 
 		if(async) {
 			asyncDeletionExecutorService.submit(() -> {
+				DELETE_CREATE_INDEX_LOCK.lock();
 				try {
 					deleteIndexInternal(indexPattern, typePattern);
 				} catch (ElefanaException e) {
 					LOGGER.error(e.getMessage(), e);
+				} finally {
+					DELETE_CREATE_INDEX_LOCK.unlock();
 				}
 			});
 			rows = 1;

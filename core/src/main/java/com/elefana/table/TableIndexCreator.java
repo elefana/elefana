@@ -17,6 +17,7 @@ package com.elefana.table;
 
 import com.elefana.api.indices.IndexGenerationMode;
 import com.elefana.api.indices.IndexStorageSettings;
+import com.elefana.document.psql.PsqlDocumentService;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.node.NodeStatsService;
 import com.elefana.util.DiskBackedQueue;
@@ -120,6 +121,7 @@ public class TableIndexCreator implements Runnable {
 			if(connection == null) {
 				connection = jdbcTemplate.getDataSource().getConnection();
 			}
+			PsqlDocumentService.DELETE_CREATE_INDEX_LOCK.lock();
 			try {
 				internalCreatePsqlTableIndices(connection, tableIndexDelay.getTableName(), tableIndexDelay.getMode(),
 						tableIndexDelay.isGinEnabled(), tableIndexDelay.isBrinEnabled());
@@ -127,6 +129,8 @@ public class TableIndexCreator implements Runnable {
 			} catch (Exception e) {
 				LOGGER.error(e.getMessage(), e);
 				tableIndexQueue.offer(tableIndexDelay);
+			} finally {
+				PsqlDocumentService.DELETE_CREATE_INDEX_LOCK.unlock();
 			}
 		}
 		return connection;
@@ -144,6 +148,7 @@ public class TableIndexCreator implements Runnable {
 			if(connection == null) {
 				connection = jdbcTemplate.getDataSource().getConnection();
 			}
+			PsqlDocumentService.DELETE_CREATE_INDEX_LOCK.lock();
 			try {
 				internalCreatePsqlFieldIndex(connection, fieldIndexDelay.getTableName(),
 						fieldIndexDelay.getFieldName(), fieldIndexDelay.getMode(),
@@ -151,6 +156,8 @@ public class TableIndexCreator implements Runnable {
 				fieldIndexQueue.poll(fieldIndexDelay);
 			} catch (Exception e) {
 				LOGGER.error(e.getMessage(), e);
+			} finally {
+				PsqlDocumentService.DELETE_CREATE_INDEX_LOCK.unlock();
 			}
 		}
 		return connection;
