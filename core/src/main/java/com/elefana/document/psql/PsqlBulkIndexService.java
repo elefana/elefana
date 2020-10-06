@@ -120,7 +120,7 @@ public class PsqlBulkIndexService implements Runnable {
 	}
 
 	protected int getTotalThreads() {
-		return Math.max(2, environment.getProperty("elefana.service.bulk.index.threads",
+		return Math.max(1, environment.getProperty("elefana.service.bulk.index.threads",
 				Integer.class, Runtime.getRuntime().availableProcessors()));
 	}
 
