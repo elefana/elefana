@@ -17,10 +17,12 @@ package com.elefana.document.ingest;
 
 import com.elefana.api.exception.ElefanaException;
 
-public interface IngestTable {
-	public int lockWrittenTable() throws ElefanaException;
+import java.util.Set;
 
-	public int lockWrittenTable(long timeout) throws ElefanaException;
+public interface IngestTable {
+	public int lockWrittenTable(Set<String> routedTables) throws ElefanaException;
+
+	public int lockWrittenTable(Set<String> routedTables, long timeout) throws ElefanaException;
 
 	public boolean isDataMarked(int index);
 

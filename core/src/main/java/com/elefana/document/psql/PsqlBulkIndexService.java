@@ -50,6 +50,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.LinkedList;
 import java.util.Queue;
+import java.util.Set;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -78,6 +80,8 @@ public class PsqlBulkIndexService implements Runnable {
 	protected MetricRegistry metricRegistry;
 
 	protected final AtomicBoolean running = new AtomicBoolean(true);
+	protected final Set<String> routedTables = new ConcurrentSkipListSet<String>();
+
 	protected ExecutorService executorService;
 
 	protected Meter bulkIndexMeter;
@@ -217,7 +221,7 @@ public class PsqlBulkIndexService implements Runnable {
 		for(int i = 0; i < ingestTable.getCapacity(); i++) {
 			final int stagingTableId;
 			try {
-				stagingTableId = ingestTable.lockWrittenTable();
+				stagingTableId = ingestTable.lockWrittenTable(routedTables);
 			} catch (Exception e) {
 				LOGGER.error(e.getMessage(), e);
 				continue;
@@ -257,8 +261,11 @@ public class PsqlBulkIndexService implements Runnable {
 			try {
 				switch(bulkIndexResult) {
 				case ROUTE:
+					routedTables.add(stagingTableName);
+					result |= true;
 					break;
 				case EXCEPTION:
+					routedTables.remove(stagingTableName);
 					ingestTable.unlockTable(stagingTableId);
 					return result;
 				case DUPLICATE:
@@ -269,6 +276,7 @@ public class PsqlBulkIndexService implements Runnable {
 						generateIdStatement.close();
 						connection.commit();
 						LOGGER.error("Re-generated ids for " + stagingTableName);
+						routedTables.remove(stagingTableName);
 						break;
 					} else {
 						PreparedStatement transferStatement = connection.prepareStatement(
@@ -290,6 +298,7 @@ public class PsqlBulkIndexService implements Runnable {
 
 					ingestTable.unmarkData(stagingTableId);
 
+					routedTables.remove(stagingTableName);
 					result |= true;
 					break;
 				}

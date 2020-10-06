@@ -29,6 +29,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -300,11 +301,11 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 		return index;
 	}
 
-	public int lockWrittenTable() throws ElefanaException {
-		return lockWrittenTable(5L * locks.length);
+	public int lockWrittenTable(Set<String> routedTables) throws ElefanaException {
+		return lockWrittenTable(routedTables, 5L * locks.length);
 	}
 
-	public int lockWrittenTable(long timeout) throws ElefanaException {
+	public int lockWrittenTable(Set<String> routedTables, long timeout) throws ElefanaException {
 		if(pruned.get()) {
 			return -1;
 		}
@@ -317,6 +318,9 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 				}
 				try {
 					if(!isDataMarked(index)) {
+						continue;
+					}
+					if(routedTables.contains(tableNames[index])) {
 						continue;
 					}
 					if(locks[index].tryLock()) {

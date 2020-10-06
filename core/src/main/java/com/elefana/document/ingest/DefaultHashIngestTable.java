@@ -28,6 +28,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -261,11 +262,11 @@ public class DefaultHashIngestTable implements HashIngestTable {
 		throw new ElefanaException(HttpResponseStatus.TOO_MANY_REQUESTS, "Unable to lock ingest table for index '" + index + "'");
 	}
 
-	public int lockWrittenTable() throws ElefanaException {
-		return lockWrittenTable(100000L);
+	public int lockWrittenTable(Set<String> routedTables) throws ElefanaException {
+		return lockWrittenTable(routedTables, 100000L);
 	}
 
-	public int lockWrittenTable(long timeoutNanos) throws ElefanaException {
+	public int lockWrittenTable(Set<String> routedTables, long timeoutNanos) throws ElefanaException {
 		if(pruned.get()) {
 			return -1;
 		}
@@ -279,6 +280,9 @@ public class DefaultHashIngestTable implements HashIngestTable {
 				}
 				try {
 					if(!isDataMarked(index)) {
+						continue;
+					}
+					if(routedTables.contains(tableNames[index])) {
 						continue;
 					}
 					if(locks[index].tryLock()) {
