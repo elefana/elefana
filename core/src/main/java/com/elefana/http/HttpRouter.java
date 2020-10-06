@@ -24,6 +24,7 @@ import com.elefana.api.ApiRouter;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.NoSuchApiException;
 import com.elefana.api.exception.NoSuchDocumentException;
+import com.elefana.api.exception.ShardFailedException;
 import com.elefana.api.util.PooledStringBuilder;
 import com.elefana.node.NodeSettingsService;
 import io.netty.buffer.Unpooled;
@@ -152,27 +153,26 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 				@Override
 				public void operationComplete(Future<? super Void> future) throws Exception {
 					closeFuture.removeListener(closeListener);
+					
 					try {
 						final HttpResponse httpResponse;
 						final ApiResponse apiResponse = apiRequest.get();
 						requestContent.release();
 
-						if(apiResponse == null) {
-							System.out.println("NULL");
+						if (apiResponse == null) {
 							httpResponse = createResponse(httpRequest, HttpResponseStatus.NOT_FOUND, future.cause().getMessage());
-						} else if(future.isSuccess()) {
+						} else if (future.isSuccess()) {
 							httpResponse = createResponse(httpRequest, HttpResponseStatus.valueOf(apiResponse.getStatusCode()), apiResponse.toJsonString());
 						} else {
-							System.out.println("FAILED");
-							if(future.cause() instanceof NoSuchDocumentException) {
+							if (future.cause() instanceof NoSuchDocumentException) {
 								httpResponse = createResponse(httpRequest, HttpResponseStatus.NOT_FOUND, future.cause().getMessage());
-							} else if(future.cause() instanceof ElefanaException) {
+							} else if (future.cause() instanceof ElefanaException) {
 								LOGGER.error(uri);
 								LOGGER.error(requestContent.toString());
 								LOGGER.error(future.cause().getMessage(), future.cause());
 								httpResponse = createErrorResponse(httpRequest, (ElefanaException) future.cause());
 							} else {
-								if(future.cause().getCause() instanceof ElefanaException) {
+								if (future.cause().getCause() instanceof ElefanaException) {
 									httpResponse = createErrorResponse(httpRequest, (ElefanaException) future.cause().getCause());
 								} else {
 									httpResponse = createResponse(httpRequest, HttpResponseStatus.INTERNAL_SERVER_ERROR);
@@ -183,8 +183,14 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 						context.executor().submit(() -> {
 							write(keepAlive, context, httpResponse);
 						});
+					} catch (ShardFailedException e) {
+						LOGGER.error(e.getMessage(), e);
+						context.executor().submit(() -> {
+							write(keepAlive, context, createResponse(httpRequest, HttpResponseStatus.INTERNAL_SERVER_ERROR, e.getMessage()));
+						});
 					} catch (Exception e) {
 						LOGGER.error(e.getMessage(), e);
+						context.close();
 					}
 				}
 			});
