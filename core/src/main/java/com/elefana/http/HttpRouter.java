@@ -144,7 +144,7 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 					try {
 						apiRequest.cancel();
 					} catch (Exception e) {
-						LOGGER.error(e.getMessage(), e);
+						LOGGER.error("[" + uri + "] " + e.getMessage(), e);
 					}
 				}
 			};
@@ -153,7 +153,7 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 				@Override
 				public void operationComplete(Future<? super Void> future) throws Exception {
 					closeFuture.removeListener(closeListener);
-					
+
 					try {
 						final HttpResponse httpResponse;
 						final ApiResponse apiResponse = apiRequest.get();
@@ -184,12 +184,12 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 							write(keepAlive, context, httpResponse);
 						});
 					} catch (ShardFailedException e) {
-						LOGGER.error(e.getMessage(), e);
+						LOGGER.error("[" + uri + "] " + e.getMessage(), e);
 						context.executor().submit(() -> {
 							write(keepAlive, context, createResponse(httpRequest, HttpResponseStatus.INTERNAL_SERVER_ERROR, e.getMessage()));
 						});
 					} catch (Exception e) {
-						LOGGER.error(e.getMessage(), e);
+						LOGGER.error("[" + uri + "] " + e.getMessage(), e);
 						context.close();
 					}
 				}
@@ -197,9 +197,8 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 			apiRequest.execute();
 			return;
 		} catch (Exception e) {
-			LOGGER.error(uri);
 			LOGGER.error(requestContent.toString());
-			LOGGER.error(e.getMessage(), e);
+			LOGGER.error("[" + uri + "] " + e.getMessage(), e);
 			requestContent.release();
 			write(keepAlive, context, createResponse(httpRequest, HttpResponseStatus.INTERNAL_SERVER_ERROR, e.getMessage()));
 			return;
