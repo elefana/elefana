@@ -89,13 +89,17 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 		super.channelInactive(ctx);
 	}
 	
-	public void write(boolean keepAlive, ChannelHandlerContext ctx, HttpResponse response) {
-		final long startTime = System.currentTimeMillis();
-		while(!ctx.channel().isWritable()) {
+	public void write(long startTime, boolean keepAlive, ChannelHandlerContext ctx, HttpResponse response) {
+		if(!ctx.channel().isWritable()) {
 			if(System.currentTimeMillis() - startTime >= httpTimeoutMillis) {
 				ctx.close();
 				return;
 			}
+			ctx.flush();
+			ctx.executor().submit(() -> {
+				write(startTime, keepAlive, ctx, response);
+			});
+			return;
 		}
 		if(keepAlive && !isErrorResponse(response)) {
 			if (response instanceof FullHttpMessage) {
@@ -128,14 +132,14 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 
 			if(apiRouter == null) {
 				requestContent.release();
-				write(keepAlive, context, createResponse(httpRequest, HttpResponseStatus.OK));
+				write(System.currentTimeMillis(), keepAlive, context, createResponse(httpRequest, HttpResponseStatus.OK));
 				return;
 			}
 
 			final ApiRequest<?> apiRequest = apiRouter.route(context, httpRequest.getMethod(), uri, requestContent);
 			if(apiRequest == null) {
 				requestContent.release();
-				write(keepAlive, context, createResponse(httpRequest, HttpResponseStatus.NOT_FOUND));
+				write(System.currentTimeMillis(), keepAlive, context, createResponse(httpRequest, HttpResponseStatus.NOT_FOUND));
 				return;
 			}
 			final GenericFutureListener closeListener = new GenericFutureListener<Future<? super Void>>() {
@@ -181,12 +185,12 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 						}
 
 						context.executor().submit(() -> {
-							write(keepAlive, context, httpResponse);
+							write(System.currentTimeMillis(), keepAlive, context, httpResponse);
 						});
 					} catch (ShardFailedException e) {
 						LOGGER.error("[" + uri + "] " + e.getMessage(), e);
 						context.executor().submit(() -> {
-							write(keepAlive, context, createResponse(httpRequest, HttpResponseStatus.INTERNAL_SERVER_ERROR, e.getMessage()));
+							write(System.currentTimeMillis(), keepAlive, context, createResponse(httpRequest, HttpResponseStatus.INTERNAL_SERVER_ERROR, e.getMessage()));
 						});
 					} catch (Exception e) {
 						LOGGER.error("[" + uri + "] " + e.getMessage(), e);
@@ -200,7 +204,7 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 			LOGGER.error(requestContent.toString());
 			LOGGER.error("[" + uri + "] " + e.getMessage(), e);
 			requestContent.release();
-			write(keepAlive, context, createResponse(httpRequest, HttpResponseStatus.INTERNAL_SERVER_ERROR, e.getMessage()));
+			write(System.currentTimeMillis(), keepAlive, context, createResponse(httpRequest, HttpResponseStatus.INTERNAL_SERVER_ERROR, e.getMessage()));
 			return;
 		}
 	}
