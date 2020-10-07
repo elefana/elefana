@@ -158,12 +158,12 @@ public class PsqlBulkIndexService implements Runnable {
 					synchronized(notifier) {
 						notifier.wait(NOTIFIER_WAIT_MILLIS);
 					}
-				} else {
-					//Prevent high CPU load
-					try {
-						Thread.sleep(1L);
-					} catch (Exception e) {}
 				}
+
+				//Prevent high CPU load
+				try {
+					Thread.sleep(10L);
+				} catch (Exception e) {}
 			}
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
