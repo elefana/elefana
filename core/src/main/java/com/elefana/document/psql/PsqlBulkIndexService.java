@@ -162,7 +162,7 @@ public class PsqlBulkIndexService implements Runnable {
 
 				//Prevent high CPU load
 				try {
-					Thread.sleep(10L);
+					Thread.sleep(25L);
 				} catch (Exception e) {}
 			}
 		} catch (Exception e) {
