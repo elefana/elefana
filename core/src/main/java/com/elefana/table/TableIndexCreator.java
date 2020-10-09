@@ -215,8 +215,13 @@ public class TableIndexCreator implements Runnable {
 				final String query = "CREATE INDEX IF NOT EXISTS " + btreeIndexName + " ON " + tableName + " USING BTREE ((_source->>'" + fieldName + "'));";
 				LOGGER.info(query);
 				PreparedStatement preparedStatement = connection.prepareStatement(query);
-				preparedStatement.execute();
-				preparedStatement.close();
+				try {
+					preparedStatement.execute();
+					preparedStatement.close();
+				} catch (SQLException e) {
+					abortPreparedStatement(preparedStatement);
+					throw e;
+				}
 
 				if(listener != null) {
 					listener.onCreated();
@@ -227,8 +232,13 @@ public class TableIndexCreator implements Runnable {
 				final String query = "CREATE INDEX IF NOT EXISTS " + hashIndexName + " ON " + tableName + " USING HASH ((_source->>'" + fieldName + "'));";
 				LOGGER.info(query);
 				PreparedStatement preparedStatement = connection.prepareStatement(query);
-				preparedStatement.execute();
-				preparedStatement.close();
+				try {
+					preparedStatement.execute();
+					preparedStatement.close();
+				} catch (SQLException e) {
+					abortPreparedStatement(preparedStatement);
+					throw e;
+				}
 
 				if(listener != null) {
 					listener.onCreated();
@@ -239,8 +249,13 @@ public class TableIndexCreator implements Runnable {
 				final String query = "CREATE INDEX IF NOT EXISTS " + ginIndexName + " ON " + tableName + " USING GIN ((_source->>'" + fieldName + "'));";
 				LOGGER.info(query);
 				PreparedStatement preparedStatement = connection.prepareStatement(query);
-				preparedStatement.execute();
-				preparedStatement.close();
+				try {
+					preparedStatement.execute();
+					preparedStatement.close();
+				} catch (SQLException e) {
+					abortPreparedStatement(preparedStatement);
+					throw e;
+				}
 
 				if(listener != null) {
 					listener.onCreated();
@@ -265,8 +280,13 @@ public class TableIndexCreator implements Runnable {
 						+ " USING GIN (_source jsonb_ops)";
 				LOGGER.info(createGinIndexQuery);
 				preparedStatement = connection.prepareStatement(createGinIndexQuery);
-				preparedStatement.execute();
-				preparedStatement.close();
+				try {
+					preparedStatement.execute();
+					preparedStatement.close();
+				} catch (SQLException e) {
+					abortPreparedStatement(preparedStatement);
+					throw e;
+				}
 
 				if(listener != null) {
 					listener.onCreated();
@@ -277,8 +297,13 @@ public class TableIndexCreator implements Runnable {
 						+ tableName + " USING BRIN (_timestamp, _bucket1s, _bucket1m, _bucket1h, _bucket1d) WITH (pages_per_range = " + nodeSettingsService.getBrinPagesPerRange() + ")";
 				LOGGER.info(createTimestampIndexQuery);
 				preparedStatement = connection.prepareStatement(createTimestampIndexQuery);
-				preparedStatement.execute();
-				preparedStatement.close();
+				try {
+					preparedStatement.execute();
+					preparedStatement.close();
+				} catch (SQLException e) {
+					abortPreparedStatement(preparedStatement);
+					throw e;
+				}
 
 				if(listener != null) {
 					listener.onCreated();
@@ -290,6 +315,15 @@ public class TableIndexCreator implements Runnable {
 		case PRESET:
 			break;
 		}
+	}
+
+	private void abortPreparedStatement(PreparedStatement preparedStatement) {
+		try {
+			preparedStatement.cancel();
+		} catch (Exception e) {}
+		try {
+			preparedStatement.close();
+		} catch (Exception e) {}
 	}
 
 	public static String getPsqlIndexName(String prefix, String tableName, String fieldName) {
