@@ -17,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Collection;
@@ -106,7 +107,7 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 				continue;
 			}
 			try {
-				if(!chronicleQueue.unlockFiles(cycle, file.getFile())) {
+				if (!chronicleQueue.unlockFiles(cycle, file.getFile())) {
 					continue;
 				}
 				Files.delete(file.getFile().toPath());
@@ -114,6 +115,10 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 				files.remove(cycle);
 
 				LOGGER.info("Pruned " + file.getFile() + " (Exists: " + file.getFile().exists() + ")");
+				totalPruned++;
+			} catch (FileNotFoundException e) {
+				chronicleQueue.refreshDirectoryListing();
+				files.remove(cycle);
 				totalPruned++;
 			} catch (IOException e) {
 				LOGGER.error(e.getMessage(), e);
