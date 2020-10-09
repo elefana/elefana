@@ -164,11 +164,15 @@ public class TableIndexCreator implements Runnable {
 	}
 
 	public void createPsqlTableIndices(Connection connection, String tableName, IndexStorageSettings settings) throws SQLException {
+		createPsqlTableIndices(connection, tableName, settings, false);
+	}
+
+	public void createPsqlTableIndices(Connection connection, String tableName, IndexStorageSettings settings, boolean now) throws SQLException {
 		if(!settings.isGinEnabled() && !settings.isHashEnabled() && !settings.isBrinEnabled()) {
 			return;
 		}
 
-		if(settings.getIndexGenerationSettings().getIndexDelaySeconds() <= 0) {
+		if(settings.getIndexGenerationSettings().getIndexDelaySeconds() <= 0 || now) {
 			internalCreatePsqlTableIndices(connection, tableName, settings.getIndexGenerationSettings().getMode(),
 					settings.isGinEnabled(), settings.isBrinEnabled());
 		} else {
@@ -184,11 +188,15 @@ public class TableIndexCreator implements Runnable {
 	}
 
 	public void createPsqlFieldIndex(Connection connection, String tableName, String fieldName, IndexStorageSettings settings) throws SQLException {
+		createPsqlFieldIndex(connection, tableName, fieldName, settings, false);
+	}
+
+	public void createPsqlFieldIndex(Connection connection, String tableName, String fieldName, IndexStorageSettings settings, boolean now) throws SQLException {
 		if(!settings.isGinEnabled() && !settings.isHashEnabled() && !settings.isBrinEnabled()) {
 			return;
 		}
 
-		if(settings.getIndexGenerationSettings().getIndexDelaySeconds() <= 0) {
+		if(settings.getIndexGenerationSettings().getIndexDelaySeconds() <= 0 || now) {
 			internalCreatePsqlFieldIndex(connection, tableName, fieldName, settings.getIndexGenerationSettings().getMode(),
 					settings.isGinEnabled(), settings.isBrinEnabled(), settings.isHashEnabled());
 		} else {
