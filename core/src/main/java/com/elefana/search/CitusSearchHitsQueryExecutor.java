@@ -20,9 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 
 public class CitusSearchHitsQueryExecutor extends SearchHitsQueryExecutor {
 	private static final Logger LOGGER = LoggerFactory.getLogger(CitusSearchHitsQueryExecutor.class);
@@ -32,25 +30,41 @@ public class CitusSearchHitsQueryExecutor extends SearchHitsQueryExecutor {
 	}
 
 	@Override
-	public ResultSet queryHitsCount(Statement statement, PsqlQueryComponents queryComponents, long startTime, int from, int size) throws SQLException {
+	public void prepareView(Statement statement, PsqlQueryComponents queryComponents, String viewName, long startTime, int from, int size) throws SQLException {
 		final StringBuilder queryBuilder = new StringBuilder();
-		queryBuilder.append("SELECT ");
-		queryBuilder.append("COUNT(_id)");
+		queryBuilder.append("CREATE MATERIALIZED VIEW IF NOT EXISTS ");
+		queryBuilder.append(viewName);
+		queryBuilder.append(" AS SELECT ");
+		queryBuilder.append("*");
 		queryBuilder.append(" FROM ");
 		queryBuilder.append(queryComponents.getFromComponent());
 		queryBuilder.append(" AS ");
 		queryBuilder.append("hit_results");
+
 		LOGGER.info(queryBuilder.toString());
+		statement.execute(queryBuilder.toString());
+		statement.close();
+	}
+
+	@Override
+	public ResultSet queryHitsCount(Statement statement, PsqlQueryComponents queryComponents, String viewName, long startTime, int from, int size) throws SQLException {
+		final StringBuilder queryBuilder = new StringBuilder();
+		queryBuilder.append("SELECT ");
+		queryBuilder.append("COUNT(_id)");
+		queryBuilder.append(" FROM ");
+		queryBuilder.append(viewName);
+		queryBuilder.append(" AS ");
+		queryBuilder.append("hit_results");
 		return statement.executeQuery(queryBuilder.toString());
 	}
 
 	@Override
-	public ResultSet queryHits(Statement statement, PsqlQueryComponents queryComponents, long startTime, int from, int size) throws SQLException {
+	public ResultSet queryHits(Statement statement, PsqlQueryComponents queryComponents, String viewName, long startTime, int from, int size) throws SQLException {
 		final StringBuilder queryBuilder = new StringBuilder();
 		queryBuilder.append("SELECT ");
 		queryBuilder.append("*");
 		queryBuilder.append(" FROM ");
-		queryBuilder.append(queryComponents.getFromComponent());
+		queryBuilder.append(viewName);
 		queryBuilder.append(" AS ");
 		queryBuilder.append("hit_results");
 

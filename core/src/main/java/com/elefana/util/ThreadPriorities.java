@@ -18,4 +18,5 @@ public class ThreadPriorities {
 	public static final int PSQL_INDEX_CREATOR = 5;
 	public static final int SEARCH_SERVICE = 6;
 	public static final int TABLE_GARBAGE_COLLECTOR = 2;
+	public static final int VIEW_TRACKER = 3;
 }

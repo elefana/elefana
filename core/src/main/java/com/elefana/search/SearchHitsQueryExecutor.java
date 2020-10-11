@@ -16,15 +16,14 @@
 package com.elefana.search;
 
 import com.codahale.metrics.Histogram;
+import com.elefana.api.AckResponse;
 import com.elefana.api.json.JsonUtils;
 import com.elefana.api.search.SearchHit;
 import com.elefana.api.search.SearchResponse;
 import com.elefana.util.EscapeUtils;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -39,21 +38,35 @@ public abstract class SearchHitsQueryExecutor {
 		this.searchHitsTime = searchHitsTime;
 		this.searchHits = searchHits;
 	}
+
+	public abstract void prepareView(Statement statement, PsqlQueryComponents queryComponents,
+											 String viewName, long startTime, int from, int size) throws SQLException;
 	
 	public abstract ResultSet queryHitsCount(Statement statement, PsqlQueryComponents queryComponents,
-	                                         long startTime, int from, int size) throws SQLException;
+											 String viewName, long startTime, int from, int size) throws SQLException;
 
 	public abstract ResultSet queryHits(Statement statement, PsqlQueryComponents queryComponents,
-	                                    long startTime, int from, int size) throws SQLException;
-	
+										String viewName, long startTime, int from, int size) throws SQLException;
+
+	public Callable<AckResponse> executeCreateView(final Statement statement,
+												   PsqlQueryComponents queryComponents, String viewName, long startTime, int from, int size) {
+		return new Callable<AckResponse>() {
+			@Override
+			public AckResponse call() throws Exception {
+				prepareView(statement, queryComponents, viewName, startTime, from, size);
+				return null;
+			}
+		};
+	}
+
 	public Callable<SearchResponse> executeCountQuery(final SearchResponse searchResponse, final Statement statement,
-	                                                  PsqlQueryComponents queryComponents, long startTime, int from, int size) {
+	                                                  PsqlQueryComponents queryComponents, String viewName, long startTime, int from, int size) {
 		return new Callable<SearchResponse>() {
 			@Override
 			public SearchResponse call() throws Exception {
 				ResultSet resultSet = null;
 				try {
-					resultSet = queryHitsCount(statement, queryComponents, startTime, from, size);
+					resultSet = queryHitsCount(statement, queryComponents, viewName, startTime, from, size);
 				} catch (Exception e) {
 					e.printStackTrace();
 					if (!e.getMessage().contains("No results")) {
@@ -73,14 +86,14 @@ public abstract class SearchHitsQueryExecutor {
 	}
 
 	public Callable<SearchResponse> executeHitsQuery(final SearchResponse searchResponse, final Statement statement,
-	                                                 PsqlQueryComponents queryComponents, long startTime, int from, int size) {
+	                                                 PsqlQueryComponents queryComponents, String viewName, long startTime, int from, int size) {
 		return new Callable<SearchResponse>() {
 			@Override
 			public SearchResponse call() throws Exception {
 				if(size > 0) {
 					ResultSet resultSet = null;
 					try {
-						resultSet = queryHits(statement, queryComponents, startTime, from, size);
+						resultSet = queryHits(statement, queryComponents, viewName, startTime, from, size);
 					} catch (Exception e) {
 						e.printStackTrace();
 						if (!e.getMessage().contains("No results")) {

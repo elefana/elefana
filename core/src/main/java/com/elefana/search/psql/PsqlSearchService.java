@@ -17,6 +17,7 @@ package com.elefana.search.psql;
 
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.MetricRegistry;
+import com.elefana.api.AckResponse;
 import com.elefana.api.RequestExecutor;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.ShardFailedException;
@@ -35,6 +36,7 @@ import com.elefana.search.*;
 import com.elefana.table.TableGarbageCollector;
 import com.elefana.util.IndexUtils;
 import com.elefana.util.NamedThreadFactory;
+import com.elefana.util.PsqlViewTracker;
 import com.elefana.util.ThreadPriorities;
 import io.netty.channel.ChannelHandlerContext;
 import org.slf4j.Logger;
@@ -48,6 +50,7 @@ import org.springframework.stereotype.Service;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.*;
@@ -79,6 +82,8 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 	private IndexUtils indexUtils;
 	@Autowired
 	private MetricRegistry metricRegistry;
+	@Autowired
+	private PsqlViewTracker viewTracker;
 
 	private ExecutorService searchCountExecutorService;
 	private ExecutorService searchHitsExecutorService;
@@ -212,28 +217,42 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 		final Map<String, Object> aggregationsResult = new ConcurrentHashMap<String, Object>();
 		final Queue<Future<SearchResponse>> queryFutures = new ConcurrentLinkedQueue<>();
 
+		final String viewName = viewTracker.getNextViewName();
+
+		Connection createViewConnection = null;
 		Connection countConnection = null;
 		Connection hitsConnection = null;
 
+		Statement createViewStatement = null;
 		Statement countStatement = null;
 		Statement hitsStatement = null;
 
 		try {
+			createViewConnection = jdbcTemplate.getDataSource().getConnection();
+			createViewStatement = createViewConnection.createStatement();
+
+			final Future<AckResponse> createViewFuture = executeCreateView(createViewStatement, queryComponents, viewName,
+					startTime, requestBodySearch.getFrom(), requestBodySearch.getSize());
+			createViewFuture.get();
+
+			disposeStatement(createViewStatement);
+			createViewStatement = null;
+			disposeConnection(createViewConnection);
+			createViewConnection = null;
+
 			countConnection = jdbcTemplate.getDataSource().getConnection();
 			hitsConnection = jdbcTemplate.getDataSource().getConnection();
-
 			hitsConnection.setAutoCommit(false);
 
 			countStatement = countConnection.createStatement();
 			hitsStatement = hitsConnection.createStatement();
-
 			hitsStatement.setFetchSize(sqlFetchSize);
 
-			final Future<SearchResponse> countFuture = executeCountQuery(result, countStatement, queryComponents, startTime,
-					requestBodySearch.getFrom(), requestBodySearch.getSize());
+			final Future<SearchResponse> countFuture = executeCountQuery(result, countStatement, queryComponents, viewName,
+					startTime, requestBodySearch.getFrom(), requestBodySearch.getSize());
 
-			queryFutures.offer(executeHitsQuery(result, hitsStatement, queryComponents, startTime, requestBodySearch.getFrom(),
-					requestBodySearch.getSize()));
+			queryFutures.offer(executeHitsQuery(result, hitsStatement, queryComponents, viewName,
+					startTime, requestBodySearch.getFrom(), requestBodySearch.getSize()));
 
 			countFuture.get();
 
@@ -253,31 +272,58 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 		} catch (InterruptedException e) {
 			LOGGER.error(e.getMessage(), e);
 
+			disposeStatement(createViewStatement);
+			createViewStatement = null;
+			disposeConnection(createViewConnection);
+			createViewConnection = null;
+
 			disposeStatement(countStatement);
+			countStatement = null;
 			disposeConnection(countConnection);
+			countConnection = null;
 
 			disposeStatement(hitsStatement);
+			hitsStatement = null;
 			disposeConnection(hitsConnection);
+			hitsConnection = null;
 
 			throw new ShardFailedException(e);
 		} catch (ExecutionException e) {
 			LOGGER.error(e.getMessage(), e);
 
+			disposeStatement(createViewStatement);
+			createViewStatement = null;
+			disposeConnection(createViewConnection);
+			createViewConnection = null;
+
 			disposeStatement(countStatement);
+			countStatement = null;
 			disposeConnection(countConnection);
+			countConnection = null;
 
 			disposeStatement(hitsStatement);
+			hitsStatement = null;
 			disposeConnection(hitsConnection);
+			hitsConnection = null;
 
 			throw new ShardFailedException(e);
 		} catch (SQLException e) {
 			LOGGER.error(e.getMessage(), e);
 
+			disposeStatement(createViewStatement);
+			createViewStatement = null;
+			disposeConnection(createViewConnection);
+			createViewConnection = null;
+
 			disposeStatement(countStatement);
+			countStatement = null;
 			disposeConnection(countConnection);
+			countConnection = null;
 
 			disposeStatement(hitsStatement);
+			hitsStatement = null;
 			disposeConnection(hitsConnection);
+			hitsConnection = null;
 
 			throw new ShardFailedException(e);
 		}
@@ -293,6 +339,8 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 
 		disposeStatement(hitsStatement);
 		disposeConnection(hitsConnection);
+
+		viewTracker.queueViewForCleanup(viewName);
 		return result;
 	}
 
@@ -302,59 +350,99 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 		final IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndices(indices);
 		final PsqlQueryComponents queryComponents = searchQueryBuilder.buildQuery(indexTemplate, indices, types,
 				requestBodySearch);
+		final String viewName = viewTracker.getNextViewName();
 
+		Connection createViewConnection = null;
 		Connection countConnection = null;
 		Connection hitsConnection = null;
 
+		Statement createViewStatement = null;
 		Statement countStatement = null;
 		Statement hitsStatement = null;
 
 		try {
+			createViewConnection = jdbcTemplate.getDataSource().getConnection();
+			createViewStatement = createViewConnection.createStatement();
+
+			final Future<AckResponse> createViewFuture = executeCreateView(createViewStatement, queryComponents, viewName,
+					startTime, requestBodySearch.getFrom(), requestBodySearch.getSize());
+			createViewFuture.get();
+
+			disposeStatement(createViewStatement);
+			createViewStatement = null;
+			disposeConnection(createViewConnection);
+			createViewConnection = null;
+
 			countConnection = jdbcTemplate.getDataSource().getConnection();
 			hitsConnection = jdbcTemplate.getDataSource().getConnection();
-
 			hitsConnection.setAutoCommit(false);
 
 			countStatement = countConnection.createStatement();
 			hitsStatement = hitsConnection.createStatement();
-
 			hitsStatement.setFetchSize(sqlFetchSize);
 
-			final Future<SearchResponse> countQueryFuture = executeCountQuery(result, countStatement, queryComponents, startTime,
-					requestBodySearch.getFrom(), requestBodySearch.getSize());
-			final Future<SearchResponse> hitsQueryFuture = executeHitsQuery(result, hitsStatement, queryComponents, startTime,
-					requestBodySearch.getFrom(), requestBodySearch.getSize());
+			final Future<SearchResponse> countQueryFuture = executeCountQuery(result, countStatement, queryComponents,
+					viewName, startTime, requestBodySearch.getFrom(), requestBodySearch.getSize());
+			final Future<SearchResponse> hitsQueryFuture = executeHitsQuery(result, hitsStatement, queryComponents,
+					viewName, startTime, requestBodySearch.getFrom(), requestBodySearch.getSize());
 
 			countQueryFuture.get();
 			hitsQueryFuture.get();
 		} catch (InterruptedException e) {
 			LOGGER.error(e.getMessage(), e);
 
+			disposeStatement(createViewStatement);
+			createViewStatement = null;
+			disposeConnection(createViewConnection);
+			createViewConnection = null;
+
 			disposeStatement(countStatement);
+			countStatement = null;
 			disposeConnection(countConnection);
+			countConnection = null;
 
 			disposeStatement(hitsStatement);
+			hitsStatement = null;
 			disposeConnection(hitsConnection);
+			hitsConnection = null;
 
 			throw new ShardFailedException(e);
 		} catch (ExecutionException e) {
 			LOGGER.error(e.getMessage(), e);
 
+			disposeStatement(createViewStatement);
+			createViewStatement = null;
+			disposeConnection(createViewConnection);
+			createViewConnection = null;
+
 			disposeStatement(countStatement);
+			countStatement = null;
 			disposeConnection(countConnection);
+			countConnection = null;
 
 			disposeStatement(hitsStatement);
+			hitsStatement = null;
 			disposeConnection(hitsConnection);
+			hitsConnection = null;
 
 			throw new ShardFailedException(e);
 		} catch (SQLException e) {
 			LOGGER.error(e.getMessage(), e);
 
+			disposeStatement(createViewStatement);
+			createViewStatement = null;
+			disposeConnection(createViewConnection);
+			createViewConnection = null;
+
 			disposeStatement(countStatement);
+			countStatement = null;
 			disposeConnection(countConnection);
+			countConnection = null;
 
 			disposeStatement(hitsStatement);
+			hitsStatement = null;
 			disposeConnection(hitsConnection);
+			hitsConnection = null;
 
 			throw new ShardFailedException(e);
 		}
@@ -369,21 +457,29 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 
 		disposeStatement(hitsStatement);
 		disposeConnection(hitsConnection);
+
+		viewTracker.queueViewForCleanup(viewName);
 		return result;
 	}
 
+	private Future<AckResponse> executeCreateView(Statement statement, PsqlQueryComponents queryComponents,
+												  String viewName, long startTime, int from, int size) throws ElefanaException {
+		return searchHitsExecutorService.submit(searchHitsQueryExecutor.executeCreateView(statement,
+				queryComponents, viewName, startTime, from, size));
+	}
+
 	private Future<SearchResponse> executeCountQuery(SearchResponse response, Statement statement, PsqlQueryComponents queryComponents,
-	                                                 long startTime, int from, int size) throws ElefanaException {
+													 String viewName, long startTime, int from, int size) throws ElefanaException {
 		return searchHitsExecutorService
 				.submit(searchHitsQueryExecutor.executeCountQuery(response, statement,
-						queryComponents, startTime, from, size));
+						queryComponents, viewName, startTime, from, size));
 	}
 
 	private Future<SearchResponse> executeHitsQuery(SearchResponse response, Statement statement, PsqlQueryComponents queryComponents,
-	                                                long startTime, int from, int size) throws ElefanaException {
+													String viewName, long startTime, int from, int size) throws ElefanaException {
 		return searchHitsExecutorService
 				.submit(searchHitsQueryExecutor.executeHitsQuery(response, statement,
-						queryComponents, startTime, from, size));
+						queryComponents, viewName, startTime, from, size));
 	}
 
 	private void disposeStatement(Statement statement) {

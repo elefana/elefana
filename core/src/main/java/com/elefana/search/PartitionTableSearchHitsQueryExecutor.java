@@ -33,34 +33,15 @@ public class PartitionTableSearchHitsQueryExecutor extends SearchHitsQueryExecut
 	}
 
 	@Override
-	public ResultSet queryHitsCount(Statement statement, PsqlQueryComponents queryComponents,
-	                                long startTime, int from, int size) throws SQLException {
-		final StringBuilder queryBuilder = new StringBuilder();
+	public void prepareView(Statement statement, PsqlQueryComponents queryComponents, String viewName, long startTime, int from, int size) throws SQLException {
 		if (queryComponents.getFromComponent().isEmpty()) {
-			return null;
+			return;
 		}
 
-		queryBuilder.append("SELECT ");
-		queryBuilder.append("COUNT(_id)");
-		queryBuilder.append(" FROM ");
-		queryBuilder.append(queryComponents.getFromComponent());
-
-		if (!queryComponents.getWhereComponent().isEmpty()) {
-			queryBuilder.append(" WHERE ");
-			queryBuilder.append(queryComponents.getWhereComponent());
-		}
-		return statement.executeQuery(queryBuilder.toString());
-	}
-
-	@Override
-	public ResultSet queryHits(Statement statement, PsqlQueryComponents queryComponents,
-	                           long startTime, int from, int size) throws SQLException {
 		final StringBuilder queryBuilder = new StringBuilder();
-		if (queryComponents.getFromComponent().isEmpty()) {
-			return null;
-		}
-
-		queryBuilder.append("SELECT ");
+		queryBuilder.append("CREATE MATERIALIZED VIEW IF NOT EXISTS ");
+		queryBuilder.append(viewName);
+		queryBuilder.append(" AS SELECT ");
 		queryBuilder.append("*");
 		queryBuilder.append(" FROM ");
 		queryBuilder.append(queryComponents.getFromComponent());
@@ -69,6 +50,38 @@ public class PartitionTableSearchHitsQueryExecutor extends SearchHitsQueryExecut
 			queryBuilder.append(" WHERE ");
 			queryBuilder.append(queryComponents.getWhereComponent());
 		}
+
+		LOGGER.info(queryBuilder.toString());
+		statement.execute(queryBuilder.toString());
+		statement.close();
+	}
+
+	@Override
+	public ResultSet queryHitsCount(Statement statement, PsqlQueryComponents queryComponents, String viewName, long startTime, int from, int size) throws SQLException {
+		if (queryComponents.getFromComponent().isEmpty()) {
+			return null;
+		}
+
+		final StringBuilder queryBuilder = new StringBuilder();
+		queryBuilder.append("SELECT ");
+		queryBuilder.append("COUNT(_id)");
+		queryBuilder.append(" FROM ");
+		queryBuilder.append(viewName);
+		return statement.executeQuery(queryBuilder.toString());
+	}
+
+	@Override
+	public ResultSet queryHits(Statement statement, PsqlQueryComponents queryComponents, String viewName, long startTime, int from, int size) throws SQLException {
+		if (queryComponents.getFromComponent().isEmpty()) {
+			return null;
+		}
+
+		final StringBuilder queryBuilder = new StringBuilder();
+		queryBuilder.append("SELECT ");
+		queryBuilder.append("*");
+		queryBuilder.append(" FROM ");
+		queryBuilder.append(viewName);
+
 		if (!queryComponents.getOrderByComponent().isEmpty()) {
 			queryBuilder.append(" ORDER BY ");
 			queryBuilder.append(queryComponents.getOrderByComponent());
