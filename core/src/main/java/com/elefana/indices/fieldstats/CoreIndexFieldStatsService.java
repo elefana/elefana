@@ -85,16 +85,19 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
     private final Cache<String, Boolean> isLongFieldCache = CacheBuilder.newBuilder().maximumSize(2048).expireAfterAccess(Duration.ofHours(1)).build();
     private final Cache<String, Boolean> isStringFieldCache = CacheBuilder.newBuilder().maximumSize(2048).expireAfterAccess(Duration.ofHours(1)).build();
 
-    private final LoadingCache<String, Set<String>> fieldNamesCache = CacheBuilder.newBuilder().maximumSize(512).
-            expireAfterWrite(Duration.ofHours(24)).build(new CacheLoader<String, Set<String>>() {
-        @Override
-        public Set<String> load(String key) throws Exception {
-            return getFieldNamesFromDatabase(key);
-        }
-    });
+    private LoadingCache<String, Set<String>> fieldNamesCache;
 
     @PostConstruct
     public void postConstruct() {
+        fieldNamesCache = CacheBuilder.newBuilder().
+                maximumSize(environment.getProperty("elefana.service.field.cache.names.expire.size", Integer.class, 512)).
+                expireAfterWrite(Duration.ofSeconds(environment.getProperty("elefana.service.field.cache.names.expire.time", Long.class, 3600L))).build(new CacheLoader<String, Set<String>>() {
+            @Override
+            public Set<String> load(String key) throws Exception {
+                return getFieldNamesFromDatabase(key);
+            }
+        });
+
         state = createState(environment);
 
         long indexTtlMinutes = environment.getProperty("elefana.service.fieldStats.cache.ttlMinutes", Integer.class, 60);
