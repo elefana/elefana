@@ -22,6 +22,8 @@ import com.elefana.indices.fieldstats.state.index.IndexComponent;
 import com.elefana.indices.fieldstats.state.index.IndexImpl;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.env.Environment;
@@ -49,6 +51,7 @@ public class StateImpl implements State{
 
     protected final ReadWriteLock indexMapLock;
     protected Cache<String, Set<String>> fieldNamesCache;
+    protected LoadingCache<String, List<String>> indexPatternCache;
 
     protected BiFunction<String, Class, Field> createFieldMethod = this::createFieldImplementation;
 
@@ -66,6 +69,13 @@ public class StateImpl implements State{
         } else {
             fieldNamesCache = CacheBuilder.newBuilder().maximumSize(10).expireAfterAccess(1L, TimeUnit.SECONDS).build();
         }
+
+        indexPatternCache = CacheBuilder.newBuilder().expireAfterAccess(60, TimeUnit.HOURS).maximumSize(128).build(new CacheLoader<String, List<String>>() {
+            @Override
+            public List<String> load(String key) throws Exception {
+                return internalCompileIndexPattern(key);
+            }
+        });
     }
 
     protected Index createIndexImplementation(String index) {
@@ -100,6 +110,8 @@ public class StateImpl implements State{
         } finally {
             indexMapLock.writeLock().unlock();
         }
+
+        indexPatternCache.invalidateAll();
     }
 
     @Override
@@ -217,6 +229,7 @@ public class StateImpl implements State{
                 if(!indexMap.containsKey(indexName)) {
                     indexMap.put(indexName, createIndexImplementation(indexName));
                 }
+                indexPatternCache.invalidateAll();
             } finally {
                 indexMapLock.writeLock().unlock();
             }
@@ -351,6 +364,15 @@ public class StateImpl implements State{
 
     @Override
     public List<String> compileIndexPattern(String indexPattern) {
+        try {
+            return indexPatternCache.get(indexPattern);
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+        return internalCompileIndexPattern(indexPattern);
+    }
+
+    private List<String> internalCompileIndexPattern(String indexPattern) {
         indexMapLock.readLock().lock();
         final List<String> result = indexMap
                 .keySet()
