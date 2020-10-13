@@ -52,7 +52,7 @@ public class RequestBodySearch {
 	public RequestBodySearch(String originalQuery, boolean debug) throws ElefanaException {
 		super();
 		this.originalQuery = originalQuery;
-		this.timestamp = System.currentTimeMillis();
+		this.timestamp = System.nanoTime();
 
 		this.query = QueryParser.parseQuery(originalQuery);
 
