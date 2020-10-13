@@ -213,7 +213,6 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 		final IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndices(indices);
 		final PsqlQueryComponents queryComponents = searchQueryBuilder.buildQuery(indexTemplate, indices, types,
 				requestBodySearch);
-		final List<String> temporaryTablesCreated = queryComponents.getTemporaryTables();
 		final Map<String, Object> aggregationsResult = new ConcurrentHashMap<String, Object>();
 		final Queue<Future<SearchResponse>> queryFutures = new ConcurrentLinkedQueue<>();
 
@@ -326,13 +325,14 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 			hitsConnection = null;
 
 			throw new ShardFailedException(e);
+		} finally {
+			tableGarbageCollector.queueTemporaryTablesForDeletion(queryComponents.getTemporaryTables());
 		}
 
 		final long took = System.currentTimeMillis() - startTime;
 		searchTotalTime.update(took);
 		result.setTook(took);
 		result.setTimedOut(false);
-		tableGarbageCollector.queueTemporaryTablesForDeletion(temporaryTablesCreated);
 
 		disposeStatement(countStatement);
 		disposeConnection(countConnection);
@@ -445,6 +445,8 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 			hitsConnection = null;
 
 			throw new ShardFailedException(e);
+		} finally {
+			tableGarbageCollector.queueTemporaryTablesForDeletion(queryComponents.getTemporaryTables());
 		}
 
 		final long took = System.currentTimeMillis() - startTime;
