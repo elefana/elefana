@@ -308,6 +308,10 @@ public class CoreIndexUtils implements IndexUtils {
 
 	@Override
 	public void ensureJsonFieldIndexExist(String indexName, List<String> fieldNames) throws ElefanaException {
+		if(fieldNames == null || fieldNames.isEmpty()) {
+			return;
+		}
+
 		final IndexTemplate indexTemplate;
 		final GetIndexTemplateForIndexResponse indexTemplateForIndexResponse = indexTemplateService
 				.prepareGetIndexTemplateForIndex(null, indexName).get();
@@ -318,7 +322,7 @@ public class CoreIndexUtils implements IndexUtils {
 		}
 
 		final IndexStorageSettings indexStorageSettings = indexTemplate.getStorage();
-		if(!indexStorageSettings.isGinEnabled() && !indexStorageSettings.isHashEnabled() && !indexStorageSettings.isBrinEnabled()) {
+		if(indexStorageSettings.getIndexGenerationSettings().getMode().equals(IndexGenerationMode.NONE)) {
 			return;
 		}
 
@@ -327,30 +331,13 @@ public class CoreIndexUtils implements IndexUtils {
 		Connection connection = null;
 		try {
 			connection = jdbcTemplate.getDataSource().getConnection();
-			PreparedStatement preparedStatement;
 
-			boolean indexCreated = false;
 			for (String fieldName : fieldNames) {
 				switch (indexStorageSettings.getIndexGenerationSettings().getMode()) {
-				case ALL:
-					indexCreated = true;
-					break;
 				case PRESET:
-					boolean matchedPresetField = false;
-					for (String presetFieldName : indexStorageSettings.getIndexGenerationSettings().getPresetIndexFields()) {
-						if (presetFieldName.equalsIgnoreCase(fieldName)) {
-							matchedPresetField = true;
-							break;
-						}
-					}
-					if (!matchedPresetField) {
-						continue;
-					}
 					tableIndexCreator.createPsqlFieldIndex(connection, tableName, fieldName, indexStorageSettings);
 					break;
-				case DYNAMIC:
 				default:
-					//TODO: Implement metric-driven index creation
 					break;
 				}
 			}
@@ -432,14 +419,12 @@ public class CoreIndexUtils implements IndexUtils {
 			preparedStatement.close();
 
 			if(indexTemplate != null && indexTemplate.getStorage() != null) {
-				tableIndexCreator.createPsqlTableIndices(connection, tableName, indexTemplate.getStorage());
-
 				if(indexTemplate.getStorage().getIndexGenerationSettings() != null &&
 						indexTemplate.getStorage().getIndexGenerationSettings().getMode().equals(IndexGenerationMode.PRESET)) {
-					ensureJsonFieldIndexExist(indexName, indexTemplate.getStorage().getIndexGenerationSettings().getPresetIndexFields());
+					ensureJsonFieldIndexExist(indexName, indexTemplate.getStorage().getIndexGenerationSettings().getPresetHashIndexFields());
+					ensureJsonFieldIndexExist(indexName, indexTemplate.getStorage().getIndexGenerationSettings().getPresetBrinIndexFields());
+					ensureJsonFieldIndexExist(indexName, indexTemplate.getStorage().getIndexGenerationSettings().getPresetGinIndexFields());
 				}
-			} else {
-				tableIndexCreator.createPsqlTableIndices(connection, tableName, DEFAULT_INDEX_STORAGE_SETTINGS);
 			}
 
 			final boolean createPrimaryKey = !nodeSettingsService.isUsingCitus() || (nodeSettingsService.isUsingCitus() && !timeSeries);

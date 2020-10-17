@@ -49,7 +49,7 @@ public class IndexTemplateTest {
 	public void testSerializationWithDefaultStorageSettings() {
 		final IndexTemplate indexTemplate = new IndexTemplate();
 		indexTemplate.setTemplate("template3");
-		indexTemplate.getStorage().setBrinEnabled(true);
+		indexTemplate.getStorage().getIndexGenerationSettings().getPresetBrinIndexFields().add("field");
 
 		final String json = JsonUtils.toJsonString(indexTemplate);
 		Assert.assertEquals(indexTemplate, JsonUtils.fromJsonString(json, IndexTemplate.class));

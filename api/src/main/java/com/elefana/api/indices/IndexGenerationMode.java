@@ -17,15 +17,11 @@ package com.elefana.api.indices;
 
 public enum IndexGenerationMode {
 	/**
-	 * Generates a PSQL index for all JSON fields
-	 */
-	ALL,
-	/**
-	 * Generates a PSQL index for a JSON fields once it is queried at least once
-	 */
-	DYNAMIC,
-	/**
 	 * Only generates a PSQL index for pre-specified JSON fields
 	 */
-	PRESET
+	PRESET,
+	/**
+	 * Don't generate PSQL index for fields
+	 */
+	NONE
 }

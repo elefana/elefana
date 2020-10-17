@@ -23,15 +23,19 @@ import java.util.Objects;
 
 public class IndexGenerationSettings {
 	@JsonProperty("mode")
-	private IndexGenerationMode mode = IndexGenerationMode.ALL;
-	@JsonProperty("preset_index_fields")
-	private List<String> presetIndexFields = new ArrayList<String>(1);
+	private IndexGenerationMode mode = IndexGenerationMode.NONE;
+	@JsonProperty("preset_hash_index_fields")
+	private List<String> presetHashIndexFields = new ArrayList<String>(1);
+	@JsonProperty("preset_brin_index_fields")
+	private List<String> presetBrinIndexFields = new ArrayList<String>(1);
+	@JsonProperty("preset_gin_index_fields")
+	private List<String> presetGinIndexFields = new ArrayList<String>(1);
 	@JsonProperty("index_delay_seconds")
 	private long indexDelaySeconds;
 
 	public IndexGenerationMode getMode() {
 		if(mode == null) {
-			mode = IndexGenerationMode.ALL;
+			mode = IndexGenerationMode.NONE;
 		}
 		return mode;
 	}
@@ -40,12 +44,28 @@ public class IndexGenerationSettings {
 		this.mode = mode;
 	}
 
-	public List<String> getPresetIndexFields() {
-		return presetIndexFields;
+	public List<String> getPresetHashIndexFields() {
+		return presetHashIndexFields;
 	}
 
-	public void setPresetIndexFields(List<String> presetIndexFields) {
-		this.presetIndexFields = presetIndexFields;
+	public void setPresetHashIndexFields(List<String> presetHashIndexFields) {
+		this.presetHashIndexFields = presetHashIndexFields;
+	}
+
+	public List<String> getPresetBrinIndexFields() {
+		return presetBrinIndexFields;
+	}
+
+	public void setPresetBrinIndexFields(List<String> presetBrinIndexFields) {
+		this.presetBrinIndexFields = presetBrinIndexFields;
+	}
+
+	public List<String> getPresetGinIndexFields() {
+		return presetGinIndexFields;
+	}
+
+	public void setPresetGinIndexFields(List<String> presetGinIndexFields) {
+		this.presetGinIndexFields = presetGinIndexFields;
 	}
 
 	public long getIndexDelaySeconds() {
@@ -56,7 +76,6 @@ public class IndexGenerationSettings {
 		this.indexDelaySeconds = indexDelaySeconds;
 	}
 
-
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
@@ -64,19 +83,23 @@ public class IndexGenerationSettings {
 		IndexGenerationSettings that = (IndexGenerationSettings) o;
 		return indexDelaySeconds == that.indexDelaySeconds &&
 				mode == that.mode &&
-				Objects.equals(presetIndexFields, that.presetIndexFields);
+				Objects.equals(presetHashIndexFields, that.presetHashIndexFields) &&
+				Objects.equals(presetBrinIndexFields, that.presetBrinIndexFields) &&
+				Objects.equals(presetGinIndexFields, that.presetGinIndexFields);
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(mode, presetIndexFields, indexDelaySeconds);
+		return Objects.hash(mode, presetHashIndexFields, presetBrinIndexFields, presetGinIndexFields, indexDelaySeconds);
 	}
 
 	@Override
 	public String toString() {
 		return "IndexGenerationSettings{" +
 				"mode=" + mode +
-				", presetIndexFields=" + presetIndexFields +
+				", presetHashIndexFields=" + presetHashIndexFields +
+				", presetBrinIndexFields=" + presetBrinIndexFields +
+				", presetGinIndexFields=" + presetGinIndexFields +
 				", indexDelaySeconds=" + indexDelaySeconds +
 				'}';
 	}

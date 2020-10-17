@@ -45,7 +45,7 @@ public class GetIndexTemplateResponseTest {
 
 	@Test
 	public void testDecodeWithNoStorageSettings() {
-		final String json = "{\"templateA\":{\"settings\":{\"number_of_shards\":1},\"template\":\"f25aa8b9-2df6-456d-949e-b17558d6554d\",\"storage\":{\"distribution\":\"HASH\",\"time_bucket\":\"MINUTE\",\"timestamp_path\":null,\"index_generation\":{\"mode\":\"ALL\",\"preset_index_fields\":[],\"index_delay_seconds\":0},\"field_stats_disabled\":false,\"mapping_disabled\":false,\"brin_enabled\":false,\"gin_enabled\":false},\"mappings\":{\"test\":{\"_source\":{\"enabled\":false},\"properties\":{\"nonDocField\":{\"type\":\"date\"}}}}}}";
+		final String json = "{\"templateA\":{\"settings\":{\"number_of_shards\":1},\"template\":\"f25aa8b9-2df6-456d-949e-b17558d6554d\",\"storage\":{\"distribution\":\"HASH\",\"time_bucket\":\"MINUTE\",\"timestamp_path\":null,\"index_generation\":{\"mode\":\"PRESET\",\"preset_hash_index_fields\":[],\"index_delay_seconds\":0},\"field_stats_disabled\":false,\"mapping_disabled\":false},\"mappings\":{\"test\":{\"_source\":{\"enabled\":false},\"properties\":{\"nonDocField\":{\"type\":\"date\"}}}}}}";
 		final GetIndexTemplateResponse result = JsonUtils.fromJsonString(json, GetIndexTemplateResponse.class);
 		result.setTemplateId("templateA");
 		Assert.assertEquals("f25aa8b9-2df6-456d-949e-b17558d6554d", result.getIndexTemplate().getTemplate());

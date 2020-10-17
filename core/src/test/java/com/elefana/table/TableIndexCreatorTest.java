@@ -104,12 +104,10 @@ public class TableIndexCreatorTest implements TableIndexCreator.IndexCreatedList
 		final String fieldName = "fieldName";
 
 		final IndexStorageSettings storageSettings = new IndexStorageSettings();
-		storageSettings.setHashEnabled(true);
 		storageSettings.setIndexGenerationSettings(new IndexGenerationSettings());
 		storageSettings.getIndexGenerationSettings().setMode(IndexGenerationMode.PRESET);
 		storageSettings.getIndexGenerationSettings().setIndexDelaySeconds(1L);
-		storageSettings.getIndexGenerationSettings().setPresetIndexFields(new ArrayList<String>());
-		storageSettings.getIndexGenerationSettings().getPresetIndexFields().add(fieldName);
+		storageSettings.getIndexGenerationSettings().getPresetHashIndexFields().add(fieldName);
 
 		tableIndexCreator.createPsqlFieldIndex(null, tableName, fieldName, storageSettings);
 

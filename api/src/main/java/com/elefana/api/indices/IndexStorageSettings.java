@@ -32,12 +32,6 @@ public class IndexStorageSettings {
 	private boolean fieldStatsEnabled = true;
 	@JsonProperty("mapping_enabled")
 	private boolean mappingEnabled = true;
-	@JsonProperty("brin_enabled")
-	private boolean brinEnabled = false;
-	@JsonProperty("gin_enabled")
-	private boolean ginEnabled = false;
-	@JsonProperty("hash_enabled")
-	private boolean hashEnabled = false;
 	@JsonProperty("id_enabled")
 	private boolean idEnabled = true;
 
@@ -66,10 +60,16 @@ public class IndexStorageSettings {
 	}
 
 	public IndexGenerationSettings getIndexGenerationSettings() {
+		if(indexGenerationSettings == null) {
+			indexGenerationSettings = new IndexGenerationSettings();
+		}
 		return indexGenerationSettings;
 	}
 
 	public void setIndexGenerationSettings(IndexGenerationSettings indexGenerationSettings) {
+		if(indexGenerationSettings == null) {
+			return;
+		}
 		this.indexGenerationSettings = indexGenerationSettings;
 	}
 
@@ -89,30 +89,6 @@ public class IndexStorageSettings {
 		this.mappingEnabled = mappingEnabled;
 	}
 
-	public boolean isBrinEnabled() {
-		return brinEnabled;
-	}
-
-	public void setBrinEnabled(boolean brinEnabled) {
-		this.brinEnabled = brinEnabled;
-	}
-
-	public boolean isGinEnabled() {
-		return ginEnabled;
-	}
-
-	public void setGinEnabled(boolean ginEnabled) {
-		this.ginEnabled = ginEnabled;
-	}
-
-	public boolean isHashEnabled() {
-		return hashEnabled;
-	}
-
-	public void setHashEnabled(boolean hashEnabled) {
-		this.hashEnabled = hashEnabled;
-	}
-
 	public boolean isIdEnabled() {
 		return idEnabled;
 	}
@@ -128,9 +104,6 @@ public class IndexStorageSettings {
 		IndexStorageSettings that = (IndexStorageSettings) o;
 		return fieldStatsEnabled == that.fieldStatsEnabled &&
 				mappingEnabled == that.mappingEnabled &&
-				brinEnabled == that.brinEnabled &&
-				ginEnabled == that.ginEnabled &&
-				hashEnabled == that.hashEnabled &&
 				idEnabled == that.idEnabled &&
 				distributionMode == that.distributionMode &&
 				indexTimeBucket == that.indexTimeBucket &&
@@ -141,7 +114,7 @@ public class IndexStorageSettings {
 	@Override
 	public int hashCode() {
 		return Objects.hash(distributionMode, indexTimeBucket, timestampPath, indexGenerationSettings,
-				fieldStatsEnabled, mappingEnabled, brinEnabled, ginEnabled, hashEnabled, idEnabled);
+				fieldStatsEnabled, mappingEnabled, idEnabled);
 	}
 
 	@Override
@@ -153,9 +126,6 @@ public class IndexStorageSettings {
 				", indexGenerationSettings=" + indexGenerationSettings +
 				", fieldStatsDisabled=" + fieldStatsEnabled +
 				", mappingDisabled=" + mappingEnabled +
-				", brinEnabled=" + brinEnabled +
-				", ginEnabled=" + ginEnabled +
-				", hashEnabled=" + hashEnabled +
 				'}';
 	}
 }

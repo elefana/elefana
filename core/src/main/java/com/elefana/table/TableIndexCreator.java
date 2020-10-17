@@ -54,7 +54,6 @@ public class TableIndexCreator implements Runnable {
 	private NodeSettingsService nodeSettingsService;
 
 	private ScheduledExecutorService executorService = null;
-	private DiskBackedQueue<TableIndexDelay> tableIndexQueue;
 	private DiskBackedQueue<TableFieldIndexDelay> fieldIndexQueue;
 
 	private IndexCreatedListener listener;
@@ -68,8 +67,6 @@ public class TableIndexCreator implements Runnable {
 				new NamedThreadFactory("tableIndexCreator", ThreadPriorities.PSQL_INDEX_CREATOR));
 		final long interval = nodeSettingsService.getMappingInterval();
 
-		tableIndexQueue = new DiskBackedQueue(TABLE_INDEX_QUEUE_ID,
-				nodeSettingsService.getDataDirectory(), TableIndexDelay.class);
 		fieldIndexQueue = new DiskBackedQueue(FIELD_INDEX_QUEUE_ID,
 				nodeSettingsService.getDataDirectory(), TableFieldIndexDelay.class);
 		executorService.scheduleAtFixedRate(this, 0L, Math.max(1000, interval), TimeUnit.MILLISECONDS);
@@ -82,7 +79,6 @@ public class TableIndexCreator implements Runnable {
 			return;
 		}
 		executorService.shutdownNow();
-		tableIndexQueue.dispose();
 		fieldIndexQueue.dispose();
 	}
 
@@ -91,12 +87,10 @@ public class TableIndexCreator implements Runnable {
 		Connection connection = null;
 		try {
 			try {
-				connection = runTableIndexCreation(connection);
 				connection = runFieldIndexCreation(connection);
 			} catch (Exception e) {
 				LOGGER.error(e.getMessage(), e);
 			}
-			tableIndexQueue.prune();
 			fieldIndexQueue.prune();
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
@@ -107,33 +101,6 @@ public class TableIndexCreator implements Runnable {
 				} catch (Exception e) {}
 			}
 		}
-	}
-
-	private Connection runTableIndexCreation(Connection connection) throws SQLException {
-		final TableIndexDelay tableIndexDelay = new TableIndexDelay();
-		while(tableIndexQueue.peek(tableIndexDelay)) {
-			if(tableIndexDelay.getIndexTimestamp() > System.currentTimeMillis()) {
-				LOGGER.info("Too early to create index for " + tableIndexDelay.getTableName() + ". Remaining time: " + TimeUnit.MILLISECONDS.toMinutes(tableIndexDelay.getIndexTimestamp() - System.currentTimeMillis()) + " minutes");
-				return connection;
-			} else {
-				LOGGER.info("Executing table index creation for " + tableIndexDelay.getTableName());
-			}
-			if(connection == null) {
-				connection = jdbcTemplate.getDataSource().getConnection();
-			}
-			PsqlDocumentService.DELETE_CREATE_INDEX_LOCK.lock();
-			try {
-				internalCreatePsqlTableIndices(connection, tableIndexDelay.getTableName(), tableIndexDelay.getMode(),
-						tableIndexDelay.isGinEnabled(), tableIndexDelay.isBrinEnabled());
-				tableIndexQueue.poll(tableIndexDelay);
-			} catch (Exception e) {
-				LOGGER.error(e.getMessage(), e);
-				tableIndexQueue.offer(tableIndexDelay);
-			} finally {
-				PsqlDocumentService.DELETE_CREATE_INDEX_LOCK.unlock();
-			}
-		}
-		return connection;
 	}
 
 	private Connection runFieldIndexCreation(Connection connection) throws SQLException {
@@ -163,49 +130,31 @@ public class TableIndexCreator implements Runnable {
 		return connection;
 	}
 
-	public void createPsqlTableIndices(Connection connection, String tableName, IndexStorageSettings settings) throws SQLException {
-		createPsqlTableIndices(connection, tableName, settings, false);
-	}
-
-	public void createPsqlTableIndices(Connection connection, String tableName, IndexStorageSettings settings, boolean now) throws SQLException {
-		if(!settings.isGinEnabled() && !settings.isHashEnabled() && !settings.isBrinEnabled()) {
-			return;
-		}
-
-		if(settings.getIndexGenerationSettings().getIndexDelaySeconds() <= 0 || now) {
-			internalCreatePsqlTableIndices(connection, tableName, settings.getIndexGenerationSettings().getMode(),
-					settings.isGinEnabled(), settings.isBrinEnabled());
-		} else {
-			LOGGER.info("Defer " + tableName + " index creation by " + settings.getIndexGenerationSettings().getIndexDelaySeconds() +
-					" seconds (MODE:" + settings.getIndexGenerationSettings().getMode() + ", GIN:" + settings.isGinEnabled() +
-					", BRIN:" + settings.isBrinEnabled() + ", HASH:" + settings.isHashEnabled() + ") (" + hashCode() + ")");
-			final long indexTimestamp = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(settings.getIndexGenerationSettings().getIndexDelaySeconds());
-			if(!tableIndexQueue.offer(new TableIndexDelay(tableName, indexTimestamp, settings.getIndexGenerationSettings().getMode(),
-					settings.isGinEnabled(), settings.isBrinEnabled(), settings.isHashEnabled()))) {
-				LOGGER.error("Could not offer to table index queue");
-			}
-		}
-	}
-
 	public void createPsqlFieldIndex(Connection connection, String tableName, String fieldName, IndexStorageSettings settings) throws SQLException {
 		createPsqlFieldIndex(connection, tableName, fieldName, settings, false);
 	}
 
 	public void createPsqlFieldIndex(Connection connection, String tableName, String fieldName, IndexStorageSettings settings, boolean now) throws SQLException {
-		if(!settings.isGinEnabled() && !settings.isHashEnabled() && !settings.isBrinEnabled()) {
+		if(settings.getIndexGenerationSettings().getMode().equals(IndexGenerationMode.NONE)) {
 			return;
 		}
 
 		if(settings.getIndexGenerationSettings().getIndexDelaySeconds() <= 0 || now) {
 			internalCreatePsqlFieldIndex(connection, tableName, fieldName, settings.getIndexGenerationSettings().getMode(),
-					settings.isGinEnabled(), settings.isBrinEnabled(), settings.isHashEnabled());
+					settings.getIndexGenerationSettings().getPresetGinIndexFields().contains(fieldName),
+					settings.getIndexGenerationSettings().getPresetBrinIndexFields().contains(fieldName),
+					settings.getIndexGenerationSettings().getPresetHashIndexFields().contains(fieldName));
 		} else {
 			LOGGER.info("Defer " + tableName + "->" + fieldName + " field index creation by " + settings.getIndexGenerationSettings().getIndexDelaySeconds() +
-					" seconds (MODE:" + settings.getIndexGenerationSettings().getMode() + ", GIN:" + settings.isGinEnabled() +
-					", BRIN:" + settings.isBrinEnabled() + ", HASH:" + settings.isHashEnabled() + ") (" + hashCode() + ")");
+					" seconds (MODE:" + settings.getIndexGenerationSettings().getMode() +
+					", GIN:" + settings.getIndexGenerationSettings().getPresetGinIndexFields().contains(fieldName) +
+					", BRIN:" + settings.getIndexGenerationSettings().getPresetBrinIndexFields().contains(fieldName) +
+					", HASH:" + settings.getIndexGenerationSettings().getPresetHashIndexFields().contains(fieldName) + ") (" + hashCode() + ")");
 			final long indexTimestamp = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(settings.getIndexGenerationSettings().getIndexDelaySeconds());
 			if(!fieldIndexQueue.offer(new TableFieldIndexDelay(tableName, fieldName, indexTimestamp, settings.getIndexGenerationSettings().getMode(),
-					settings.isGinEnabled(), settings.isBrinEnabled(), settings.isHashEnabled()))) {
+					settings.getIndexGenerationSettings().getPresetGinIndexFields().contains(fieldName),
+					settings.getIndexGenerationSettings().getPresetBrinIndexFields().contains(fieldName),
+					settings.getIndexGenerationSettings().getPresetHashIndexFields().contains(fieldName) ))) {
 				LOGGER.error("Could not offer to field index queue");
 			}
 		}
@@ -213,115 +162,56 @@ public class TableIndexCreator implements Runnable {
 
 	private void internalCreatePsqlFieldIndex(Connection connection, String tableName, String fieldName, IndexGenerationMode mode,
 	                                          boolean ginEnabled, boolean brinEnabled, boolean hashEnabled) throws SQLException {
-		switch(mode) {
-		case ALL:
-			return;
-		case PRESET:
-		case DYNAMIC:
-			if(brinEnabled) {
-				final String btreeIndexName = getPsqlIndexName(IndexUtils.BTREE_INDEX_PREFIX, tableName, fieldName);
-				final String query = "CREATE INDEX IF NOT EXISTS " + btreeIndexName + " ON " + tableName + " USING BTREE ((_source->>'" + fieldName + "'));";
-				LOGGER.info(query);
-				PreparedStatement preparedStatement = connection.prepareStatement(query);
-				try {
-					preparedStatement.execute();
-					preparedStatement.close();
-				} catch (SQLException e) {
-					abortPreparedStatement(preparedStatement);
-					throw e;
-				}
-
-				if(listener != null) {
-					listener.onCreated();
-				}
+		if(brinEnabled) {
+			final String btreeIndexName = getPsqlIndexName(IndexUtils.BTREE_INDEX_PREFIX, tableName, fieldName);
+			final String query = "CREATE INDEX IF NOT EXISTS " + btreeIndexName + " ON " + tableName + " USING BTREE ((_source->>'" + fieldName + "'));";
+			LOGGER.info(query);
+			PreparedStatement preparedStatement = connection.prepareStatement(query);
+			try {
+				preparedStatement.execute();
+				preparedStatement.close();
+			} catch (SQLException e) {
+				abortPreparedStatement(preparedStatement);
+				throw e;
 			}
-			if(hashEnabled) {
-				final String hashIndexName = getPsqlIndexName(IndexUtils.HASH_INDEX_PREFIX, tableName, fieldName);
-				final String query = "CREATE INDEX IF NOT EXISTS " + hashIndexName + " ON " + tableName + " USING HASH ((_source->>'" + fieldName + "'));";
-				LOGGER.info(query);
-				PreparedStatement preparedStatement = connection.prepareStatement(query);
-				try {
-					preparedStatement.execute();
-					preparedStatement.close();
-				} catch (SQLException e) {
-					abortPreparedStatement(preparedStatement);
-					throw e;
-				}
 
-				if(listener != null) {
-					listener.onCreated();
-				}
+			if(listener != null) {
+				listener.onCreated();
 			}
-			if(ginEnabled) {
-				final String ginIndexName = getPsqlIndexName(IndexUtils.GIN_INDEX_PREFIX, tableName, fieldName);
-				final String query = "CREATE INDEX IF NOT EXISTS " + ginIndexName + " ON " + tableName + " USING GIN ((_source->>'" + fieldName + "'));";
-				LOGGER.info(query);
-				PreparedStatement preparedStatement = connection.prepareStatement(query);
-				try {
-					preparedStatement.execute();
-					preparedStatement.close();
-				} catch (SQLException e) {
-					abortPreparedStatement(preparedStatement);
-					throw e;
-				}
-
-				if(listener != null) {
-					listener.onCreated();
-				}
-			}
-			break;
 		}
-	}
-
-	private void internalCreatePsqlTableIndices(Connection connection, String tableName,
-												IndexGenerationMode indexGenerationMode,
-												boolean ginEnabled, boolean brinEnabled) throws SQLException {
-		final String brinIndexName = IndexUtils.BRIN_INDEX_PREFIX + tableName;
-		final String ginIndexName = IndexUtils.GIN_INDEX_PREFIX + tableName;
-
-		PreparedStatement preparedStatement;
-
-		switch(indexGenerationMode) {
-		case ALL:
-			if(ginEnabled) {
-				final String createGinIndexQuery = "CREATE INDEX CONCURRENTLY IF NOT EXISTS " + ginIndexName + " ON " + tableName
-						+ " USING GIN (_source jsonb_ops)";
-				LOGGER.info(createGinIndexQuery);
-				preparedStatement = connection.prepareStatement(createGinIndexQuery);
-				try {
-					preparedStatement.execute();
-					preparedStatement.close();
-				} catch (SQLException e) {
-					abortPreparedStatement(preparedStatement);
-					throw e;
-				}
-
-				if(listener != null) {
-					listener.onCreated();
-				}
+		if(hashEnabled) {
+			final String hashIndexName = getPsqlIndexName(IndexUtils.HASH_INDEX_PREFIX, tableName, fieldName);
+			final String query = "CREATE INDEX IF NOT EXISTS " + hashIndexName + " ON " + tableName + " USING HASH ((_source->>'" + fieldName + "'));";
+			LOGGER.info(query);
+			PreparedStatement preparedStatement = connection.prepareStatement(query);
+			try {
+				preparedStatement.execute();
+				preparedStatement.close();
+			} catch (SQLException e) {
+				abortPreparedStatement(preparedStatement);
+				throw e;
 			}
-			if(brinEnabled) {
-				final String createTimestampIndexQuery = "CREATE INDEX CONCURRENTLY IF NOT EXISTS " + brinIndexName + " ON "
-						+ tableName + " USING BRIN (_timestamp, _bucket1s, _bucket1m, _bucket1h, _bucket1d) WITH (pages_per_range = " + nodeSettingsService.getBrinPagesPerRange() + ")";
-				LOGGER.info(createTimestampIndexQuery);
-				preparedStatement = connection.prepareStatement(createTimestampIndexQuery);
-				try {
-					preparedStatement.execute();
-					preparedStatement.close();
-				} catch (SQLException e) {
-					abortPreparedStatement(preparedStatement);
-					throw e;
-				}
 
-				if(listener != null) {
-					listener.onCreated();
-				}
+			if(listener != null) {
+				listener.onCreated();
 			}
-			break;
-		case DYNAMIC:
-			break;
-		case PRESET:
-			break;
+		}
+		if(ginEnabled) {
+			final String ginIndexName = getPsqlIndexName(IndexUtils.GIN_INDEX_PREFIX, tableName, fieldName);
+			final String query = "CREATE INDEX IF NOT EXISTS " + ginIndexName + " ON " + tableName + " USING GIN ((_source->>'" + fieldName + "'));";
+			LOGGER.info(query);
+			PreparedStatement preparedStatement = connection.prepareStatement(query);
+			try {
+				preparedStatement.execute();
+				preparedStatement.close();
+			} catch (SQLException e) {
+				abortPreparedStatement(preparedStatement);
+				throw e;
+			}
+
+			if(listener != null) {
+				listener.onCreated();
+			}
 		}
 	}
 
