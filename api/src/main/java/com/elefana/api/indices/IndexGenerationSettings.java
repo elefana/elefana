@@ -45,6 +45,9 @@ public class IndexGenerationSettings {
 	}
 
 	public List<String> getPresetHashIndexFields() {
+		if(presetHashIndexFields == null) {
+			presetHashIndexFields = new ArrayList<>();
+		}
 		return presetHashIndexFields;
 	}
 
@@ -53,6 +56,9 @@ public class IndexGenerationSettings {
 	}
 
 	public List<String> getPresetBrinIndexFields() {
+		if(presetBrinIndexFields == null) {
+			presetBrinIndexFields = new ArrayList<>();
+		}
 		return presetBrinIndexFields;
 	}
 
@@ -61,6 +67,9 @@ public class IndexGenerationSettings {
 	}
 
 	public List<String> getPresetGinIndexFields() {
+		if(presetGinIndexFields == null) {
+			presetHashIndexFields = new ArrayList<>();
+		}
 		return presetGinIndexFields;
 	}
 
