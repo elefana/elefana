@@ -190,4 +190,34 @@ public class IndexTemplateTest {
 		}
 		Assert.fail("Failed to generate mappings within timeout");
 	}
+
+	@Test(timeout = 30000L)
+	public void testIndexTemplateWithPlusSymbol() {
+		final String index = UUID.randomUUID().toString();
+		final String type = "test";
+
+		given().when().get("/_template/testIndexTemplatePlus")
+				.then()
+				.log().all()
+				.statusCode(404);
+
+		given().when().head("/_template/testIndexTemplatePlus")
+				.then()
+				.log().all()
+				.statusCode(404);
+
+		given()
+				.request()
+				.body("{\"template\": \"" + index + "\",\"mappings\": {}, \"storage\": {\"indexGenerationSettings\":{\"preset_hash_index_fields\":[\"field+_123\"]}}}")
+				.when()
+				.put("/_template/testIndexTemplatePlus")
+				.then()
+				.statusCode(200);
+
+		given().when().get("/_template/testIndexTemplatePlus")
+				.then()
+				.log().all()
+				.statusCode(200)
+				.body("testIndexTemplatePlus.storage.indexGenerationSettings.preset_hash_index_fields[0]", equalTo("field+_123"));
+	}
 }
