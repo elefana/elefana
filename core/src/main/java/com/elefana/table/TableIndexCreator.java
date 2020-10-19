@@ -198,7 +198,7 @@ public class TableIndexCreator implements Runnable {
 		}
 		if(ginEnabled) {
 			final String ginIndexName = getPsqlIndexName(IndexUtils.GIN_INDEX_PREFIX, tableName, fieldName);
-			final String query = "CREATE INDEX IF NOT EXISTS " + ginIndexName + " ON " + tableName + " USING GIN ((_source->>'" + fieldName + "'));";
+			final String query = "CREATE INDEX IF NOT EXISTS " + ginIndexName + " ON " + tableName + " USING GIN ((_source->'" + fieldName + "'));";
 			LOGGER.info(query);
 			PreparedStatement preparedStatement = connection.prepareStatement(query);
 			try {
