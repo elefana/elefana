@@ -21,6 +21,9 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Collection;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileListener {
@@ -32,6 +35,7 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 	private final ElefanaChronicleQueue chronicleQueue;
 	private final ExcerptTailer tailer;
 	private final DiskBackedMap<Integer, QueueCycleFile> files;
+	private final ConcurrentMap<String, Long> lastAccessed;
 
 	private final AtomicBoolean disposed = new AtomicBoolean(false);
 
@@ -58,6 +62,7 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 		this.clazz = clazz;
 		files = new DiskBackedMap<>(queueId + "-files", Integer.class, QueueCycleFile.class,
 				dataDirectory, 512, Integer.MAX_VALUE, new QueueCycleFile(dataDirectory));
+		lastAccessed = new ConcurrentHashMap<>();
 
 		if(!dataDirectory.exists()) {
 			dataDirectory.mkdirs();
@@ -106,6 +111,10 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 			if(!file.isReleased()) {
 				continue;
 			}
+			final long timestamp = lastAccessed.getOrDefault(file.getFile().getAbsolutePath(), System.currentTimeMillis());
+			if(System.currentTimeMillis() - timestamp < TimeUnit.DAYS.toMillis(2)) {
+				continue;
+			}
 			try {
 				if (!chronicleQueue.unlockFiles(cycle, file.getFile())) {
 					continue;
@@ -134,8 +143,10 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 		}
 		files.compute(cycle, (cycleKey, queueCycleFile) -> {
 			if(queueCycleFile == null) {
+				lastAccessed.remove(file.getAbsolutePath());
 				return new QueueCycleFile(file);
 			} else {
+				lastAccessed.remove(queueCycleFile.getFile().getAbsolutePath());
 				queueCycleFile.setReleased(false);
 				return queueCycleFile;
 			}
@@ -150,6 +161,7 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 		try {
 			files.computeIfPresent(cycle, (integer, queueCycleFile) -> {
 				queueCycleFile.setReleased(true);
+				lastAccessed.put(queueCycleFile.getFile().getAbsolutePath(), System.currentTimeMillis());
 				return queueCycleFile;
 			});
 		} catch (Exception e) {
