@@ -112,7 +112,7 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 				continue;
 			}
 			final long timestamp = lastAccessed.getOrDefault(file.getFile().getAbsolutePath(), System.currentTimeMillis());
-			if(System.currentTimeMillis() - timestamp < TimeUnit.DAYS.toMillis(2)) {
+			if(System.currentTimeMillis() - timestamp < TimeUnit.DAYS.toMillis(7)) {
 				continue;
 			}
 			try {
