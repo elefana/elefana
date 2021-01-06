@@ -312,7 +312,7 @@ public class DefaultTimeIngestTable implements TimeIngestTable {
 		final long timestamp = System.currentTimeMillis();
 		while(System.currentTimeMillis() - timestamp < timeout) {
 			for(int i = 0; i < locks.length; i++) {
-				int index = readIndex.incrementAndGet() % locks.length;
+				int index = Math.abs(readIndex.incrementAndGet() % locks.length);
 				if(pruned.get()) {
 					return -1;
 				}

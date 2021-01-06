@@ -252,7 +252,7 @@ public class DefaultHashIngestTable implements HashIngestTable {
 		final long timestamp = System.currentTimeMillis();
 		while(System.currentTimeMillis() - timestamp < timeoutMillis) {
 			for(int i = 0; i < locks.length; i++) {
-				int index = writeIndex.incrementAndGet() % locks.length;
+				int index = Math.abs(writeIndex.incrementAndGet() % locks.length);
 				if(locks[index].tryLock()) {
 					lastUsageTimestamp.set(System.currentTimeMillis());
 					return index;
@@ -273,7 +273,7 @@ public class DefaultHashIngestTable implements HashIngestTable {
 		final long timestamp = System.nanoTime();
 		while(System.nanoTime() - timestamp < timeoutNanos) {
 			for(int i = 0; i < locks.length; i++) {
-				int index = readIndex.incrementAndGet() % locks.length;
+				int index = Math.abs(readIndex.incrementAndGet() % locks.length);
 
 				if(pruned.get()) {
 					return -1;
