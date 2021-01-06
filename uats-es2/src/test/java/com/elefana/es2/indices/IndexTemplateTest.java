@@ -208,7 +208,7 @@ public class IndexTemplateTest {
 
 		given()
 				.request()
-				.body("{\"template\": \"" + index + "\",\"mappings\": {}, \"storage\": {\"indexGenerationSettings\":{\"preset_hash_index_fields\":[\"field+_123\"]}}}")
+				.body("{\"template\": \"" + index + "\",\"mappings\": {}, \"storage\": {\"index_generation\":{\"preset_hash_index_fields\":[\"field+_123\"]}}}")
 				.when()
 				.put("/_template/testIndexTemplatePlus")
 				.then()
@@ -218,6 +218,6 @@ public class IndexTemplateTest {
 				.then()
 				.log().all()
 				.statusCode(200)
-				.body("testIndexTemplatePlus.storage.indexGenerationSettings.preset_hash_index_fields[0]", equalTo("field+_123"));
+				.body("testIndexTemplatePlus.storage.index_generation.preset_hash_index_fields[0]", equalTo("field+_123"));
 	}
 }
