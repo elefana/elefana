@@ -34,7 +34,7 @@ public enum IndexTimeBucket {
 	}
 
 	public int getShardOffset(long timestamp) {
-		return (int) ((timestamp % bucketOperand) / offsetOperand);
+		return Math.abs((int) ((timestamp % bucketOperand) / offsetOperand));
 	}
 
 	public long getBucketOperand() {
