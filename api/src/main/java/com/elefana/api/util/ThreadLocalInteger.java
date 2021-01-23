@@ -43,6 +43,14 @@ public class ThreadLocalInteger {
 		}
 		return localInteger.value;
 	}
+
+	public void set(int value) {
+		final LocalInteger localInteger = getLocalInteger();
+		localInteger.value = value;
+		if(positiveOnly && localInteger.value < 0) {
+			localInteger.value = Math.abs(value);
+		}
+	}
 	
 	public String getThreadIdAndNextValue() {
 		return Thread.currentThread().getId() + "" + incrementAndGet();
