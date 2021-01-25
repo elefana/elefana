@@ -78,7 +78,7 @@ public class PsqlIngestTableTracker implements IngestTableTracker, Runnable {
 	public void postConstruct() throws ElefanaException {
 		ingestTableCounter = metricRegistry.counter(MetricRegistry.name("bulk", "ingest", "tables"));
 
-		ingestionTableExpiryMillis = environment.getProperty("elefana.service.bulk.ingest.tableExpiryMillis", Long.class, TimeUnit.HOURS.toMillis(1L));
+		ingestionTableExpiryMillis = environment.getProperty("elefana.service.bulk.ingest.tableExpiryMillis", Long.class, TimeUnit.HOURS.toMillis(3L));
 
 		tablespaces = environment.getProperty("elefana.service.bulk.tablespaces", "").split(",");
 		if (isEmptyTablespaceList(tablespaces)) {
