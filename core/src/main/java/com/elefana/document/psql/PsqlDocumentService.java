@@ -31,6 +31,7 @@ import com.elefana.indices.fieldstats.IndexFieldStatsService;
 import com.elefana.indices.psql.PsqlIndexFieldMappingService;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.node.VersionInfoService;
+import com.elefana.table.TableIndexCreator;
 import com.elefana.util.EscapeUtils;
 import com.elefana.util.IndexUtils;
 import com.elefana.util.NamedThreadFactory;
@@ -87,6 +88,8 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 	private IndexFieldStatsService indexFieldStatsService;
 	@Autowired
 	private IndexTemplateService indexTemplateService;
+	@Autowired
+	private TableIndexCreator tableIndexCreator;
 
 	private ExecutorService executorService;
 	private ExecutorService asyncDeletionExecutorService;
@@ -462,6 +465,11 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 					if(rows > 0) {
 						indexFieldMappingService.scheduleIndexForMappingAndStats(index);
 					}
+
+					final IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndex(index);
+					if(indexTemplate != null) {
+						tableIndexCreator.deletePsqlIndices(index, queryTarget, indexTemplate);
+					}
 				} catch (Exception e) {
 					LOGGER.error(e.getMessage(), e);
 				}
@@ -579,6 +587,11 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 				response.setResult("not_found");
 			} else {
 				indexFieldMappingService.scheduleIndexForMappingAndStats(index);
+			}
+
+			final IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndex(index);
+			if(indexTemplate != null) {
+				tableIndexCreator.deletePsqlIndices(index, queryTarget, indexTemplate);
 			}
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);

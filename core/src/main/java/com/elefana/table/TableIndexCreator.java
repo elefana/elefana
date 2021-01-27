@@ -16,7 +16,9 @@
 package com.elefana.table;
 
 import com.elefana.api.indices.IndexGenerationMode;
+import com.elefana.api.indices.IndexGenerationSettings;
 import com.elefana.api.indices.IndexStorageSettings;
+import com.elefana.api.indices.IndexTemplate;
 import com.elefana.document.psql.PsqlDocumentService;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.node.NodeStatsService;
@@ -211,6 +213,80 @@ public class TableIndexCreator implements Runnable {
 
 			if(listener != null) {
 				listener.onCreated();
+			}
+		}
+	}
+
+	public void deletePsqlIndices(String index, String tableName, IndexTemplate indexTemplate) {
+		if(indexTemplate.getStorage() == null) {
+			return;
+		}
+		if(indexTemplate.getStorage().getIndexGenerationSettings() == null) {
+			return;
+		}
+
+		Connection connection = null;
+
+		try {
+			final IndexGenerationSettings settings = indexTemplate.getStorage().getIndexGenerationSettings();
+			if(settings.getPresetBrinIndexFields() != null) {
+				for(String fieldName : settings.getPresetBrinIndexFields()) {
+					if(connection == null) {
+						connection = jdbcTemplate.getDataSource().getConnection();
+					}
+					final String btreeIndexName = getPsqlIndexName(IndexUtils.BTREE_INDEX_PREFIX, tableName, fieldName);
+					final String query = "DROP INDEX IF EXISTS " + btreeIndexName;
+					PreparedStatement preparedStatement = connection.prepareStatement(query);
+					try {
+						preparedStatement.execute();
+						preparedStatement.close();
+					} catch (SQLException e) {
+						abortPreparedStatement(preparedStatement);
+						throw e;
+					}
+				}
+			}
+			if(settings.getPresetGinIndexFields() != null) {
+				for(String fieldName : settings.getPresetGinIndexFields()) {
+					if(connection == null) {
+						connection = jdbcTemplate.getDataSource().getConnection();
+					}
+					final String ginIndexName = getPsqlIndexName(IndexUtils.GIN_INDEX_PREFIX, tableName, fieldName);
+					final String query = "DROP INDEX IF EXISTS " + ginIndexName;
+					PreparedStatement preparedStatement = connection.prepareStatement(query);
+					try {
+						preparedStatement.execute();
+						preparedStatement.close();
+					} catch (SQLException e) {
+						abortPreparedStatement(preparedStatement);
+						throw e;
+					}
+				}
+			}
+			if(settings.getPresetHashIndexFields() != null) {
+				for(String fieldName : settings.getPresetHashIndexFields()) {
+					if(connection == null) {
+						connection = jdbcTemplate.getDataSource().getConnection();
+					}
+					final String hashIndexName = getPsqlIndexName(IndexUtils.HASH_INDEX_PREFIX, tableName, fieldName);
+					final String query = "DROP INDEX IF EXISTS " + hashIndexName;
+					PreparedStatement preparedStatement = connection.prepareStatement(query);
+					try {
+						preparedStatement.execute();
+						preparedStatement.close();
+					} catch (SQLException e) {
+						abortPreparedStatement(preparedStatement);
+						throw e;
+					}
+				}
+			}
+		} catch (Exception e) {
+			LOGGER.error(e.getMessage(), e);
+		} finally {
+			if(connection != null) {
+				try {
+					connection.close();
+				} catch (Exception e) {}
 			}
 		}
 	}
