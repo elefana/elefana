@@ -90,10 +90,15 @@ public class NodeSettingsService {
 
 	private int bulkIngestThreads;
 
+	private int indexTimeBoxMinHour = -1;
+	private int indexTimeBoxMaxHour = -1;
+
 	private File dataDirectory;
 
 	@PostConstruct
 	public void postConstruct() {
+		initIndexTimeBox();
+
 		nodeName = environment.getRequiredProperty("elefana.node.name");
 		nodeId = DigestUtils.md5Hex(nodeName + new Random().nextInt());
 
@@ -177,6 +182,27 @@ public class NodeSettingsService {
 			this.roles[i] = roles.get(i);
 		}
 		LOGGER.info("Node: " + nodeName +  ", Master: " + masterNode + ", Data: " + dataNode + ", Ingest: " + ingestNode);
+	}
+
+	private void initIndexTimeBox() {
+		if(indexTimeBoxMaxHour > -1) {
+			return;
+		}
+		final String indexTimeBox = environment.getProperty("elefana.indexTimeBox", "*");
+
+		if(indexTimeBox == null || indexTimeBox == "*") {
+			indexTimeBoxMinHour = 0;
+			indexTimeBoxMaxHour = 23;
+			return;
+		}
+		if(!indexTimeBox.contains("-")) {
+			indexTimeBoxMinHour = Integer.valueOf(indexTimeBox.trim());
+			indexTimeBoxMaxHour = indexTimeBoxMinHour;
+			return;
+		}
+		final String [] components = indexTimeBox.split("\\-");
+		indexTimeBoxMinHour = Integer.valueOf(components[0].trim());
+		indexTimeBoxMaxHour = Integer.valueOf(components[1].trim());
 	}
 
 	protected boolean checkIfMasterNode() {
@@ -427,5 +453,13 @@ public class NodeSettingsService {
 
 	public File getDataDirectory() {
 		return dataDirectory;
+	}
+
+	public int getIndexTimeBoxMinHour() {
+		return indexTimeBoxMinHour;
+	}
+
+	public int getIndexTimeBoxMaxHour() {
+		return indexTimeBoxMaxHour;
 	}
 }

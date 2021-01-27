@@ -26,6 +26,7 @@ import com.elefana.util.DiskBackedQueue;
 import com.elefana.util.IndexUtils;
 import com.elefana.util.NamedThreadFactory;
 import com.elefana.util.ThreadPriorities;
+import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -86,6 +87,14 @@ public class TableIndexCreator implements Runnable {
 
 	@Override
 	public void run() {
+		final DateTime dateTime = new DateTime();
+		if(dateTime.getHourOfDay() < nodeSettingsService.getIndexTimeBoxMinHour()) {
+			return;
+		}
+		if(dateTime.getHourOfDay() > nodeSettingsService.getIndexTimeBoxMaxHour()) {
+			return;
+		}
+
 		Connection connection = null;
 		try {
 			try {

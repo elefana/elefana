@@ -64,6 +64,8 @@ public class TableIndexCreatorTest implements TableIndexCreator.IndexCreatedList
 		when(nodeSettingsService.isMasterNode()).thenReturn(true);
 		when(nodeSettingsService.getMappingInterval()).thenReturn(1000L);
 		when(nodeSettingsService.getDataDirectory()).thenReturn(dataDirectory);
+		when(nodeSettingsService.getIndexTimeBoxMinHour()).thenReturn(0);
+		when(nodeSettingsService.getIndexTimeBoxMaxHour()).thenReturn(23);
 
 		when(jdbcTemplate.getDataSource()).thenReturn(dataSource);
 		when(dataSource.getConnection()).thenReturn(connection);
