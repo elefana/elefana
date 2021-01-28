@@ -308,6 +308,7 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 
 			if(!allIndexExists) {
 				bulkApiResponse.setErrors(true);
+				bulkApiResponse.setStatusCode(HttpResponseStatus.TOO_MANY_REQUESTS.code());
 				break;
 			}
 		}
@@ -317,7 +318,6 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 				if(indexOperations.get(index) != null) {
 					AVG_PER_INDEX_BATCH_SIZE.add(indexOperations.get(index).size());
 				}
-
 
 				if(nodeSettingsService.isUsingCitus()) {
 					final IndexTemplate indexTemplate;

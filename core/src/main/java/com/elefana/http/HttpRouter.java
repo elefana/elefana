@@ -210,6 +210,10 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 	}
 
 	private FullHttpResponse createErrorResponse(HttpRequest request, ElefanaException e) {
+		if(e.getStatusCode().equals(HttpResponseStatus.INTERNAL_SERVER_ERROR)) {
+			LOGGER.error(e.getMessage(), e);
+		}
+
 		final StringBuilder content = new StringBuilder();
 		content.append(e.getMessage());
 		content.append('\n');
