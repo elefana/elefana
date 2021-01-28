@@ -117,6 +117,13 @@ public class TableIndexCreator implements Runnable {
 	private Connection runFieldIndexCreation(Connection connection) throws SQLException {
 		final TableFieldIndexDelay fieldIndexDelay = new TableFieldIndexDelay();
 		while(fieldIndexQueue.peek(fieldIndexDelay)) {
+			final DateTime dateTime = new DateTime();
+			if(dateTime.getHourOfDay() < nodeSettingsService.getIndexTimeBoxMinHour()) {
+				return connection;
+			}
+			if(dateTime.getHourOfDay() > nodeSettingsService.getIndexTimeBoxMaxHour()) {
+				return connection;
+			}
 			if(fieldIndexDelay.getIndexTimestamp() > System.currentTimeMillis()) {
 				LOGGER.info("Too early to create field index for " + fieldIndexDelay.getTableName() + "->" + fieldIndexDelay.getFieldName() + ". Remaining time: " + TimeUnit.MILLISECONDS.toMinutes(fieldIndexDelay.getIndexTimestamp() - System.currentTimeMillis()) + " minutes");
 				return connection;
