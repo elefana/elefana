@@ -141,7 +141,9 @@ public class CoreIndexUtils implements IndexUtils {
 			((HikariDataSource) jdbcTemplate.getDataSource()).setMetricRegistry(metricRegistry);
 		}
 
-		addAllKnownTables(listTables());
+		if(!nodeSettingsService.isUsingCitus() || nodeSettingsService.isMasterNode()) {
+			addAllKnownTables(listTables());
+		}
 		tableIndexCreator.initialise();
 	}
 
