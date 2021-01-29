@@ -297,52 +297,50 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 		AVG_TOTAL_BATCH_SIZE.add(batchCount);
 		bulkOperationsBatchSize.mark(batchCount);
 
-		if(!bulkApiResponse.isErrors()) {
-			boolean allIndexExists = true;
-			for (String index : indexOperations.keySet()) {
-				try {
-					indexUtils.ensureIndexExists(index);
-				} catch (Exception e) {
-					LOGGER.error(e.getMessage(), e);
-					allIndexExists = false;
-				}
-
-				if(!allIndexExists) {
-					bulkApiResponse.setErrors(true);
-					bulkApiResponse.setStatusCode(HttpResponseStatus.TOO_MANY_REQUESTS.code());
-					break;
-				}
+		boolean allIndexExists = true;
+		for (String index : indexOperations.keySet()) {
+			try {
+				indexUtils.ensureIndexExists(index);
+			} catch (Exception e) {
+				LOGGER.error(e.getMessage(), e);
+				allIndexExists = false;
 			}
 
-			if(allIndexExists) {
-				for (String index : indexOperations.keySet()) {
-					if(indexOperations.get(index) != null) {
-						AVG_PER_INDEX_BATCH_SIZE.add(indexOperations.get(index).size());
-					}
+			if(!allIndexExists) {
+				bulkApiResponse.setErrors(true);
+				bulkApiResponse.setStatusCode(HttpResponseStatus.TOO_MANY_REQUESTS.code());
+				break;
+			}
+		}
 
-					if(nodeSettingsService.isUsingCitus()) {
-						final IndexTemplate indexTemplate;
-						if(indexTemplateService instanceof PsqlIndexTemplateService) {
-							indexTemplate = ((PsqlIndexTemplateService) indexTemplateService).getIndexTemplateForIndex(index);
-						} else {
-							indexTemplate = indexTemplateService.prepareGetIndexTemplateForIndex(context, index).get().getIndexTemplate();
-						}
-						if(indexTemplate != null && indexTemplate.isTimeSeries()) {
-							bulkIndexTime(bulkApiResponse, indexTemplate, index, indexOperations.get(index));
-						} else {
-							bulkIndexHash(bulkApiResponse, index, indexOperations.get(index));
-						}
+		if(allIndexExists) {
+			for (String index : indexOperations.keySet()) {
+				if(indexOperations.get(index) != null) {
+					AVG_PER_INDEX_BATCH_SIZE.add(indexOperations.get(index).size());
+				}
+
+				if(nodeSettingsService.isUsingCitus()) {
+					final IndexTemplate indexTemplate;
+					if(indexTemplateService instanceof PsqlIndexTemplateService) {
+						indexTemplate = ((PsqlIndexTemplateService) indexTemplateService).getIndexTemplateForIndex(index);
+					} else {
+						indexTemplate = indexTemplateService.prepareGetIndexTemplateForIndex(context, index).get().getIndexTemplate();
+					}
+					if(indexTemplate != null && indexTemplate.isTimeSeries()) {
+						bulkIndexTime(bulkApiResponse, indexTemplate, index, indexOperations.get(index));
 					} else {
 						bulkIndexHash(bulkApiResponse, index, indexOperations.get(index));
 					}
+				} else {
+					bulkIndexHash(bulkApiResponse, index, indexOperations.get(index));
 				}
-			} else {
-				bulkOperationsFailed.mark(batchCount);
+			}
+		} else {
+			bulkOperationsFailed.mark(batchCount);
 
-				for (String index : indexOperations.keySet()) {
-					for(BulkIndexOperation indexOperation : indexOperations.get(index)) {
-						indexOperation.dispose();
-					}
+			for (String index : indexOperations.keySet()) {
+				for(BulkIndexOperation indexOperation : indexOperations.get(index)) {
+					indexOperation.dispose();
 				}
 			}
 		}
