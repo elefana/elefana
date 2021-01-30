@@ -42,6 +42,7 @@ public class PooledStringBuilder implements Serializable, Appendable, CharSequen
 	}
 
 	private final StringBuilder backingBuilder = new StringBuilder(32);
+	private boolean disposed = false;
 
 	public String toStringAndRelease() {
 		final String result = toString();
@@ -50,20 +51,28 @@ public class PooledStringBuilder implements Serializable, Appendable, CharSequen
 	}
 
 	public void release() {
-		backingBuilder.setLength(0);
-
 		LOCK.lock();
-		POOL.add(this);
-		LOCK.unlock();
+		try {
+			if(!disposed) {
+				backingBuilder.setLength(0);
+				POOL.add(this);
+				disposed = true;
+			}
+		} finally {
+			LOCK.unlock();
+		}
 	}
 
 	public static PooledStringBuilder allocate() {
+		final PooledStringBuilder result;
 		LOCK.lock();
-		final PooledStringBuilder result = POOL.isEmpty() ? null : POOL.remove(0);
-		LOCK.unlock();
-		if(result == null) {
-			return new PooledStringBuilder();
+		if(POOL.isEmpty()) {
+			result = new PooledStringBuilder();
+		} else {
+			result = POOL.remove(0);
 		}
+		LOCK.unlock();
+		result.disposed = false;
 		return result;
 	}
 

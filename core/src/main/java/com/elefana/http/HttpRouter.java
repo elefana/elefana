@@ -203,7 +203,6 @@ public abstract class HttpRouter extends ChannelInboundHandlerAdapter {
 		} catch (Exception e) {
 			LOGGER.error(requestContent.toString());
 			LOGGER.error("[" + uri + "] " + e.getMessage(), e);
-			requestContent.release();
 			write(System.currentTimeMillis(), keepAlive, context, createResponse(httpRequest, HttpResponseStatus.INTERNAL_SERVER_ERROR, e.getMessage()));
 			return;
 		}
