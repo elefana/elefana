@@ -22,6 +22,7 @@ import com.codahale.metrics.Timer;
 import com.elefana.api.RequestExecutor;
 import com.elefana.api.document.*;
 import com.elefana.api.exception.ElefanaException;
+import com.elefana.api.indices.GetIndexTemplateForIndexRequest;
 import com.elefana.api.indices.IndexTemplate;
 import com.elefana.api.indices.IndexTimeBucket;
 import com.elefana.api.json.JsonUtils;
@@ -320,11 +321,18 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 				}
 
 				if(nodeSettingsService.isUsingCitus()) {
-					final IndexTemplate indexTemplate;
+					IndexTemplate indexTemplate;
 					if(indexTemplateService instanceof PsqlIndexTemplateService) {
 						indexTemplate = ((PsqlIndexTemplateService) indexTemplateService).getIndexTemplateForIndex(index);
 					} else {
-						indexTemplate = indexTemplateService.prepareGetIndexTemplateForIndex(context, index).get().getIndexTemplate();
+						GetIndexTemplateForIndexRequest request = indexTemplateService.prepareGetIndexTemplateForIndex(context, index);
+						try {
+							indexTemplate = request.get().getIndexTemplate();
+						} catch (ElefanaException e) {
+							bulkApiResponse.setErrors(true);
+							bulkApiResponse.setStatusCode(HttpResponseStatus.TOO_MANY_REQUESTS.code());
+							break;
+						}
 					}
 					if(indexTemplate != null && indexTemplate.isTimeSeries()) {
 						bulkIndexTime(bulkApiResponse, indexTemplate, index, indexOperations.get(index));
@@ -416,14 +424,15 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 					if(indexTask.getResponseStatus().equals(HttpResponseStatus.TOO_MANY_REQUESTS)) {
 						bulkApiResponse.setStatusCode(HttpResponseStatus.TOO_MANY_REQUESTS.code());
 					}
+
+					bulkOperationsFailed.mark(indexTask.getSize());
 				}
+
+				bulkApiResponse.setErrors(true);
+				return;
 			}
 
-			try {
-				results = bulkProcessingExecutorService.invokeAll(bulkIndexTasks);
-			} catch (Exception e) {
-				LOGGER.error(e.getMessage(), e);
-			}
+			results = bulkProcessingExecutorService.invokeAll(bulkIndexTasks);
 
 			final Timer.Context gatherTimer = bulkGatherResultsTimer.time();
 
@@ -445,9 +454,13 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 						}
 					}
 				} catch (InterruptedException e) {
+					bulkOperationsFailed.mark(task.getSize());
 					LOGGER.error(e.getMessage(), e);
+					success = false;
 				} catch (ExecutionException e) {
+					bulkOperationsFailed.mark(task.getSize());
 					LOGGER.error(e.getMessage(), e);
+					success = false;
 				}
 			}
 			gatherTimer.stop();
@@ -471,6 +484,8 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 					LOGGER.error(e.getMessage(), e);
 				}
 			}
+		} catch (InterruptedException e) {
+			LOGGER.error(e.getMessage(), e);
 		} finally {
 			if(results != null) {
 				for(Future<List<BulkItemResponse>> future : results) {

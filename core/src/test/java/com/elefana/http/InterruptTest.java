@@ -3,10 +3,12 @@
  */
 package com.elefana.http;
 
+import org.checkerframework.checker.units.qual.A;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -18,6 +20,7 @@ public class InterruptTest {
 		final Thread [] threads = new Thread[2];
 		final ReentrantLock lock = new ReentrantLock();
 		final AtomicInteger interruptCount = new AtomicInteger(-1);
+		final AtomicBoolean condition = new AtomicBoolean(true);
 
 		threads[0] = new Thread(() -> {
 			try {
@@ -28,11 +31,10 @@ public class InterruptTest {
 			try {
 				lock.lock();
 				interruptCount.incrementAndGet();
-				while(true) {
-					Thread.sleep(100);
+				synchronized (this) {
+					this.wait(30000L);
 				}
 			} catch (InterruptedException e) {
-				interruptCount.incrementAndGet();
 			} finally {
 				lock.unlock();
 			}
