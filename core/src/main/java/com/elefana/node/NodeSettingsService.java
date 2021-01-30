@@ -114,7 +114,7 @@ public class NodeSettingsService {
 			httpGzipEnabled = environment.getRequiredProperty("elefana.http.gzip", Boolean.class);
 			maxHttpPipelineEvents = environment.getRequiredProperty("elefana.http.maxEvents", Integer.class);
 			maxHttpPayloadSize = environment.getRequiredProperty("elefana.http.maxPayloadSize", Integer.class);
-			httpTimeout = environment.getProperty("elefana.http.timeout", Integer.class, 300);
+			httpTimeout = environment.getProperty("elefana.http.timeout", Integer.class, 600);
 			httpAddress = httpIp + ":" + httpPort;
 			httpThreads = environment.getProperty("elefana.http.threads", Integer.class, Runtime.getRuntime().availableProcessors());
 			httpForceNio = environment.getProperty("elefana.http.nio", Boolean.class, false);
