@@ -403,70 +403,87 @@ public class PsqlBulkIngestService implements BulkIngestService, RequestExecutor
 	}
 
 	private void bulkItemResponse(BulkResponse bulkApiResponse, String index, List<BulkIndexTask> bulkIndexTasks ) {
-		boolean lockSuccess = true;
-		for(BulkIndexTask indexTask : bulkIndexTasks) {
-			lockSuccess &= indexTask.lockStagingTable();
-		}
-		if(!lockSuccess) {
-			for(BulkIndexTask indexTask : bulkIndexTasks) {
-				indexTask.unlockStagingTable();
-				if(indexTask.getResponseStatus().equals(HttpResponseStatus.TOO_MANY_REQUESTS)) {
-					bulkApiResponse.setStatusCode(HttpResponseStatus.TOO_MANY_REQUESTS.code());
-				}
-			}
-		}
-
 		List<Future<List<BulkItemResponse>>> results = null;
+
 		try {
-			results = bulkProcessingExecutorService.invokeAll(bulkIndexTasks);
-		} catch (Exception e) {
-			LOGGER.error(e.getMessage(), e);
-		}
-
-		final Timer.Context gatherTimer = bulkGatherResultsTimer.time();
-
-		boolean success = true;
-		for (int i = 0; i < results.size(); i++) {
-			final BulkIndexTask task = bulkIndexTasks.get(i);
-			task.unlockStagingTable();
-			try {
-				final List<BulkItemResponse> nextResult = results.get(i).get();
-				if (nextResult.isEmpty()) {
-					bulkOperationsFailed.mark(task.getSize());
-					success = false;
-				} else {
-					bulkOperationsSuccess.mark(task.getTotalSuccess());
-					bulkOperationsFailed.mark(task.getTotalFailed());
-
-					if(task.getTotalFailed() > 0) {
-						success = false;
-					}
-				}
-			} catch (InterruptedException e) {
-				LOGGER.error(e.getMessage(), e);
-			} catch (ExecutionException e) {
-				LOGGER.error(e.getMessage(), e);
+			boolean lockSuccess = true;
+			for(BulkIndexTask indexTask : bulkIndexTasks) {
+				lockSuccess &= indexTask.lockStagingTable();
 			}
-		}
-		gatherTimer.stop();
-
-		if(!success) {
-			bulkApiResponse.setErrors(true);
-		} else {
-			bulkIndexService.notifyContentAvailable();
-		}
-		for (int i = 0; i < results.size(); i++) {
-			try {
-				final List<BulkItemResponse> nextResult = results.get(i).get();
-
-				if(!success) {
-					for(BulkItemResponse response : nextResult) {
-						response.setResult(BulkItemResponse.STATUS_FAILED);
+			if(!lockSuccess) {
+				for(BulkIndexTask indexTask : bulkIndexTasks) {
+					indexTask.unlockStagingTable();
+					if(indexTask.getResponseStatus().equals(HttpResponseStatus.TOO_MANY_REQUESTS)) {
+						bulkApiResponse.setStatusCode(HttpResponseStatus.TOO_MANY_REQUESTS.code());
 					}
 				}
-				bulkApiResponse.getItems().addAll(nextResult);
+			}
+
+			try {
+				results = bulkProcessingExecutorService.invokeAll(bulkIndexTasks);
 			} catch (Exception e) {
 				LOGGER.error(e.getMessage(), e);
+			}
+
+			final Timer.Context gatherTimer = bulkGatherResultsTimer.time();
+
+			boolean success = true;
+			for (int i = 0; i < results.size(); i++) {
+				final BulkIndexTask task = bulkIndexTasks.get(i);
+				task.unlockStagingTable();
+				try {
+					final List<BulkItemResponse> nextResult = results.get(i).get();
+					if (nextResult.isEmpty()) {
+						bulkOperationsFailed.mark(task.getSize());
+						success = false;
+					} else {
+						bulkOperationsSuccess.mark(task.getTotalSuccess());
+						bulkOperationsFailed.mark(task.getTotalFailed());
+
+						if(task.getTotalFailed() > 0) {
+							success = false;
+						}
+					}
+				} catch (InterruptedException e) {
+					LOGGER.error(e.getMessage(), e);
+				} catch (ExecutionException e) {
+					LOGGER.error(e.getMessage(), e);
+				}
+			}
+			gatherTimer.stop();
+
+			if(!success) {
+				bulkApiResponse.setErrors(true);
+			} else {
+				bulkIndexService.notifyContentAvailable();
+			}
+			for (int i = 0; i < results.size(); i++) {
+				try {
+					final List<BulkItemResponse> nextResult = results.get(i).get();
+
+					if(!success) {
+						for(BulkItemResponse response : nextResult) {
+							response.setResult(BulkItemResponse.STATUS_FAILED);
+						}
+					}
+					bulkApiResponse.getItems().addAll(nextResult);
+				} catch (Exception e) {
+					LOGGER.error(e.getMessage(), e);
+				}
+			}
+		} finally {
+			if(results != null) {
+				for(Future<List<BulkItemResponse>> future : results) {
+					try {
+						if(!future.isDone()) {
+							future.cancel(false);
+							future.get();
+						}
+					} catch (Exception e) {}
+				}
+			}
+			for(BulkIndexTask indexTask : bulkIndexTasks) {
+				indexTask.unlockStagingTable();
 			}
 		}
 	}
