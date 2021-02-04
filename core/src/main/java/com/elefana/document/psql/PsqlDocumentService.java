@@ -452,8 +452,6 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 		for (String index : indexUtils.listIndicesForIndexPattern(indexPattern)) {
 			final String queryTarget = indexUtils.getQueryTarget(index);
 
-			indexFieldStatsService.deleteIndex(index);
-
 			if(typePattern.equals("*") && nodeSettingsService.isUsingCitus()) {
 				StringBuilder queryBuilder = new StringBuilder();
 				queryBuilder.append("TRUNCATE ");
@@ -470,10 +468,15 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 					if(indexTemplate != null) {
 						tableIndexCreator.deletePsqlIndices(index, queryTarget, indexTemplate);
 					}
+
+					indexFieldStatsService.deleteIndex(index);
 				} catch (Exception e) {
 					LOGGER.error(e.getMessage(), e);
 				}
 			} else {
+				//TODO: Handle delete by type properly in stats
+				indexFieldStatsService.deleteIndex(index);
+
 				for (String type : indexFieldMappingService.getTypesForIndex(index, typePattern)) {
 					StringBuilder queryBuilder = new StringBuilder();
 					queryBuilder.append("DELETE FROM ");
@@ -590,8 +593,11 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 			}
 
 			final IndexTemplate indexTemplate = indexTemplateService.getIndexTemplateForIndex(index);
-			if(indexTemplate != null) {
+			if(truncate && indexTemplate != null) {
 				tableIndexCreator.deletePsqlIndices(index, queryTarget, indexTemplate);
+			}
+			if(truncate) {
+				indexFieldStatsService.deleteIndex(index);
 			}
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);

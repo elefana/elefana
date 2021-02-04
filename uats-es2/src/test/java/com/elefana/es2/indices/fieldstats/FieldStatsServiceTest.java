@@ -108,6 +108,38 @@ public class FieldStatsServiceTest {
                 .body("indices." + index + ".fields.string.max_doc", equalTo(documentsAfterDelete))
                 .body("indices." + index + ".fields.string.doc_count", equalTo(documentsAfterDelete))
                 .body("indices." + index + ".fields.string.sum_doc_freq", equalTo(documentsAfterDelete * 2));
+
+        given()
+                .when()
+                .delete("/" + index)
+                .then()
+                .statusCode(200);
+        waitForEmptyFieldStats(index,  index,"string", false);
+    }
+
+    @Test(timeout=30000)
+    public void testDeleteIndexAsync() {
+        final String index = UUID.randomUUID().toString();
+        final String type = "test";
+
+        int documentsBeforeDelete = 10;
+        int documentsAfterDelete = 20;
+
+        submitDocumentNTimes(documentsBeforeDelete, testDocument, index, type);
+        given()
+                .when()
+                .delete("/" + index + "?async=true")
+                .then()
+                .statusCode(200);
+        waitForEmptyFieldStats(index,  index,"string", false);
+
+        submitDocumentNTimes(documentsAfterDelete, testDocument, index, type);
+
+        getFieldStats(index,  index,"string", false)
+                .body("_shards.successful", equalTo(1))
+                .body("indices." + index + ".fields.string.max_doc", equalTo(documentsAfterDelete))
+                .body("indices." + index + ".fields.string.doc_count", equalTo(documentsAfterDelete))
+                .body("indices." + index + ".fields.string.sum_doc_freq", equalTo(documentsAfterDelete * 2));
     }
 
     @Test(timeout=60000)
@@ -238,6 +270,31 @@ public class FieldStatsServiceTest {
                 .statusCode(200);
         Map jsonData = validatableResponse.extract().body().jsonPath().getMap("indices." + index);
         while(jsonData == null || jsonData.isEmpty()) {
+            try {
+                Thread.sleep(100L);
+            } catch (Exception e) {}
+            validatableResponse = given()
+                    .request()
+                    .body("{\"fields\":[\"" + field + "\"]}")
+                    .when()
+                    .post("/" + pattern + "/_field_stats?level=" + (clusterLevel ? "cluster" : "indices"))
+                    .then()
+                    .statusCode(200);
+            jsonData = validatableResponse.extract().body().jsonPath().getMap("indices." + index);
+        }
+        return validatableResponse;
+    }
+
+    private ValidatableResponse waitForEmptyFieldStats(String pattern, String index, String field, boolean clusterLevel) {
+        ValidatableResponse validatableResponse = given()
+                .request()
+                .body("{\"fields\":[\"" + field + "\"]}")
+                .when()
+                .post("/" + pattern + "/_field_stats?level=" + (clusterLevel ? "cluster" : "indices"))
+                .then()
+                .statusCode(200);
+        Map jsonData = validatableResponse.extract().body().jsonPath().getMap("indices." + index);
+        while(jsonData != null && !jsonData.isEmpty()) {
             try {
                 Thread.sleep(100L);
             } catch (Exception e) {}
