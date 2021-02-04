@@ -495,6 +495,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 					queryBuilder.append("'");
 
 					try {
+						LOGGER.info(queryBuilder.toString());
 						rows += jdbcTemplate.update(queryBuilder.toString());
 						if(rows > 0) {
 							indexFieldMappingService.scheduleIndexForMappingAndStats(index);
