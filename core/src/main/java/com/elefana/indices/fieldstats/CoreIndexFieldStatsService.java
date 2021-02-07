@@ -396,6 +396,9 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
         final Set<String> result = new HashSet<String>();
         try {
             final List<String> indices = loadUnloadManager.compileIndexPattern(indexPattern);
+            if(indices.isEmpty()) {
+                return result;
+            }
             final StringBuilder queryBuilder = new StringBuilder();
             queryBuilder.append("SELECT DISTINCT _fieldname FROM elefana_field_stats_fieldstats WHERE _indexname IN (");
             for(int i = 0; i < indices.size(); i++) {
