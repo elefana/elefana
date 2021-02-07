@@ -101,15 +101,11 @@ public abstract class ApiRequest<T extends ApiResponse> {
 	}
 
 	public T get() throws ElefanaException {
-		if(cancelled.get()) {
-			return null;
-		}
-
 		try {
 			if(backingFuture == null) {
 				execute();
 			}
-			if(backingFuture == null) {
+			if(backingFuture == null && cancelled.get()) {
 				return null;
 			}
 			return backingFuture.get();
