@@ -39,6 +39,8 @@ public abstract class ApiRequest<T extends ApiResponse> {
 	protected final ChannelPromise channelPromise;
 	@JsonIgnore
 	protected final AtomicBoolean executionStarted = new AtomicBoolean(false);
+	@JsonIgnore
+	protected final AtomicBoolean cancelled = new AtomicBoolean(false);
 
 	@JsonIgnore
 	protected Future<T> backingFuture;
@@ -67,6 +69,9 @@ public abstract class ApiRequest<T extends ApiResponse> {
 		if(executionStarted.getAndSet(true)) {
 			return;
 		}
+		if(cancelled.get()) {
+			return;
+		}
 		if(channelPromise == null) {
 			backingFuture = requestExecutor.submit(internalExecute());
 		} else {
@@ -75,6 +80,9 @@ public abstract class ApiRequest<T extends ApiResponse> {
 	}
 	
 	public void cancel() {
+		if(cancelled.getAndSet(true)) {
+			return;
+		}
 		if(channelPromise != null) {
 			if(channelPromise.isDone()) {
 				return;
@@ -93,9 +101,16 @@ public abstract class ApiRequest<T extends ApiResponse> {
 	}
 
 	public T get() throws ElefanaException {
+		if(cancelled.get()) {
+			return null;
+		}
+
 		try {
 			if(backingFuture == null) {
 				execute();
+			}
+			if(backingFuture == null) {
+				return null;
 			}
 			return backingFuture.get();
 		} catch (InterruptedException e) {
