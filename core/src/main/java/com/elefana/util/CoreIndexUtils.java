@@ -19,12 +19,10 @@ import com.codahale.metrics.MetricRegistry;
 import com.elefana.api.exception.ElefanaException;
 import com.elefana.api.exception.ShardFailedException;
 import com.elefana.api.indices.*;
-import com.elefana.api.json.JsonUtils;
 import com.elefana.api.util.PooledStringBuilder;
 import com.elefana.indices.IndexTemplateService;
 import com.elefana.node.NodeSettingsService;
 import com.elefana.table.TableIndexCreator;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.uuid.EthernetAddress;
 import com.fasterxml.uuid.Generators;
 import com.fasterxml.uuid.impl.TimeBasedGenerator;
@@ -62,6 +60,8 @@ public class CoreIndexUtils implements IndexUtils {
 	private static final IndexStorageSettings DEFAULT_INDEX_STORAGE_SETTINGS = new IndexStorageSettings();
 	private static final Logger LOGGER = LoggerFactory.getLogger(CoreIndexUtils.class);
 
+	public static final Lock TABLE_CREATION_LOCK = new ReentrantLock();
+
 	private static final LoadingCache<String, String> INDEX_NAME_TO_TABLE_NAME_CACHE = CacheBuilder.newBuilder().
 			maximumSize(100).expireAfterAccess(5L, TimeUnit.MINUTES).
 			build(new CacheLoader<String, String>() {
@@ -73,7 +73,6 @@ public class CoreIndexUtils implements IndexUtils {
 
 	private final Map<String, String[]> jsonPathCache = new ConcurrentHashMap<String, String[]>();
 	private final Set<String> knownTables = new ConcurrentSkipListSet<String>();
-	private final Lock tableCreationLock = new ReentrantLock();
 	private final LongHashFunction xxHash = LongHashFunction.xx();
 
 	private final Map<String, ThreadLocal<NoAllocTimestampExtractor>> timestampExtractorCache = new ConcurrentHashMap<String, ThreadLocal<NoAllocTimestampExtractor> >();
@@ -371,9 +370,9 @@ public class CoreIndexUtils implements IndexUtils {
 		if (isKnownTable(tableName)) {
 			return;
 		}
-		tableCreationLock.lock();
+		TABLE_CREATION_LOCK.lock();
 		if (isKnownTable(tableName)) {
-			tableCreationLock.unlock();
+			TABLE_CREATION_LOCK.unlock();
 			return;
 		}
 
@@ -504,7 +503,7 @@ public class CoreIndexUtils implements IndexUtils {
 
 			connection.close();
 			addKnownTable(tableName);
-			tableCreationLock.unlock();
+			TABLE_CREATION_LOCK.unlock();
 		} catch (Exception e) {
 			if (connection != null) {
 				try {
@@ -514,7 +513,7 @@ public class CoreIndexUtils implements IndexUtils {
 				}
 			}
 			e.printStackTrace();
-			tableCreationLock.unlock();
+			TABLE_CREATION_LOCK.unlock();
 			throw new ShardFailedException(e);
 		}
 	}
