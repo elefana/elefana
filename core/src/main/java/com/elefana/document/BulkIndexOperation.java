@@ -28,6 +28,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class BulkIndexOperation implements DocumentSourceProvider {
 	@JsonIgnore
+	private static final int MAX_POOL_SIZE = 1024 * 16;
+	@JsonIgnore
 	private static final Queue<BulkIndexOperation> POOL = new ConcurrentLinkedQueue<BulkIndexOperation>();
 	private static AtomicInteger MAX_SOURCE_LENGTH = new AtomicInteger(2048);
 	
@@ -61,6 +63,11 @@ public class BulkIndexOperation implements DocumentSourceProvider {
 		documentLength = 0;
 
 		released = true;
+
+		if(POOL.size() > MAX_POOL_SIZE) {
+			document = null;
+			return;
+		}
 		POOL.offer(this);
 	}
 

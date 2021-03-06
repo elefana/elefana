@@ -30,8 +30,9 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class PooledStringBuilder implements Serializable, Appendable, CharSequence {
 	private static final int INITIAL_POOL_SIZE = 32;
+	private static final int MAX_POOL_SIZE = 1024 * 16;
 	private static final Lock LOCK = new ReentrantLock();
-	private static final List<PooledStringBuilder> POOL = new ArrayList<PooledStringBuilder>(INITIAL_POOL_SIZE + 1);
+	private static final List<PooledStringBuilder> POOL = new ArrayList<PooledStringBuilder>(MAX_POOL_SIZE);
 
 	private static final ThreadLocalByteArray BYTE_ARRAY = new ThreadLocalByteArray();
 
@@ -55,7 +56,9 @@ public class PooledStringBuilder implements Serializable, Appendable, CharSequen
 		try {
 			if(!disposed) {
 				backingBuilder.setLength(0);
-				POOL.add(this);
+				if(POOL.size() < MAX_POOL_SIZE) {
+					POOL.add(this);
+				}
 				disposed = true;
 			}
 		} finally {

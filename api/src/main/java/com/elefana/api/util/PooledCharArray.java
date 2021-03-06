@@ -22,8 +22,9 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class PooledCharArray {
+	private static final int MAX_POOL_SIZE = 1024 * 16;
 	private static final Lock LOCK = new ReentrantLock();
-	private static final List<char[]> POOL = new ArrayList<char[]>(32);
+	private static final List<char[]> POOL = new ArrayList<char[]>(MAX_POOL_SIZE);
 	private static final AtomicInteger MAX_ARRAY_SIZE = new AtomicInteger(256);
 
 	public static char[] allocate() {
@@ -52,7 +53,9 @@ public class PooledCharArray {
 		MAX_ARRAY_SIZE.set(Math.max(MAX_ARRAY_SIZE.get(), arr.length));
 
 		LOCK.lock();
-		POOL.add(arr);
+		if(POOL.size() < MAX_POOL_SIZE) {
+			POOL.add(arr);
+		}
 		LOCK.unlock();
 	}
 }
