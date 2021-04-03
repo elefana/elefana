@@ -61,6 +61,7 @@ import java.util.concurrent.*;
 @DependsOn({"nodeSettingsService"})
 public class CoreIndexFieldStatsService implements IndexFieldStatsService, RequestExecutor {
     private static final Logger LOGGER = LoggerFactory.getLogger(CoreIndexFieldStatsService.class);
+    private static final int TABLES_FROM_DB_BATCH_SIZE = 6;
 
     @Autowired
     protected Environment environment;
@@ -399,28 +400,36 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
             if(indices.isEmpty()) {
                 return result;
             }
-            final StringBuilder queryBuilder = new StringBuilder();
-            queryBuilder.append("SELECT DISTINCT _fieldname FROM elefana_field_stats_fieldstats WHERE _indexname IN (");
-            for(int i = 0; i < indices.size(); i++) {
-                final String index = indices.get(i);
-                queryBuilder.append('\'');
-                queryBuilder.append(index);
-                queryBuilder.append('\'');
-                if(i < indices.size() - 1) {
-                    queryBuilder.append(',');
-                }
-            }
-            queryBuilder.append(");");
 
-            final String query = queryBuilder.toString();
-            LOGGER.info(query);
-            final SqlRowSet sqlRowSet = jdbcTemplate.queryForRowSet(query);
-            while(sqlRowSet.next()) {
-                result.add(sqlRowSet.getString("_fieldname"));
+            for(int i = 0; i < indices.size(); i += TABLES_FROM_DB_BATCH_SIZE) {
+                getFieldNamesFromDatabase(result, indices, i, TABLES_FROM_DB_BATCH_SIZE);
             }
         } catch (Exception e) {
             LOGGER.error(e.getMessage(), e);
         }
         return result;
+    }
+
+    private void getFieldNamesFromDatabase(final Set<String> result, final List<String> indices,
+                                           int from, int length) {
+        final StringBuilder queryBuilder = new StringBuilder();
+        queryBuilder.append("SELECT DISTINCT _fieldname FROM elefana_field_stats_fieldstats WHERE _indexname IN (");
+        for(int i = from; i < indices.size() && i < from + length; i++) {
+            final String index = indices.get(i);
+            queryBuilder.append('\'');
+            queryBuilder.append(index);
+            queryBuilder.append('\'');
+            if(i < indices.size() - 1 && i < (from + length) - 1) {
+                queryBuilder.append(',');
+            }
+        }
+        queryBuilder.append(");");
+
+        final String query = queryBuilder.toString();
+        LOGGER.info(query);
+        final SqlRowSet sqlRowSet = jdbcTemplate.queryForRowSet(query);
+        while(sqlRowSet.next()) {
+            result.add(sqlRowSet.getString("_fieldname"));
+        }
     }
 }
