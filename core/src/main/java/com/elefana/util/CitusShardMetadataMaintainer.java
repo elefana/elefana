@@ -122,10 +122,10 @@ public class CitusShardMetadataMaintainer implements Runnable {
 				tablePair.getTableName() + "' AND shardmaxvalue IS NULL");
 		if(rowSet.next()) {
 			if(rowSet.getLong(1) > 0) {
+				LOGGER.info("Null shards found on table " + tablePair.getTableName());
 				return true;
 			}
 		}
-		LOGGER.info(tablePair.getTableName() + " no null shards");
 		return false;
 	}
 
