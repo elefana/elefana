@@ -56,6 +56,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Service
 public class PsqlBulkIndexService implements Runnable {
@@ -83,6 +85,7 @@ public class PsqlBulkIndexService implements Runnable {
 	protected final Set<String> routedTables = new ConcurrentSkipListSet<String>();
 
 	protected ExecutorService executorService;
+	protected Lock [] shardLocks;
 
 	protected Meter bulkIndexMeter;
 	private Timer bulkIndexTimer;
@@ -92,6 +95,11 @@ public class PsqlBulkIndexService implements Runnable {
 
 	@PostConstruct
 	public void postConstruct() {
+		shardLocks = new Lock[environment.getProperty("elefana.worker.bulk.shard.locks", Integer.class, 100)];
+		for(int i = 0; i < shardLocks.length; i++) {
+			shardLocks[i] = new ReentrantLock();
+		}
+
 		duplicateKeyCounter = metricRegistry.counter(MetricRegistry.name("bulk", "key", "duplicates"));
 		bulkIndexTimer = metricRegistry.timer(MetricRegistry.name("bulk", "index", "duration", "total"));
 		bulkIndexMeter = metricRegistry.meter(MetricRegistry.name("bulk", "index", "rows"));
@@ -269,6 +277,9 @@ public class PsqlBulkIndexService implements Runnable {
 					routedTables.add(stagingTableName);
 					result |= true;
 					break;
+				case DEFER:
+					routedTables.remove(stagingTableName);
+					break;
 				case EXCEPTION:
 					routedTables.remove(stagingTableName);
 					ingestTable.unlockTable(stagingTableId);
@@ -336,7 +347,7 @@ public class PsqlBulkIndexService implements Runnable {
 		if(!resultSet.next()) {
 			LOGGER.info("No results in " + bulkIngestTable);
 			preparedStatement.close();
-			return BulkIndexResult.ROUTE;
+			return BulkIndexResult.DEFER;
 		}
 
 		final long timestamp = resultSet.getLong("_timestamp");
@@ -346,16 +357,33 @@ public class PsqlBulkIndexService implements Runnable {
 		final long shardId = getShardId(connection, targetTable, shardOffset);
 		if(shardId == -1) {
 			LOGGER.info("No shard available for " + bulkIngestTable);
-			return BulkIndexResult.ROUTE;
+			return BulkIndexResult.DEFER;
 		}
-
-		final String query = "SELECT master_append_table_to_shard(" + shardId + ", '" + bulkIngestTable
-				+ "', '" + nodeSettingsService.getCitusCoordinatorHost() + "', " + nodeSettingsService.getCitusCoordinatorPort() + ");";
-		PreparedStatement appendShardStatement = connection.prepareStatement(query);
-		appendShardStatement.execute();
-		appendShardStatement.close();
-		connection.commit();
-		return BulkIndexResult.SUCCESS;
+		final int shardLockIndex = (int) (shardId % shardLocks.length);
+		try {
+			if(shardLocks[shardLockIndex].tryLock(100L, TimeUnit.MILLISECONDS)) {
+				try {
+					final String query = "SELECT master_append_table_to_shard(" + shardId + ", '" + bulkIngestTable
+							+ "', '" + nodeSettingsService.getCitusCoordinatorHost() + "', " + nodeSettingsService.getCitusCoordinatorPort() + ");";
+					PreparedStatement appendShardStatement = connection.prepareStatement(query);
+					appendShardStatement.execute();
+					appendShardStatement.close();
+					connection.commit();
+					return BulkIndexResult.SUCCESS;
+				} catch (Exception e) {
+					LOGGER.error("Error indexing " + bulkIngestTable + " to shard " + shardId + " via coordinator " +
+							nodeSettingsService.getCitusCoordinatorHost() + ":" +
+							nodeSettingsService.getCitusCoordinatorPort() + ". " + e.getMessage(), e);
+					return BulkIndexResult.EXCEPTION;
+				} finally {
+					shardLocks[shardLockIndex].unlock();
+				}
+			} else {
+				return BulkIndexResult.DEFER;
+			}
+		} catch (InterruptedException e) {
+			return BulkIndexResult.EXCEPTION;
+		}
 	}
 
 	protected BulkIndexResult mergeStagingTableIntoPartitionTable(Connection connection, String bulkIngestTable, String targetTable) throws IOException, SQLException {
@@ -383,6 +411,7 @@ public class PsqlBulkIndexService implements Runnable {
 		SUCCESS,
 		ROUTE,
 		DUPLICATE,
-		EXCEPTION
+		EXCEPTION,
+		DEFER
 	}
 }
