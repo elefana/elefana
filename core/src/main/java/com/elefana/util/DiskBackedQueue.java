@@ -13,6 +13,7 @@ import net.openhft.chronicle.queue.TailerDirection;
 import net.openhft.chronicle.queue.impl.StoreFileListener;
 import net.openhft.chronicle.queue.impl.single.ElefanaChronicleQueue;
 import net.openhft.chronicle.wire.DocumentContext;
+import org.checkerframework.checker.units.qual.A;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,9 +22,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Collection;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileListener {
@@ -38,6 +37,7 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 	private final ConcurrentMap<String, Long> lastAccessed;
 
 	private final AtomicBoolean disposed = new AtomicBoolean(false);
+	private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
 	public DiskBackedQueue(String queueId, File dataDirectory, Class<T> clazz) {
 		this(queueId, dataDirectory, clazz, false);
@@ -102,10 +102,8 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 			if(disposed.get()) {
 				return totalPruned;
 			}
-			synchronized(tailer) {
-				if(cycle > tailer.cycle()) {
-					continue;
-				}
+			if(cycle > tailer.cycle()) {
+				continue;
 			}
 			final QueueCycleFile file = files.get(cycle);
 			if(!file.isReleased()) {
@@ -179,6 +177,7 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
 		}
+		executor.shutdownNow();
 	}
 
 	public void clear() {
@@ -192,7 +191,7 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 		if(disposed.get()) {
 			return false;
 		}
-		synchronized(tailer) {
+		final Future<Boolean> callable = executor.submit(() -> {
 			long oldIndex = tailer.index();
 			tailer.direction(TailerDirection.FORWARD);
 			boolean success = true;
@@ -208,7 +207,15 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 			}
 			tailer.moveToIndex(oldIndex);
 			return success;
+		});
+		try {
+			return callable.get();
+		} catch (InterruptedException e) {
+			LOGGER.error(e.getMessage(), e);
+		} catch (ExecutionException e) {
+			LOGGER.error(e.getMessage(), e);
 		}
+		return false;
 	}
 
 	public long getTailerIndex() {
@@ -221,14 +228,22 @@ public class DiskBackedQueue<T extends BytesMarshallable> implements StoreFileLi
 		if(disposed.get()) {
 			return false;
 		}
-		synchronized(tailer) {
+		final Future<Boolean> callable = executor.submit(() -> {
 			try (DocumentContext context = tailer.readingDocument()) {
 				if(!context.isPresent()) {
 					return false;
 				}
 				return context.wire().readBytes(result);
 			}
+		});
+		try {
+			return callable.get();
+		} catch (InterruptedException e) {
+			LOGGER.error(e.getMessage(), e);
+		} catch (ExecutionException e) {
+			LOGGER.error(e.getMessage(), e);
 		}
+		return false;
 	}
 
 	public boolean offer(T t) {

@@ -40,8 +40,8 @@ subprojects {
 	targetCompatibility = 1.8
 
 	ext {
-		chronicleQueueVersion = '5.20.123'
-		chronicleMapVersion = '3.20.84'
+		chronicleQueueVersion = '5.21ea42'
+		chronicleMapVersion = '3.21ea41'
 		commonsCodecVersion = '1.11'
 		commonsMathVersion = '3.6.1'
 		commonsTextVersion = '1.6'
@@ -55,7 +55,7 @@ subprojects {
 		jsoniterVersion = '0.9.21'
 		metricsVersion = '4.1.18'
 		nativesLoaderVersion = '1.0.0'
-		nettyVersion = '4.1.52.Final'
+		nettyVersion = '4.1.63.Final'
 		oshiVersion = '4.0.0'
 		jnaVersion = '5.4.0'
 		restAssuredVersion = '3.1.1'
