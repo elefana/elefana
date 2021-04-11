@@ -71,6 +71,7 @@ public class NodeSettingsService {
 	private boolean transportCompressionEnabled;
 	private String transportAddress;
 	private int transportThreads;
+	private int transportTimeout;
 	private boolean transportForceNio;
 
 	private boolean usingCitus = false;
@@ -128,6 +129,7 @@ public class NodeSettingsService {
 					false);
 			transportAddress = transportIp + ":" + transportPort;
 			transportThreads = environment.getProperty("elefana.transport.server.threads", Integer.class, Runtime.getRuntime().availableProcessors());
+			transportTimeout = environment.getProperty("elefana.transport.server.timeout", Integer.class, 60000);
 			transportForceNio = environment.getProperty("elefana.transport.server.nio", Boolean.class, false);
 		}
 
@@ -352,6 +354,10 @@ public class NodeSettingsService {
 
 	public boolean isTransportCompressionEnabled() {
 		return transportCompressionEnabled;
+	}
+
+	public int getTransportTimeout() {
+		return transportTimeout;
 	}
 
 	public int getMaxHttpPipelineEvents() {
