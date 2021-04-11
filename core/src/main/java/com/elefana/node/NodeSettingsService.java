@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 @Component
 public class NodeSettingsService {
@@ -71,7 +72,8 @@ public class NodeSettingsService {
 	private boolean transportCompressionEnabled;
 	private String transportAddress;
 	private int transportThreads;
-	private int transportTimeout;
+	private int transportResponseTimeout;
+	private int transportKeepAliveTimeout;
 	private boolean transportForceNio;
 
 	private boolean usingCitus = false;
@@ -129,7 +131,8 @@ public class NodeSettingsService {
 					false);
 			transportAddress = transportIp + ":" + transportPort;
 			transportThreads = environment.getProperty("elefana.transport.server.threads", Integer.class, Runtime.getRuntime().availableProcessors());
-			transportTimeout = environment.getProperty("elefana.transport.server.timeout", Integer.class, 55000);
+			transportResponseTimeout = environment.getProperty("elefana.transport.server.responseTimeout", Integer.class, 55);
+			transportKeepAliveTimeout = environment.getProperty("elefana.transport.server.keepAliveTimeout", Integer.class, (int) TimeUnit.HOURS.toSeconds(1));
 			transportForceNio = environment.getProperty("elefana.transport.server.nio", Boolean.class, false);
 		}
 
@@ -356,8 +359,12 @@ public class NodeSettingsService {
 		return transportCompressionEnabled;
 	}
 
-	public int getTransportTimeout() {
-		return transportTimeout;
+	public int getTransportResponseTimeout() {
+		return transportResponseTimeout;
+	}
+
+	public int getTransportKeepAliveTimeout() {
+		return transportKeepAliveTimeout;
 	}
 
 	public int getMaxHttpPipelineEvents() {
