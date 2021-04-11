@@ -129,7 +129,7 @@ public class NodeSettingsService {
 					false);
 			transportAddress = transportIp + ":" + transportPort;
 			transportThreads = environment.getProperty("elefana.transport.server.threads", Integer.class, Runtime.getRuntime().availableProcessors());
-			transportTimeout = environment.getProperty("elefana.transport.server.timeout", Integer.class, 60000);
+			transportTimeout = environment.getProperty("elefana.transport.server.timeout", Integer.class, 55000);
 			transportForceNio = environment.getProperty("elefana.transport.server.nio", Boolean.class, false);
 		}
 
