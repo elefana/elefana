@@ -17,72 +17,93 @@ package com.elefana.node;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public abstract class OsStats implements Runnable {
 	private final com.elefana.es.compat.stats.OsStats stats = new com.elefana.es.compat.stats.OsStats();
-	private final ReadWriteLock lock = new ReentrantReadWriteLock();
-	private final Map<String, Object> currentStats = new HashMap<String, Object>();
+
+	private final Map<String, Object> tempStats = new HashMap<String, Object>();
+	private final Map<String, Object> currentStats = new ConcurrentHashMap<>();
+
+	private final AtomicReference<String> osName = new AtomicReference<>("");
+	private final AtomicReference<String> osVersion = new AtomicReference<>("");
+	private final AtomicReference<String> osArch = new AtomicReference<>("");
+	private final AtomicInteger availableProcessors = new AtomicInteger(1);
+	private final AtomicLong freePhysicalMemory = new AtomicLong(1);
+	private final AtomicLong totalPhysicalMemory = new AtomicLong(1);
+	private final AtomicLong freeSwapSpace = new AtomicLong(1);
+	private final AtomicLong totalSwapSpace = new AtomicLong(1);
+	private final AtomicReference<double[]> systemLoadAverage = new AtomicReference<>(new double[0]);
+	private final AtomicInteger cpuLoad = new AtomicInteger(1);
 
 	@Override
 	public void run() {
-		lock.writeLock().lock();
-
 		try {
-			generateCurrentStats(currentStats);
+			generateCurrentStats(tempStats);
+			currentStats.putAll(tempStats);
+
+			osName.set(stats.getOsName());
+			osVersion.set(stats.getOsVersion());
+			osArch.set(stats.getOsArch());
+			availableProcessors.set(stats.getAvailableProcessors());
+			freePhysicalMemory.set(stats.getFreePhysicalMemorySize());
+			totalPhysicalMemory.set(stats.getTotalPhysicalMemorySize());
+			freeSwapSpace.set(stats.getFreeSwapSpaceSize());
+			totalSwapSpace.set(stats.getTotalSwapSpaceSize());
+			systemLoadAverage.set(stats.getSystemLoadAverage());
+			cpuLoad.set(stats.getSystemCpuLoad());
 		} catch (Exception e) {
 		}
-
-		lock.writeLock().unlock();
 	}
 	
 	protected abstract void generateCurrentStats(Map<String, Object> result);
 
 	public Map<String, Object> getCurrentStats() {
-		lock.readLock().lock();
-		Map<String, Object> result = new HashMap<String, Object>(currentStats);
-		lock.readLock().unlock();
-		return result;
+		return currentStats;
 	}
 	
 	public String getOsName() {
-		return stats.getOsName();
+		return osName.get();
 	}
 	
 	public String getOsVersion() {
-		return stats.getOsVersion();
+		return osVersion.get();
 	}
 	
 	public String getOsArch() {
-		return stats.getOsArch();
+		return osArch.get();
 	}
 	
 	public int getAvailableProcessors() {
-		return stats.getAvailableProcessors();
+		return availableProcessors.get();
 	}
 
 	public long getFreePhysicalMemorySize() {
-		return stats.getFreePhysicalMemorySize();
+		return freePhysicalMemory.get();
 	}
 
 	public long getTotalPhysicalMemorySize() {
-		return stats.getTotalPhysicalMemorySize();
+		return totalPhysicalMemory.get();
 	}
 
 	public long getFreeSwapSpaceSize() {
-		return stats.getFreeSwapSpaceSize();
+		return freeSwapSpace.get();
 	}
 
 	public long getTotalSwapSpaceSize() {
-		return stats.getTotalSwapSpaceSize();
+		return totalSwapSpace.get();
 	}
 
 	public double[] getSystemLoadAverage() {
-		return stats.getSystemLoadAverage();
+		return systemLoadAverage.get();
 	}
 
 	public int getSystemCpuLoad() {
-		return stats.getSystemCpuLoad();
+		return cpuLoad.get();
 	}
 }

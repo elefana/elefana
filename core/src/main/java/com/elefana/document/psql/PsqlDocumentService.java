@@ -96,7 +96,7 @@ public class PsqlDocumentService implements DocumentService, RequestExecutor {
 
 	@PostConstruct
 	public void postConstruct() {
-		executorService = Executors.newCachedThreadPool(new NamedThreadFactory(
+		executorService = Executors.newFixedThreadPool(Math.max(2, Runtime.getRuntime().availableProcessors() / 2), new NamedThreadFactory(
 				"elefana-documentService-requestExecutor", ThreadPriorities.DOCUMENT_SERVICE));
 		asyncDeletionExecutorService = Executors.newSingleThreadExecutor(new NamedThreadFactory(
 				"elefana-documentService-asyncDeletionExecutor", ThreadPriorities.DOCUMENT_SERVICE));

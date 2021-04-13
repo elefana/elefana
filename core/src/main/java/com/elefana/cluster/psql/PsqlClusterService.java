@@ -61,7 +61,7 @@ public class PsqlClusterService implements ClusterService, RequestExecutor {
 
 	@PostConstruct
 	public void postConstruct() {
-		executorService = Executors.newCachedThreadPool(new NamedThreadFactory(
+		executorService = Executors.newFixedThreadPool(Math.max(2, Runtime.getRuntime().availableProcessors() / 2), new NamedThreadFactory(
 				"elefana-clusterService-requestExecutor", ThreadPriorities.CLUSTER_SERVICE));
 		
 		clusterInfoResponse.getVersion().setBuildSnapshot(false);

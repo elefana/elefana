@@ -39,12 +39,15 @@ public class PooledCharArray {
 
 	public static char[] allocate(int length) {
 		LOCK.lock();
-		final char [] result = POOL.isEmpty() ? null : POOL.remove(0);
+		char [] result = POOL.isEmpty() ? null : POOL.remove(0);
 		LOCK.unlock();
 		MAX_ARRAY_SIZE.set(Math.max(MAX_ARRAY_SIZE.get(), length));
 
 		if(result == null) {
 			return new char[MAX_ARRAY_SIZE.get()];
+		}
+		if(result.length < length) {
+			result = new char[MAX_ARRAY_SIZE.get()];
 		}
 		return result;
 	}

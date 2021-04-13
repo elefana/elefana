@@ -101,7 +101,7 @@ public class CoreNodeStatsService implements NodeStatsService {
 			break;
 		}
 
-		long refreshInterval = environment.getProperty("elefana.service.node.statsRefreshInterval", Long.class, 10L);
+		long refreshInterval = environment.getProperty("elefana.service.node.statsRefreshInterval", Long.class, 60L);
 
 		scheduledExecutorService.scheduleAtFixedRate(jvmStats, 0L, refreshInterval, TimeUnit.SECONDS);
 		scheduledExecutorService.scheduleAtFixedRate(osStats, 0L, refreshInterval, TimeUnit.SECONDS);

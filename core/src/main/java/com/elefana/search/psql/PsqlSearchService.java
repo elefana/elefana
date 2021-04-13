@@ -98,9 +98,12 @@ public class PsqlSearchService implements SearchService, RequestExecutor {
 	public void postConstruct() {
 		sqlFetchSize = environment.getProperty("elefana.service.search.sql.fetchSize", Integer.class, DEFAULT_FETCH_SIZE);
 
-		searchCountExecutorService = Executors.newCachedThreadPool(new NamedThreadFactory("elefana-searchService-countExecutor", ThreadPriorities.SEARCH_SERVICE));
-		searchHitsExecutorService = Executors.newCachedThreadPool(new NamedThreadFactory("elefana-searchService-hitsExecutor", ThreadPriorities.SEARCH_SERVICE));
-		searchAggregationsExecutorService = Executors.newCachedThreadPool(new NamedThreadFactory("elefana-searchService-aggregationsExecutor", ThreadPriorities.SEARCH_SERVICE));
+		searchCountExecutorService = Executors.newFixedThreadPool(Math.max(2, Runtime.getRuntime().availableProcessors() / 2),
+				new NamedThreadFactory("elefana-searchService-countExecutor", ThreadPriorities.SEARCH_SERVICE));
+		searchHitsExecutorService = Executors.newFixedThreadPool(Math.max(2, Runtime.getRuntime().availableProcessors() / 2),
+				new NamedThreadFactory("elefana-searchService-hitsExecutor", ThreadPriorities.SEARCH_SERVICE));
+		searchAggregationsExecutorService = Executors.newFixedThreadPool(Math.max(2, Runtime.getRuntime().availableProcessors() / 2),
+				new NamedThreadFactory("elefana-searchService-aggregationsExecutor", ThreadPriorities.SEARCH_SERVICE));
 
 		searchHitsTime = metricRegistry.histogram(MetricRegistry.name("search", "hits", "time"));
 		searchHitsSize = metricRegistry.histogram(MetricRegistry.name("search", "hits", "size"));

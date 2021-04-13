@@ -61,16 +61,17 @@ public class MasterLoadUnloadManager implements LoadUnloadManager {
 		if(ttlMinutes > 0) {
 			this.indexTtlMillis = ttlMinutes * 60 * 1000;
 		} else {
-			this.indexTtlMillis = 30 * 1000;
+			this.indexTtlMillis = 60 * 1000;
 		}
 
 		missingIndices.addAll(jdbcTemplate.queryForList("SELECT _indexname FROM elefana_field_stats_index", String.class));
+
 		scheduledExecutorService.scheduleAtFixedRate(this::unloadUnusedIndices, 0L, indexTtlMillis / 2, TimeUnit.MILLISECONDS);
 		if(isMaster) {
 			if(snapshotMinutes > 0) {
 				scheduledExecutorService.scheduleAtFixedRate(this::snapshot, 0L, snapshotMinutes, TimeUnit.MINUTES);
 			} else {
-				scheduledExecutorService.scheduleAtFixedRate(this::snapshot, 0L, 20, TimeUnit.SECONDS);
+				scheduledExecutorService.scheduleAtFixedRate(this::snapshot, 0L, 30, TimeUnit.SECONDS);
 			}
 		}
 	}

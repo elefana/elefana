@@ -64,7 +64,7 @@ public class PsqlIndexTemplateService implements IndexTemplateService, RequestEx
 	
 	@PostConstruct
 	public void postConstruct() {
-		executorService = Executors.newCachedThreadPool(
+		executorService = Executors.newFixedThreadPool(Math.max(2, Runtime.getRuntime().availableProcessors() / 2),
 				new NamedThreadFactory("elefana-indexTemplateService-requestExecutor", ThreadPriorities.INDEX_TEMPLATE_SERVICE));
 	}
 	
