@@ -214,7 +214,11 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
         try {
             return isBooleanFieldCache.get(field, () -> {
                 ensureIndicesLoaded(index);
-                return state.getFieldStats(field, index).getFieldClass().equals(Boolean.class);
+                final FieldStats fieldStats = state.getFieldStats(field, index);
+                if(fieldStats == null) {
+                    return false;
+                }
+                return fieldStats.getFieldClass().equals(Boolean.class);
             });
         } catch (ExecutionException e) {
             LOGGER.error(e.getMessage(), e);
@@ -227,7 +231,11 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
         try {
             return isDateFieldCache.get(field, () -> {
                 ensureIndicesLoaded(index);
-                return state.getFieldStats(field, index).getFieldClass().equals(Date.class);
+                final FieldStats fieldStats = state.getFieldStats(field, index);
+                if(fieldStats == null) {
+                    return false;
+                }
+                return fieldStats.getFieldClass().equals(Date.class);
             });
         } catch (ExecutionException e) {
             LOGGER.error(e.getMessage(), e);
@@ -240,7 +248,11 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
         try {
             return isDoubleFieldCache.get(field, () -> {
                 ensureIndicesLoaded(index);
-                return state.getFieldStats(field, index).getFieldClass().equals(Double.class);
+                final FieldStats fieldStats = state.getFieldStats(field, index);
+                if(fieldStats == null) {
+                    return false;
+                }
+                return fieldStats.getFieldClass().equals(Double.class);
             });
         } catch (ExecutionException e) {
             LOGGER.error(e.getMessage(), e);
@@ -253,7 +265,11 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
         try {
             return isLongFieldCache.get(field, () -> {
                 ensureIndicesLoaded(index);
-                return state.getFieldStats(field, index).getFieldClass().equals(Long.class);
+                final FieldStats fieldStats = state.getFieldStats(field, index);
+                if(fieldStats == null) {
+                    return false;
+                }
+                return fieldStats.getFieldClass().equals(Long.class);
             });
         } catch (ExecutionException e) {
             LOGGER.error(e.getMessage(), e);
@@ -266,7 +282,11 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
         try {
             return isStringFieldCache.get(field, () -> {
                 ensureIndicesLoaded(index);
-                return state.getFieldStats(field, index).getFieldClass().equals(String.class);
+                final FieldStats fieldStats = state.getFieldStats(field, index);
+                if(fieldStats == null) {
+                    return false;
+                }
+                return fieldStats.getFieldClass().equals(String.class);
             });
         } catch (ExecutionException e) {
             LOGGER.error(e.getMessage(), e);

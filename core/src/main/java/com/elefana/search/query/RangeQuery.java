@@ -75,29 +75,55 @@ public class RangeQuery extends Query {
 	public String toSqlWhereClause(List<String> indices, IndexTemplate indexTemplate, IndexFieldStatsService indexFieldStatsService) {
 		StringBuilder result = new StringBuilder();
 		
-		final String column;
+		String column = "";
 		
 		if(indexTemplate != null && indexTemplate.getStorage().getTimestampPath() != null) {
 			if(indexTemplate.getStorage().getTimestampPath().equalsIgnoreCase(fieldName)) {
 				column = "_timestamp";
-			} else if(indexFieldStatsService.isStringField(indices.get(0), fieldName)) {
-				column = "elefana_json_field(_source, '" + fieldName + "')::numeric";
-			} else if(indexFieldStatsService.isDateField(indices.get(0), fieldName)) {
-				column = "elefana_json_field(_source, '" + fieldName + "')::numeric";
-			} else if(!fieldName.contains(".")) {
-				column = "(_source->>'" + fieldName + "')::numeric";
 			} else {
-				column = "elefana_json_field(_source, '" + fieldName + "')::numeric";
+				boolean match = false;
+				for(String index : indices) {
+					if(match) {
+						break;
+					}
+					if(indexFieldStatsService.isStringField(index, fieldName)) {
+						column = "elefana_json_field(_source, '" + fieldName + "')::numeric";
+						match = true;
+					} else if(indexFieldStatsService.isDateField(index, fieldName)) {
+						column = "elefana_json_field(_source, '" + fieldName + "')::numeric";
+						match = true;
+					}
+				}
+
+				if(!match) {
+					if(!fieldName.contains(".")) {
+						column = "(_source->>'" + fieldName + "')::numeric";
+					} else {
+						column = "elefana_json_field(_source, '" + fieldName + "')::numeric";
+					}
+				}
 			}
 		} else {
-			if(indexFieldStatsService.isStringField(indices.get(0), fieldName)) {
-				column = "elefana_json_field(_source, '" + fieldName + "')::numeric";
-			} else if(indexFieldStatsService.isDateField(indices.get(0), fieldName)) {
-				column = "elefana_json_field(_source, '" + fieldName + "')::numeric";
-			} else if(!fieldName.contains(".")) {
-				column = "(_source->>'" + fieldName + "')::numeric";
-			} else {
-				column = "elefana_json_field(_source, '" + fieldName + "')::numeric";
+			boolean match = false;
+			for(String index : indices) {
+				if(match) {
+					break;
+				}
+				if(indexFieldStatsService.isStringField(index, fieldName)) {
+					column = "elefana_json_field(_source, '" + fieldName + "')::numeric";
+					match = true;
+				} else if(indexFieldStatsService.isDateField(index, fieldName)) {
+					column = "elefana_json_field(_source, '" + fieldName + "')::numeric";
+					match = true;
+				}
+			}
+
+			if(!match) {
+				if(!fieldName.contains(".")) {
+					column = "(_source->>'" + fieldName + "')::numeric";
+				} else {
+					column = "elefana_json_field(_source, '" + fieldName + "')::numeric";
+				}
 			}
 		}
 		

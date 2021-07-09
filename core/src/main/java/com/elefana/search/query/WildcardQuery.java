@@ -63,8 +63,10 @@ public class WildcardQuery extends Query {
 			return toProcedureSqlClause();
 		}
 		try {
-			if(indexFieldStatsService.isStringField(indices.get(0), fieldName)) {
-				return "_source->>'" + fieldName + "' LIKE '" + value.replace("*", "%").replace("?", "_") + "'";
+			for(String index : indices) {
+				if(indexFieldStatsService.isStringField(index, fieldName)) {
+					return "_source->>'" + fieldName + "' LIKE '" + value.replace("*", "%").replace("?", "_") + "'";
+				}
 			}
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);

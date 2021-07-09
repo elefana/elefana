@@ -60,8 +60,10 @@ public class TermQuery extends Query {
 			return toProcedureSqlClause();
 		}
 		try {
-			if(indexFieldStatsService.isStringField(indices.get(0), fieldName)) {
-				return "_source->>'" + fieldName + "' = '" + value + "'";
+			for(String index : indices) {
+				if(indexFieldStatsService.isStringField(index, fieldName)) {
+					return "_source->>'" + fieldName + "' = '" + value + "'";
+				}
 			}
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
