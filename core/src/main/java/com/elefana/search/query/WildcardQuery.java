@@ -64,7 +64,8 @@ public class WildcardQuery extends Query {
 		}
 		try {
 			for(String index : indices) {
-				if(indexFieldStatsService.isStringField(index, fieldName)) {
+				if(indexFieldStatsService.hasField(index, fieldName) &&
+						indexFieldStatsService.isStringField(index, fieldName)) {
 					return "_source->>'" + fieldName + "' LIKE '" + value.replace("*", "%").replace("?", "_") + "'";
 				}
 			}

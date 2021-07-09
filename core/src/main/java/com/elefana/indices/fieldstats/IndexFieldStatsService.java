@@ -46,6 +46,8 @@ public interface IndexFieldStatsService extends RequestExecutor {
 
     public GetFieldNamesResponse getFieldNames(ChannelHandlerContext context, String indexPattern, String typePattern);
 
+    public boolean hasField(String index, String field);
+
     public boolean isBooleanField(String index, String field);
 
     public boolean isDateField(String index, String field);

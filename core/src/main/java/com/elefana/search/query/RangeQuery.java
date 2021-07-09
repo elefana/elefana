@@ -86,10 +86,12 @@ public class RangeQuery extends Query {
 					if(match) {
 						break;
 					}
-					if(indexFieldStatsService.isStringField(index, fieldName)) {
+					if(indexFieldStatsService.hasField(index, fieldName) &&
+							indexFieldStatsService.isStringField(index, fieldName)) {
 						column = "elefana_json_field(_source, '" + fieldName + "')::numeric";
 						match = true;
-					} else if(indexFieldStatsService.isDateField(index, fieldName)) {
+					} else if(indexFieldStatsService.hasField(index, fieldName) &&
+							indexFieldStatsService.isDateField(index, fieldName)) {
 						column = "elefana_json_field(_source, '" + fieldName + "')::numeric";
 						match = true;
 					}
@@ -109,10 +111,12 @@ public class RangeQuery extends Query {
 				if(match) {
 					break;
 				}
-				if(indexFieldStatsService.isStringField(index, fieldName)) {
+				if(indexFieldStatsService.hasField(index, fieldName) &&
+						indexFieldStatsService.isStringField(index, fieldName)) {
 					column = "elefana_json_field(_source, '" + fieldName + "')::numeric";
 					match = true;
-				} else if(indexFieldStatsService.isDateField(index, fieldName)) {
+				} else if(indexFieldStatsService.hasField(index, fieldName) &&
+						indexFieldStatsService.isDateField(index, fieldName)) {
 					column = "elefana_json_field(_source, '" + fieldName + "')::numeric";
 					match = true;
 				}

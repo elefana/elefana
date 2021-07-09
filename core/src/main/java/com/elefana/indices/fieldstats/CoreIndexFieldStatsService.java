@@ -80,6 +80,7 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
     protected State state;
     protected LoadUnloadManager loadUnloadManager;
 
+    private final Cache<String, Boolean> hasFieldCache = CacheBuilder.newBuilder().maximumSize(2048).expireAfterAccess(Duration.ofHours(1)).build();
     private final Cache<String, Boolean> isBooleanFieldCache = CacheBuilder.newBuilder().maximumSize(2048).expireAfterAccess(Duration.ofHours(1)).build();
     private final Cache<String, Boolean> isDateFieldCache = CacheBuilder.newBuilder().maximumSize(2048).expireAfterAccess(Duration.ofHours(1)).build();
     private final Cache<String, Boolean> isDoubleFieldCache = CacheBuilder.newBuilder().maximumSize(2048).expireAfterAccess(Duration.ofHours(1)).build();
@@ -207,6 +208,19 @@ public class CoreIndexFieldStatsService implements IndexFieldStatsService, Reque
             response.getFieldNames().addAll(getFieldNamesFromDatabase(indexPattern));
         }
         return response;
+    }
+
+    @Override
+    public boolean hasField(String index, String field) {
+        try {
+            return hasFieldCache.get(index + "|" + field, () -> {
+                ensureIndicesLoaded(index);
+                return state.getFieldStats(field, index) != null;
+            });
+        } catch (ExecutionException e) {
+            LOGGER.error(e.getMessage(), e);
+        }
+        return false;
     }
 
     @Override
